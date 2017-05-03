@@ -26,6 +26,7 @@ import Game_logic_dev
 import Decompress_map
 
 def_matrix = fromList 4 4 [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]
+def_state_log = "t\n~\nt"
 
 -- A wrapper for the Win32 C struct PIXELFORMATDESCRIPTOR and a helper function to set it are included here, as these aren't included in Graphics.Win32
 type PIXELFORMATDESCRIPTOR =
@@ -137,8 +138,8 @@ main = do
   contents <- bracket (openFile (args !! 0) ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nconfig file size: " ++ show (length contents)); return contents)
   putStr ("\nGame :: Dangerous pre - alpha demo.\nEngine version: 0.7 (for Windows x64)\nContent: " ++ ((splitOneOf "=\n" contents) !! 3))
   putStr "\nOpening main window..."
-  if length args > 3 then open_window ((listArray (0, 33) (splitOneOf "=\n" contents)) // [(1, args !! 1), (9, args !! 2), (11, args !! 3), (13, args !! 4), (15, args !! 5), (17, args !! 6), (19, args !! 7), (21, args !! 8), (23, args !! 9), (25, args !! 10), (27, args !! 11), (29, args !! 12), (31, args !! 13), (33, args !! 14)])
-  else open_window ((listArray (0, 33) (splitOneOf "=\n" contents)) // [(31, args !! 1), (33, args !! 2)])
+  if length args > 3 then open_window ((listArray (0, 45) (splitOneOf "=\n" contents)) // [(1, args !! 1), (9, args !! 2), (11, args !! 3), (13, args !! 4), (15, args !! 5), (17, args !! 6), (19, args !! 7), (21, args !! 8), (23, args !! 9), (25, args !! 10), (27, args !! 11), (29, args !! 12), (31, args !! 13), (33, args !! 14), (35, args !! 15), (39, "n")])
+  else open_window ((listArray (0, 45) (splitOneOf "=\n" contents)) // [(31, args !! 1), (33, args !! 2)])
 
 -- These two functions initialise the main window and the OpenGL context.  setup_game prepares the OpenGL shader programs and sets various aspects of OpenGL state.
 open_window :: Array Int [Char] -> IO ()
@@ -169,7 +170,8 @@ setup_game hwnd hdc comp_env_map conf_reg =
       lm3 = "lmap_int1"
       lm4 = "lmap_t0"
       lm5 = "lmap_t1"
-      env_map = ".~.~.~.~" ++ proc_map (splitOn "\n~\n" comp_env_map) (read ((splitOn "\n~\n" comp_env_map) !! 12)) (read ((splitOn "\n~\n" comp_env_map) !! 13)) (read ((splitOn "\n~\n" comp_env_map) !! 14)) ++ "~" ++ ((splitOn "\n~\n" comp_env_map) !! 10) ++ "~" ++ ((splitOn "\n~\n" comp_env_map) !! 11) ++ "~" ++ ((splitOn "\n~\n" comp_env_map) !! 12) ++ "~" ++ ((splitOn "\n~\n" comp_env_map) !! 13) ++ "~" ++ ((splitOn "\n~\n" comp_env_map) !! 14)
+      proc_map' = proc_map (splitOn "\n~\n" comp_env_map) (read ((splitOn "\n~\n" comp_env_map) !! 12)) (read ((splitOn "\n~\n" comp_env_map) !! 13)) (read ((splitOn "\n~\n" comp_env_map) !! 14))
+      env_map = ".~.~.~.~" ++ fst (proc_map') ++ "~" ++ snd (proc_map') ++ ((splitOn "\n~\n" comp_env_map) !! 10) ++ "~" ++ ((splitOn "\n~\n" comp_env_map) !! 11) ++ "~" ++ ((splitOn "\n~\n" comp_env_map) !! 12) ++ "~" ++ ((splitOn "\n~\n" comp_env_map) !! 13) ++ "~" ++ ((splitOn "\n~\n" comp_env_map) !! 14)
       cfg' = cfg conf_reg 0
       p_bind_limit = (read ((splitOn "\n~\n" comp_env_map) !! 7)) - 1
   in do
@@ -186,36 +188,36 @@ setup_game hwnd hdc comp_env_map conf_reg =
   contents0 <- bracket (openFile (cfg' "shader_file") ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nshader file size: " ++ show (length contents)); return contents)
   p_gl_program <- mallocBytes (7 * gluint)
   make_gl_program (tail (splitOn "#" contents0)) p_gl_program 0
-  uniform <- find_gl_uniform [m0, m1, m2, lm0, lm1, lm2, lm3, lm4, lm5, "t", "mode", m0, m1, m2, lm0, lm1, lm2, lm3, lm4, lm5, "t", "mode", "tex_unit0", m0, m1, m2, "worldTorchPos", "timer", "mode", m0, m1, m2, "worldTorchPos", "timer", "mode", "tex_unit0", "tt_matrix", "tex_unit0", "mode", m0, m1, m2, "normal_transf", lm0, lm1, lm2, lm3, lm4, lm5, "tex_unit0", m0, m1, "tex_unit0"] [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6] p_gl_program []
+  uniform <- find_gl_uniform [m0, m1, m2, lm0, lm1, lm2, lm3, lm4, lm5, "t", "mode", m0, m1, m2, lm0, lm1, lm2, lm3, lm4, lm5, "t", "mode", "tex_unit0", m0, m1, m2, "worldTorchPos", "timer", "mode", m0, m1, m2, "worldTorchPos", "timer", "mode", "tex_unit0", "tt_matrix", "tex_unit0", "mode", m0, m1, m2, "normal_transf", lm0, lm1, lm2, lm3, lm4, lm5, "tex_unit0", "t", m0, m1, "tex_unit0"] [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6] p_gl_program []
   gl_program0 <- peekElemOff p_gl_program 0; gl_program1 <- peekElemOff p_gl_program 1; gl_program2 <- peekElemOff p_gl_program 2; gl_program3 <- peekElemOff p_gl_program 3; gl_program4 <- peekElemOff p_gl_program 4; gl_program5 <- peekElemOff p_gl_program 5; gl_program6 <- peekElemOff p_gl_program 6
   glClearColor 1 1 1 0
   glClearDepth 1
   contents1 <- bracket (openFile ((splitOn "\n~\n" comp_env_map) !! 9) ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nlight map file size: " ++ show (length contents)); return contents)
-  p_lmap_pos0 <- callocBytes (glfloat * 210)
-  p_lmap_pos1 <- callocBytes (glfloat * 210)
-  p_lmap_int0 <- callocBytes (glfloat * 210)
-  p_lmap_int1 <- callocBytes (glfloat * 210)
+  p_lmap_pos0 <- callocBytes (glfloat * 300)
+  p_lmap_pos1 <- callocBytes (glfloat * 300)
+  p_lmap_int0 <- callocBytes (glfloat * 300)
+  p_lmap_int1 <- callocBytes (glfloat * 300)
   p_lmap_t0 <- callocBytes (glfloat * 240)
   p_lmap_t1 <- callocBytes (glfloat * 240)
-  load_array (take 210 (proc_floats (splitOn ", " ((splitOn "\n~\n" contents1) !! 0)))) p_lmap_pos0 0
-  load_array (take 210 (proc_floats (splitOn ", " ((splitOn "\n~\n" contents1) !! 1)))) p_lmap_pos1 0
-  load_array (take 210 (proc_floats (splitOn ", " ((splitOn "\n~\n" contents1) !! 2)))) p_lmap_int0 0
-  load_array (take 210 (proc_floats (splitOn ", " ((splitOn "\n~\n" contents1) !! 3)))) p_lmap_int1 0
+  load_array (take 300 (proc_floats (splitOn ", " ((splitOn "\n~\n" contents1) !! 0)))) p_lmap_pos0 0
+  load_array (take 300 (proc_floats (splitOn ", " ((splitOn "\n~\n" contents1) !! 1)))) p_lmap_pos1 0
+  load_array (take 300 (proc_floats (splitOn ", " ((splitOn "\n~\n" contents1) !! 2)))) p_lmap_int0 0
+  load_array (take 300 (proc_floats (splitOn ", " ((splitOn "\n~\n" contents1) !! 3)))) p_lmap_int1 0
   load_array (take 240 (proc_floats (splitOn ", " ((splitOn "\n~\n" contents1) !! 4)))) p_lmap_t0 0
   load_array (take 240 (proc_floats (splitOn ", " ((splitOn "\n~\n" contents1) !! 5)))) p_lmap_t1 0
   glUseProgram gl_program0
-  glUniform3fv (fromIntegral (uniform !! 3)) 70 (castPtr p_lmap_pos0)
-  glUniform3fv (fromIntegral (uniform !! 4)) 70 (castPtr p_lmap_pos1)
-  glUniform3fv (fromIntegral (uniform !! 5)) 70 (castPtr p_lmap_int0)
-  glUniform3fv (fromIntegral (uniform !! 6)) 70 (castPtr p_lmap_int1)
+  glUniform3fv (fromIntegral (uniform !! 3)) 100 (castPtr p_lmap_pos0)
+  glUniform3fv (fromIntegral (uniform !! 4)) 100 (castPtr p_lmap_pos1)
+  glUniform3fv (fromIntegral (uniform !! 5)) 100 (castPtr p_lmap_int0)
+  glUniform3fv (fromIntegral (uniform !! 6)) 100 (castPtr p_lmap_int1)
   glUniform1fv (fromIntegral (uniform !! 7)) 240 (castPtr p_lmap_t0)
   glUniform1fv (fromIntegral (uniform !! 8)) 240 (castPtr p_lmap_t1)
   glUseProgram gl_program1
   glUniform1i (fromIntegral (uniform !! 22)) 0
-  glUniform3fv (fromIntegral (uniform !! 14)) 70 (castPtr p_lmap_pos0)
-  glUniform3fv (fromIntegral (uniform !! 15)) 70 (castPtr p_lmap_pos1)
-  glUniform3fv (fromIntegral (uniform !! 16)) 70 (castPtr p_lmap_int0)
-  glUniform3fv (fromIntegral (uniform !! 17)) 70 (castPtr p_lmap_int1)
+  glUniform3fv (fromIntegral (uniform !! 14)) 100 (castPtr p_lmap_pos0)
+  glUniform3fv (fromIntegral (uniform !! 15)) 100 (castPtr p_lmap_pos1)
+  glUniform3fv (fromIntegral (uniform !! 16)) 100 (castPtr p_lmap_int0)
+  glUniform3fv (fromIntegral (uniform !! 17)) 100 (castPtr p_lmap_int1)
   glUniform1fv (fromIntegral (uniform !! 18)) 240 (castPtr p_lmap_t0)
   glUniform1fv (fromIntegral (uniform !! 19)) 240 (castPtr p_lmap_t1)
   glUseProgram gl_program3
@@ -224,14 +226,14 @@ setup_game hwnd hdc comp_env_map conf_reg =
   glUniform1i (fromIntegral (uniform !! 37)) 0
   glUseProgram gl_program5
   glUniform1i (fromIntegral (uniform !! 49)) 0
-  glUniform3fv (fromIntegral (uniform !! 43)) 70 (castPtr p_lmap_pos0)
-  glUniform3fv (fromIntegral (uniform !! 44)) 70 (castPtr p_lmap_pos1)
-  glUniform3fv (fromIntegral (uniform !! 45)) 70 (castPtr p_lmap_int0)
-  glUniform3fv (fromIntegral (uniform !! 46)) 70 (castPtr p_lmap_int1)
+  glUniform3fv (fromIntegral (uniform !! 43)) 100 (castPtr p_lmap_pos0)
+  glUniform3fv (fromIntegral (uniform !! 44)) 100 (castPtr p_lmap_pos1)
+  glUniform3fv (fromIntegral (uniform !! 45)) 100 (castPtr p_lmap_int0)
+  glUniform3fv (fromIntegral (uniform !! 46)) 100 (castPtr p_lmap_int1)
   glUniform1fv (fromIntegral (uniform !! 47)) 240 (castPtr p_lmap_t0)
   glUniform1fv (fromIntegral (uniform !! 48)) 240 (castPtr p_lmap_t1)
   glUseProgram gl_program6
-  glUniform1i (fromIntegral (uniform !! 52)) 0
+  glUniform1i (fromIntegral (uniform !! 53)) 0
   validate_prog gl_program0 0
   validate_prog gl_program1 1
   validate_prog gl_program2 2
@@ -239,28 +241,37 @@ setup_game hwnd hdc comp_env_map conf_reg =
   validate_prog gl_program4 4
   validate_prog gl_program5 5
   validate_prog gl_program6 6
+  p_bind <- buffer_to_array (castPtr p_gl_program) (array (0, p_bind_limit) [(x, 0) | x <- [0..p_bind_limit]]) 0 (p_bind_limit - 6) 6
   putStr "\nLoading 3D models..."
-  p_bind <- buffer_to_array p_gl_program (array (0, p_bind_limit) [(x, 0) | x <- [0..p_bind_limit]]) 0 (p_bind_limit - 6) 6
-  start_game hwnd hdc (listArray (0, 52) uniform) (p_bind, p_bind_limit + 1) env_map conf_reg 0 (read (cfg' "init_u"), read (cfg' "init_v"), read (cfg' "init_w"), read (cfg' "gravity"), read (cfg' "friction"), read (cfg' "run_power"), read (cfg' "jump_power")) "t\n~\nt"
+  mod_bind <- callocBytes ((read ((splitOn "\n~\n" comp_env_map) !! 7)) * gluint)
+  load_mod_file (splitOn ", " ((splitOn "\n~\n" comp_env_map) !! 8)) (cfg' "model_data_dir") mod_bind
+  free p_gl_program; free p_lmap_pos0; free p_lmap_pos1; free p_lmap_int0; free p_lmap_int1; free p_lmap_t0; free p_lmap_t1
+  p_bind_ <- buffer_to_array (castPtr mod_bind) p_bind 0 0 (p_bind_limit - 16)
+  start_game hwnd hdc (listArray (0, 52) uniform) (p_bind_, p_bind_limit + 1) env_map conf_reg (-1) (read (cfg' "init_u"), read (cfg' "init_v"), read (cfg' "init_w"), read (cfg' "gravity"), read (cfg' "friction"), read (cfg' "run_power"), read (cfg' "jump_power")) def_state_log
 
 -- Load the model file(s) that describe all environmental objects referenced in the current map
-load_mod_file :: [[Char]] -> Ptr GLuint -> IO ()
-load_mod_file [] p_bind = return ()
-load_mod_file (x:xs) p_bind = do
-  h <- openFile x ReadMode
+load_mod_file :: [[Char]] -> [Char] -> Ptr GLuint -> IO ()
+load_mod_file [] path p_bind = return ()
+load_mod_file (x:xs) path p_bind = do
+  h <- openFile (path ++ x) ReadMode
   mod_data <- hGetContents h
   bs_tex <- load_bitmap0 (splitOn ", " ((splitOn "~" mod_data) !! 0)) (load_object0 (splitOn "&" ((splitOn "~" mod_data) !! 1))) [] 1
   setup_object (load_object0 (splitOn "&" ((splitOn "~" mod_data) !! 1))) (proc_marker (proc_ints (splitOn ", " ((splitOn "~" mod_data) !! 2)))) (proc_floats (splitOn ", " ((splitOn "~" mod_data) !! 3))) (proc_elements (splitOn ", " ((splitOn "~" mod_data) !! 4))) bs_tex p_bind
   hClose h
-  load_mod_file xs p_bind
+  load_mod_file xs path p_bind
 
 select_mode "y" = True
 select_mode "n" = False
 
+proc_splash :: [Char] -> Int -> [(Int, [Int])]
+proc_splash [] c = []
+proc_splash text 0 = (0, []) : proc_splash text 1
+proc_splash text c = (c, conv_msg_ (take 40 text)) : proc_splash (drop 40 text) (c + 1)
+
 -- This is the loop for the branching possible through main menu choices
 start_game :: HWND -> HDC -> UArray Int Int32 -> (UArray Int Word32, Int) -> [Char] -> Array Int [Char] -> Int -> (Float, Float, Float, Float, Float, Float, Float) -> [Char] -> IO ()
 start_game hwnd hdc uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag_j) state_log =
-  let w_grid = (make_array0 ((build_table0 (elems (build_table1 (splitOn ", " ((splitOn "~" c) !! 7)) (empty_w_grid (read ((splitOn "~" c) !! 8)) (read ((splitOn "~" c) !! 9)) (read ((splitOn "~" c) !! 10))))) (read ((splitOn "~" c) !! 8)) (read ((splitOn "~" c) !! 9)) (read ((splitOn "~" c) !! 10))) ++ (sort_grid0 (splitOn "&" ((splitOn "~" c) !! 4)))) (read ((splitOn "~" c) !! 8)) (read ((splitOn "~" c) !! 9)) (read ((splitOn "~" c) !! 10)))
+  let w_grid = (make_array0 ((build_table0 (elems (build_table1 (splitOn ", " ((splitOn "~" c) !! 7)) (empty_w_grid (read ((splitOn "~" c) !! 8)) (read ((splitOn "~" c) !! 9)) (read ((splitOn "~" c) !! 10))) 7500)) (read ((splitOn "~" c) !! 8)) (read ((splitOn "~" c) !! 9)) (read ((splitOn "~" c) !! 10))) ++ (sort_grid0 (splitOn "&" ((splitOn "~" c) !! 4)))) (read ((splitOn "~" c) !! 8)) (read ((splitOn "~" c) !! 9)) (read ((splitOn "~" c) !! 10)))
       f_grid = (make_array1 (load_floor0 (splitOn "&" ((splitOn "~" c) !! 5))) (read ((splitOn "~" c) !! 8)) (read ((splitOn "~" c) !! 9)) (read ((splitOn "~" c) !! 10)))
       obj_grid = ((empty_obj_grid (read ((splitOn "~" c) !! 8)) (read ((splitOn "~" c) !! 9)) (read ((splitOn "~" c) !! 10))) // load_obj_grid (splitOn ", " ((splitOn "~" c) !! 6)))
       look_up_ = look_up [make_table 0 0, make_table 1 0, make_table 2 0, make_table 3 0]
@@ -268,20 +279,26 @@ start_game hwnd hdc uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag_j)
       cfg' = cfg conf_reg 0
       grid_patch = load_game0 mode (splitOn ", " ((splitOn "\n~\n" state_log) !! 0)) (splitOn ", " ((splitOn "\n~\n" state_log) !! 1)) [] w_grid f_grid obj_grid (ps0_init {pos_u = u, pos_v = v, pos_w = w, show_fps_ = select_mode (cfg' "show_fps")}) (ps1_init {verbose_mode = select_mode (cfg' "verbose_mode")})
   in do
-  p_mt_matrix <- mallocBytes (glfloat * 128)
-  p_f_table0 <- callocBytes (int_ * 84000)
-  p_f_table1 <- callocBytes (int_ * 42000)
-  state_ref <- newEmptyMVar
-  tid <- forkIO (update_play (Io_box {hwnd_ = hwnd, hdc_ = hdc, uniform_ = uniform, p_bind_ = p_bind}) state_ref (fourth grid_patch) (fifth grid_patch) False 40 (g, f, mag_r, mag_j) (fst_ grid_patch) (snd_ grid_patch) (third grid_patch) look_up_ conf_reg)
-  result <- show_frame hdc p_bind uniform p_mt_matrix (p_f_table0, p_f_table1) 0 0 0 0 0 1 state_ref w_grid look_up_ (read ((splitOn "~" c) !! 10)) 0 camera_to_clip' (div 1000 (read (cfg' "fps_limit"))) 0
-  free p_mt_matrix
-  free p_f_table0
-  free p_f_table1
-  killThread tid
-  if head result == 1 || head result == 2 then do
-    putStr "\nstart_game: case 0"
+  if mode == -1 then do
+    if cfg' "splash" == "y" then do
+      run_menu (proc_splash (cfg' "splash_msg") 0) [] (Io_box {hwnd_ = hwnd, hdc_ = hdc, uniform_ = uniform, p_bind_ = p_bind}) (-0.95) (-0.95) 0 0 0
+      start_game hwnd hdc uniform p_bind c conf_reg 3 (u, v, w, g, f, mag_r, mag_j) state_log
+    else start_game hwnd hdc uniform p_bind c conf_reg 0 (u, v, w, g, f, mag_r, mag_j) state_log
+  else if mode == 0 || mode == 1 then do
+    p_mt_matrix <- mallocBytes (glfloat * 128)
+    p_f_table0 <- callocBytes (int_ * 120000)
+    p_f_table1 <- callocBytes (int_ * 37500)
+    state_ref <- newEmptyMVar
+    tid <- forkIO (update_play (Io_box {hwnd_ = hwnd, hdc_ = hdc, uniform_ = uniform, p_bind_ = p_bind}) state_ref (fourth grid_patch) (fifth grid_patch) False 40 (g, f, mag_r, mag_j) (fst_ grid_patch) (snd_ grid_patch) (third grid_patch) look_up_ conf_reg)
+    result <- show_frame hdc p_bind uniform p_mt_matrix (p_f_table0, p_f_table1) 0 0 0 0 0 1 state_ref w_grid look_up_ (read ((splitOn "~" c) !! 10)) 0 camera_to_clip' (div 1000 (read (cfg' "fps_limit"))) 0
+    free p_mt_matrix
+    free p_f_table0
+    free p_f_table1
+    killThread tid
+    start_game hwnd hdc uniform p_bind c conf_reg ((head result) + 1) (u, v, w, g, f, mag_r, mag_j) state_log
+  else if mode == 2 || mode == 3 then do
     choice <- run_menu main_menu_text [] (Io_box {hwnd_ = hwnd, hdc_ = hdc, uniform_ = uniform, p_bind_ = p_bind}) (-0.75) (-0.75) 1 0 0
-    if choice == 1 then start_game hwnd hdc uniform p_bind c conf_reg 0 (u, v, w, g, f, mag_r, mag_j) "t\n~\nt"
+    if choice == 1 then start_game hwnd hdc uniform p_bind c conf_reg 0 (u, v, w, g, f, mag_r, mag_j) def_state_log
     else if choice == 2 then do
       run_menu msg21 [] (Io_box {hwnd_ = hwnd, hdc_ = hdc, uniform_ = uniform, p_bind_ = p_bind}) (-0.75) (-0.75) 1 0 0
       putStr "Please enter save game file name (no extention needed): "
@@ -292,11 +309,9 @@ start_game hwnd hdc uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag_j)
       hClose h
       start_game hwnd hdc uniform p_bind c conf_reg 1 (0, 0, 0, g, f, mag_r, mag_j) contents
     else exitSuccess
-  else if head result == 3 then do
-    putStr "\nstart_game: case 1"
-    exitSuccess
-  else if head result == 5 then do
-    putStr "\nAdditional regions not yet implemented.  Exiting..."
+  else if mode == 4 then exitSuccess
+  else if mode == 6 then do
+    putStr "\nYou have completed this area.  Nice one.  Check the project website later for details of further releases."
     exitSuccess
   else return ()
 
@@ -316,6 +331,7 @@ find_gl_uniform (x:xs) (y:ys) p_gl_program acc = do
   print gl_program
   putStr "linked to uniform: "
   print uniform
+  free query
   find_gl_uniform xs ys p_gl_program (acc ++ [fromIntegral uniform])
 
 -- These four functions deal with the compilation of the GLSL shaders and linking of the shader program
@@ -331,6 +347,7 @@ make_gl_program (x0:x1:xs) p_prog i = do
   print i
   print gl_program
   pokeElemOff p_prog i gl_program
+  free sc0; free sc1
   make_gl_program xs p_prog (i + 1)
 
 shader_code :: [[Char]] -> Ptr (Ptr GLchar) -> Int -> IO (Ptr (Ptr GLchar))
@@ -472,10 +489,10 @@ bind_texture (x:xs) p_bind w h offset = do
 show_frame :: HDC -> (UArray Int Word32, Int) -> UArray Int Int32 -> Ptr GLfloat -> (Ptr Int, Ptr Int) -> Float -> Float -> Float -> Int -> Int -> Int -> MVar (Play_state0, Array (Int, Int, Int) Wall_grid) -> Array (Int, Int, Int) Wall_grid -> UArray (Int, Int) Float -> Int -> Int -> Matrix Float -> DWORD -> DWORD -> IO [Int]
 show_frame hdc p_bind uniform p_mt_matrix filter_table u v w a a' game_t' state_ref w_grid look_up w_limit msg_timer camera_to_clip min_frame_t t =
   let survey0 = multi_survey (mod_angle a (-126)) 251 u v (truncate u) (truncate v) w_grid look_up w_limit 0 [] []
-      survey1 = multi_survey (mod_angle a' (-126)) 251 (fst view_circle') (snd view_circle') (truncate (fst view_circle')) (truncate (snd view_circle')) w_grid look_up w_limit 0 [] []
-      view_circle' = view_circle u v 2 a' look_up
+      survey1 = multi_survey (mod_angle (mod_angle a' a) 188) 251 (fst view_circle') (snd view_circle') (truncate (fst view_circle')) (truncate (snd view_circle')) w_grid look_up w_limit 0 [] []
+      view_circle' = view_circle u v 2 (mod_angle a a') look_up
       world_to_clip0 = multStd camera_to_clip (world_to_camera (-u) (-v) (-w) a look_up)
-      world_to_clip1 = multStd camera_to_clip (world_to_camera (- (fst view_circle')) (- (snd view_circle')) (-w) a' look_up)
+      world_to_clip1 = multStd camera_to_clip (world_to_camera (- (fst view_circle')) (- (snd view_circle')) (-w) (mod_angle (mod_angle a' a) 314) look_up)
   in do
   tick0 <- getTickCount
   p_state <- takeMVar state_ref
@@ -483,28 +500,29 @@ show_frame hdc p_bind uniform p_mt_matrix filter_table u v w a a' game_t' state_
   if view_mode (fst p_state) == 0 then load_array (toList world_to_clip0) (castPtr p_mt_matrix) 0
   else do
     load_array (toList world_to_clip1) (castPtr p_mt_matrix) 0
-    glUseProgram ((fst p_bind) ! ((snd p_bind) - 2))
+    glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 2)))
     glUniformMatrix4fv (coerce (uniform ! 40)) 1 1 (castPtr p_mt_matrix)
-    glUseProgram ((fst p_bind) ! ((snd p_bind) - 1))
-    glUniformMatrix4fv (coerce (uniform ! 51)) 1 1 (castPtr p_mt_matrix)
+    glUniform1i (coerce (uniform ! 50)) (fromIntegral (mod (game_t (fst p_state)) 240))
+    glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 1)))
+    glUniformMatrix4fv (coerce (uniform ! 52)) 1 1 (castPtr p_mt_matrix)
     show_player uniform p_bind (plusPtr p_mt_matrix (glfloat * 80)) u v w a look_up (game_t (fst p_state)) (rend_mode (fst p_state))
   if rend_mode (fst p_state) == 0 then do
-    glUseProgram ((fst p_bind) ! ((snd p_bind) - 7))
+    glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 7)))
     glUniform1i (coerce (uniform ! 9)) (fromIntegral (mod (game_t (fst p_state)) 240))
     glUniformMatrix4fv (coerce (uniform ! 1)) 1 1 (castPtr p_mt_matrix)
-    glUseProgram ((fst p_bind) ! ((snd p_bind) - 6))
+    glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 6)))
     glUniform1i (coerce (uniform ! 20)) (fromIntegral (mod (game_t (fst p_state)) 240))
     glUniformMatrix4fv (coerce (uniform ! 12)) 1 1 (castPtr p_mt_matrix)
   else do
-    glUseProgram ((fst p_bind) ! ((snd p_bind) - 5))
+    glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 5)))
     glUniformMatrix4fv (coerce (uniform ! 24)) 1 1 (castPtr p_mt_matrix)
     glUniform4f (coerce (uniform ! 26)) (coerce u) (coerce v) (coerce w) 1
     glUniform1i (coerce (uniform ! 27)) (fromIntegral (torch_t_limit (fst p_state) - (game_t (fst p_state) - torch_t0 (fst p_state))))
-    glUseProgram ((fst p_bind) ! ((snd p_bind) - 4))
+    glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 4)))
     glUniformMatrix4fv (coerce (uniform ! 30)) 1 1 (castPtr p_mt_matrix)
     glUniform4f (coerce (uniform ! 32)) (coerce u) (coerce v) (coerce w) 1
     glUniform1i (coerce (uniform ! 33)) (fromIntegral (torch_t_limit (fst p_state) - (game_t (fst p_state) - torch_t0 (fst p_state))))
-  glBindVertexArray ((fst p_bind) ! 0)
+  glBindVertexArray (unsafeCoerce ((fst p_bind) ! 0))
   if view_mode (fst p_state) == 0 then do
     filtered_surv0 <- filter_surv (fst survey0) [] (fst filter_table) game_t'
     filtered_surv1 <- filter_surv (snd survey0) [] (snd filter_table) game_t'
@@ -525,8 +543,7 @@ show_frame hdc p_bind uniform p_mt_matrix filter_table u v w a a' game_t' state_
   else if msg_count (fst p_state) == -2 then do
     putStr "\nshow_frame: case -2"
     p_mt_matrix1 <- mallocBytes ((length (snd (head (message_ (fst p_state))))) * glfloat * 16)
-    vao <- peekElemOff (fst p_bind) 933
-    glBindVertexArray vao
+    glBindVertexArray (unsafeCoerce ((fst p_bind) ! 933))
     glDisable gl_DEPTH_TEST
     show_text (snd (head (message_ (fst p_state)))) 0 933 uniform p_bind p_mt_matrix1 (-0.9) 0.9 0
     glEnable gl_DEPTH_TEST
@@ -545,8 +562,8 @@ show_frame hdc p_bind uniform p_mt_matrix filter_table u v w a a' game_t' state_
     show_frame hdc p_bind uniform p_mt_matrix filter_table (pos_u (fst p_state)) (pos_v (fst p_state)) (pos_w (fst p_state)) (angle (fst p_state)) (view_angle (fst p_state)) (game_t (fst p_state)) state_ref (snd p_state) look_up w_limit (msg_count (fst p_state)) camera_to_clip min_frame_t t'
   else if msg_timer > 0 then do
     p_mt_matrix1 <- mallocBytes ((length (snd (head (message_ (fst p_state))))) * glfloat * 16)
-    glBindVertexArray ((fst p_bind) ! 933)
-    glUseProgram ((fst p_bind) ! ((snd p_bind) - 3))
+    glBindVertexArray (unsafeCoerce ((fst p_bind) ! 933))
+    glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 3)))
     glDisable gl_DEPTH_TEST
     show_text (snd (head (message_ (fst p_state)))) 0 933 uniform p_bind p_mt_matrix1 (-0.9) 0.9 0
     glEnable gl_DEPTH_TEST
@@ -572,21 +589,21 @@ show_walls (x:xs) uniform p_bind p_mt_matrix u v w a look_up mode = do
     load_array (toList (model_to_world (translate_u x) (translate_v x) (translate_w x) 0 False look_up)) (castPtr p_mt_matrix) 0
     load_array (toList (world_to_model (translate_u x) (translate_v x) (translate_w x) 0 False look_up)) (castPtr p_mt_matrix) 16
     if texture_ x == 0 && mode == 0 then do
-      glUseProgram ((fst p_bind) ! ((snd p_bind) - 7))
+      glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 7)))
       glUniformMatrix4fv (coerce (uniform ! 0)) 1 1 p_mt_matrix
       glUniformMatrix4fv (coerce (uniform ! 2)) 1 1 (plusPtr p_mt_matrix (glfloat * 16))
     else if texture_ x > 0 && texture_ x < (snd p_bind) && mode == 0 then do
-      glUseProgram ((fst p_bind) ! ((snd p_bind) - 6))
-      glBindTexture gl_TEXTURE_2D ((fst p_bind) ! texture_ x)
+      glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 6)))
+      glBindTexture gl_TEXTURE_2D (unsafeCoerce ((fst p_bind) ! texture_ x))
       glUniformMatrix4fv (coerce (uniform ! 11)) 1 1 p_mt_matrix
       glUniformMatrix4fv (coerce (uniform ! 13)) 1 1 (plusPtr p_mt_matrix (glfloat * 16))
     else if texture_ x == 0 && mode == 1 then do
-      glUseProgram ((fst p_bind) ! ((snd p_bind) - 5))
+      glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 5)))
       glUniformMatrix4fv (coerce (uniform ! 23)) 1 1 p_mt_matrix
       glUniformMatrix4fv (coerce (uniform ! 25)) 1 1 (plusPtr p_mt_matrix (glfloat * 16))
     else if texture_ x > 0 && texture_ x < (snd p_bind) && mode == 1 then do
-      glUseProgram ((fst p_bind) ! ((snd p_bind) - 4))
-      glBindTexture gl_TEXTURE_2D ((fst p_bind) ! texture_ x)
+      glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 4)))
+      glBindTexture gl_TEXTURE_2D (unsafeCoerce ((fst p_bind) ! texture_ x))
       glUniformMatrix4fv (coerce (uniform ! 29)) 1 1 p_mt_matrix
       glUniformMatrix4fv (coerce (uniform ! 31)) 1 1 (plusPtr p_mt_matrix (glfloat * 16))
     else do
@@ -597,51 +614,51 @@ show_walls (x:xs) uniform p_bind p_mt_matrix u v w a look_up mode = do
     show_walls xs uniform p_bind p_mt_matrix u v w a look_up mode
   else show_walls xs uniform p_bind p_mt_matrix u v w a look_up mode
 
-show_object :: [Obj_place] -> UArray Int Int32 -> (Ptr GLuint, Int) -> Ptr GLfloat -> Float -> Float -> Float -> Int -> UArray (Int, Int) Float -> Int -> IO ()
+show_object :: [Obj_place] -> UArray Int Int32 -> (UArray Int Word32, Int) -> Ptr GLfloat -> Float -> Float -> Float -> Int -> UArray (Int, Int) Float -> Int -> IO ()
 show_object [] uniform p_bind p_mt_matrix u v w a look_up mode = return ()
 show_object (x:xs) uniform p_bind p_mt_matrix u v w a look_up mode = do
   load_array (toList (model_to_world (u__ x) (v__ x) (w__ x) 0 False look_up)) (castPtr p_mt_matrix) 0
   load_array (toList (world_to_model (u__ x) (v__ x) (w__ x) 0 False look_up)) (castPtr p_mt_matrix) 16
   if ident_ x < (snd p_bind) && texture__ x == 0 && mode == 0 then do
-    glUseProgram ((fst p_bind) ! ((snd p_bind) - 7))
+    glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 7)))
     glUniformMatrix4fv (coerce (uniform ! 0)) 1 1 p_mt_matrix
     glUniformMatrix4fv (coerce (uniform ! 2)) 1 1 (plusPtr p_mt_matrix (glfloat * 16))
   else if (ident_ x) + (texture__ x) < snd p_bind && texture__ x > 0 && mode == 0 then do
-    glUseProgram ((fst p_bind) ! ((snd p_bind) - 6))
+    glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 6)))
     glUniformMatrix4fv (coerce (uniform ! 11)) 1 1 p_mt_matrix
     glUniformMatrix4fv (coerce (uniform ! 13)) 1 1 (plusPtr p_mt_matrix (glfloat * 16))
-    glBindTexture gl_TEXTURE_2D ((fst p_bind) ! ((ident_ x) + (texture__ x)))
+    glBindTexture gl_TEXTURE_2D (unsafeCoerce ((fst p_bind) ! ((ident_ x) + (texture__ x))))
   else if ident_ x < (snd p_bind) && texture__ x == 0 && mode == 1 then do
-    glUseProgram ((fst p_bind) ! ((snd p_bind) - 5))
+    glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 5)))
     glUniformMatrix4fv (coerce (uniform ! 23)) 1 1 p_mt_matrix
     glUniformMatrix4fv (coerce (uniform ! 25)) 1 1 (plusPtr p_mt_matrix (glfloat * 16))
   else if (ident_ x) + (texture__ x) < snd p_bind && texture__ x > 0 && mode == 1 then do
-    glUseProgram ((fst p_bind) ! ((snd p_bind) - 4))
+    glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 4)))
     glUniformMatrix4fv (coerce (uniform ! 29)) 1 1 p_mt_matrix
     glUniformMatrix4fv (coerce (uniform ! 31)) 1 1 (plusPtr p_mt_matrix (glfloat * 16))
-    glBindTexture gl_TEXTURE_2D ((fst p_bind) ! ((ident_ x) + (texture__ x)))
+    glBindTexture gl_TEXTURE_2D (unsafeCoerce ((fst p_bind) ! ((ident_ x) + (texture__ x))))
   else do
     putStr "\nshow_object: Invalid obj_place object or texture reference in map..."
     show_object xs uniform p_bind p_mt_matrix u v w a look_up mode
-  glBindVertexArray ((fst p_bind) ! (ident_ x))
+  glBindVertexArray (unsafeCoerce ((fst p_bind) ! (ident_ x)))
   glDrawElements gl_TRIANGLES (num_elem x) gl_UNSIGNED_SHORT zero_ptr
   show_object xs uniform p_bind p_mt_matrix u v w a look_up mode
 
-show_player :: UArray Int Int32 -> (Ptr GLuint, Int) -> Ptr GLfloat -> Float -> Float -> Float -> Int -> UArray (Int, Int) Float -> Int -> Int -> IO ()
+show_player :: UArray Int Int32 -> (UArray Int Word32, Int) -> Ptr GLfloat -> Float -> Float -> Float -> Int -> UArray (Int, Int) Float -> Int -> Int -> IO ()
 show_player uniform p_bind p_mt_matrix u v w a look_up game_t mode = do
   load_array (toList (model_to_world u v w a True look_up)) (castPtr p_mt_matrix) 0
   load_array (toList (world_to_model u v w a True look_up)) (castPtr p_mt_matrix) 16
   load_array (toList (rotation_w a look_up)) (castPtr p_mt_matrix) 32
   if mode == 0 then do
-    glUseProgram ((fst p_bind) ! ((snd p_bind) - 2))
+    glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 2)))
     glUniformMatrix4fv (coerce (uniform ! 39)) 1 1 p_mt_matrix
     glUniformMatrix4fv (coerce (uniform ! 41)) 1 1 (plusPtr p_mt_matrix (glfloat * 16))
     glUniformMatrix4fv (coerce (uniform ! 42)) 1 1 (plusPtr p_mt_matrix (glfloat * 32))
   else do
-    glUseProgram ((fst p_bind) ! ((snd p_bind) - 1))
-    glUniformMatrix4fv (coerce (uniform ! 50)) 1 1 p_mt_matrix
-  glBindVertexArray ((fst p_bind) ! 1024)
-  glBindTexture gl_TEXTURE_2D ((fst p_bind) ! 1025)
+    glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 1)))
+    glUniformMatrix4fv (coerce (uniform ! 51)) 1 1 p_mt_matrix
+  glBindVertexArray (unsafeCoerce ((fst p_bind) ! 1024))
+  glBindTexture gl_TEXTURE_2D (unsafeCoerce ((fst p_bind) ! 1025))
   glDrawElements gl_TRIANGLES 36 gl_UNSIGNED_SHORT zero_ptr
 
 check_error :: [Char] -> IO ()

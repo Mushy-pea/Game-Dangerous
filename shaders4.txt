@@ -154,6 +154,7 @@ float cosAngIncidence1 = dot(vertNormal, lightDir1);
 cosAngIncidence0 = clamp(cosAngIncidence0, 0, 1);
 cosAngIncidence1 = clamp(cosAngIncidence1, 0, 1);
 vec4 diffColour = texture(tex_unit0, tex_coord);
+//vec4 diffColour = vec4(tex_coord.x, 0, tex_coord.y, 1);
 float adjust0 = lmap_t0[t];
 float adjust1 = lmap_t1[t];
 vec4 totalLight = (attenuation0 * adjust0 * cosAngIncidence0 * intensity0 * diffColour) + (attenuation1 * adjust1 * cosAngIncidence1 * intensity1 * diffColour);
@@ -171,22 +172,16 @@ out vec3 modelPosition;
 out vec4 diffColour;
 out vec3 vertNormal;
 out vec3 modTorchPos;
-flat out float adjust;
 
 uniform mat4 mod_to_world;
 uniform mat4 world_to_clip;
 uniform mat4 world_to_mod;
 uniform vec4 worldTorchPos;
-uniform int timer;
 
 void main() {
 modelPosition = position.xyz;
 diffColour = colour;
 vertNormal = normal;
-if (timer > 0)
-  adjust = 1;
-else
-  adjust = 0;
 vec4 modTorchPos_ = world_to_mod * worldTorchPos;
 modTorchPos = modTorchPos_.xyz;
 vec4 worldPos = mod_to_world * position;
@@ -200,9 +195,10 @@ in vec3 modelPosition;
 in vec4 diffColour;
 in vec3 vertNormal;
 in vec3 modTorchPos;
-flat in float adjust;
 
 out vec4 outputColour;
+
+uniform int timer;
 
 float lightAttenuation (in vec3 fragPos, in vec3 lightPos, out vec3 lightDir) {
 vec3 lightDifference = fragPos - lightPos;
@@ -213,6 +209,10 @@ return (1 / distanceSqr);
 
 void main() {
 vec3 torchDir; float adjust;
+if (timer > 0)
+  adjust = 1;
+else
+  adjust = 0;
 float g = 0.4545455;
 vec4 gamma = vec4(g, g, g, 1);
 float attenuation = lightAttenuation(modelPosition, modTorchPos, torchDir);
@@ -234,22 +234,16 @@ out vec3 modelPosition;
 out vec2 tex_coord;
 out vec3 vertNormal;
 out vec3 modTorchPos;
-flat out float adjust;
 
 uniform mat4 mod_to_world;
 uniform mat4 world_to_clip;
 uniform mat4 world_to_mod;
 uniform vec4 worldTorchPos;
-uniform int timer;
 
 void main() {
 modelPosition = position.xyz;
 tex_coord = texCoord;
 vertNormal = normal;
-if (timer > 0)
-  adjust = 1;
-else
-  adjust = 0;
 vec4 modTorchPos_ = world_to_mod * worldTorchPos;
 modTorchPos = modTorchPos_.xyz;
 vec4 worldPos = mod_to_world * position;
@@ -263,11 +257,11 @@ in vec3 modelPosition;
 in vec2 tex_coord;
 in vec3 vertNormal;
 in vec3 modTorchPos;
-flat in float adjust;
 
 out vec4 outputColour;
 
 uniform sampler2D tex_unit0;
+uniform int timer;
 
 float lightAttenuation (in vec3 fragPos, in vec3 lightPos, out vec3 lightDir) {
 vec3 lightDifference = fragPos - lightPos;
@@ -278,6 +272,10 @@ return (1 / distanceSqr);
 
 void main() {
 vec3 torchDir; float adjust;
+if (timer > 0)
+  adjust = 1;
+else
+  adjust = 0;
 float g = 0.4545455;
 vec4 gamma = vec4(g, g, g, 1);
 float attenuation = lightAttenuation(modelPosition, modTorchPos, torchDir);
@@ -340,24 +338,24 @@ uniform mat4 mod_to_world;
 uniform mat4 world_to_clip;
 uniform mat4 world_to_mod;
 uniform mat4 normal_transf;
-uniform vec3 lmap_pos0[1];
-uniform vec3 lmap_pos1[1];
-uniform vec3 lmap_int0[1];
-uniform vec3 lmap_int1[1];
+uniform vec3 lmap_pos0[100];
+uniform vec3 lmap_pos1[100];
+uniform vec3 lmap_int0[100];
+uniform vec3 lmap_int1[100];
 
 void main() {
 modelPosition = position.xyz;
 tex_coord = texCoord;
 vertNormal = (normal_transf * vec4(normal, 1)).xyz;
-
-vec4 worldLightPos0 = vec4(lmap_pos0[0], 1);
-vec4 worldLightPos1 = vec4(lmap_pos1[0], 1);
-intensity0 = vec4(lmap_int0[0], 1);
-intensity1 = vec4(lmap_int1[0], 1);
+vec4 worldPos = mod_to_world * position;
+int look_up = int(worldPos.x / 10) + int(worldPos.y / 10) * 10;
+vec4 worldLightPos0 = vec4(lmap_pos0[look_up], 1);
+vec4 worldLightPos1 = vec4(lmap_pos1[look_up], 1);
+intensity0 = vec4(lmap_int0[look_up], 1);
+intensity1 = vec4(lmap_int1[look_up], 1);
 modLightPos0 = (world_to_mod * worldLightPos0).xyz;
 modLightPos1 = (world_to_mod * worldLightPos1).xyz;
 
-vec4 worldPos = mod_to_world * position;
 gl_Position = world_to_clip * worldPos;
 }
 
@@ -374,8 +372,9 @@ flat in vec4 intensity1;
 out vec4 outputColour;
 
 uniform sampler2D tex_unit0;
-uniform float lmap_t0[1];
-uniform float lmap_t1[1];
+uniform float lmap_t0[240];
+uniform float lmap_t1[240];
+uniform int t;
 
 float lightAttenuation (in vec3 fragPos, in vec3 lightPos, out vec3 lightDir) {
 vec3 lightDifference = fragPos - lightPos;
@@ -395,8 +394,8 @@ float cosAngIncidence1 = dot(vertNormal, lightDir1);
 cosAngIncidence0 = clamp(cosAngIncidence0, 0, 1);
 cosAngIncidence1 = clamp(cosAngIncidence1, 0, 1);
 vec4 diffColour = texture(tex_unit0, tex_coord);
-float adjust0 = lmap_t0[0];
-float adjust1 = lmap_t1[0];
+float adjust0 = lmap_t0[t];
+float adjust1 = lmap_t1[t];
 vec4 totalLight = (attenuation0 * adjust0 * cosAngIncidence0 * intensity0 * diffColour) + (attenuation1 * adjust1 * cosAngIncidence1 * intensity1 * diffColour);
 outputColour = pow(totalLight, gamma);
 }

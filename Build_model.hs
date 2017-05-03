@@ -11,7 +11,8 @@ import Foreign.C.String
 import Foreign.C.Types
 import Unsafe.Coerce
 import Data.Maybe
-import Graphics.Rendering.OpenGL.Raw.Core41
+import Control.Exception
+import Graphics.Rendering.OpenGL.Raw.Core33
 
 -- Trigonometric look up table generation to time optimise various functions
 make_table :: Int -> Float -> [Float]
@@ -57,9 +58,13 @@ data Play_state0 = Play_state0 {pos_u :: Float, pos_v :: Float, pos_w :: Float, 
 
 data Play_state1 = Play_state1 {health :: Int, ammo :: Int, gems :: Int, torches :: Int, keys :: [Int], region :: [Int], sig_q :: [Int], next_sig_q :: [Int], message :: [Int], state_chg :: Int, verbose_mode :: Bool, save_grid :: Array (Int, Int, Int) (Bool, [Int])} deriving (Show)
 
-data Io_box = Io_box {hwnd_ :: HWND, hdc_ :: HDC, uniform_ :: UArray Int Int32, p_bind_ :: (Ptr GLuint, Int)}
+data Io_box = Io_box {hwnd_ :: HWND, hdc_ :: HDC, uniform_ :: UArray Int Int32, p_bind_ :: (UArray Int Word32, Int)}
 
-ps0_init = Play_state0 {pos_u = 0, pos_v = 0, pos_w = 0, vel = [0, 0, 0], angle = 0, message_ = [], msg_count = 0, rend_mode = 0, view_mode = 0, view_angle = 0, game_t = 1, torch_t0 = 0, torch_t_limit = 0, show_fps_ = False}
+data EngineError = Invalid_wall_flag | Invalid_obj_flag deriving (Show)
+
+instance Exception EngineError
+
+ps0_init = Play_state0 {pos_u = 0, pos_v = 0, pos_w = 0, vel = [0, 0, 0], angle = 0, message_ = [], msg_count = 0, rend_mode = 0, view_mode = 0, view_angle = 0, game_t = 1, torch_t0 = 1, torch_t_limit = 0, show_fps_ = False}
 ps1_init = Play_state1 {health = 100, ammo = 0, gems = 0, torches = 0, keys = [63,63,63,63,63,63], region = [19,46,41,44,27,33,31,63,28,27,51,63,4], sig_q = [], next_sig_q = [], message = [], state_chg = 0, verbose_mode = False, save_grid = def_save_grid}
 
 def_save_grid = array ((0, 0, 0), (2, 99, 99)) [((w, u, v), (False, [])) | w <- [0..2], u <- [0..99], v <- [0..99]]
@@ -327,10 +332,11 @@ empty_obj_grid u_max v_max w_max = array ((0, 0, 0), (w_max, u_max, v_max)) [((w
 empty_w_grid :: Int -> Int -> Int -> Array (Int, Int, Int) Wall_grid
 empty_w_grid u_max v_max w_max = array ((0, 0, 0), (w_max, u_max, v_max)) [((w, u, v), Wall_grid {u1 = False, u2 = False, v1 = False, v2 = False, u1_bound = 0, u2_bound = 0, v1_bound = 0, v2_bound = 0, w_level = 0,  wall_flag = [], texture = [], obj = Nothing}) | w <- [0..w_max], u <- [0..u_max], v <- [0..v_max]]
 
-build_table1 :: [[Char]] -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Wall_grid
-build_table1 [] w_grid = w_grid
-build_table1 (x0:x1:x2:x3:x4:x5:x6:x7:x8:x9:x10:x11:x12:x13:x14:xs) w_grid =
-  build_table1 xs (w_grid // [((read x0, read x1, read x2), Wall_grid {u1 = False, u2 = False, v1 = False, v2 = False, u1_bound = 0, u2_bound = 0, v1_bound = 0, v2_bound = 0, w_level = 0,  wall_flag = [], texture = [], obj = Just Obj_place {ident_ = read x3, u__ = read x4, v__ = read x5, w__ = read x6, rotation = proc_ints [x7, x8, x9], rotate_ = load_grid1 x10, phase = read x11, texture__ = read x12, num_elem = read x13, obj_flag = read x14}})])
+build_table1 :: [[Char]] -> Array (Int, Int, Int) Wall_grid -> Int -> Array (Int, Int, Int) Wall_grid
+build_table1 [] w_grid c = w_grid
+build_table1 (x0:x1:x2:x3:x4:x5:x6:x7:x8:x9:x10:x11:x12:x13:xs) w_grid c =
+  if c > 37499 then throw Invalid_obj_flag
+  else build_table1 xs (w_grid // [((read x0, read x1, read x2), Wall_grid {u1 = False, u2 = False, v1 = False, v2 = False, u1_bound = 0, u2_bound = 0, v1_bound = 0, v2_bound = 0, w_level = 0,  wall_flag = [], texture = [], obj = Just Obj_place {ident_ = read x3, u__ = read x4, v__ = read x5, w__ = read x6, rotation = proc_ints [x7, x8, x9], rotate_ = load_grid1 x10, phase = read x11, texture__ = read x12, num_elem = read x13, obj_flag = c}})]) (c + 1)
 
 build_table0 :: [Wall_grid] -> Int -> Int -> Int -> [[[Wall_grid]]]
 build_table0 w_grid u_max v_max w_max = reverse (map (splitEvery (v_max + 1)) (splitEvery ((u_max + 1) * (v_max + 1)) w_grid))
@@ -365,11 +371,11 @@ set_play_state1 3 (x0:xs) s1 = s1 {state_chg = read x0}
 
 cfg :: Array Int [Char] -> Int -> [Char] -> [Char]
 cfg conf_reg i query =
-  if i > 33 then []
+  if i > 45 then []
   else if conf_reg ! i == query then conf_reg ! (i + 1)
   else cfg conf_reg (i + 2) query
 
-buffer_to_array :: Ptr a -> Array Int a -> Int -> Int -> Int -> IO (Array Int a)
+buffer_to_array :: Ptr Word32 -> UArray Int Word32 -> Int -> Int -> Int -> IO (UArray Int Word32)
 buffer_to_array p arr i0 i1 limit = do
   if i0 > limit then return arr
   else do

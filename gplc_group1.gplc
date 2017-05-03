@@ -1,0 +1,132 @@
+alternator 0, comments = yes
+~
+block0 0 block1 1 w0 -1 w1 0 u 1 v 4 tex 2 tex1 1 tex2 2 count 0 limit 80 sig2 2 abs 1 not_abs 0 zero 0 state_val 9 inc 1
+~
+1 0 12
+2 12 76
+x
+--signal 1
+block 1 w1 u v
+send_signal sig2 w1 u v
+--signal 2
+if 0 count limit 58 12
+if 0 tex tex1 26 26
+chg_value count abs zero w1 u v
+chg_value tex abs tex2 w1 u v
+chg_state state_val abs tex w0 u v
+send_signal sig2 w1 u v
+chg_value count abs zero w1 u v
+chg_value tex abs tex1 w1 u v
+chg_state state_val abs tex w0 u v
+send_signal sig2 w1 u v
+chg_value count not_abs inc w1 u v
+send_signal sig2 w1 u v
+~
+alternator 1, comments = yes
+~
+block0 0 block1 1 w0 -1 w1 0 u 1 v 8 tex 2 tex1 1 tex2 2 count 0 limit 80 sig2 2 abs 1 not_abs 0 zero 0 state_val 9 inc 1
+~
+1 0 12
+2 12 76
+x
+--signal 1
+block 1 w1 u v
+send_signal sig2 w1 u v
+--signal 2
+if 0 count limit 58 12
+if 0 tex tex1 26 26
+chg_value count abs zero w1 u v
+chg_value tex abs tex2 w1 u v
+chg_state state_val abs tex w0 u v
+send_signal sig2 w1 u v
+chg_value count abs zero w1 u v
+chg_value tex abs tex1 w1 u v
+chg_state state_val abs tex w0 u v
+send_signal sig2 w1 u v
+chg_value count not_abs inc w1 u v
+send_signal sig2 w1 u v
+~
+torch, comments = no
+~
+val 3 abs 0 v_ 1 mode 0 w0 -1 w1 0 u 11 v 6 msg_length 17
+~
+1 0 48 x
+chg_ps1 val abs v_
+chg_grid mode w0 u v w0 u v
+chg_grid_ mode w1 u v w1 u v
+chg_save_grid 1 w1 u v w1 u v
+pass_msg 19 msg_length 0 25 41 47 63 33 41 46 63 27 63 46 41 44 29 34 66
+~
+dark gate 0, comments = yes
+~
+state 1 state0 0 state1 1 state_val 4 sig2 2 w1 0 u0 9 u1 4 v0 4 v1 3 v2 9 v3 10 abs 1 move 1
+~
+1 0 54
+2 54 36
+x
+--signal 1
+if 0 state state0 24 24
+chg_ps0 state_val abs state
+chg_value state abs state1 w1 u0 v1
+chg_grid_ move w1 u0 v1 w1 u0 v0
+send_signal sig2 w1 u1 v3
+chg_ps0 state_val abs state
+chg_value state abs state0 w1 u0 v0
+chg_grid_ move w1 u0 v0 w1 u0 v1
+send_signal sig2 w1 u1 v2
+--signal 2
+if 0 state state0 15 15
+chg_value state abs state1 w1 u0 v1
+chg_grid_ move w1 u0 v1 w1 u0 v0
+chg_value state abs state0 w1 u0 v0
+chg_grid_ move w1 u0 v0 w1 u0 v1
+~
+dark gate 1, comments = yes
+~
+state 1 state0 0 state1 1 state_val 4 sig2 2 w1 0 u0 9 u1 4 v0 4 v1 3 v2 9 v3 10 abs 1 move 1
+~
+1 0 54
+2 54 36
+x
+--signal 1
+if 0 state state0 24 24
+chg_ps0 state_val abs state
+chg_value state abs state1 w1 u1 v3
+chg_grid_ move w1 u1 v3 w1 u1 v2
+send_signal sig2 w1 u0 v1
+chg_ps0 state_val abs state
+chg_value state abs state0 w1 u1 v2
+chg_grid_ move w1 u1 v2 w1 u1 v3
+send_signal sig2 w1 u0 v0
+--signal 2
+if 0 state state0 15 15
+chg_value state abs state1 w1 u1 v3
+chg_grid_ move w1 u1 v3 w1 u1 v2
+chg_value state abs state0 w1 u1 v2
+chg_grid_ move w1 u1 v2 w1 u1 v3
+~
+light torch, comments = yes
+~
+ps_0 0 ps_1 0 ps_2 0 ps_3 0 ps_4 0 ps_5 0 ps_6 0 game_t 0 torch_t0 0 ps_9 0 ps_10 0 ps_11 0 ps_12 0 torches 0 ps_14 0 ps_15 0 ps_16 0 ps_17 0 ps_18 0 ps_19 0 torch_t_limit 2400 w 0 u 0 v 0
+sig3 3 sig4 4 sub 2 torches_ 3 unit 1 ps_20 0 ps_21 0 ps_22 0 ps_23 0 ps_24 0 ps_25 0 ps_26 0 game_t_ 0 ps_28 0 ps_29 0 torch_t0' 5 msg_length 29 torch_t_limit' 6 msg_length' 17
+~
+2 0 20
+3 20 12
+4 32 74
+x
+--signal 2
+copy_ps0 119 w u v
+copy_ps1 129 w u v
+copy_ps0 148 w u v
+send_signal sig3 w u v
+--signal 3
+chg_value game_t sub torch_t0 w u v
+send_signal sig4 w u v
+--signal 4
+if 2 game_t ps_9 49 19
+if 2 torches w 12 31
+chg_ps1 torches_ sub unit
+chg_ps0 torch_t0' sub game_t_
+chg_ps0 torch_t_limit' sub torch_t_limit
+pass_msg 31 msg_length 25 25 41 47 63 34 27 48 31 40 65 46 63 33 41 46 63 27 40 51 63 46 41 44 29 34 31 45 66
+pass_msg 19 msg_length' 14 14 41 63 46 41 44 29 34 63 40 31 31 30 31 30 66
