@@ -56,20 +56,63 @@ data Floor_grid = Floor_grid {w_ :: Float, surface :: Terrain} deriving (Show)
 
 data Play_state0 = Play_state0 {pos_u :: Float, pos_v :: Float, pos_w :: Float, vel :: [Float], angle :: Int, message_ :: [(Int, [Int])], msg_count :: Int, rend_mode :: Int, view_mode :: Int, view_angle :: Int, game_t :: Int, torch_t0 :: Int, torch_t_limit :: Int, show_fps_ :: Bool} deriving (Show)
 
-data Play_state1 = Play_state1 {health :: Int, ammo :: Int, gems :: Int, torches :: Int, keys :: [Int], region :: [Int], sig_q :: [Int], next_sig_q :: [Int], message :: [Int], state_chg :: Int, verbose_mode :: Bool, save_grid :: Array (Int, Int, Int) (Bool, [Int])} deriving (Show)
+data Play_state1 = Play_state1 {health :: Int, ammo :: Int, gems :: Int, torches :: Int, keys :: [Int], region :: [Int], difficulty :: ([Char], Int, Int, Int), sig_q :: [Int], next_sig_q :: [Int], message :: [Int], state_chg :: Int, verbose_mode :: Bool, angle_step :: Int} deriving (Show)
+
+data Save_state = Save_state {is_set :: Bool, w_grid_ :: Array (Int, Int, Int) Wall_grid, f_grid_ :: Array (Int, Int, Int) Floor_grid, obj_grid_ :: Array (Int, Int, Int) (Int, [Int]), s0_ :: Play_state0, s1_ :: Play_state1}
 
 data Io_box = Io_box {hwnd_ :: HWND, hdc_ :: HDC, uniform_ :: UArray Int Int32, p_bind_ :: (UArray Int Word32, Int)}
 
 data EngineError = Invalid_wall_flag | Invalid_obj_flag deriving (Show)
+data IndexError = Index0 | Index1 | Index2 | Index3 | Index4 | Index5 | Index6 | Index7 | Index8 | Index9 | Index10 deriving (Show)
 
 instance Exception EngineError
+instance Exception IndexError
 
 ps0_init = Play_state0 {pos_u = 0, pos_v = 0, pos_w = 0, vel = [0, 0, 0], angle = 0, message_ = [], msg_count = 0, rend_mode = 0, view_mode = 0, view_angle = 0, game_t = 1, torch_t0 = 1, torch_t_limit = 0, show_fps_ = False}
-ps1_init = Play_state1 {health = 100, ammo = 0, gems = 0, torches = 0, keys = [63,63,63,63,63,63], region = [19,46,41,44,27,33,31,63,28,27,51,63,4], sig_q = [], next_sig_q = [], message = [], state_chg = 0, verbose_mode = False, save_grid = def_save_grid}
+ps1_init = Play_state1 {health = 100, ammo = 0, gems = 0, torches = 0, keys = [63,63,63,63,63,63], region = [19,46,41,44,27,33,31,63,28,27,51,63,4], difficulty = ("Plenty of danger please", 6, 10, 14), sig_q = [], next_sig_q = [], message = [], state_chg = 0, verbose_mode = False, angle_step = 0}
 
-def_save_grid = array ((0, 0, 0), (2, 99, 99)) [((w, u, v), (False, [])) | w <- [0..2], u <- [0..99], v <- [0..99]]
+def_w_grid = Wall_grid {u1 = False, u2 = False, v1 = False, v2 = False, u1_bound = 0, u2_bound = 0, v1_bound = 0, v2_bound = 0, w_level = 0,  wall_flag = [], texture = [], obj = Nothing}
+def_w_grid_arr = array ((0, 0, 0), (2, 9, 9)) [((w, u, v), def_w_grid) | w <- [0..2], u <- [0..9], v <- [0..9]]
+def_f_grid = Floor_grid {w_ = 0, surface = Flat}
+def_f_grid_arr = array ((0, 0, 0), (2, 9, 9)) [((w, u, v), def_f_grid) | w <- [0..2], u <- [0..9], v <- [0..9]] :: Array (Int, Int, Int) Floor_grid
+def_obj_grid = (0, [])
+def_obj_grid_arr = array ((0, 0, 0), (2, 9, 9)) [((w, u, v), def_obj_grid) | w <- [0..2], u <- [0..9], v <- [0..9]] :: Array (Int, Int, Int) (Int, [Int])
+def_save_state = Save_state {is_set = False, w_grid_ = def_w_grid_arr, f_grid_ = def_f_grid_arr, obj_grid_ = def_obj_grid_arr, s0_ = ps0_init, s1_ = ps1_init}
 
-config_fname = "config.txt"
+i_list :: Int -> [a] -> Int -> a
+i_list 0 x i =
+  if i >= length x then throw Index0
+  else x !! i
+i_list 1 x i =
+  if i >= length x then throw Index1
+  else x !! i
+i_list 2 x i =
+  if i >= length x then throw Index2
+  else x !! i
+i_list 3 x i =
+  if i >= length x then throw Index3
+  else x !! i
+i_list 4 x i =
+  if i >= length x then throw Index4
+  else x !! i
+i_list 5 x i =
+  if i >= length x then throw Index5
+  else x !! i
+i_list 6 x i =
+  if i >= length x then throw Index6
+  else x !! i
+i_list 7 x i =
+  if i >= length x then throw Index7
+  else x !! i
+i_list 8 x i =
+  if i >= length x then throw Index8
+  else x !! i
+i_list 9 x i =
+  if i >= length x then throw Index9
+  else x !! i
+i_list 10 x i =
+  if i >= length x then throw Index10
+  else x !! i
 
 -- This class is used in functions that filter the result of the ray tracer to avoid multiple rendering
 class Flag a where
@@ -347,7 +390,9 @@ view_circle a b r t look_up = (a + r * look_up ! (2, t), b + r * look_up ! (1, t
 -- These functions are used to transform an environment map into a restored game state, given saved game data
 patch_w_grid :: [[Char]] -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Wall_grid
 patch_w_grid [] w_grid = w_grid
-patch_w_grid (x0:x1:x2:x3:x4:x5:x6:x7:x8:x9:xs) w_grid = patch_w_grid xs (w_grid // [((read x0, read x1, read x2), Wall_grid {u1 = False, u2 = False, v1 = False, v2 = False, u1_bound = 0, u2_bound = 0, v1_bound = 0, v2_bound = 0, w_level = 0,  wall_flag = [], texture = [], obj = Just Obj_place {ident_ = read x3, u__ = read x4, v__ = read x5, w__ = read x6, rotation = [0, 0, 0], rotate_ = False, phase = 0, texture__ = read x7, num_elem = read x8, obj_flag = read x9}})])
+patch_w_grid (x0:x1:x2:x3:x4:x5:x6:x7:x8:x9:x10:xs) w_grid =
+  if x0 == "0" then w_grid // [((read x0, read x1, read x2), def_w_grid)]
+  else patch_w_grid xs (w_grid // [((read x1, read x2, read x3), Wall_grid {u1 = False, u2 = False, v1 = False, v2 = False, u1_bound = 0, u2_bound = 0, v1_bound = 0, v2_bound = 0, w_level = 0,  wall_flag = [], texture = [], obj = Just Obj_place {ident_ = read x4, u__ = read x5, v__ = read x6, w__ = read x7, rotation = [0, 0, 0], rotate_ = False, phase = 0, texture__ = read x8, num_elem = read x9, obj_flag = read x10}})])
 
 patch_f_grid :: [[Char]] -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) Floor_grid
 patch_f_grid [] f_grid = f_grid
@@ -358,7 +403,7 @@ patch_obj_grid [] obj_grid = obj_grid
 patch_obj_grid (x0:x1:x2:x3:x4:xs) obj_grid =
   let dest = (read x0, read x1, read x2)
   in
-  patch_obj_grid (drop (read x4) xs) (obj_grid // [((read x0, read x1, read x2), (read x3, (proc_ints (take 2 xs)) ++ (drop 2 ((splitOn [536870911] (snd (obj_grid ! dest))) !! 0)) ++ [536870911] ++ ((splitOn [536870911] (snd (obj_grid ! dest))) !! 1) ++ [536870911] ++ proc_ints (take ((read x4) - 2) (drop 2 xs))))])
+  patch_obj_grid (drop (read x4) xs) (obj_grid // [(dest, (read x3, proc_ints (take (read x4) xs)))])
 
 set_play_state0 :: [[Char]] -> Play_state0
 set_play_state0 (x0:x1:x2:x3:x4:x5:x6:x7:x8:x9:x10:x11:x12:xs) = Play_state0 {pos_u = read x0, pos_v = read x1, pos_w = read x2, vel = [read x3, read x4, read x5], angle = read x6, message_ = [], msg_count = 0, rend_mode = read x7, view_mode = read x8, view_angle = read x9, game_t = read x10, torch_t0 = read x11, torch_t_limit = read x12, show_fps_ = False}

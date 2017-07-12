@@ -5,15 +5,29 @@ import System.IO.Unsafe
 import System.Environment
 import Data.Maybe
 import Data.List.Split
-import Build_model
 
 read_ :: [Char] -> Int -> Int
 read_ x location = unsafePerformIO (putStr ("\nfrag: " ++ x ++ " location " ++ show location ++ " ") >> return (read x))
 
+init_ :: [a] -> [a]
+init_ x = take ((length x) - 2) x
+
+show_ints :: [Int] -> [Char]
+show_ints [] = []
+show_ints (x:xs) = (show x) ++ ", " ++ show_ints xs
+
+proc_ints :: [[Char]] -> [Int]
+proc_ints [] = []
+proc_ints (x:xs) = (read x :: Int) : proc_ints xs
+
+fst__ (a, b, c) = a
+snd__ (a, b, c) = b
+third_ (a, b, c) = c
+
 -- These functions transform GPLC assembly code into the lists of integers that encode for each program in the map
-assm_gplc4 :: [[Char]] -> [Char]
+assm_gplc4 :: [[Char]] -> [Int]
 assm_gplc4 [] = []
-assm_gplc4 (x0:x1:xs) = x1 ++ ", " ++ assm_gplc4 xs
+assm_gplc4 (x0:x1:xs) = (read x1) : assm_gplc4 xs
 
 -- These two functions transform op - code reference arguments into the offset pointers used by the GPLC interpreter
 assm_gplc3 :: Int -> [Char] -> [[Char]] -> [(Int, Int)] -> Int
@@ -40,6 +54,12 @@ assm_gplc2 12 (x0:x1:x2:x3:x4:x5:x6:xs) sym ind = (read_ x0 7) : (assm_gplc3 0 x
 assm_gplc2 13 (x0:x1:xs) sym ind = (assm_gplc3 0 x1 sym ind) : proc_ints xs
 assm_gplc2 14 (x0:x1:x2:xs) sym ind = (assm_gplc3 0 x0 sym ind) : (assm_gplc3 0 x1 sym ind) : [assm_gplc3 0 x2 sym ind]
 assm_gplc2 15 (x0:x1:x2:x3:xs) sym ind = (read_ x0 8) : (assm_gplc3 0 x1 sym ind) : (assm_gplc3 0 x2 sym ind) : [assm_gplc3 0 x3 sym ind]
+assm_gplc2 16 (x0:x1:x2:x3:xs) sym ind = (read x0) : (assm_gplc3 0 x1 sym ind) : (assm_gplc3 0 x2 sym ind) : [assm_gplc3 0 x3 sym ind]
+assm_gplc2 17 (x0:x1:x2:x3:x4:x5:x6:x7:x8:xs) sym ind = (assm_gplc3 0 x0 sym ind) : (assm_gplc3 0 x1 sym ind) : (assm_gplc3 0 x2 sym ind) : (assm_gplc3 0 x3 sym ind) : (assm_gplc3 0 x4 sym ind) : (assm_gplc3 0 x5 sym ind) : (assm_gplc3 0 x6 sym ind) : (assm_gplc3 0 x7 sym ind) : [read_ x8 15]
+assm_gplc2 18 (x0:x1:x2:x3:x4:xs) sym ind = (assm_gplc3 0 x0 sym ind) : (assm_gplc3 1 x1 sym ind) : (assm_gplc3 0 x2 sym ind) : (assm_gplc3 0 x3 sym ind) : [assm_gplc3 0 x4 sym ind]
+assm_gplc2 19 (x0:x1:x2:xs) sym ind = (assm_gplc3 0 x0 sym ind) : (read_ x1 16) : [read_ x2 17]
+assm_gplc2 20 (x0:x1:x2:x3:x4:xs) sym ind = (read_ x0 18) : (read_ x1 19) : (read_ x2 20) : (read_ x3 21) : [read_ x4 22]
+assm_gplc2 21 (x0:x1:x2:x3:xs) sym ind = (assm_gplc3 0 x0 sym ind) : (assm_gplc3 0 x1 sym ind) : (assm_gplc3 0 x2 sym ind) : [read_ x3 23]
 
 -- This function recognises the keywords that correspond to op - codes and is the beginning of the pipeline that transforms them and their arguments into output code
 assm_gplc1 :: [[Char]] -> [[Char]] -> [(Int, Int)] -> [Int]
@@ -61,6 +81,12 @@ assm_gplc1 (x:xs) sym ind =
   else if x == "chg_ps0" then 14 : (assm_gplc2 14 (take 3 xs) sym ind) ++ assm_gplc1 (drop 3 xs) sym ind
   else if x == "copy_ps0" then 15 : (assm_gplc2 15 (take 4 xs) sym ind) ++ assm_gplc1 (drop 4 xs) sym ind
   else if x == "block" then [5, 0, 1] ++ [read_ (xs !! 0) 14] ++ [assm_gplc3 0 (xs !! 1) sym ind] ++ [assm_gplc3 0 (xs !! 2) sym ind] ++ [assm_gplc3 0 (xs !! 3) sym ind] ++ assm_gplc1 (drop 4 xs) sym ind
+  else if x == "chg_save_grid" then 16 : (assm_gplc2 16 (take 4 xs) sym ind) ++ assm_gplc1 (drop 4 xs) sym ind
+  else if x == "project_init" then 17 : (assm_gplc2 17 (take 9 xs) sym ind) ++ assm_gplc1 (drop 9 xs) sym ind
+  else if x == "project_update" then 18 : (assm_gplc2 18 (take 5 xs) sym ind) ++ assm_gplc1 (drop 5 xs) sym ind
+  else if x == "cpede_logic" then 19 : (assm_gplc2 19 (take 3 xs) sym ind) ++ assm_gplc1 (drop 3 xs) sym ind
+  else if x == "cpede_move" then 20 : (assm_gplc2 20 (take 5 xs) sym ind) ++ assm_gplc1 (drop 5 xs) sym ind
+  else if x == "cpede_damage" then 21 : (assm_gplc2 21 (take 4 xs) sym ind) ++ assm_gplc1 (drop 4 xs) sym ind
   else if x == "--signal" then assm_gplc1 (drop 1 xs) sym ind
   else if x == "x" then 536870911 : assm_gplc1 xs sym ind
   else (read_ x 11) : assm_gplc1 xs sym ind
@@ -70,52 +96,30 @@ assm_gplc0 [] offset i acc0 acc1 = (acc0, acc1)
 assm_gplc0 (x0:x1:xs) offset i acc0 acc1 =
   assm_gplc0 xs offset (i + 1) (acc0 ++ [x0]) (acc1 ++ [(i, offset + i)])
 
-det_offset :: [[Char]] -> Int -> Int
-det_offset [] c = c + 3
-det_offset (x:xs) c =
-  if x == "if" then det_offset (drop 5 xs) (c + 6)
-  else if x == "chg_state" then det_offset (drop 6 xs) (c + 7)
-  else if x == "chg_grid" then det_offset (drop 7 xs) (c + 8)
-  else if x == "send_signal" then det_offset (drop 4 xs) (c + 5)
-  else if x == "chg_value" then det_offset (drop 6 xs) (c + 7)
-  else if x == "chg_floor" then det_offset (drop 6 xs) (c + 7)
-  else if x == "chg_ps1" then det_offset (drop 3 xs) (c + 4)
-  else if x == "chg_obj_type" then det_offset (drop 4 xs) (c + 5)
-  else if x == "place_hold" then det_offset (drop 1 xs) (c + 2)
-  else if x == "chg_grid_" then det_offset (drop 7 xs) (c + 8)
-  else if x == "copy_ps1" then det_offset (drop 4 xs) (c + 5)
-  else if x == "copy_lstate" then det_offset (drop 7 xs) (c + 8)
-  else if x == "pass_msg" then det_offset (drop 2 xs) (c + 2)
-  else if x == "chg_ps0" then det_offset (drop 3 xs) (c + 4)
-  else if x == "copy_ps0" then det_offset (drop 4 xs) (c + 5)
-  else if x == "block" then det_offset (drop 4 xs) (c + 7)
-  else if x == "--signal" then det_offset (drop 1 xs) c
-  else det_offset xs (c + 1)
+patch_code :: [Int] -> [[Char]] -> [[Char]] -> [(Int, Int)] -> [Int]
+patch_code code [] sym ind = code
+patch_code code (x0:x1:xs) sym ind =
+  let offset = assm_gplc3 1 x0 sym ind
+  in
+  patch_code (take (offset + 1) code ++ [read x1] ++ drop (offset + 2) code) xs sym ind
 
-build_gplc :: [Char] -> [Char] -> [Char] -> [Int]
-build_gplc header source0 source1 =
-  let bindings = assm_gplc0 (splitOneOf "\n " source0) (det_offset (splitOneOf "\n " source1) 0) 0 [] []
+place_gplc :: [[Char]] -> [[Int]] -> [[[Char]]] -> [[(Int, Int)]] -> [Char]
+place_gplc [] code sym ind = []
+place_gplc (x0:x1:x2:x3:x4:x5:xs) code sym ind =
+  if read x4 == 0 then x0 ++ ", " ++ x1 ++ ", " ++ x2 ++ ", " ++ x3 ++ ", " ++ x4 ++ ", " ++ place_gplc xs code sym ind
+  else if x5 == "y" then x0 ++ ", " ++ x1 ++ ", " ++ x2 ++ ", " ++ x3 ++ ", " ++ show_ints (patch_code (code !! ((read x4) - 1)) (take (read (xs !! 0)) (tail xs)) (sym !! ((read x4) - 1)) (ind !! ((read x4) - 1))) ++ place_gplc (drop (read (xs !! 0)) (tail xs)) code sym ind
+  else x0 ++ ", " ++ x1 ++ ", " ++ x2 ++ ", " ++ x3 ++ ", " ++ show_ints (code !! ((read x4) - 1)) ++ place_gplc xs code sym ind
+
+build_gplc :: Int -> [Char] -> [Char] -> [Int] -> ([Int], [[Char]], [(Int, Int)])
+build_gplc c source0 source1 fst_pass =
+  let bindings = assm_gplc0 (splitOneOf "\n " source0) ((length fst_pass) + 2) 0 [] []
+      bindings' = assm_gplc0 (splitOneOf "\n " source0) 0 0 [] []
       d_list_len = length (fst bindings)
       out = (assm_gplc1 (splitOneOf "\n " source1) (fst bindings) (snd bindings)) ++ [536870911]
+      out' = (assm_gplc1 (splitOneOf "\n " source1) (fst bindings') (snd bindings')) ++ [536870911]
   in
-  ((length out) + 2 + d_list_len) : 0 : 0 : out
-
-init_ :: [a] -> [a]
-init_ x = take ((length x) - 2) x
-
-show_bool :: Bool -> [Char]
-show_bool True = "1, "
-show_bool False = "0, "
-
-show_ints :: [Int] -> [Char]
-show_ints [] = []
-show_ints (x:xs) = (show x) ++ ", " ++ show_ints xs
-
-place_gplc :: [[Char]] -> [[Char]] -> [Char]
-place_gplc [] _ = []
-place_gplc (x0:x1:x2:x3:x4:xs) code =
-  if read_ x4 12 == 0 then x0 ++ ", " ++ x1 ++ ", " ++ x2 ++ ", " ++ x3 ++ ", " ++ x4 ++ ", " ++ place_gplc xs code
-  else x0 ++ ", " ++ x1 ++ ", " ++ x2 ++ ", " ++ x3 ++ ", " ++ (code !! ((read_ x4 13) - 1)) ++ ", " ++ place_gplc xs code
+  if c == 0 then build_gplc 1 source0 source1 out'
+  else (((length out) + 2 + d_list_len) : 0 : 0 : out, fst bindings, snd bindings)
 
 main = do
   args <- getArgs
@@ -124,16 +128,19 @@ main = do
   h2 <- openFile (args !! 2) WriteMode
   source <- hGetContents h0
   structure <- hGetContents h1
-  code <- prep_gplc (splitOn "\n~\n" source) []
-  hPutStr h2 (place_gplc (splitOn ", " (concat (splitOn "\n\n" structure))) code)
+  code <- prep_gplc (splitOn "\n~\n" source) [] [] []
+  hPutStr h2 (place_gplc (splitOn ", " (concat (splitOn "\n\n" structure))) (fst__ code) (snd__ code) (third_ code))
   hClose h0
   hClose h1
   hClose h2
 
-prep_gplc :: [[Char]] -> [[Char]] -> IO [[Char]]
-prep_gplc [] acc = return acc
-prep_gplc (x0:x1:x2:xs) acc =
-  let code = (show_ints (build_gplc x0 x1 x2)) ++ (init_ (assm_gplc4 (splitOneOf " \n" x1)))
+prep_gplc :: [[Char]] -> [[Int]] -> [[[Char]]] -> [[(Int, Int)]] -> IO ([[Int]], [[[Char]]], [[(Int, Int)]])
+prep_gplc [] code_acc sym_acc ind_acc = return (code_acc, sym_acc, ind_acc)
+prep_gplc (x0:x1:x2:xs) code_acc sym_acc ind_acc =
+  let build_gplc' = build_gplc 0 x1 x2 []
+      code = fst__ build_gplc' ++ assm_gplc4 (splitOneOf " \n" x1)
+      sym = snd__ build_gplc'
+      ind = third_ build_gplc'
   in do
-  putStr ("\n\nAssembling GPLC program " ++ ((splitOn ", " x0) !! 0) ++ ".  Output: " ++ code)
-  prep_gplc xs (acc ++ [code])
+  putStr ("\n\nAssembling GPLC program " ++ ((splitOn ", " x0) !! 0) ++ ".  Output: " ++ show_ints code)
+  prep_gplc xs (code_acc ++ [code]) (sym_acc ++ [sym]) (ind_acc ++ [ind])
