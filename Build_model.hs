@@ -62,7 +62,7 @@ data Save_state = Save_state {is_set :: Bool, w_grid_ :: Array (Int, Int, Int) W
 
 data Io_box = Io_box {hwnd_ :: HWND, hdc_ :: HDC, uniform_ :: UArray Int Int32, p_bind_ :: (UArray Int Word32, Int)}
 
-data EngineError = Invalid_wall_flag | Invalid_obj_flag deriving (Show)
+data EngineError = Invalid_wall_flag | Invalid_obj_flag | Invalid_GPLC_opcode deriving (Show)
 data IndexError = Index0 | Index1 | Index2 | Index3 | Index4 | Index5 | Index6 | Index7 | Index8 | Index9 | Index10 deriving (Show)
 
 instance Exception EngineError

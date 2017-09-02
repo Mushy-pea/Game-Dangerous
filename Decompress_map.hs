@@ -2,6 +2,8 @@ module Decompress_map where
 
 import Data.Maybe
 import Data.List.Split
+import Data.Sequence hiding (take, length)
+import Data.Foldable
 import Control.Exception
 import Build_model
 
@@ -97,15 +99,15 @@ grid_setup1 (x0:x1:x2:x3:x4:x5:x6:xs) (y:ys) obj u v w v_max c =
   if v == v_max then w_grid : grid_setup1 xs ys obj (u + 1) 0 w v_max (c + 4)
   else w_grid : grid_setup1 xs ys obj u (v + 1) w v_max (c + 4)
 
-grid_setup0 :: [Wall_grid] -> Int -> Int -> Int -> Int -> Int -> Int -> [Char] -> [Char] -> ([Char], [Char])
+grid_setup0 :: [Wall_grid] -> Int -> Int -> Int -> Int -> Int -> Int -> Seq Char -> Seq Char -> (Seq Char, Seq Char)
 grid_setup0 (x:xs) u v w u_max v_max w_max acc0 acc1 =
   let w_grid = (show_bool (u1 x)) ++ (show_bool (u2 x)) ++ (show_bool (v1 x)) ++ (show_bool (v2 x)) ++ (show (u1_bound x)) ++ ", " ++ (show (u2_bound x)) ++ ", " ++ (show (v1_bound x)) ++ ", " ++ (show (v2_bound x)) ++ ", " ++ (show (w_level x)) ++ ", " ++ (show_ints (wall_flag x)) ++ (show_ints (texture x)) ++ maybe_object (fromMaybe d_obj (obj x))
   in
   if (wall_flag x) !! 3 > 119999 then throw Invalid_wall_flag
-  else if u == u_max && v == v_max && w == w_max then (acc0 ++ init_ w_grid ++ "~", acc1 ++ pad_walls x u v w)
-  else if u == u_max && v == v_max then grid_setup0 xs 0 0 (w + 1) u_max v_max w_max (acc0 ++ init_ w_grid ++ "&") (acc1 ++ pad_walls x u v w)
-  else if v == v_max then grid_setup0 xs (u + 1) 0 w u_max v_max w_max (acc0 ++ init_ w_grid ++ ":") (acc1 ++ pad_walls x u v w)
-  else grid_setup0 xs u (v + 1) w u_max v_max w_max (acc0 ++ w_grid) (acc1 ++ pad_walls x u v w)
+  else if u == u_max && v == v_max && w == w_max then (acc0 >< fromList (init_ w_grid ++ "~"), acc1 >< fromList (pad_walls x u v w))
+  else if u == u_max && v == v_max then grid_setup0 xs 0 0 (w + 1) u_max v_max w_max (acc0 >< fromList (init_ w_grid ++ "&")) (acc1 >< fromList (pad_walls x u v w))
+  else if v == v_max then grid_setup0 xs (u + 1) 0 w u_max v_max w_max (acc0 >< fromList (init_ w_grid ++ ":")) (acc1 >< fromList (pad_walls x u v w))
+  else grid_setup0 xs u (v + 1) w u_max v_max w_max (acc0 >< fromList w_grid) (acc1 >< fromList (pad_walls x u v w))
 
 -- These two functions produce the data needed to generate the Floor_grid array
 make_floor1 :: Int -> Char -> [Char]
@@ -130,7 +132,7 @@ proc_map pre_map u_max v_max w_max =
       flag_seq = concat [grid_setup2 c c 0 0 0 u_max v_max | c <- [0, next_c..(next_c * w_max)]]
       c_max = 4 * (u_max + 1) * (v_max + 1) - 1
       floor = make_floor0 (concat (splitOn " " (map filter0 (concat [pre_map !! w | w <- [(w_max + 2)..(w_max + 2 + w_max)]])))) 0 0 0 ((div (u_max + 1) 2) - 1) ((div (v_max + 1) 2) - 1) w_max
-      w_grid = grid_setup0 (concat [grid_setup1 (pre_map !! (w + 1)) (grid_setup2 (next_c * w) (next_c * w) 0 0 0 u_max v_max) (load_object (splitOn ", " (filter1 (pre_map !! 0)))) 0 0 w v_max ((u_max + 1) * (v_max + 1) * w * 4) | w <- [0..w_max]]) 0 0 0 u_max v_max w_max [] []
-  in (fst w_grid ++ floor, snd w_grid)
+      w_grid = grid_setup0 (concat [grid_setup1 (pre_map !! (w + 1)) (grid_setup2 (next_c * w) (next_c * w) 0 0 0 u_max v_max) (load_object (splitOn ", " (filter1 (pre_map !! 0)))) 0 0 w v_max ((u_max + 1) * (v_max + 1) * w * 4) | w <- [0..w_max]]) 0 0 0 u_max v_max w_max empty empty
+  in (toList (fst w_grid) ++ floor, toList (snd w_grid))
   
 

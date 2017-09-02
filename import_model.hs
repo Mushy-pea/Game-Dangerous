@@ -139,7 +139,7 @@ main = do
   hClose h2
 
 unroll_data :: [[Char]] -> [[Char]] -> Handle -> Loader -> [Char] -> [Char] -> Int -> Int -> Int -> IO ()
-unroll_data [] _ h2 load_acc vert_acc ind_acc e_count i_count mat_count = hPutStr h2 (init_ (tex_image load_acc) ++ "~" ++ init_ (mod_descrip load_acc) ++ "~" ++ init_ (data_layout load_acc) ++ "~" ++ init_ vert_acc ++ "~" ++ init_ ind_acc)
+unroll_data [] _ h2 load_acc vert_acc ind_acc e_count i_count mat_count = hPutStr h2 (init_ (tex_image load_acc) ++ "~" ++ init (mod_descrip load_acc) ++ "~" ++ init_ (data_layout load_acc) ++ "~" ++ init_ vert_acc ++ "~" ++ init_ ind_acc)
 unroll_data (x0:x1:xs) mat h2 load_acc vert_acc ind_acc e_count i_count mat_count =
   let mode = det_mode (read (i_list (splitOn ", " x0) 1 "x"))
       col_attrib = add_colour0 (splitOneOf "\n /" (drop_double x1 '/' 'x')) (get_colour (splitOneOf "\n " (i_list mat mat_count "x"))) []

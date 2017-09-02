@@ -54,8 +54,8 @@ assm_gplc2 12 (x0:x1:x2:x3:x4:x5:x6:xs) sym ind = (read_ x0 7) : (assm_gplc3 0 x
 assm_gplc2 13 (x0:x1:xs) sym ind = (assm_gplc3 0 x1 sym ind) : proc_ints xs
 assm_gplc2 14 (x0:x1:x2:xs) sym ind = (assm_gplc3 0 x0 sym ind) : (assm_gplc3 0 x1 sym ind) : [assm_gplc3 0 x2 sym ind]
 assm_gplc2 15 (x0:x1:x2:x3:xs) sym ind = (read_ x0 8) : (assm_gplc3 0 x1 sym ind) : (assm_gplc3 0 x2 sym ind) : [assm_gplc3 0 x3 sym ind]
-assm_gplc2 16 (x0:x1:x2:x3:xs) sym ind = (read x0) : (assm_gplc3 0 x1 sym ind) : (assm_gplc3 0 x2 sym ind) : [assm_gplc3 0 x3 sym ind]
-assm_gplc2 17 (x0:x1:x2:x3:x4:x5:x6:x7:x8:xs) sym ind = (assm_gplc3 0 x0 sym ind) : (assm_gplc3 0 x1 sym ind) : (assm_gplc3 0 x2 sym ind) : (assm_gplc3 0 x3 sym ind) : (assm_gplc3 0 x4 sym ind) : (assm_gplc3 0 x5 sym ind) : (assm_gplc3 0 x6 sym ind) : (assm_gplc3 0 x7 sym ind) : [read_ x8 15]
+assm_gplc2 16 (x0:x1:x2:x3:x4:x5:xs) sym ind = (assm_gplc3 0 x0 sym ind) : (assm_gplc3 0 x1 sym ind) : (assm_gplc3 0 x2 sym ind) : (assm_gplc3 0 x3 sym ind) : (assm_gplc3 0 x4 sym ind) : [read x5]
+assm_gplc2 17 (x0:x1:x2:x3:x4:x5:x6:x7:x8:x9:xs) sym ind = (assm_gplc3 0 x0 sym ind) : (assm_gplc3 0 x1 sym ind) : (assm_gplc3 0 x2 sym ind) : (assm_gplc3 0 x3 sym ind) : (assm_gplc3 0 x4 sym ind) : (assm_gplc3 0 x5 sym ind) : (assm_gplc3 0 x6 sym ind) : (assm_gplc3 0 x7 sym ind) : (read_ x8 15) : [assm_gplc3 0 x9 sym ind]
 assm_gplc2 18 (x0:x1:x2:x3:x4:xs) sym ind = (assm_gplc3 0 x0 sym ind) : (assm_gplc3 1 x1 sym ind) : (assm_gplc3 0 x2 sym ind) : (assm_gplc3 0 x3 sym ind) : [assm_gplc3 0 x4 sym ind]
 assm_gplc2 19 (x0:x1:x2:xs) sym ind = (assm_gplc3 0 x0 sym ind) : (read_ x1 16) : [read_ x2 17]
 assm_gplc2 20 (x0:x1:x2:x3:x4:xs) sym ind = (read_ x0 18) : (read_ x1 19) : (read_ x2 20) : (read_ x3 21) : [read_ x4 22]
@@ -81,8 +81,8 @@ assm_gplc1 (x:xs) sym ind =
   else if x == "chg_ps0" then 14 : (assm_gplc2 14 (take 3 xs) sym ind) ++ assm_gplc1 (drop 3 xs) sym ind
   else if x == "copy_ps0" then 15 : (assm_gplc2 15 (take 4 xs) sym ind) ++ assm_gplc1 (drop 4 xs) sym ind
   else if x == "block" then [5, 0, 1] ++ [read_ (xs !! 0) 14] ++ [assm_gplc3 0 (xs !! 1) sym ind] ++ [assm_gplc3 0 (xs !! 2) sym ind] ++ [assm_gplc3 0 (xs !! 3) sym ind] ++ assm_gplc1 (drop 4 xs) sym ind
-  else if x == "chg_save_grid" then 16 : (assm_gplc2 16 (take 4 xs) sym ind) ++ assm_gplc1 (drop 4 xs) sym ind
-  else if x == "project_init" then 17 : (assm_gplc2 17 (take 9 xs) sym ind) ++ assm_gplc1 (drop 9 xs) sym ind
+  else if x == "binary_dice" then 16 : (assm_gplc2 16 (take 6 xs) sym ind) ++ assm_gplc1 (drop 6 xs) sym ind
+  else if x == "project_init" then 17 : (assm_gplc2 17 (take 10 xs) sym ind) ++ assm_gplc1 (drop 10 xs) sym ind
   else if x == "project_update" then 18 : (assm_gplc2 18 (take 5 xs) sym ind) ++ assm_gplc1 (drop 5 xs) sym ind
   else if x == "cpede_logic" then 19 : (assm_gplc2 19 (take 3 xs) sym ind) ++ assm_gplc1 (drop 3 xs) sym ind
   else if x == "cpede_move" then 20 : (assm_gplc2 20 (take 5 xs) sym ind) ++ assm_gplc1 (drop 5 xs) sym ind
