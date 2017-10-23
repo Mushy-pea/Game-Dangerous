@@ -1,0 +1,263 @@
+initial script (1)
+~
+msg_length0 102 msg_length1 580 hntr 5 podp 6 ud 7 null 0 sig5 5 w 0 u 23 v 18 torch_w -1 torch_u 16 torch_v0 9 torch_v1 10
+~
+1 0 104
+2 104 9
+3 113 25
+4 138 41
+5 179 590 x
+--signal 1
+pass_msg 104 msg_length0 1 0 23 18 -1 0 16 38 31 27 45 31 63 45 31 38 31 29 46 63 30 35 32 32 35 29 47 38 46 51 63 38 31 48 31 38 -1 0 63 -1 1 8 31 51 64 63 40 41 46 63 46 41 41 63 44 35 45 37 51 73 -1 2 16 38 31 40 46 51 63 41 32 63 30 27 40 33 31 44 63 42 38 31 27 45 31 -1 3 21 38 46 44 27 63 30 27 40 33 31 44 2 4 8
+--signal 2
+chg_ps1 hntr null null
+send_signal sig5 w u v
+--signal 3
+chg_ps1 podp null null
+send_signal sig5 w u v
+chg_grid null torch_w torch_u torch_v0 torch_w torch_u torch_v0
+chg_grid_ null w torch_u torch_v0 w torch_u torch_v0
+--signal 4
+chg_ps1 ud null null
+send_signal sig5 w u v
+chg_grid null torch_w torch_u torch_v0 torch_w torch_u torch_v0
+chg_grid_ null w torch_u torch_v0 w torch_u torch_v0
+chg_grid null torch_w torch_u torch_v1 torch_w torch_u torch_v1
+chg_grid_ null w torch_u torch_v1 w torch_u torch_v1
+--signal 5
+chg_grid_ null w u v w u v
+pass_msg 582 msg_length1 1 0 23 18 -1 0 25 41 47 63 27 44 31 63 2 31 40 63 4 41 40 41 34 47 33 34 64 63 27 63 2 47 45 35 40 31 45 45 63 3 41 40 46 35 40 47 35 46 51 -1 0 13 27 40 27 33 31 44 63 49 35 46 34 63 46 34 31 63 3 41 44 42 41 44 27 46 35 41 40 63 41 32 63 1 31 44 41 45 42 27 29 31 63 21 40 35 41 40 45 -1 0 75 3 1 21 75 64 63 31 39 42 38 41 51 31 30 63 35 40 63 46 34 31 35 44 63 13 27 44 45 63 28 27 45 31 30 63 33 31 39 63 39 35 40 35 40 33 -1 0 32 27 29 35 38 35 46 51 66 63 1 32 46 31 44 63 33 41 35 40 33 63 46 41 63 28 31 30 63 41 40 31 63 40 35 33 34 46 63 51 41 47 63 27 49 27 37 31 -1 0 35 40 63 27 63 30 35 32 32 31 44 31 40 46 63 42 27 44 46 63 41 32 63 46 34 31 63 28 27 45 31 63 51 41 47 65 44 31 63 40 41 46 -1 0 32 27 39 35 38 35 27 44 63 49 35 46 34 63 27 40 30 63 40 41 63 35 30 31 27 63 34 41 49 63 51 41 47 63 33 41 46 63 46 34 31 44 31 66 -1 0 20 34 35 40 33 45 63 45 31 31 39 63 41 30 30 38 51 63 43 47 35 31 46 63 32 41 44 63 27 63 28 27 45 31 63 49 35 46 34 63 44 41 46 27 46 35 40 33 -1 0 45 34 35 32 46 45 64 63 49 35 46 34 63 40 41 63 41 40 31 63 27 44 41 47 40 30 63 27 40 30 63 41 40 38 51 63 46 34 31 63 32 27 35 40 46 31 45 46 -1 0 49 34 35 45 42 31 44 63 41 32 63 27 35 44 63 32 44 41 39 63 46 34 31 63 38 35 32 31 63 45 47 42 42 41 44 46 63 48 31 40 46 45 63 32 41 44 -1 0 29 41 39 42 27 40 51 66 63 3 27 40 63 51 41 47 63 45 41 38 48 31 63 46 34 31 63 39 51 45 46 31 44 51 67 63 18 31 39 31 39 28 31 44 64 -1 0 51 41 47 65 44 31 63 2 47 45 35 40 31 45 45 63 3 41 40 46 35 40 47 35 46 51 63 13 27 40 27 33 31 44 63 32 41 44 63 27 63 44 31 27 45 41 40 66 -1 1 20 34 31 63 29 41 40 46 35 40 47 35 46 51 63 35 45 63 35 40 63 51 41 47 66 63 16 44 31 45 45 63 50 63 46 41 63 29 41 40 46 35 40 47 31 66
+~
+torch (2)
+~
+val 3 abs 0 v_ 1 mode 0 w0 -1 w1 0 u 11 v 6 msg_length 20
+~
+1 0 40 x
+chg_ps1 val abs v_
+chg_grid mode w0 u v w0 u v
+chg_obj_type mode w1 u v
+pass_msg 22 msg_length 0 25 41 47 63 33 41 46 63 27 63 46 41 44 29 34 66 2 4 4
+~
+gem (3)
+~
+health 0 gems 2 add 0 v_ 1 mode 0 w0 -1 w1 0 u 0 v 0 msg_length 29
+~
+1 0 55 x
+chg_ps1 health add v_
+chg_ps1 gems add v_
+chg_grid mode w0 u v w0 u v
+chg_grid_ mode w1 u v w1 u v
+pass_msg 31 msg_length 0 25 41 47 63 33 41 46 63 27 63 33 31 39 66 63 8 31 27 38 46 34 63 70 54 66 2 4 2
+~
+projectile prototype (4)
+~
+u 0 v 0 w_block 0 vel_u 0 vel_v 0 i0 0 i1 0 i2 0 init_u_block 0 init_v_block 0 obj_flag 0 hit_state 0 w_ 0 u_ 0 v_ 0 copy 2 model_w -1 model_u 0 model_v 1 sig3 3 zero 0
+one 1 two 2 obj_flag_ 11
+~
+2 0 34
+3 34 44 x
+--signal 2
+chg_grid copy model_w model_u model_v w_block init_u_block init_v_block
+chg_state one one u w_block init_u_block init_v_block
+chg_state two one v w_block init_u_block init_v_block
+chg_state obj_flag_ zero obj_flag w_block init_u_block init_v_block
+send_signal sig3 i0 i1 i2
+--signal 3
+if 2 hit_state zero 27 11
+if 0 hit_state one 8 13
+chg_grid_ zero i0 i1 i2 i0 i1 i2
+chg_grid_ zero i0 i1 i2 i0 i1 i2
+send_signal zero w_ u_ v_
+project_update u u i0 i1 i2
+send_signal sig3 i0 i1 i2
+~
+player gun (5)
+~
+w 0 u 0 v 1 v_ 1 sig2 2 sig3 3 sig4 4 pos_u 0 pos_v 0 pos_w 0 vel_u 0 vel_v 0 vel_w 0 angle 0 rend_mode 0 game_t 0 torch_t0 0 torch_t_limit 0 health 0 ammo 0 gems 0 torches 0 key0 0 key1 0 key2 0 key3 0 key4 0 key5 0 zero 0 speed 200000 copy 2 v_limit 31 msg_length0 11 msg_length1 3 game_t' -5 obj_flag 8499 obj_flag_base 8500 w_ -1
+~
+2 0 42
+3 42 77 x
+--signal 2
+if 6 game_t game_t' 36 0
+copy_ps0 136 w u v
+copy_ps1 147 w u v
+chg_value game_t' v game_t w u v
+chg_value v_ zero v w u v
+chg_value obj_flag zero v w u v
+send_signal sig3 w u v
+--signal 3
+if 2 ammo zero 58 13
+if 2 v_ v_limit 19 33
+chg_value v_ v copy w u v
+chg_value obj_flag v obj_flag_base w u v
+send_signal sig3 w u v
+chg_ps1 v copy v
+chg_grid_ copy w v u w u v_
+project_init pos_u pos_v pos_w angle speed w u v_ 88 obj_flag
+pass_msg 5 msg_length1 2 15 15
+send_signal sig2 w u v_
+pass_msg 13 msg_length0 0 14 41 63 27 39 39 41 2 4 0
+~
+shooter (6)
+~
+dice_result 0 w 0 u 17 v 0 w' 0 u' 1 v' 0 w_ 1 u_ 18 v_ 24 v_base 25 v_limit 45 obj_flag 0 obj_flag_base 0 prob_fac 1 diff_fac 0 on_switch 1 sig2 2 sig3 3 add 0 abs 1 copy 2
+pos_u 0 pos_v 0 pos_w 0 angle 0 speed 200000 off 0
+~
+2 0 50
+3 50 54
+4 104 7 x
+--signal 2
+if 0 on_switch prob_fac 44 0
+if 0 dice_result off 12 26
+binary_dice prob_fac diff_fac w u v 124
+send_signal sig2 w u v
+binary_dice prob_fac diff_fac w u v 124
+chg_value v_ add prob_fac w u v
+chg_value obj_flag add prob_fac w u v
+send_signal sig3 w u v
+--signal 3
+if 2 v_ v_limit 19 29
+chg_value v_ abs v_base w u v
+chg_value obj_flag abs obj_flag_base w u v
+send_signal sig3 w u v
+chg_grid_ copy w' u' v' w_ u_ v_
+project_init pos_u pos_v pos_w angle speed w_ u_ v_ 88 obj_flag
+send_signal sig2 w_ u_ v_
+send_signal sig2 w u v
+--signal 4
+chg_value on_switch abs off w u v
+~
+activate defence (7)
+~
+w 0 u 23 v 12 w' 0 u' 24 v' 12 w'' 2 u'' 23 v'' 12 w''' 2 u''' 24 v''' 12 sig2 2 w_ 0 u_ 17 v_0 0 v_1 1 v_2 2 v_3 3 v_4 4 v_5 5 v_6 6 v_7 7 v_8 8 msg_length 29 zero 0
+~
+1 0 108 x
+send_signal sig2 w_ u_ v_0
+send_signal sig2 w_ u_ v_1
+send_signal sig2 w_ u_ v_2
+send_signal sig2 w_ u_ v_3
+send_signal sig2 w_ u_ v_4
+send_signal sig2 w_ u_ v_5
+send_signal sig2 w_ u_ v_6
+send_signal sig2 w_ u_ v_7
+send_signal sig2 w_ u_ v_8
+chg_grid_ zero w u v w u v
+chg_grid_ zero w' u' v' w' u' v'
+chg_grid_ zero w'' u'' v'' w'' u'' v''
+chg_grid_ zero w''' u''' v''' w''' u''' v'''
+pass_msg 31 msg_length 0 4 31 32 31 40 29 31 63 45 51 45 46 31 39 63 27 29 46 35 48 27 46 31 30 73 2 4 18
+~
+deactivate defence (8)
+~
+health 0 ammo 0 gems 0 torches 0 key0 0 key1 0 key2 0 key3 0 key4 0 key5 0
+w 2 w' -3 u 37 v 1 texture 9 abs 1 tex1 1 msg_length0 31 msg_length1 48 sig4 4 sig2 2 w_ 0 u_ 17 v_0 0 v_1 1 v_2 2 v_3 3 v_4 4 v_5 5 v_6 6 v_7 7 v_8 8 u_door 16 v_door 8 sig2 2 blue_key 80 u__ 38
+~
+1 0 10
+2 10 151 x
+--signal 1
+copy_ps1 171 w u v
+send_signal sig2 w u v
+--signal 2
+if 0 key2 blue_key 95 50
+send_signal sig4 w_ u_ v_0
+send_signal sig4 w_ u_ v_1
+send_signal sig4 w_ u_ v_2
+send_signal sig4 w_ u_ v_3
+send_signal sig4 w_ u_ v_4
+send_signal sig4 w_ u_ v_5
+send_signal sig4 w_ u_ v_6
+send_signal sig4 w_ u_ v_7
+send_signal sig4 w_ u_ v_8
+send_signal sig2 w_ u_door v_door
+chg_state texture abs tex1 w' u__ v
+pass_msg 33 msg_length0 0 4 31 32 31 40 29 31 63 45 51 45 46 31 39 63 30 31 27 29 46 35 48 27 46 31 30 73 2 4 9
+chg_obj_type w w u v
+pass_msg 50 msg_length1 0 25 41 47 63 40 31 31 30 63 27 63 28 38 47 31 63 37 31 51 63 29 27 44 30 63 46 41 63 47 45 31 63 46 34 35 45 63 45 49 35 46 29 34 66 2 4 5
+~
+CAU door (9)
+~
+w 0 w_ -1 u 16 v 8 c 159 zero 0 u_ 17 v_9 9 v_10 10 v_11 11 v_12 12 pos_v 2 sub 2 mod_step 25000 c_step 1 sig2 2
+~
+2 0 66 x
+if 1 c zero 20 40
+chg_obj_type zero w u_ v_9
+chg_obj_type zero w u_ v_10
+chg_obj_type zero w u_ v_11
+chg_obj_type zero w u_ v_12
+chg_state pos_v sub mod_step w_ u_ v_9
+chg_state pos_v sub mod_step w_ u_ v_10
+chg_state pos_v sub mod_step w_ u_ v_11
+chg_state pos_v sub mod_step w_ u_ v_12
+chg_value c sub c_step w u v
+send_signal sig2 w u v
+~
+blue key (10)
+~
+val 4 abs 2 key 80 mode 0 w0 -2 w1 1 u 16 v 23 msg_length 30
+~
+1 0 52 x
+chg_ps1 val abs key
+chg_grid mode w0 u v w0 u v
+chg_grid_ mode w1 u v w1 u v
+pass_msg 32 msg_length 0 25 41 47 63 33 41 46 63 46 34 31 63 28 38 47 31 63 37 31 51 63 29 27 44 30 66 2 4 1
+~
+teleporter 1 (11)
+~
+rend_mode 4 abs 1 msg_length0 26 msg_length1 4 dark 1
+~
+1 0 38 x
+chg_ps0 rend_mode abs dark
+pass_msg 28 msg_length0 0 16 38 27 51 31 44 63 49 27 45 63 46 31 38 31 42 41 44 46 31 30 73 2 4 19
+pass_msg 6 msg_length1 3 7500000 41500000 100000
+~
+light torch (12)
+~
+ps_0 0 ps_1 0 ps_2 0 ps_3 0 ps_4 0 ps_5 0 ps_6 0 ps_7 0 game_t 0 torch_t0 0 ps_10 0 ps_11 0 ps_12 0 ps_13 0 torches 0 ps_15 0 ps_16 0 ps_17 0 ps_18 0 ps_19 0 ps_20 0 torch_t_limit 2400 w 0 u 0 v 0
+sig3 3 sig4 4 sub 2 torches_ 3 unit 1 ps_20 0 ps_21 0 ps_22 0 ps_23 0 ps_24 0 ps_25 0 ps_26 0 ps_27 0 game_t_ 0 ps_29 0 ps_30 0 torch_t0' 5 msg_length 29 torch_t_limit' 6 msg_length' 17
+~
+2 0 20
+3 20 12
+4 32 74
+x
+--signal 2
+copy_ps0 119 w u v
+copy_ps1 130 w u v
+copy_ps0 149 w u v
+send_signal sig3 w u v
+--signal 3
+chg_value game_t sub torch_t0 w u v
+send_signal sig4 w u v
+--signal 4
+if 2 game_t ps_10 49 19
+if 2 torches w 12 31
+chg_ps1 torches_ sub unit
+chg_ps0 torch_t0' sub game_t_
+chg_ps0 torch_t_limit' sub torch_t_limit
+pass_msg 31 msg_length 25 25 41 47 63 34 27 48 31 40 65 46 63 33 41 46 63 27 40 51 63 46 41 44 29 34 31 45 66
+pass_msg 19 msg_length' 14 14 41 63 46 41 44 29 34 63 40 31 31 30 31 30 66
+~
+the end (13)
+~
+w0 0 w1 -1 u 0 v 0 mode 0 msg_length 42
+~
+1 0 60
+chg_grid_ mode w0 u v w0 u v
+chg_grid mode w1 u v w1 u v
+pass_msg 44 msg_length 0 25 41 47 63 34 27 48 31 63 29 41 39 42 38 31 46 31 30 63 46 34 31 63 30 31 39 41 73 63 14 35 29 31 63 41 40 31 66 2 4 21
+~
+teleporter 2 (14)
+~
+msg_length0 26 msg_length1 4
+~
+1 0 34 x
+pass_msg 28 msg_length0 0 16 38 27 51 31 44 63 49 27 45 63 46 31 38 31 42 41 44 46 31 30 73 2 4 19
+pass_msg 6 msg_length1 3 13500000 41500000 2100000
+~
+teleporter 3 (15)
+~
+rend_mode 4 abs 1 msg_length0 26 msg_length1 4 light 0
+~
+1 0 38 x
+chg_ps0 rend_mode abs light
+pass_msg 28 msg_length0 0 16 38 27 51 31 44 63 49 27 45 63 46 31 38 31 42 41 44 46 31 30 73 2 4 19
+pass_msg 6 msg_length1 3 1500000 32500000 2100000
