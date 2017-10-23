@@ -26,10 +26,7 @@ import Game_logic
 import Decompress_map
 import Game_sound
 
-def_matrix = fromList 4 4 [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]
-def_state_log = "t\n~\nt"
-
--- A wrapper for the Win32 C struct PIXELFORMATDESCRIPTOR and a helper function to set it are included here, as these aren't included in Graphics.Win32
+-- A wrapper for the WinAPI C struct PIXELFORMATDESCRIPTOR and a helper function to set it are included here, as these weren't included in Graphics.Win32 at time of writing.
 type PIXELFORMATDESCRIPTOR =
   (WORD,  -- nSize
    WORD,  -- nVersion
@@ -115,7 +112,7 @@ pfd_DEPTH_DONTCARE = 0x20000000 :: DWORD
 pfd_DOUBLEBUFFER_DONTCARE = 0x40000000 :: DWORD
 pfd_STEREO_DONTCARE = 0x80000000 :: DWORD
 
--- These are bindings to Win32 functions also missing from Graphics.Win32 at time of writing
+-- These are bindings to WinAPI functions also missing from Graphics.Win32 at time of writing.
 foreign import ccall "wingdi.h ChoosePixelFormat"
   choosePixelFormat :: HDC -> Ptr a -> IO Int
 
@@ -142,7 +139,7 @@ main = do
   if length args > 3 then open_window ((listArray (0, 45) (splitOneOf "=\n" contents)) // [(1, args !! 1), (9, args !! 2), (11, args !! 3), (13, args !! 4), (15, args !! 5), (17, args !! 6), (19, args !! 7), (21, args !! 8), (23, args !! 9), (25, args !! 10), (27, args !! 11), (29, args !! 12), (31, args !! 13), (33, args !! 14), (35, args !! 15), (39, "n")])
   else open_window ((listArray (0, 45) (splitOneOf "=\n" contents)) // [(31, args !! 1), (33, args !! 2)])
 
--- These two functions initialise the main window and the OpenGL context.  setup_game prepares the OpenGL shader programs and sets various aspects of OpenGL state.
+-- This function initialises the window and loads the map file.
 open_window :: Array Int [Char] -> IO ()
 open_window conf_reg =
   let cfg' = cfg conf_reg 0
@@ -159,7 +156,8 @@ open_window conf_reg =
   contents <- bracket (openFile (cfg' "map_file") ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nmap file size: " ++ show (length contents)); return contents)
   setup_game hwnd hdc contents conf_reg
 
--- This function initialises the OpenGL context as well as compiling GLSL shaders and setting uniform values.  Textures are also loaded, including those that encode the light map (see build notes for details).
+-- This function initialises the OpenGL and OpenAL contexts.  It also decompresses the map file, manages the compilation of GLSL shaders, loading of 3D models, loading of the light map
+-- and loading of sound effects.
 setup_game :: HWND -> HDC -> [Char] -> Array Int [Char] -> IO ()
 setup_game hwnd hdc comp_env_map conf_reg =
   let m0 = "mod_to_world"
@@ -254,7 +252,7 @@ setup_game hwnd hdc comp_env_map conf_reg =
   sound_array <- init_al_effect0 (splitOneOf "\n " contents2) (array (0, 255) [(x, Source 0) | x <- [0..255]])
   start_game hwnd hdc (listArray (0, 52) uniform) (p_bind_, p_bind_limit + 1) env_map conf_reg (-1) (read (cfg' "init_u"), read (cfg' "init_v"), read (cfg' "init_w"), read (cfg' "gravity"), read (cfg' "friction"), read (cfg' "run_power"), read (cfg' "jump_power")) def_save_state sound_array
 
--- Load the model file(s) that describe all environmental objects referenced in the current map
+-- The model file(s) that describe all 3D and 2D models referenced in the current map are loaded here.
 load_mod_file :: [[Char]] -> [Char] -> Ptr GLuint -> IO ()
 load_mod_file [] path p_bind = return ()
 load_mod_file (x:xs) path p_bind = do
@@ -267,6 +265,7 @@ load_mod_file (x:xs) path p_bind = do
   hClose h
   load_mod_file xs path p_bind
 
+-- Functions used by start_game as part of game initialisation.
 select_mode "y" = True
 select_mode "n" = False
 
@@ -280,9 +279,7 @@ proc_splash [] c = []
 proc_splash text 0 = (0, []) : proc_splash text 1
 proc_splash text c = (c, conv_msg_ (take 48 text)) : proc_splash (drop 48 text) (c + 1)
 
---grid_patch = load_game0 mode (splitOn ", " ((splitOn "\n~\n" state_log) !! 0)) (splitOn ", " ((splitOn "\n~\n" state_log) !! 1)) [] w_grid f_grid obj_grid (ps0_init {pos_u = u, pos_v = v, pos_w = w, show_fps_ = select_mode (cfg' "show_fps")}) (ps1_init {verbose_mode = select_mode (cfg' "verbose_mode")})
-
--- This is the loop for the branching possible through main menu choices
+-- This function initialises the game logic and rendering threads each time a new game is started and handles user input from the main menu.
 start_game :: HWND -> HDC -> UArray Int Int32 -> (UArray Int Word32, Int) -> [Char] -> Array Int [Char] -> Int -> (Float, Float, Float, Float, Float, Float, Float) -> Save_state -> Array Int Source -> IO ()
 start_game hwnd hdc uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag_j) save_state sound_array =
   let w_grid = (make_array0 ((build_table0 (elems (build_table1 (splitOn ", " ((splitOn "~" c) !! 7)) (empty_w_grid (read ((splitOn "~" c) !! 8)) (read ((splitOn "~" c) !! 9)) (read ((splitOn "~" c) !! 10))) 7500)) (read ((splitOn "~" c) !! 8)) (read ((splitOn "~" c) !! 9)) (read ((splitOn "~" c) !! 10))) ++ (sort_grid0 (splitOn "&" ((splitOn "~" c) !! 4)))) (read ((splitOn "~" c) !! 8)) (read ((splitOn "~" c) !! 9)) (read ((splitOn "~" c) !! 10)))
@@ -334,12 +331,7 @@ start_game hwnd hdc uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag_j)
     exitSuccess
   else return ()
 
-reporter1 :: SomeException -> IO DWORD
-reporter1 e = do
-  putStr "\nupdate_play: error"
-  return 0
-
--- Find the uniform locations of GLSL uniform variables
+-- Find the uniform locations of GLSL uniform variables.
 find_gl_uniform :: [[Char]] -> [Int] -> Ptr GLuint -> [Int32] -> IO [Int32]
 find_gl_uniform [] [] p_gl_program acc = return acc
 find_gl_uniform (x:xs) (y:ys) p_gl_program acc = do
@@ -349,7 +341,7 @@ find_gl_uniform (x:xs) (y:ys) p_gl_program acc = do
   free query
   find_gl_uniform xs ys p_gl_program (acc ++ [fromIntegral uniform])
 
--- These four functions deal with the compilation of the GLSL shaders and linking of the shader program
+-- These four functions deal with the compilation of the GLSL shaders and linking of the shader program.
 make_gl_program :: [[Char]] -> Ptr GLuint -> Int -> IO ()
 make_gl_program [] p_prog i = return ()
 make_gl_program (x0:x1:xs) p_prog i = do
@@ -402,7 +394,7 @@ make_program (x:xs) program c = do
   glAttachShader program x
   make_program xs program c
 
--- Check for errors during GLSL program compilation
+-- Check for errors during GLSL program compilation.
 validate_prog :: GLuint -> Int -> IO ()
 validate_prog program n = do
   glValidateProgram program
@@ -418,7 +410,7 @@ validate_prog program n = do
   print e1
   free p0; free p1
 
--- These functions load bitmap images used for textures
+-- These functions load bitmap images used for textures.
 set_pad :: Int -> Int
 set_pad tex_w =
   if mod tex_w 4 == 0 then 0
@@ -444,7 +436,7 @@ load_bitmap2 :: GLsizei -> GLsizei -> Ptr CChar -> IO ()
 load_bitmap2 w h p_tex = do
   glTexImage2D gl_TEXTURE_2D 0 (fromIntegral gl_RGB) w h 0 gl_RGB gl_UNSIGNED_BYTE p_tex
 
--- These functions load vertex data and bind openGL vertex array objects and texture objects, which are used to render all environmental objects
+-- These two functions load vertex data and bind OpenGL vertex array objects and texture objects, which are used to render all environmental models.
 setup_object :: [Object] -> [[Int]] -> [Float] -> [GLushort] -> [BS.ByteString] -> Ptr GLuint -> IO ()
 setup_object [] _ vertex element bs_tex p_bind = return ()
 setup_object (x:xs) (y:ys) vertex element bs_tex p_bind = do
@@ -497,7 +489,7 @@ bind_texture (x:xs) p_bind w h offset = do
   glTexParameteri gl_TEXTURE_2D gl_TEXTURE_MAG_FILTER (fromIntegral gl_NEAREST)
   bind_texture xs p_bind w h (offset + 1)
 
--- This function manages the rendering of all environmental objects and in game messages
+-- This function manages the rendering of all environmental models and in game messages.  It recurses once per frame rendered and is the central branching point of the rendering thread.
 show_frame :: HDC -> (UArray Int Word32, Int) -> UArray Int Int32 -> Ptr GLfloat -> (Ptr Int, Ptr Int) -> Float -> Float -> Float -> Int -> Int -> Int -> MVar (Play_state0, Array (Int, Int, Int) Wall_grid, Save_state) -> Array (Int, Int, Int) Wall_grid -> UArray (Int, Int) Float -> Int -> Int -> Matrix Float -> DWORD -> DWORD -> IO ([Int], Save_state)
 show_frame hdc p_bind uniform p_mt_matrix filter_table u v w a a' game_t' state_ref w_grid look_up w_limit msg_timer camera_to_clip min_frame_t t =
   let survey0 = multi_survey (mod_angle a (-126)) 251 u v (truncate u) (truncate v) w_grid look_up w_limit 0 [] []
@@ -587,6 +579,7 @@ show_frame hdc p_bind uniform p_mt_matrix filter_table u v w a a' game_t' state_
     Main.swapBuffers hdc
     show_frame hdc p_bind uniform p_mt_matrix filter_table (pos_u (fst__ p_state)) (pos_v (fst__ p_state)) (pos_w (fst__ p_state)) (angle (fst__ p_state)) (view_angle (fst__ p_state)) (game_t (fst__ p_state)) state_ref (snd__ p_state) look_up w_limit 0 camera_to_clip min_frame_t t'
 
+-- Optionally report the frame rate in the console during game play.
 show_fps :: Play_state0 -> DWORD -> DWORD -> IO DWORD
 show_fps s0 t0 t1 = do
   if mod (game_t s0) 40 == 0 && show_fps_ s0 == True then do
@@ -594,7 +587,7 @@ show_fps s0 t0 t1 = do
     return t1
   else return t0
 
--- These functions pass transformation matrices to the shaders and make the GL draw calls that render objects
+-- These three functions pass transformation matrices to the shaders and make the GL draw calls that render models.
 show_walls :: [Wall_place] -> UArray Int Int32 -> (UArray Int Word32, Int) -> Ptr GLfloat -> Float -> Float -> Float -> Int -> UArray (Int, Int) Float -> Int -> IO ()
 show_walls [] uniform p_bind p_mt_matrix u v w a look_up mode = return ()
 show_walls (x:xs) uniform p_bind p_mt_matrix u v w a look_up mode = do
@@ -674,9 +667,3 @@ show_player uniform p_bind p_mt_matrix u v w a look_up game_t mode = do
   glBindTexture gl_TEXTURE_2D (unsafeCoerce ((fst p_bind) ! 1025))
   glDrawElements gl_TRIANGLES 36 gl_UNSIGNED_SHORT zero_ptr
 
-check_error :: [Char] -> IO ()
-check_error p = do
-  e0 <- glGetError
-  putStr "\nGL error code (point "
-  print (p ++ "): ")
-  print e0

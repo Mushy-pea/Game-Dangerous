@@ -1,3 +1,5 @@
+-- This is a development tool that transforms a modified form of the OBJ file format into the model import file format used by the engine.
+
 module Main where
 
 import System.IO
@@ -38,7 +40,7 @@ concat_ :: Int -> [[Char]] -> [Char]
 concat_ 0 x = (intercalate ", " x)
 concat_ 1 x = (intercalate ", " x) ++ ", 1"
 
--- These two functions are used to generate the indices needed for element drawing
+-- These two functions are used to generate the indices needed for element drawing.
 face_index :: Int -> Int -> [Int]
 face_index order 0 =
   if order < 4 then [1, 2, 3]
@@ -63,7 +65,7 @@ gen_indices (x:xs) mode n num_i acc =
   else if mode == 0 then gen_indices xs mode (n + (div order 2)) (num_i + length f_ind0) (acc ++ show_ints (map (+ (n - 2)) f_ind0))
   else gen_indices xs mode (n + (div order 3)) (num_i + length f_ind1) (acc ++ show_ints (map (+ (n - 2)) f_ind1))
 
--- These two functions deal with reading vertex attribute data from the OBJ file and transforming this into the form used by the engine for rendering
+-- These two functions deal with reading vertex attribute data from the OBJ file and transforming this into the form used by the engine for rendering.
 get_vert :: [[Char]] -> Int -> Int -> Model -> Model
 get_vert [] phase mode model = model
 get_vert (x:xs) 0 mode model =

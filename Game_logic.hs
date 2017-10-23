@@ -23,16 +23,19 @@ import Game_sound
 foreign import ccall "wingdi.h SwapBuffers"
   swapBuffers :: HDC -> IO Bool
 
+-- A psudorandom number sequence used by the game logic to add an element of chance to certain game events (e.g. player damage when hit by projectiles).
 prob_seq :: UArray Int Int
 prob_seq = listArray (0, 239) [5, 1, 8, 5, 6, 4, 0, 9, 5, 2, 0, 9, 1, 7, 7, 6, 7, 0, 4, 5, 9, 6, 4, 3, 5, 9, 8, 8, 3, 1, 3, 7, 1, 7, 1, 5, 2, 4, 3, 2, 9, 8, 9, 9, 9, 4, 3, 0, 2, 2, 0, 8, 2, 5, 4, 4, 4, 7, 2, 1, 3, 7, 3, 4, 1, 0, 0, 0, 7, 3, 6, 9, 1, 9, 1, 9, 4, 3, 6, 0, 8, 0, 2, 8, 9, 6, 5, 8, 4, 7, 3, 7, 1, 7, 9, 2, 4, 7, 5, 9, 5, 0, 0, 1, 4, 1, 5, 3, 4, 9, 4, 6, 0, 1, 8, 4, 2, 5, 1, 5, 8, 3, 6, 4, 5, 9, 8, 6, 0, 9, 9, 7, 7, 4, 5, 2, 1, 8, 1, 0, 2, 8, 5, 1, 5, 7, 1, 7, 5, 2, 1, 5, 3, 4, 7, 3, 3, 2, 5, 2, 6, 8, 2, 8, 1, 1, 7, 1, 9, 7, 0, 6, 5, 7, 9, 3, 4, 1, 3, 9, 3, 8, 9, 5, 7, 7, 8, 2, 3, 2, 8, 5, 3, 7, 4, 8, 5, 9, 2, 1, 0, 5, 8, 5, 2, 6, 7, 3, 4, 5, 1, 9, 3, 3, 7, 4, 0, 8, 9, 1, 4, 6, 8, 5, 3, 7, 1, 5, 2, 3, 6, 9, 5, 7, 8, 5, 1, 5, 8, 4]
 
+
+-- Used to load C style arrays, which are used with certain OpenGL functions.
 load_array :: Storable a => [a] -> Ptr a -> Int -> IO ()
 load_array [] p i = return ()
 load_array (x:xs) p i = do
   pokeElemOff p i x
   load_array xs p (i + 1)
 
--- Encodings of set piece on screen messages used in the tile display system
+-- Encodings of set piece on screen messages used in the tile display system.
 --     <          Health:     >  <        Ammo:         >   <        Gems:          >  <          Torches:               >  <         Keys:          >  <            Region:           >
 msg1 = [8,31,27,38,46,34,69,63]; msg2 = [1,39,39,41,69,63]; msg3 = [7,31,39,45,69,63]; msg4 = [20,41,44,29,34,31,45,69,63]; msg5 = [11,31,51,45,69,63]; msg6 = [18,31,33,35,41,40,69,63]
 --     <                              Success!  You have discovered a new region.                                >
@@ -53,7 +56,7 @@ msg28 = [39,16,38,27,51,31,44,63,49,27,45,63,31,27,46,31,40,63,28,51,63,27,63,29
 main_menu_text :: [(Int, [Int])]
 main_menu_text = [(0, msg16), (0, []), (1, msg14), (2, msg18), (3, msg12)]
 
--- These functions are where the program interacts with the Windows message system, allowing capture of keyboard and mouse input
+-- These two functions are where the program interacts with the Windows message system and capture keyboard input.
 wndProc :: HWND -> WindowMessage -> WPARAM -> LPARAM -> IO LRESULT
 wndProc hwnd wmsg wParam lParam
     | wmsg == 258 = if wParam == 120 then do return 2 -- pause and select menu option (X)
@@ -84,7 +87,7 @@ messagePump hwnd = allocaMessage $ \ msg ->
                   return r
   in pump
 
--- The following functions implement an interpreter of the Game Programmable Logic Controller (GPLC) language used to determine dynamic object behaviour
+-- The following functions implement a bytecode interpreter of the Game Programmable Logic Controller (GPLC) language, used for game logic scripting.
 upd' x y = x + y
 upd'' x y = y
 upd''' x y = x - y
@@ -128,7 +131,7 @@ fst__ (a, b, c) = a
 snd__ (a, b, c) = b
 third_ (a, b, c) = c
 
--- These functions perform conditional expression folding, evaluating conditional op - codes at the start of a GPLC program run to yield unconditional code
+-- These three functions perform GPLC conditional expression folding, evaluating conditional op - codes at the start of a GPLC program run to yield unconditional code.
 on_signal :: [Int] -> [Int] -> Int -> [Int]
 on_signal [] code sig = []
 on_signal (x0:x1:x2:xs) code sig =
@@ -152,7 +155,7 @@ if0 code d_list =
   if code !! 0 == 1 then if0 (if1 (code !! 1) (code !! 2) (code !! 3) (take (code !! 4) (drop 6 code)) (take (code !! 5) (drop (6 + code !! 4) code)) d_list) d_list
   else code
 
--- The remaining GPLC op - codes are implemented here
+-- The remaining GPLC op - codes are implemented here.  The GPLC specification document explains their functions in the context of a game logic virtual machine.
 chg_state :: Int -> Int -> Int -> (Int, Int, Int) -> Array (Int, Int, Int) Wall_grid -> [Int] -> Array (Int, Int, Int) Wall_grid
 chg_state state_val abs v (i0, i1, i2) grid d_list =
   let index = (d_list !! i0, d_list !! i1, d_list !! i2)
@@ -454,7 +457,7 @@ binary_dice prob diff (i0, i1, i2) offset game_t obj_grid d_list =
   if prob_seq ! (mod (game_t + (d_list !! diff)) 240) < d_list !! prob then obj_grid // [((d_list !! i0, d_list !! i1, d_list !! i2), (fst target, (take offset (snd target)) ++ [1] ++ drop (offset + 1) (snd target)))]
   else obj_grid // [((d_list !! i0, d_list !! i1, d_list !! i2), (fst target, (take offset (snd target)) ++ [0] ++ drop (offset + 1) (snd target)))]
 
--- These three functions handle GPLC code interpretation and signal propagation between GPLC programs and the rest of the game logic.  This is the version with optional GPLC debugging.
+-- Branch on each GPLC op - code to call the corresponding function, with optional per op - code status reports for debugging.
 run_gplc :: [Int] -> [Int] -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> Play_state0 -> Play_state1 -> (Int, Int, Int) -> UArray (Int, Int) Float -> Int -> IO (Array (Int, Int, Int) Wall_grid, Array (Int, Int, Int) Floor_grid, Array (Int, Int, Int) (Int, [Int]), Play_state0, Play_state1)
 run_gplc [] d_list w_grid f_grid obj_grid s0 s1 location look_up c = return (w_grid, f_grid, obj_grid, s0, s1)
 run_gplc code d_list w_grid f_grid obj_grid s0 s1 location look_up 0 = do
@@ -563,6 +566,7 @@ run_gplc code d_list w_grid f_grid obj_grid s0 s1 location look_up c = do
   putStr ("\nremaining code block: " ++ show code)
   throw Invalid_GPLC_opcode
 
+-- These functions deal with GPLC debugging output and error reporting.
 report_state :: Bool -> Int -> [Int] -> [Int] -> [Char] -> IO ()
 report_state False mode prog d_list message = return ()
 report_state True 0 prog d_list message = do
@@ -578,6 +582,8 @@ gplc_error w_grid f_grid obj_grid s0 s1 e = do
   exitSuccess
   return (w_grid, f_grid, obj_grid, s0, s1)
 
+-- These two functions (together with send_signal) implement the signalling system that drives GPLC program runs.  This involves signalling programs in response to player object collisions and handling
+-- the signal queue, which allows programs to signal each other.
 link_gplc0 :: [Float] -> [Int] -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> Play_state0 -> Play_state1 -> UArray (Int, Int) Float -> Bool -> IO (Array (Int, Int, Int) Wall_grid, Array (Int, Int, Int) Floor_grid, Array (Int, Int, Int) (Int, [Int]), Play_state0, Play_state1)
 link_gplc0 (x0:x1:xs) (z0:z1:z2:zs) w_grid f_grid obj_grid s0 s1 look_up swap_flag =
   let dest = ((sig_q s1) !! 1, (sig_q s1) !! 2, (sig_q s1) !! 3)
@@ -626,7 +632,7 @@ link_gplc1 s0 s1 obj_grid mode =
       if health s1 <= det_damage (difficulty s1) (game_t s0) then return s1 {health = 0, state_chg = 1, message = 0 : msg26}
       else return s1 {health = health s1 - det_damage (difficulty s1) (game_t s0), state_chg = 1, message = 0 : msg13}
 
--- These functions handle game physics, including collision detection, thrust, friction and gravity
+-- These four functions perform game physics and geometry computations.  These include player collision detection, thrust, friction, gravity and floor surface modelling.
 detect_coll :: Int -> (Float, Float) -> (Float, Float) -> Array (Int, Int, Int) (Int, [Int]) -> Array (Int, Int, Int) Wall_grid -> [Float]
 detect_coll w_block (u, v) (step_u, step_v) obj_grid w_grid =
   let u' = u + step_u
@@ -699,15 +705,12 @@ update_vel (x:xs) (y:ys) (z:zs) f_rate f =
   if z == 1 then 0 : update_vel xs ys zs f_rate f
   else (x + y / f_rate + f * x / f_rate) : update_vel xs ys zs f_rate f
 
+-- Used to generate the sequence of message tile references that represent the pause screen text.
 pause_text :: Play_state1 -> ([Char], Int, Int, Int) -> [(Int, [Int])]
 pause_text s1 (diff, a, b, c) =
   [(0, msg9), (0, []), (0, msg1 ++ conv_msg (health s1)), (0, msg2 ++ conv_msg (ammo s1)), (0, msg3 ++ conv_msg (gems s1)), (0, msg4 ++ conv_msg (torches s1)), (0, msg5 ++ keys s1), (0, msg6 ++ region s1), (0, conv_msg_ ("Difficulty: " ++ diff)), (0, []), (1, msg10), (2, msg17), (3, msg11), (4, msg12)]
 
-report0 :: Int -> [Float] -> [Float] -> Int -> IO ()
-report0 s pos vel a = do
-  putStr ("\nsection: " ++ (show s) ++ " pos: " ++ (show pos) ++ " vel: " ++ (show vel) ++ " a: " ++ show a)
-
--- This is the central function for updating of the game state
+-- This function recurses once per game logic clock tick and is the central branching point of the game logic thread.
 update_play :: Io_box -> MVar (Play_state0, Array (Int, Int, Int) Wall_grid, Save_state) -> Play_state0 -> Play_state1 -> Bool -> Float -> (Float, Float, Float, Float) -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> UArray (Int, Int) Float -> Array Int [Char] -> Save_state -> Array Int Source -> IO ()
 update_play io_box state_ref s0 s1 in_flight f_rate (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up conf_reg save_state sound_array =
   let det = detect_coll (truncate (pos_w s0)) (pos_u s0, pos_v s0) ((vel s0) !! 0 / f_rate, (vel s0) !! 1 / f_rate) obj_grid w_grid
@@ -781,7 +784,7 @@ update_play io_box state_ref s0 s1 in_flight f_rate (g, f, mag_r, mag_j) w_grid 
       else do
         update_play io_box state_ref (s0 {pos_u = det !! 0, pos_v = det !! 1, pos_w = floor, vel = vel_0, game_t = game_t'}) link1 False f_rate (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up conf_reg save_state sound_array
 
--- These functions handle game events triggered by a call to pass_msg within a GPLC program.  These include on screen messages, object interaction menus and level completion.
+-- These five functions handle events triggered by a call to pass_msg within a GPLC program.  These include on screen messages, object interaction menus and sound effects.
 conv_msg :: Int -> [Int]
 conv_msg v =
   if v < 10 then [(mod v 10) + 53]
@@ -827,6 +830,7 @@ proc_msg0 (x0:x1:xs) s0 s1 io_box sound_array =
   else if x0 == 3 then proc_msg0 [] (s0 {pos_u = int_to_float (xs !! 0), pos_v = int_to_float (xs !! 1), pos_w = int_to_float (xs !! 2)}) s1 io_box sound_array
   else proc_msg0 (drop (x1 - 3) xs) (s0 {message_ = [(0, take (x1 - 3) xs)], msg_count = 400}) s1 io_box sound_array
 
+-- Used by the game logic thread for in game menus and by the main thread for the main menu.
 run_menu :: [(Int, [Int])] -> [(Int, [Int])] -> Io_box -> Float -> Float -> Int -> Int -> Int -> IO Int
 run_menu [] acc io_box x y c c_max 0 = run_menu acc [] io_box x y c c_max 2
 run_menu (n:ns) acc io_box x y c c_max 0 = do
@@ -865,7 +869,7 @@ run_menu (n:ns) acc io_box x y c c_max d = do
   free p_tt_matrix
   run_menu ns (acc ++ [n]) io_box x (y - 0.04) c c_max 1
 
--- This function handles the drawing of characters (letters and numbers) that are used for in game messages and in menus
+-- This function handles the drawing of message tiles (letters and numbers etc) that are used for in game messages and in menus.
 show_text :: [Int] -> Int -> Int -> UArray Int Int32 -> (UArray Int Word32, Int) -> Ptr GLfloat -> Float -> Float -> Int -> IO ()
 show_text [] mode base uniform p_bind p_tt_matrix x y offset = return ()
 show_text (m:ms) mode base uniform p_bind p_tt_matrix x y offset = do

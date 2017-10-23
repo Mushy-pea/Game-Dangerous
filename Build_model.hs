@@ -1,3 +1,8 @@
+-- The purpose of the functions in this module mostly fall into one of the following three catagories.
+-- 1. Initialisation of the arrays that hold game state using the decompressed form of the map.
+-- 2. Generation of vector transforms, which are either passed to the shaders for rendering purposes or used in the game logic.
+-- 3. Implementation of the ray tracing algorhythm used for visible surface determination.
+
 module Build_model where
 
 import Graphics.Win32
@@ -14,7 +19,7 @@ import Data.Maybe
 import Control.Exception
 import Graphics.Rendering.OpenGL.Raw.Core33
 
--- Trigonometric look up table generation to time optimise various functions
+-- These two functions generate trigonometric look up tables to time optimise various functions.
 make_table :: Int -> Float -> [Float]
 make_table 0 a =
   if a > 6.29 then []
@@ -39,7 +44,7 @@ glushort_ = 0 :: GLushort; glushort = sizeOf glushort_
 int__ = 0 :: Int; int_ = sizeOf int__
 ptr_size = 8 :: Int -- Corresponds to the 8 byte pointers used on the Windows x86_64 platform.  This value should be changed to 4 if compiling for systems with 4 byte pointers
 
--- Data types to store information about the environment and game state
+-- Data types that store information about the environment and game state, as well as an exception type.
 data Wall_grid = Wall_grid {u1 :: Bool, u2 :: Bool, v1 :: Bool, v2 :: Bool, u1_bound :: Float, u2_bound :: Float, v1_bound :: Float, v2_bound :: Float, w_level :: Float,  wall_flag :: [Int], texture :: [Int], obj :: Maybe Obj_place} deriving (Show)
 
 data Object = Object {ident :: Int, att_offset :: Int, num_tex :: Int, tex_w :: GLsizei, tex_h :: GLsizei, behaviours :: [Int]} deriving (Show)
@@ -63,10 +68,8 @@ data Save_state = Save_state {is_set :: Bool, w_grid_ :: Array (Int, Int, Int) W
 data Io_box = Io_box {hwnd_ :: HWND, hdc_ :: HDC, uniform_ :: UArray Int Int32, p_bind_ :: (UArray Int Word32, Int)}
 
 data EngineError = Invalid_wall_flag | Invalid_obj_flag | Invalid_GPLC_opcode deriving (Show)
-data IndexError = Index0 | Index1 | Index2 | Index3 | Index4 | Index5 | Index6 | Index7 | Index8 | Index9 | Index10 deriving (Show)
 
 instance Exception EngineError
-instance Exception IndexError
 
 ps0_init = Play_state0 {pos_u = 0, pos_v = 0, pos_w = 0, vel = [0, 0, 0], angle = 0, message_ = [], msg_count = 0, rend_mode = 0, view_mode = 0, view_angle = 0, game_t = 1, torch_t0 = 1, torch_t_limit = 0, show_fps_ = False}
 ps1_init = Play_state1 {health = 100, ammo = 0, gems = 0, torches = 0, keys = [63,63,63,63,63,63], region = [19,46,41,44,27,33,31,63,28,27,51,63,4], difficulty = ("Plenty of danger please", 6, 10, 14), sig_q = [], next_sig_q = [], message = [], state_chg = 0, verbose_mode = False, angle_step = 0}
@@ -79,42 +82,7 @@ def_obj_grid = (0, [])
 def_obj_grid_arr = array ((0, 0, 0), (2, 9, 9)) [((w, u, v), def_obj_grid) | w <- [0..2], u <- [0..9], v <- [0..9]] :: Array (Int, Int, Int) (Int, [Int])
 def_save_state = Save_state {is_set = False, w_grid_ = def_w_grid_arr, f_grid_ = def_f_grid_arr, obj_grid_ = def_obj_grid_arr, s0_ = ps0_init, s1_ = ps1_init}
 
-i_list :: Int -> [a] -> Int -> a
-i_list 0 x i =
-  if i >= length x then throw Index0
-  else x !! i
-i_list 1 x i =
-  if i >= length x then throw Index1
-  else x !! i
-i_list 2 x i =
-  if i >= length x then throw Index2
-  else x !! i
-i_list 3 x i =
-  if i >= length x then throw Index3
-  else x !! i
-i_list 4 x i =
-  if i >= length x then throw Index4
-  else x !! i
-i_list 5 x i =
-  if i >= length x then throw Index5
-  else x !! i
-i_list 6 x i =
-  if i >= length x then throw Index6
-  else x !! i
-i_list 7 x i =
-  if i >= length x then throw Index7
-  else x !! i
-i_list 8 x i =
-  if i >= length x then throw Index8
-  else x !! i
-i_list 9 x i =
-  if i >= length x then throw Index9
-  else x !! i
-i_list 10 x i =
-  if i >= length x then throw Index10
-  else x !! i
-
--- This class is used in functions that filter the result of the ray tracer to avoid multiple rendering
+-- This class is used in functions that filter the result of the ray tracer to avoid multiple rendering.
 class Flag a where
   theFlag :: a -> Int
 
@@ -124,12 +92,13 @@ instance Flag Wall_place where
 instance Flag Obj_place where
   theFlag a = obj_flag a
 
--- Deafult values used in the perspective transformation
+-- Deafult values used in the perspective transformation.
 frustumScale = 1 :: Float; zNear = 0.5 :: Float; zFar = 100 :: Float
 
-zero_ptr = (unsafeCoerce (0 :: Word64) :: Ptr a) -- Used in preference to nullPtr as this value is explicitly defined as zero.  The type of 0 must be changed to Word32 if compiling for systems with 32 bit pointers.
+-- Used in preference to nullPtr as this value is explicitly defined as zero.  The type of 0 must be changed to Word32 if compiling for systems with 32 bit pointers.
+zero_ptr = (unsafeCoerce (0 :: Word64) :: Ptr a)
 
--- These functions process vertex and map data, which is either loaded into GPU memory or held in the (CPU memory) environment map respectively
+-- These functions process vertex and map data, which is either loaded into GPU memory or held in the (CPU memory) environment map respectively.
 proc_floats :: [[Char]] -> [Float]
 proc_floats [] = []
 proc_floats (x:xs) = (read x :: Float) : proc_floats xs
@@ -156,11 +125,11 @@ pad_vertex :: [Float] -> [Float]
 pad_vertex [] = []
 pad_vertex (x0:x1:x2:xs) = [x0, x1, x2, 1] ++ pad_vertex xs
 
+-- The vector transforms generated here are used both to transform vertices in the shaders and in parts of the game logic.
 transform :: Floating a => [a] -> Matrix a -> [a]
 transform [] mat = []
 transform (v0:v1:v2:v3:vs) mat = toList (multStd mat (fromList 4 1 [v0, v1, v2, v3])) ++ transform vs mat
 
--- The matrix transformations generated here are used both to transform vertices in the shaders and in parts of the game logic
 translation :: Floating a => a -> a -> a -> Matrix a
 translation u v w = fromList 4 4 [1, 0, 0, u, 0, 1, 0, v, 0, 0, 1, w, 0, 0, 0, 1]
 
@@ -186,6 +155,7 @@ world_to_model u v w aw r look_up =
 world_to_camera :: Float -> Float -> Float -> Int -> UArray (Int, Int) Float -> Matrix Float
 world_to_camera u v w a look_up = multStd (rotation_v a look_up) (multStd (fromList 4 4 [0, -1, 0, 0, 0, 0, 1, 0, -1, 0, 0, 0, 0, 0, 0, 1]) (translation u v w))
 
+-- The mod_angle functions are used to handle changes to values that encode angles in the engine's look up table reference format.
 mod_angle :: Int -> Int -> Int
 mod_angle a b =
   if a + b < 0 then a + b + 629
@@ -194,7 +164,7 @@ mod_angle a b =
 
 mod_angle' a b = b
 
--- These functions implement a ray tracing algorhythm, which is part of the visible surface determination system
+-- These functions implement a ray tracing algorhythm, which is part of the visible surface determination system.
 bound_check :: Int -> Int -> ((Int, Int, Int), (Int, Int, Int)) -> Bool
 bound_check block axis ((a, b, c), (w_max, u_max, v_max)) =
   if axis == 0 && block > u_max then False
@@ -276,7 +246,7 @@ ray_trace0 u v a u_positive v_positive u_block v_block grid look_up w_block acc 
     else if result == Corner2 then ray_trace0 (u2_bound grid_i) (v1_bound grid_i) a u_positive v_positive (u_block + 1) (v_block - 1) grid look_up w_block found
     else ray_trace0 (u1_bound grid_i) (v1_bound grid_i) a u_positive v_positive (u_block - 1) (v_block - 1) grid look_up w_block found
 
--- These functions handle the tracing of rays over the range of the field of view, returning a list of the wall sections that border the visible region and a list of any objects visible within that region
+-- These two functions handle the tracing of rays over the range of the field of view, returning a list of the wall sections that border the visible region and a list of any objects visible within that region.
 survey_view :: Int -> Int -> Int -> Float -> Float -> Int -> Int -> Array (Int, Int, Int) Wall_grid -> UArray (Int, Int) Float -> Int -> [Wall_place] -> [Obj_place] -> ([Wall_place], [Obj_place])
 survey_view a da limit u v u_block v_block grid look_up w_block acc0 acc1 =
   let ray0 = (ray_trace0 u v a True True u_block v_block grid look_up w_block [])
@@ -298,8 +268,8 @@ multi_survey a a_limit u v u_block v_block grid look_up w_limit w_block acc0 acc
   if w_block > w_limit then (acc0, acc1)
   else multi_survey a a_limit u v u_block v_block grid look_up w_limit (w_block + 1) (acc0 ++ fst survey) (acc1 ++ snd survey)
 
--- This function filters the result of the ray trace to avoid multiple rendering
-
+-- This function filters the output of the ray tracer to avoid multiple rendering.  It has been implemented using direct memory access because I couldn't find a way to write this algorhythm using an array
+-- form of the flag table, which didn't appear to result in the array being re - computed every frame (leading to disasterous performance).
 filter_surv :: Flag a => [a] -> [a] -> Ptr Int -> Int -> IO [a]
 filter_surv [] acc p_table game_t = return acc
 filter_surv (x:xs) acc p_table game_t = do
@@ -309,7 +279,7 @@ filter_surv (x:xs) acc p_table game_t = do
     pokeElemOff p_table (theFlag x) game_t
     filter_surv xs (acc ++ [x]) p_table game_t
 
--- These functions process the wall and floor grid data from the level map file before it is used to form the environment map
+-- These functions process the wall and floor grid data from the level map file before it is used to form the environment map.
 load_grid1 :: [Char] -> Bool
 load_grid1 i =
   if (read i :: Int) == 0 then False
@@ -356,7 +326,7 @@ load_floor0 :: [[Char]] -> [[[Floor_grid]]]
 load_floor0 [] = []
 load_floor0 (x:xs) = load_floor1 (splitOn ":" x) : load_floor0 xs
 
--- These functions process the object description data, which is used to set up OpenGL vertex array and texture objects as well as in the game logic
+-- These two functions process object description data, which is used to set up OpenGL vertex array and texture objects.
 load_object1 :: [[Char]] -> Object
 load_object1 (x0:x1:x2:x3:x4:xs) = Object {ident = read x0, att_offset = read x1, num_tex = read x2, tex_w = read x3, tex_h = read x4, behaviours = proc_ints xs}
 
@@ -364,13 +334,13 @@ load_object0 :: [[Char]] -> [Object]
 load_object0 [] = []
 load_object0 (x:xs) = load_object1 (splitOn ", " x) : load_object0 xs
 
+-- These functions are also used to genarate the environment map from a map file.
+empty_obj_grid :: Int -> Int -> Int -> Array (Int, Int, Int) (Int, [Int])
+empty_obj_grid u_max v_max w_max = array ((0, 0, 0), (w_max, u_max, v_max)) [((w, u, v), (0, [])) | w <- [0..w_max], u <- [0..u_max], v <- [0..v_max]]
+
 load_obj_grid :: [[Char]] -> [((Int, Int, Int), (Int, [Int]))]
 load_obj_grid [] = []
 load_obj_grid (x0:x1:x2:x3:x4:xs) = ((read x0, read x1, read x2), (read x3, proc_ints (take (read x4) xs))) : load_obj_grid (drop (read x4) xs)
-
--- These functions are also used to genarate the environment map from a map file
-empty_obj_grid :: Int -> Int -> Int -> Array (Int, Int, Int) (Int, [Int])
-empty_obj_grid u_max v_max w_max = array ((0, 0, 0), (w_max, u_max, v_max)) [((w, u, v), (0, [])) | w <- [0..w_max], u <- [0..u_max], v <- [0..v_max]]
 
 empty_w_grid :: Int -> Int -> Int -> Array (Int, Int, Int) Wall_grid
 empty_w_grid u_max v_max w_max = array ((0, 0, 0), (w_max, u_max, v_max)) [((w, u, v), Wall_grid {u1 = False, u2 = False, v1 = False, v2 = False, u1_bound = 0, u2_bound = 0, v1_bound = 0, v2_bound = 0, w_level = 0,  wall_flag = [], texture = [], obj = Nothing}) | w <- [0..w_max], u <- [0..u_max], v <- [0..v_max]]
@@ -384,10 +354,11 @@ build_table1 (x0:x1:x2:x3:x4:x5:x6:x7:x8:x9:x10:x11:x12:x13:xs) w_grid c =
 build_table0 :: [Wall_grid] -> Int -> Int -> Int -> [[[Wall_grid]]]
 build_table0 w_grid u_max v_max w_max = reverse (map (splitEvery (v_max + 1)) (splitEvery ((u_max + 1) * (v_max + 1)) w_grid))
 
+-- Used to generate the set of allowed camera positions in third person rendering mode.
 view_circle :: Float -> Float -> Float -> Int -> UArray (Int, Int) Float -> (Float, Float)
 view_circle a b r t look_up = (a + r * look_up ! (2, t), b + r * look_up ! (1, t))
 
--- These functions are used to transform an environment map into a restored game state, given saved game data
+-- These five functions are currently unused but are intended to later form part of the game state saving system.
 patch_w_grid :: [[Char]] -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Wall_grid
 patch_w_grid [] w_grid = w_grid
 patch_w_grid (x0:x1:x2:x3:x4:x5:x6:x7:x8:x9:x10:xs) w_grid =
@@ -414,12 +385,14 @@ set_play_state1 1 (x0:xs) s1 = set_play_state1 2 (drop (read x0) xs) (s1 {sig_q 
 set_play_state1 2 (x0:xs) s1 = set_play_state1 3 (drop (read x0) xs) (s1 {message = proc_ints (take (read x0) xs)})
 set_play_state1 3 (x0:xs) s1 = s1 {state_chg = read x0}
 
+-- Used to query the conf_reg array, which holds startup parameters passed at the command line or from the engine's configuration file.
 cfg :: Array Int [Char] -> Int -> [Char] -> [Char]
 cfg conf_reg i query =
   if i > 45 then []
   else if conf_reg ! i == query then conf_reg ! (i + 1)
   else cfg conf_reg (i + 2) query
 
+-- Used to initialise the p_bind array, which contains references to all the OpenGL vertex array objects and texture objects used in the current map.
 buffer_to_array :: Ptr Word32 -> UArray Int Word32 -> Int -> Int -> Int -> IO (UArray Int Word32)
 buffer_to_array p arr i0 i1 limit = do
   if i0 > limit then return arr

@@ -14,8 +14,11 @@ conv_msg :: [Char] -> [Int]
 conv_msg [] = []
 conv_msg (x:xs) = find_tile char_list x 0 : conv_msg xs
 
+show_msg :: [Int] -> [Char]
+show_msg [] = []
+show_msg (x:xs) = show x ++ " " ++ show_msg xs
+
 main = do
   putStr "message: "
   msg <- getLine
-  putStr "tiles: "
-  print (conv_msg msg)
+  putStr ("tiles: " ++ (show_msg (conv_msg msg)))

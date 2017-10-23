@@ -1,3 +1,7 @@
+-- The .dan map file format encodes map geometry in a form intended to be space efficient and editable with minimal tools.  This module transforms (and expands) that text format into an intermediate text format
+-- that is then parsed and used to initialise the Wall_grid and Floor_grid arrays.  This transformation was originally done by a tool chain program as a pre - processing step and was later moved into the engine.
+-- I have retained the intermediate text format to avoid having to re - write some of the game state initialisation code, which appeared needless.
+
 module Decompress_map where
 
 import Data.Maybe
@@ -7,7 +11,7 @@ import Data.Foldable
 import Control.Exception
 import Build_model
 
--- These functions transform the characters in each geometry block in the map file into a form the engine can interpret
+-- Convenience functions used by some of the map file parsing functions below.
 filter0 :: Char -> Char
 filter0 x =
   if x == '\n' then ' '
@@ -22,8 +26,17 @@ filter1 (x:xs) =
 init_ :: [a] -> [a]
 init_ x = take ((length x) - 2) x
 
+show_bool :: Bool -> [Char]
+show_bool True = "1, "
+show_bool False = "0, "
+
+show_ints :: [Int] -> [Char]
+show_ints [] = []
+show_ints (x:xs) = (show x) ++ ", " ++ show_ints xs
+
 d_obj = Obj_place {ident_ = 0, u__ = 4, v__ = 4, w__ = -1, rotation = [0, 0, 0], rotate_ = False, phase = 0, texture__ = 4, num_elem = 3, obj_flag = 1}
 
+-- See section 2 of the map file specification.
 map_object :: Char -> [Obj_place] -> Int -> Int -> Int -> Int -> Maybe Obj_place
 map_object '0' obj u v w c = Nothing
 map_object 'a' obj u v w c = Just ((obj !! 0) {u__ = fromIntegral u, v__ = fromIntegral v, w__ = fromIntegral w, obj_flag = c})
@@ -42,6 +55,13 @@ load_object :: [[Char]] -> [Obj_place]
 load_object [] = []
 load_object (x0:x1:x2:x3:x4:x5:x6:xs) = Obj_place {ident_ = read x0, u__ = 0, v__ = 0, w__ = 0, rotation = proc_ints [x1, x2, x3], rotate_ = load_grid1 x4, phase = 0, texture__ = read x5, num_elem = read x6, obj_flag = 0} : load_object xs
 
+maybe_object :: Obj_place -> [Char]
+maybe_object x =
+  if ident_ x == 0 then "0, "
+  else if obj_flag x > 7499 then throw Invalid_obj_flag
+  else "1, " ++ (show (ident_ x)) ++ ", " ++ (show (u__  x)) ++ ", " ++ (show (v__ x)) ++ ", " ++ (show (w__ x)) ++ ", " ++ (show_ints (rotation x)) ++ (show_bool (rotate_ x)) ++ (show (phase x)) ++ ", " ++ (show (texture__ x)) ++ ", " ++ (show (num_elem x)) ++ ", " ++ (show (obj_flag x)) ++ ", "
+
+-- See section 1 of the map file specification.
 wall_setup :: Char -> [Bool]
 wall_setup 'a' = [False, False, False, False]
 wall_setup 'b' = [False, False, False, True]
@@ -60,28 +80,14 @@ wall_setup 'n' = [True, True, False, True]
 wall_setup 'o' = [True, True, True, False]
 wall_setup 'p' = [True, True, True, True]
 
-show_bool :: Bool -> [Char]
-show_bool True = "1, "
-show_bool False = "0, "
-
-show_ints :: [Int] -> [Char]
-show_ints [] = []
-show_ints (x:xs) = (show x) ++ ", " ++ show_ints xs
-
-maybe_object :: Obj_place -> [Char]
-maybe_object x =
-  if ident_ x == 0 then "0, "
-  else if obj_flag x > 7499 then throw Invalid_obj_flag
-  else "1, " ++ (show (ident_ x)) ++ ", " ++ (show (u__  x)) ++ ", " ++ (show (v__ x)) ++ ", " ++ (show (w__ x)) ++ ", " ++ (show_ints (rotation x)) ++ (show_bool (rotate_ x)) ++ (show (phase x)) ++ ", " ++ (show (texture__ x)) ++ ", " ++ (show (num_elem x)) ++ ", " ++ (show (obj_flag x)) ++ ", "
-
--- These functions parse the map file and generate engine interpretable data using the transformation functions above
-
+-- This function is used to add a layer of padding to the walls, which is visible to the player collision detection but has no visual presence.  This is to prevent the player model from intersecting with
+-- the walls in third person view mode.
 pad_walls :: Wall_grid -> Int -> Int -> Int -> [Char]
 pad_walls x u v w =
   if u1 x == True || u2 x == True || v1 x == True || v2 x == True then show w ++ ", " ++ show u ++ ", " ++ show v ++ ", " ++ "4, 0, "
   else []
 
--- The data needed to generate the Wall_grid array is produced here
+-- These three functions handle the transformation of the wall grid part of the map file into an intermediate text format.
 grid_setup2 :: Int -> Int -> Int -> Int -> Int -> Int -> Int -> [Int]
 grid_setup2 c0 c1 u v t u_max v_max =
   if t == 1 && v > v_max && u == u_max then []
@@ -109,7 +115,7 @@ grid_setup0 (x:xs) u v w u_max v_max w_max acc0 acc1 =
   else if v == v_max then grid_setup0 xs (u + 1) 0 w u_max v_max w_max (acc0 >< fromList (init_ w_grid ++ ":")) (acc1 >< fromList (pad_walls x u v w))
   else grid_setup0 xs u (v + 1) w u_max v_max w_max (acc0 >< fromList w_grid) (acc1 >< fromList (pad_walls x u v w))
 
--- These two functions produce the data needed to generate the Floor_grid array
+-- These two functions handle the transformation of the floor grid part of the map file into an intermediate text format.
 make_floor1 :: Int -> Char -> [Char]
 make_floor1 w 'a' = (show w) ++ ", " ++ "0"
 make_floor1 w 'b' = (show w) ++ ", " ++ "1"
@@ -126,6 +132,7 @@ make_floor0 (x:xs) u v w u_max v_max w_max =
   else if v == v_max then make_floor1 w x ++ ":" ++ make_floor0 xs (u + 1) 0 w u_max v_max w_max
   else make_floor1 w x ++ ", " ++ make_floor0 xs u (v + 1) w u_max v_max w_max
 
+-- The entry point to this module, called from Main.setup_game
 proc_map :: [[Char]] -> Int -> Int -> Int -> ([Char], [Char])
 proc_map pre_map u_max v_max w_max =
   let next_c = div ((u_max + 1) * (v_max + 1)) 4

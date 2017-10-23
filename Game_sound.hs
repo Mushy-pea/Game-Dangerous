@@ -3,7 +3,7 @@
 -- GHC reported "No instance for GeneratableObjectName Buffer" despite this instance being declared in the relevant module.
 -- An equivalent error occured for GeneratableObjectName Source.  As a work around for this version I have written my own functions
 -- for generating buffer and source names, which required overiding the library's module structure in places to bring certain things
--- in hidden modules into scope.  This overriding is done in AL_buffer.
+-- in hidden modules into scope.  This is why the AL_buffer module is required.
 
 module Game_sound where
 
@@ -23,6 +23,7 @@ import Sound.OpenAL.ALC
 import Unsafe.Coerce
 import AL_buffer
 
+-- See notes at the top of the module.
 foreign import ccall unsafe "alGenSources"
    alGenSources :: Sound.OpenAL.AL.BasicTypes.ALsizei -> Ptr Sound.OpenAL.AL.BasicTypes.ALuint -> IO ()
 
@@ -41,6 +42,7 @@ instance Storable Game_sound.Source where
    peek                  = peek1 Source . castPtr
    poke ptr   (Source b) = poke1 (castPtr ptr) b
 
+-- Initialise the OpenAL context.
 init_al_context :: IO ()
 init_al_context = do
   def <- get defaultDeviceSpecifier
@@ -48,6 +50,7 @@ init_al_context = do
   context <- createContext (fromJust audio_dev) []
   currentContext $= context
 
+-- Generate and link the required set of OpenAL source and buffer objects.
 init_al_effect0 :: [[Char]] -> Array Int Game_sound.Source -> IO (Array Int Game_sound.Source)
 init_al_effect0 sample_list src_array = do
   buf <- gen_buffer0 0 (div (length sample_list) 2) []
@@ -63,10 +66,7 @@ init_al_effect1 (x0:x1:xs) (y:ys) (z:zs) src_array = do
   link_source [z] [y]
   init_al_effect1 xs ys zs (src_array // [(read x0, z)])
 
-play_ :: Game_sound.Source -> IO ()
-play_ src = play [unsafeCoerce src]
-
--- Custom source generation functions (bug fix)
+-- Custom source generation functions (bug fix).
 gen_source1 :: IO Game_sound.Source
 gen_source1 = do
   p_src <- mallocBytes 4
@@ -82,7 +82,7 @@ gen_source0 c limit acc = do
     src <- gen_source1
     gen_source0 (c + 1) limit (acc ++ [src])
 
--- These functions deal with loading sound samples into OpenAL buffers and linking buffers to sources
+-- These four functions deal with loading sound samples from WAV files into OpenAL buffers and linking buffers to sources.
 load_snd_buf0 :: [[Char]] -> [(WAVESamples, Int)] -> IO [(WAVESamples, Int)]
 load_snd_buf0 [] acc = return acc
 load_snd_buf0 (x:xs) acc = do
@@ -105,6 +105,7 @@ load_snd_buf2 (x:xs) p_buf i = do
   poke (plusPtr p_buf (i + 2)) (fromIntegral (div (x !! 1) 65536) :: Int16)
   load_snd_buf2 xs p_buf (i + 4)
 
+
 link_source :: [Game_sound.Source] -> [Buffer] -> IO ()
 link_source [] [] = return ()
 link_source (x:xs) (y:ys) = do
@@ -112,3 +113,5 @@ link_source (x:xs) (y:ys) = do
   (sourcePosition (unsafeCoerce x)) $= (Vertex3 0 0 1)
   link_source xs ys
 
+play_ :: Game_sound.Source -> IO ()
+play_ src = play [unsafeCoerce src]
