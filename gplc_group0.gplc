@@ -1,4 +1,4 @@
-platform 0, comments = yes
+platform
 ~
 block0 0 block1 1 bot 0 top 240 pos 240 sig2 5 sig3 3 sig4 4
 w0 0 w1 -1 u0 8 v0 4 u1 2 v1 5
@@ -8,11 +8,6 @@ h 3 not_abs 0 down_step -4167 up_step 4167
 fl_u 4 fl_v 2 dec -1 inc 1
 mode 1 u2 3 v2 4
 ~
-1 0 31
-2 31 43
-3 74 66
-4 140 48
-x
 --signal 1
 if 0 pos top 0 25
 chg_obj_type closed w0 u0 v0
@@ -51,25 +46,20 @@ chg_floor bot not_abs up_step w0 fl_u fl_v
 chg_value pos not_abs inc w0 u0 v0
 send_signal sig4 w0 u0 v0
 ~
-green_key, comments = no
+green_key
 ~
 val 4 abs 1 key 78 mode 0 w0 -1 u 4 v 4 w1 0 msg_length 23
 ~
-1 0 46 x
+--signal 1
 chg_ps1 val abs key
 chg_grid mode w0 u v w0 u v
 chg_grid_ mode w1 u v w1 u v
 pass_msg 25 msg_length 0 25 41 47 63 33 41 46 63 46 34 31 63 33 44 31 31 40 63 37 31 51 66
 ~
-switch, comments = yes
+switch
 ~
 val 9 abs 1 tex2 2 w0 -1 u0 9 v0 1 sig0 2 sig1 4 w1 0 u1 8 v1 4 tex1 1 msg_length0 39 msg_length1 40 key 78 health 0 ammo 0 gems 0 torches 0 key0 0 key1 0 key2 0 key3 0 key4 0 key5 0 cs0 4 cs1 63
 ~
-1 0 30
-2 30 12
-3 42 2
-4 44 89
-5 133 7 x
 --signal 1
 copy_ps1 174 w1 u0 v0
 place_hold health
@@ -95,9 +85,9 @@ pass_msg 41 msg_length0 0 25 41 47 63 40 31 31 30 63 27 63 33 44 31 31 40 63 37 
 --signal 5
 chg_state val abs tex1 w0 u0 v0
 ~
-exit_region0, comments = no
+exit_region
 ~
 msg_length 1
 ~
-1 0 3 x
+--signal 1
 pass_msg 3 msg_length -5
