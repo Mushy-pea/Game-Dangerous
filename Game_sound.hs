@@ -51,20 +51,20 @@ init_al_context = do
   currentContext $= context
 
 -- Generate and link the required set of OpenAL source and buffer objects.
-init_al_effect0 :: [[Char]] -> Array Int Game_sound.Source -> IO (Array Int Game_sound.Source)
-init_al_effect0 sample_list src_array = do
+init_al_effect0 :: [[Char]] -> [Char] -> Array Int Game_sound.Source -> IO (Array Int Game_sound.Source)
+init_al_effect0 sample_list path src_array = do
   buf <- gen_buffer0 0 (div (length sample_list) 2) []
   src <- gen_source0 0 (div (length sample_list) 2) []
-  src_array_ <- init_al_effect1 sample_list buf src src_array
+  src_array_ <- init_al_effect1 sample_list buf src path src_array
   return src_array_
 
-init_al_effect1 :: [[Char]] -> [Buffer] -> [Game_sound.Source] -> Array Int Game_sound.Source -> IO (Array Int Game_sound.Source)
-init_al_effect1 [] [] [] src_array = return src_array
-init_al_effect1 (x0:x1:xs) (y:ys) (z:zs) src_array = do
-  sample_data <- load_snd_buf0 [x1] []
+init_al_effect1 :: [[Char]] -> [Buffer] -> [Game_sound.Source] -> [Char] -> Array Int Game_sound.Source -> IO (Array Int Game_sound.Source)
+init_al_effect1 [] [] [] path src_array = return src_array
+init_al_effect1 (x0:x1:xs) (y:ys) (z:zs) path src_array = do
+  sample_data <- load_snd_buf0 [x1] path []
   load_snd_buf1 [y] sample_data
   link_source [z] [y]
-  init_al_effect1 xs ys zs (src_array // [(read x0, z)])
+  init_al_effect1 xs ys zs path (src_array // [(read x0, z)])
 
 -- Custom source generation functions (bug fix).
 gen_source1 :: IO Game_sound.Source
@@ -83,11 +83,11 @@ gen_source0 c limit acc = do
     gen_source0 (c + 1) limit (acc ++ [src])
 
 -- These four functions deal with loading sound samples from WAV files into OpenAL buffers and linking buffers to sources.
-load_snd_buf0 :: [[Char]] -> [(WAVESamples, Int)] -> IO [(WAVESamples, Int)]
-load_snd_buf0 [] acc = return acc
-load_snd_buf0 (x:xs) acc = do
-  wave_data <- getWAVEFile x
-  load_snd_buf0 xs (acc ++ [(waveSamples wave_data, length (waveSamples wave_data))])
+load_snd_buf0 :: [[Char]] -> [Char] -> [(WAVESamples, Int)] -> IO [(WAVESamples, Int)]
+load_snd_buf0 [] path acc = return acc
+load_snd_buf0 (x:xs) path acc = do
+  wave_data <- getWAVEFile (path ++ x)
+  load_snd_buf0 xs path (acc ++ [(waveSamples wave_data, length (waveSamples wave_data))])
 
 load_snd_buf1 :: [Buffer] -> [(WAVESamples, Int)] -> IO ()
 load_snd_buf1 [] [] = return ()

@@ -3,7 +3,7 @@ module Game_logic where
 import System.IO
 import System.IO.Unsafe
 import System.Exit
-import Graphics.Rendering.OpenGL.Raw.Core33
+import Graphics.GL.Core33
 import Foreign
 import System.Win32
 import Graphics.Win32
@@ -26,7 +26,6 @@ foreign import ccall "wingdi.h SwapBuffers"
 -- A psudorandom number sequence used by the game logic to add an element of chance to certain game events (e.g. player damage when hit by projectiles).
 prob_seq :: UArray Int Int
 prob_seq = listArray (0, 239) [5, 1, 8, 5, 6, 4, 0, 9, 5, 2, 0, 9, 1, 7, 7, 6, 7, 0, 4, 5, 9, 6, 4, 3, 5, 9, 8, 8, 3, 1, 3, 7, 1, 7, 1, 5, 2, 4, 3, 2, 9, 8, 9, 9, 9, 4, 3, 0, 2, 2, 0, 8, 2, 5, 4, 4, 4, 7, 2, 1, 3, 7, 3, 4, 1, 0, 0, 0, 7, 3, 6, 9, 1, 9, 1, 9, 4, 3, 6, 0, 8, 0, 2, 8, 9, 6, 5, 8, 4, 7, 3, 7, 1, 7, 9, 2, 4, 7, 5, 9, 5, 0, 0, 1, 4, 1, 5, 3, 4, 9, 4, 6, 0, 1, 8, 4, 2, 5, 1, 5, 8, 3, 6, 4, 5, 9, 8, 6, 0, 9, 9, 7, 7, 4, 5, 2, 1, 8, 1, 0, 2, 8, 5, 1, 5, 7, 1, 7, 5, 2, 1, 5, 3, 4, 7, 3, 3, 2, 5, 2, 6, 8, 2, 8, 1, 1, 7, 1, 9, 7, 0, 6, 5, 7, 9, 3, 4, 1, 3, 9, 3, 8, 9, 5, 7, 7, 8, 2, 3, 2, 8, 5, 3, 7, 4, 8, 5, 9, 2, 1, 0, 5, 8, 5, 2, 6, 7, 3, 4, 5, 1, 9, 3, 3, 7, 4, 0, 8, 9, 1, 4, 6, 8, 5, 3, 7, 1, 5, 2, 3, 6, 9, 5, 7, 8, 5, 1, 5, 8, 4]
-
 
 -- Used to load C style arrays, which are used with certain OpenGL functions.
 load_array :: Storable a => [a] -> Ptr a -> Int -> IO ()
@@ -117,19 +116,6 @@ bool_to_int False = 0
 
 int_to_bool 0 = False
 int_to_bool 1 = True
-
-head_ [] = 1
-head_ ls = head ls
-tail_ [] = []
-tail_ ls = tail ls
-fst_ (a, b, c, d, e) = a
-snd_ (a, b, c, d, e) = b
-third (a, b, c, d, e) = c
-fourth (a, b, c, d, e) = d
-fifth (a, b, c, d, e) = e
-fst__ (a, b, c) = a
-snd__ (a, b, c) = b
-third_ (a, b, c) = c
 
 -- These three functions perform GPLC conditional expression folding, evaluating conditional op - codes at the start of a GPLC program run to yield unconditional code.
 on_signal :: [Int] -> [Int] -> Int -> [Int]
@@ -841,25 +827,25 @@ run_menu [] acc io_box x y c c_max d = do
   sleep 33
   control <- messagePump (hwnd_ io_box)
   if control == 3 && c > 1 then do
-    glClear (gl_COLOR_BUFFER_BIT .|. gl_DEPTH_BUFFER_BIT)
+    glClear (GL_COLOR_BUFFER_BIT .|. GL_DEPTH_BUFFER_BIT)
     run_menu acc [] io_box x 0.1 (c - 1) c_max 2
   else if control == 5 && c < c_max then do
-    glClear (gl_COLOR_BUFFER_BIT .|. gl_DEPTH_BUFFER_BIT)
+    glClear (GL_COLOR_BUFFER_BIT .|. GL_DEPTH_BUFFER_BIT)
     run_menu acc [] io_box x 0.1 (c + 1) c_max 2
   else if control == 2 then return c
   else do
-    glClear (gl_COLOR_BUFFER_BIT .|. gl_DEPTH_BUFFER_BIT)
+    glClear (GL_COLOR_BUFFER_BIT .|. GL_DEPTH_BUFFER_BIT)
     run_menu acc [] io_box x 0.1 c c_max 2
 run_menu (n:ns) acc io_box x y c c_max d = do
   if d == 2 then do
     glBindVertexArray (unsafeCoerce ((fst (p_bind_ io_box)) ! 1017))
-    glBindTexture gl_TEXTURE_2D (unsafeCoerce ((fst (p_bind_ io_box)) ! 1018))
+    glBindTexture GL_TEXTURE_2D (unsafeCoerce ((fst (p_bind_ io_box)) ! 1018))
     glUseProgram (unsafeCoerce ((fst (p_bind_ io_box)) ! ((snd (p_bind_ io_box)) - 3)))
     glUniform1i (fromIntegral ((uniform_ io_box) ! 38)) 0
     p_tt_matrix <- mallocBytes (glfloat * 16)
     load_array [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1] p_tt_matrix 0
     glUniformMatrix4fv (fromIntegral ((uniform_ io_box) ! 36)) 1 1 p_tt_matrix
-    glDrawElements gl_TRIANGLES 6 gl_UNSIGNED_SHORT zero_ptr
+    glDrawElements GL_TRIANGLES 6 GL_UNSIGNED_SHORT zero_ptr
     free p_tt_matrix
   else return ()
   glBindVertexArray (unsafeCoerce ((fst (p_bind_ io_box)) ! 933))
@@ -883,7 +869,7 @@ show_text (m:ms) mode base uniform p_bind p_tt_matrix x y offset = do
   else do
     putStr "show_text: Invalid mode or character reference in text line..."
     show_text ms mode base uniform p_bind p_tt_matrix (x + 0.05) y (offset + 16)
-  glBindTexture gl_TEXTURE_2D (unsafeCoerce ((fst p_bind) ! (base + m)))
-  glDrawElements gl_TRIANGLES 6 gl_UNSIGNED_SHORT zero_ptr
+  glBindTexture GL_TEXTURE_2D (unsafeCoerce ((fst p_bind) ! (base + m)))
+  glDrawElements GL_TRIANGLES 6 GL_UNSIGNED_SHORT zero_ptr
   show_text ms mode base uniform p_bind p_tt_matrix (x + 0.04) y (offset + 16)
 
