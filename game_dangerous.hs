@@ -283,13 +283,13 @@ proc_splash text c = (c, conv_msg_ (take 48 text)) : proc_splash (drop 48 text) 
 gen_prob_seq :: RandomGen g => Int -> Int -> Int -> g -> UArray Int Int
 gen_prob_seq i0 i1 i2 g = listArray (i0, i1) (drop i2 (randomRs (0, 9) g))
 
---  let w_grid = (make_array0 ((build_table0 (elems (build_table1 (splitOn ", " ((splitOn "~" c) !! 7)) (empty_w_grid (read ((splitOn "~" c) !! 8)) (read ((splitOn "~" c) !! 9)) (read ((splitOn "~" c) !! 10))) 7500)) 8)) (read ((splitOn "~" c) !! 9)) (read ((splitOn "~" c) !! 10))) ++ (sort_grid0 (splitOn "&" ((splitOn "~" c) !! 4))) (read ((splitOn "~" c) !! 8)) (read ((splitOn "~" c) !! 9)) (read ((splitOn "~" c) !! 10)))
-
 -- This function initialises the game logic and rendering threads each time a new game is started and handles user input from the main menu.
 start_game :: HWND -> HDC -> UArray Int Int32 -> (UArray Int Word32, Int) -> [Char] -> Array Int [Char] -> Int -> (Float, Float, Float, Float, Float, Float, Float) -> Save_state -> Array Int Source -> IO ()
 start_game hwnd hdc uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag_j) save_state sound_array =
   let w_grid = (make_array0 ((build_table0 (elems (build_table1 (splitOn ", " ((splitOn "~" c) !! 7)) (empty_w_grid (read ((splitOn "~" c) !! 8)) (read ((splitOn "~" c) !! 9)) (read ((splitOn "~" c) !! 10))) 7500)) (read ((splitOn "~" c) !! 8)) (read ((splitOn "~" c) !! 9)) (read ((splitOn "~" c) !! 10))) ++ (sort_grid0 (splitOn "&" ((splitOn "~" c) !! 4)))) (read ((splitOn "~" c) !! 8)) (read ((splitOn "~" c) !! 9)) (read ((splitOn "~" c) !! 10)))
       f_grid = (make_array1 (load_floor0 (splitOn "&" ((splitOn "~" c) !! 5))) (read ((splitOn "~" c) !! 8)) (read ((splitOn "~" c) !! 9)) (read ((splitOn "~" c) !! 10)))
+      floor_map = gen_floor_map2 f_grid (def_floor_map (read ((splitOn "~" c) !! 8)) (read ((splitOn "~" c) !! 9))) [] 0 0 0 (read ((splitOn "~" c) !! 8)) (read ((splitOn "~" c) !! 9)) 0 (0, 0)
+      f_grid' = gen_floor_map0 0 0 0 (read ((splitOn "~" c) !! 8)) (read ((splitOn "~" c) !! 9)) f_grid (fst__ floor_map) (snd__ floor_map) (third_ floor_map)
       obj_grid = ((empty_obj_grid (read ((splitOn "~" c) !! 8)) (read ((splitOn "~" c) !! 9)) (read ((splitOn "~" c) !! 10))) // load_obj_grid (splitOn ", " ((splitOn "~" c) !! 6)))
       look_up_ = look_up [make_table 0 0, make_table 1 0, make_table 2 0, make_table 3 0]
       camera_to_clip' = fromList 4 4 [frustumScale, 0, 0, 0, 0, frustumScale, 0, 0, 0, 0, ((zFar + zNear) / (zNear - zFar)), ((2 * zFar * zNear) / (zNear - zFar)), 0, 0, -1, 0]
@@ -305,8 +305,9 @@ start_game hwnd hdc uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag_j)
     p_f_table0 <- callocBytes (int_ * 120000)
     p_f_table1 <- callocBytes (int_ * 37500)
     state_ref <- newEmptyMVar
+    r_gen <- getStdGen
     if mode == 0 then do
-      tid <- forkIO (update_play (Io_box {hwnd_ = hwnd, hdc_ = hdc, uniform_ = uniform, p_bind_ = p_bind}) state_ref (ps0_init {pos_u = u, pos_v = v, pos_w = w, show_fps_ = select_mode (cfg' "show_fps")}) (ps1_init {verbose_mode = select_mode (cfg' "verbose_mode"), angle_step = set_angle_step (cfg' "fps_limit")}) False ((read (cfg' "fps_limit")) / 1.25) (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up_ conf_reg save_state sound_array)
+      tid <- forkIO (update_play (Io_box {hwnd_ = hwnd, hdc_ = hdc, uniform_ = uniform, p_bind_ = p_bind}) state_ref (ps0_init {pos_u = u, pos_v = v, pos_w = w, show_fps_ = select_mode (cfg' "show_fps"), prob_seq = gen_prob_seq 0 239 (read (cfg' "prob_c")) r_gen}) (ps1_init {verbose_mode = select_mode (cfg' "verbose_mode"), angle_step = set_angle_step (cfg' "fps_limit")}) False ((read (cfg' "fps_limit")) / 1.25) (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up_ conf_reg save_state sound_array)
       result <- show_frame hdc p_bind uniform p_mt_matrix (p_f_table0, p_f_table1) 0 0 0 0 0 1 state_ref w_grid f_grid obj_grid look_up_ (read ((splitOn "~" c) !! 10)) 0 camera_to_clip' (div 1000 (read (cfg' "fps_limit"))) 0
       free p_mt_matrix
       free p_f_table0

@@ -19,10 +19,6 @@ import Data.Maybe
 import Control.Exception
 import Graphics.GL.Core33
 
-head_ [] = 1
-head_ ls = head ls
-tail_ [] = []
-tail_ ls = tail ls
 fst_ (a, b, c, d, e) = a
 snd_ (a, b, c, d, e) = b
 third (a, b, c, d, e) = c
@@ -70,31 +66,42 @@ data Ray_hit = U1 | U2 | V1 | V2 | Corner0 | Corner1 | Corner2 | Corner3 | U1_hi
 
 data Terrain = Flat | Positive_u | Negative_u | Positive_v | Negative_v | Open deriving (Eq, Show, Read)
 
-data Floor_grid = Floor_grid {w_ :: Float, surface :: Terrain} deriving (Show)
+data Floor_grid = Floor_grid {w_ :: Float, surface :: Terrain, local_up_ramp :: (Int, Int), local_down_ramp :: (Int, Int)} deriving (Show)
 
-data Play_state0 = Play_state0 {pos_u :: Float, pos_v :: Float, pos_w :: Float, vel :: [Float], angle :: Int, message_ :: [(Int, [Int])], msg_count :: Int, rend_mode :: Int, view_mode :: Int, view_angle :: Int, game_t :: Int, torch_t0 :: Int, torch_t_limit :: Int, show_fps_ :: Bool} deriving (Show)
+data Play_state0 = Play_state0 {pos_u :: Float, pos_v :: Float, pos_w :: Float, vel :: [Float], angle :: Int, message_ :: [(Int, [Int])], msg_count :: Int, rend_mode :: Int, view_mode :: Int, view_angle :: Int,
+game_t :: Int, torch_t0 :: Int, torch_t_limit :: Int, show_fps_ :: Bool, prob_seq :: UArray Int Int} deriving (Show)
 
-data Play_state1 = Play_state1 {health :: Int, ammo :: Int, gems :: Int, torches :: Int, keys :: [Int], region :: [Int], difficulty :: ([Char], Int, Int, Int), sig_q :: [Int], next_sig_q :: [Int], message :: [Int], state_chg :: Int, verbose_mode :: Bool, angle_step :: Int} deriving (Show)
+data Play_state1 = Play_state1 {health :: Int, ammo :: Int, gems :: Int, torches :: Int, keys :: [Int], region :: [Int], difficulty :: ([Char], Int, Int, Int), sig_q :: [Int], next_sig_q :: [Int],
+message :: [Int], state_chg :: Int, verbose_mode :: Bool, angle_step :: Int, npc_states :: Array Int NPC_state}
+
+data NPC_state = NPC_state {npc_type :: Int, c_health :: Int, ticks_left0 :: Int, ticks_left1 :: Int, node_locations :: [Int], arr_node_locs :: [Int], fg_position :: (Float, Float, Float), dir_vector :: (Float, Float), direction :: Int, last_dir :: Int,
+target_u' :: Int, target_v' :: Int, target_w' :: Int, speed :: Float, avoid_dist :: Int, attack_mode :: Bool, final_appr :: Bool, fire_prob :: Int}
 
 data Save_state = Save_state {is_set :: Bool, w_grid_ :: Array (Int, Int, Int) Wall_grid, f_grid_ :: Array (Int, Int, Int) Floor_grid, obj_grid_ :: Array (Int, Int, Int) (Int, [Int]), s0_ :: Play_state0, s1_ :: Play_state1}
 
 data Io_box = Io_box {hwnd_ :: HWND, hdc_ :: HDC, uniform_ :: UArray Int Int32, p_bind_ :: (UArray Int Word32, Int)}
 
-data EngineError = Invalid_wall_flag | Invalid_obj_flag | Invalid_GPLC_opcode | Invalid_conf_reg_field deriving (Show)
+data EngineError = Invalid_wall_flag | Invalid_obj_flag | Invalid_GPLC_opcode | Invalid_conf_reg_field | NPC_feature_not_implemented deriving (Show)
 
 instance Exception EngineError
 
-ps0_init = Play_state0 {pos_u = 0, pos_v = 0, pos_w = 0, vel = [0, 0, 0], angle = 0, message_ = [], msg_count = 0, rend_mode = 0, view_mode = 0, view_angle = 0, game_t = 1, torch_t0 = 1, torch_t_limit = 0, show_fps_ = False}
-ps1_init = Play_state1 {health = 100, ammo = 0, gems = 0, torches = 0, keys = [63,63,63,63,63,63], region = [19,46,41,44,27,33,31,63,28,27,51,63,4], difficulty = ("Plenty of danger please", 6, 10, 14), sig_q = [], next_sig_q = [], message = [], state_chg = 0, verbose_mode = False, angle_step = 0}
+ps0_init = Play_state0 {pos_u = 0, pos_v = 0, pos_w = 0, vel = [0, 0, 0], angle = 0, message_ = [], msg_count = 0, rend_mode = 0, view_mode = 0, view_angle = 0, game_t = 1, torch_t0 = 1, torch_t_limit = 0, show_fps_ = False, prob_seq = def_prob_seq}
+ps1_init = Play_state1 {health = 100, ammo = 0, gems = 0, torches = 0, keys = [63,63,63,63,63,63], region = [19,46,41,44,27,33,31,63,28,27,51,63,4], difficulty = ("Plenty of danger please", 6, 10, 14), sig_q = [], next_sig_q = [], message = [], state_chg = 0, verbose_mode = False, angle_step = 0, npc_states = empty_npc_array}
 
 def_w_grid = Wall_grid {u1 = False, u2 = False, v1 = False, v2 = False, u1_bound = 0, u2_bound = 0, v1_bound = 0, v2_bound = 0, w_level = 0,  wall_flag = [], texture = [], obj = Nothing}
 def_w_grid_arr = array ((0, 0, 0), (2, 9, 9)) [((w, u, v), def_w_grid) | w <- [0..2], u <- [0..9], v <- [0..9]]
-def_f_grid = Floor_grid {w_ = 0, surface = Flat}
+def_f_grid = Floor_grid {w_ = 0, surface = Flat, local_up_ramp = (0, 0), local_down_ramp = (0, 0)}
 def_f_grid_arr = array ((0, 0, 0), (2, 9, 9)) [((w, u, v), def_f_grid) | w <- [0..2], u <- [0..9], v <- [0..9]] :: Array (Int, Int, Int) Floor_grid
 def_obj_grid = (0, [])
 def_obj_grid_arr = array ((0, 0, 0), (2, 9, 9)) [((w, u, v), def_obj_grid) | w <- [0..2], u <- [0..9], v <- [0..9]] :: Array (Int, Int, Int) (Int, [Int])
 def_save_state = Save_state {is_set = False, w_grid_ = def_w_grid_arr, f_grid_ = def_f_grid_arr, obj_grid_ = def_obj_grid_arr, s0_ = ps0_init, s1_ = ps1_init}
 def_wall_place = Wall_place {rotate = 0, translate_u = 0, translate_v = 0, translate_w = 0, wall_flag_ = 0, texture_ = 0, isNull = True}
+def_prob_seq = array (0, 239) [(i, 0) | i <- [0..239]]
+
+def_npc_state = NPC_state {npc_type = 0, c_health = 0, ticks_left0 = 0, ticks_left1 = 0, node_locations = [], arr_node_locs = [], fg_position = (0, 0, 0), dir_vector = (0, 0), direction = 0, last_dir = 0,
+target_u' = 0, target_v' = 0, target_w' = 0, speed = 0, avoid_dist = 0, attack_mode = False, final_appr = False, fire_prob = 0}
+
+empty_npc_array = array (0, 127) [(i, def_npc_state) | i <- [0..127]]
 
 -- This class is used in functions that filter the result of the ray tracer to avoid multiple rendering.
 class Flag a where
@@ -178,7 +185,7 @@ mod_angle a b =
 
 mod_angle' a b = b
 
--- These functions implement a ray tracing algorhythm, which is part of the visible surface determination system.
+-- These functions implement a ray tracing algorhythm, which is part of the visible surface determination system and is used for line of sight checks by the non - player character logic.
 bound_check :: Int -> Int -> ((Int, Int, Int), (Int, Int, Int)) -> Bool
 bound_check block axis ((a, b, c), (w_max, u_max, v_max)) =
   if axis == 0 && block > u_max then False
@@ -199,145 +206,154 @@ f_block w u v f_target0 f_grid obj_grid =
   else if f_target0 == Negative_v && fst (obj_grid ! (w, u, v)) == 0 then -8
   else 0
 
-intersect1 :: Ray_hit -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> Int -> Int -> Int -> Int -> Int -> (Ray_hit, Int)
-intersect1 U1 f_grid obj_grid w_block u_block v_block seek_mode c =
-  let f_target0 = surface (f_grid ! (w_block, div u_block 2, div v_block 2))
-      f_block_ = f_block w_block (u_block - 1) v_block f_target0 f_grid obj_grid
-  in
-  if seek_mode < 3 then
-    if fst (obj_grid ! (w_block, u_block - 1, v_block)) > 0 then (Object_hit, 0)
-    else if surface (f_grid ! (w_block, div (u_block - 1) 2, div v_block 2)) /= Flat then (Object_hit, 0)
+class Ray_test a where
+  intersect :: Ray_hit -> Array (Int, Int, Int) a -> Array (Int, Int, Int) Floor_grid -> Int -> Int -> Int -> Int -> Int -> (Ray_hit, Int)
+
+  scan_cube :: Array (Int, Int, Int) a -> Int -> Int -> Int -> [Obj_place]
+
+instance Ray_test (Int, [Int]) where
+  intersect U1 obj_grid f_grid w_block u_block v_block seek_mode c =
+    let f_target0 = surface (f_grid ! (w_block, div u_block 2, div v_block 2))
+        f_block_ = f_block w_block (u_block - 1) v_block f_target0 f_grid obj_grid
+    in
+    if seek_mode < 3 then
+      if fst (obj_grid ! (w_block, u_block - 1, v_block)) > 0 then (Object_hit, 0)
+      else if surface (f_grid ! (w_block, div (u_block - 1) 2, div v_block 2)) /= Flat then (Object_hit, 0)
+      else (U1, 0)
+    else
+      if c == 1 && f_target0 /= Flat then
+        if f_block_ == 0 then (Object_hit, 0)
+        else (Ramp_found, f_block_)
+      else if fst (obj_grid ! (w_block, u_block - 1, v_block)) > 0 then (Object_hit, 0)
+      else (U1, 0)
+  intersect U2 obj_grid f_grid w_block u_block v_block seek_mode c =
+    let f_target0 = surface (f_grid ! (w_block, div u_block 2, div v_block 2))
+        f_block_ = f_block w_block (u_block + 1) v_block f_target0 f_grid obj_grid
+    in
+    if seek_mode < 3 then
+      if fst (obj_grid ! (w_block, u_block + 1, v_block)) > 0 then (Object_hit, 0)
+      else if surface (f_grid ! (w_block, div (u_block + 1) 2, div v_block 2)) /= Flat then (Object_hit, 0)
+      else (U1, 0)
+    else
+      if c == 1 && f_target0 /= Flat then
+        if f_block_ == 0 then (Object_hit, 0)
+        else (Ramp_found, f_block_)
+      else if fst (obj_grid ! (w_block, u_block + 1, v_block)) > 0 then (Object_hit, 0)
+      else (U2, 0)
+  intersect V1 obj_grid f_grid w_block u_block v_block seek_mode c =
+    let f_target0 = surface (f_grid ! (w_block, div u_block 2, div v_block 2))
+        f_block_ = f_block w_block u_block (v_block - 1) f_target0 f_grid obj_grid
+    in
+    if seek_mode < 3 then
+      if fst (obj_grid ! (w_block, u_block, v_block - 1)) > 0 then (Object_hit, 0)
+      else if surface (f_grid ! (w_block, div u_block 2, div (v_block - 1) 2)) /= Flat then (Object_hit, 0)
+      else (V1, 0)
+    else
+      if c == 1 && f_target0 /= Flat then
+        if f_block_ == 0 then (Object_hit, 0)
+        else (Ramp_found, f_block_)
+      else if fst (obj_grid ! (w_block, u_block, v_block - 1)) > 0 then (Object_hit, 0)
+      else (V1, 0)
+  intersect V2 obj_grid f_grid w_block u_block v_block seek_mode c =
+    let f_target0 = surface (f_grid ! (w_block, div u_block 2, div v_block 2))
+        f_block_ = f_block w_block u_block (v_block + 1) f_target0 f_grid obj_grid
+    in
+    if seek_mode < 3 then
+      if fst (obj_grid ! (w_block, u_block, v_block + 1)) > 0 then (Object_hit, 0)
+      else if surface (f_grid ! (w_block, div u_block 2, div (v_block + 1) 2)) /= Flat then (Object_hit, 0)
+      else (V2, 0)
+    else
+      if c == 1 && f_target0 /= Flat then
+        if f_block_ == 0 then (Object_hit, 0)
+        else (Ramp_found, f_block_)
+      else if fst (obj_grid ! (w_block, u_block, v_block + 1)) > 0 then (Object_hit, 0)
+      else (V2, 0)
+  intersect Corner0 obj_grid f_grid w_block u_block v_block seek_mode c =
+    let f_target0 = surface (f_grid ! (w_block, div u_block 2, div v_block 2))
+        f_block_ = f_block w_block (u_block - 1) (v_block + 1) f_target0 f_grid obj_grid
+    in
+    if seek_mode < 3 then
+      if fst (obj_grid ! (w_block, u_block - 1, v_block + 1)) > 0 then (Object_hit, 0)
+      else if surface (f_grid ! (w_block, div (u_block - 1) 2, div (v_block + 1) 2)) /= Flat then (Object_hit, 0)
+      else (Corner0, 0)
+    else
+      if c == 1 && f_target0 /= Flat then
+        if f_block_ == 0 then (Object_hit, 0)
+        else (Ramp_found, f_block_)
+      else if fst (obj_grid ! (w_block, u_block - 1, v_block + 1)) > 0 then (Object_hit, 0)
+      else (Corner0, 0)
+  intersect Corner1 obj_grid f_grid w_block u_block v_block seek_mode c =
+    let f_target0 = surface (f_grid ! (w_block, div u_block 2, div v_block 2))
+        f_block_ = f_block w_block (u_block + 1) (v_block + 1) f_target0 f_grid obj_grid
+    in
+    if seek_mode < 3 then
+      if fst (obj_grid ! (w_block, u_block + 1, v_block + 1)) > 0 then (Object_hit, 0)
+      else if surface (f_grid ! (w_block, div (u_block + 1) 2, div (v_block + 1) 2)) /= Flat then (Object_hit, 0)
+      else (Corner1, 0)
+    else
+      if c == 1 && f_target0 /= Flat then
+        if f_block_ == 0 then (Object_hit, 0)
+        else (Ramp_found, f_block_)
+      else if fst (obj_grid ! (w_block, u_block + 1, v_block + 1)) > 0 then (Object_hit, 0)
+      else (Corner1, 0)
+  intersect Corner2 obj_grid f_grid w_block u_block v_block seek_mode c =
+    let f_target0 = surface (f_grid ! (w_block, div u_block 2, div v_block 2))
+        f_block_ = f_block w_block (u_block + 1) (v_block - 1) f_target0 f_grid obj_grid
+    in
+    if seek_mode < 3 then
+      if fst (obj_grid ! (w_block, u_block + 1, v_block - 1)) > 0 then (Object_hit, 0)
+      else if surface (f_grid ! (w_block, div (u_block + 1) 2, div (v_block - 1) 2)) /= Flat then (Object_hit, 0)
+      else (Corner2, 0)
+    else
+      if c == 1 && f_target0 /= Flat then
+        if f_block_ == 0 then (Object_hit, 0)
+        else (Ramp_found, f_block_)
+      else if fst (obj_grid ! (w_block, u_block + 1, v_block - 1)) > 0 then (Object_hit, 0)
+      else (Corner2, 0)
+  intersect Corner3 obj_grid f_grid w_block u_block v_block seek_mode c =
+    let f_target0 = surface (f_grid ! (w_block, div u_block 2, div v_block 2))
+        f_block_ = f_block w_block (u_block - 1) (v_block - 1) f_target0 f_grid obj_grid
+    in
+    if seek_mode < 3 then
+      if fst (obj_grid ! (w_block, u_block - 1, v_block - 1)) > 0 then (Object_hit, 0)
+      else if surface (f_grid ! (w_block, div (u_block - 1) 2, div (v_block - 1) 2)) /= Flat then (Object_hit, 0)
+      else (Corner3, 0)
+    else
+      if c == 1 && f_target0 /= Flat then
+        if f_block_ == 0 then (Object_hit, 0)
+        else (Ramp_found, f_block_)
+      else if fst (obj_grid ! (w_block, u_block - 1, v_block - 1)) > 0 then (Object_hit, 0)
+      else (Corner3, 0)
+
+  scan_cube obj_grid w u v = []
+
+instance Ray_test Wall_grid where
+  intersect U1 w_grid f_grid w_block u_block v_block seek_mode c =
+    if u1 (w_grid ! (w_block, u_block, v_block)) == True then (U1_hit, 0)
     else (U1, 0)
-  else
-    if c == 1 && f_target0 /= Flat then
-      if f_block_ == 0 then (Object_hit, 0)
-      else (Ramp_found, f_block_)
-    else if fst (obj_grid ! (w_block, u_block - 1, v_block)) > 0 then (Object_hit, 0)
-    else (U1, 0)
-intersect1 U2 f_grid obj_grid w_block u_block v_block seek_mode c =
-  let f_target0 = surface (f_grid ! (w_block, div u_block 2, div v_block 2))
-      f_block_ = f_block w_block (u_block + 1) v_block f_target0 f_grid obj_grid
-  in
-  if seek_mode < 3 then
-    if fst (obj_grid ! (w_block, u_block + 1, v_block)) > 0 then (Object_hit, 0)
-    else if surface (f_grid ! (w_block, div (u_block + 1) 2, div v_block 2)) /= Flat then (Object_hit, 0)
-    else (U1, 0)
-  else
-    if c == 1 && f_target0 /= Flat then
-      if f_block_ == 0 then (Object_hit, 0)
-      else (Ramp_found, f_block_)
-    else if fst (obj_grid ! (w_block, u_block + 1, v_block)) > 0 then (Object_hit, 0)
+  intersect U2 w_grid f_grid w_block u_block v_block seek_mode c =
+    if u2 (w_grid ! (w_block, u_block, v_block)) == True then (U2_hit, 0)
     else (U2, 0)
-intersect1 V1 f_grid obj_grid w_block u_block v_block seek_mode c =
-  let f_target0 = surface (f_grid ! (w_block, div u_block 2, div v_block 2))
-      f_block_ = f_block w_block u_block (v_block - 1) f_target0 f_grid obj_grid
-  in
-  if seek_mode < 3 then
-    if fst (obj_grid ! (w_block, u_block, v_block - 1)) > 0 then (Object_hit, 0)
-    else if surface (f_grid ! (w_block, div u_block 2, div (v_block - 1) 2)) /= Flat then (Object_hit, 0)
+  intersect V1 w_grid f_grid w_block u_block v_block seek_mode c =
+    if v1 (w_grid ! (w_block, u_block, v_block)) == True then (V1_hit, 0)
     else (V1, 0)
-  else
-    if c == 1 && f_target0 /= Flat then
-      if f_block_ == 0 then (Object_hit, 0)
-      else (Ramp_found, f_block_)
-    else if fst (obj_grid ! (w_block, u_block, v_block - 1)) > 0 then (Object_hit, 0)
-    else (V1, 0)
-intersect1 V2 f_grid obj_grid w_block u_block v_block seek_mode c =
-  let f_target0 = surface (f_grid ! (w_block, div u_block 2, div v_block 2))
-      f_block_ = f_block w_block u_block (v_block + 1) f_target0 f_grid obj_grid
-  in
-  if seek_mode < 3 then
-    if fst (obj_grid ! (w_block, u_block, v_block + 1)) > 0 then (Object_hit, 0)
-    else if surface (f_grid ! (w_block, div u_block 2, div (v_block + 1) 2)) /= Flat then (Object_hit, 0)
+  intersect V2 w_grid f_grid w_block u_block v_block seek_mode c =
+    if v2 (w_grid ! (w_block, u_block, v_block)) == True then (V2_hit, 0)
     else (V2, 0)
-  else
-    if c == 1 && f_target0 /= Flat then
-      if f_block_ == 0 then (Object_hit, 0)
-      else (Ramp_found, f_block_)
-    else if fst (obj_grid ! (w_block, u_block, v_block + 1)) > 0 then (Object_hit, 0)
-    else (V2, 0)
-intersect1 Corner0 f_grid obj_grid w_block u_block v_block seek_mode c =
-  let f_target0 = surface (f_grid ! (w_block, div u_block 2, div v_block 2))
-      f_block_ = f_block w_block (u_block - 1) (v_block + 1) f_target0 f_grid obj_grid
-  in
-  if seek_mode < 3 then
-    if fst (obj_grid ! (w_block, u_block - 1, v_block + 1)) > 0 then (Object_hit, 0)
-    else if surface (f_grid ! (w_block, div (u_block - 1) 2, div (v_block + 1) 2)) /= Flat then (Object_hit, 0)
+  intersect Corner0 w_grid f_grid w_block u_block v_block seek_mode c =
+    if v2 (w_grid ! (w_block, u_block, v_block)) == True || u1 (w_grid ! (w_block, u_block, v_block)) == True then (Corner0_hit, 0)
     else (Corner0, 0)
-  else
-    if c == 1 && f_target0 /= Flat then
-      if f_block_ == 0 then (Object_hit, 0)
-      else (Ramp_found, f_block_)
-    else if fst (obj_grid ! (w_block, u_block - 1, v_block + 1)) > 0 then (Object_hit, 0)
-    else (Corner0, 0)
-intersect1 Corner1 f_grid obj_grid w_block u_block v_block seek_mode c =
-  let f_target0 = surface (f_grid ! (w_block, div u_block 2, div v_block 2))
-      f_block_ = f_block w_block (u_block + 1) (v_block + 1) f_target0 f_grid obj_grid
-  in
-  if seek_mode < 3 then
-    if fst (obj_grid ! (w_block, u_block + 1, v_block + 1)) > 0 then (Object_hit, 0)
-    else if surface (f_grid ! (w_block, div (u_block + 1) 2, div (v_block + 1) 2)) /= Flat then (Object_hit, 0)
+  intersect Corner1 w_grid f_grid w_block u_block v_block seek_mode c =
+    if u2 (w_grid ! (w_block, u_block, v_block)) == True || v2 (w_grid ! (w_block, u_block, v_block)) == True then (Corner1_hit, 0)
     else (Corner1, 0)
-  else
-    if c == 1 && f_target0 /= Flat then
-      if f_block_ == 0 then (Object_hit, 0)
-      else (Ramp_found, f_block_)
-    else if fst (obj_grid ! (w_block, u_block + 1, v_block + 1)) > 0 then (Object_hit, 0)
-    else (Corner1, 0)
-intersect1 Corner2 f_grid obj_grid w_block u_block v_block seek_mode c =
-  let f_target0 = surface (f_grid ! (w_block, div u_block 2, div v_block 2))
-      f_block_ = f_block w_block (u_block + 1) (v_block - 1) f_target0 f_grid obj_grid
-  in
-  if seek_mode < 3 then
-    if fst (obj_grid ! (w_block, u_block + 1, v_block - 1)) > 0 then (Object_hit, 0)
-    else if surface (f_grid ! (w_block, div (u_block + 1) 2, div (v_block - 1) 2)) /= Flat then (Object_hit, 0)
+  intersect Corner2 w_grid f_grid w_block u_block v_block seek_mode c =
+    if v1 (w_grid ! (w_block, u_block, v_block)) == True || u2 (w_grid ! (w_block, u_block, v_block)) == True then (Corner2_hit, 0)
     else (Corner2, 0)
-  else
-    if c == 1 && f_target0 /= Flat then
-      if f_block_ == 0 then (Object_hit, 0)
-      else (Ramp_found, f_block_)
-    else if fst (obj_grid ! (w_block, u_block + 1, v_block - 1)) > 0 then (Object_hit, 0)
-    else (Corner2, 0)
-intersect1 Corner3 f_grid obj_grid w_block u_block v_block seek_mode c =
-  let f_target0 = surface (f_grid ! (w_block, div u_block 2, div v_block 2))
-      f_block_ = f_block w_block (u_block - 1) (v_block - 1) f_target0 f_grid obj_grid
-  in
-  if seek_mode < 3 then
-    if fst (obj_grid ! (w_block, u_block - 1, v_block - 1)) > 0 then (Object_hit, 0)
-    else if surface (f_grid ! (w_block, div (u_block - 1) 2, div (v_block - 1) 2)) /= Flat then (Object_hit, 0)
-    else (Corner3, 0)
-  else
-    if c == 1 && f_target0 /= Flat then
-      if f_block_ == 0 then (Object_hit, 0)
-      else (Ramp_found, f_block_)
-    else if fst (obj_grid ! (w_block, u_block - 1, v_block - 1)) > 0 then (Object_hit, 0)
+  intersect Corner3 w_grid f_grid w_block u_block v_block seek_mode c =
+    if u1 (w_grid ! (w_block, u_block, v_block)) == True || v1 (w_grid ! (w_block, u_block, v_block)) == True then (Corner3_hit, 0)
     else (Corner3, 0)
 
-intersect0 :: Ray_hit -> Array (Int, Int, Int) Wall_grid -> Int -> Int -> Int -> (Ray_hit, Int)
-intersect0 U1 w_grid w_block u_block v_block =
-  if u1 (w_grid ! (w_block, u_block, v_block)) == True then (U1_hit, 0)
-  else (U1, 0)
-intersect0 U2 w_grid w_block u_block v_block =
-  if u2 (w_grid ! (w_block, u_block, v_block)) == True then (U2_hit, 0)
-  else (U2, 0)
-intersect0 V1 w_grid w_block u_block v_block =
-  if v1 (w_grid ! (w_block, u_block, v_block)) == True then (V1_hit, 0)
-  else (V1, 0)
-intersect0 V2 w_grid w_block u_block v_block =
-  if v2 (w_grid ! (w_block, u_block, v_block)) == True then (V2_hit, 0)
-  else (V2, 0)
-intersect0 Corner0 w_grid w_block u_block v_block =
-  if v2 (w_grid ! (w_block, u_block, v_block)) == True || u1 (w_grid ! (w_block, u_block, v_block)) == True then (Corner0_hit, 0)
-  else (Corner0, 0)
-intersect0 Corner1 w_grid w_block u_block v_block =
-  if u2 (w_grid ! (w_block, u_block, v_block)) == True || v2 (w_grid ! (w_block, u_block, v_block)) == True then (Corner1_hit, 0)
-  else (Corner1, 0)
-intersect0 Corner2 w_grid w_block u_block v_block =
-  if v1 (w_grid ! (w_block, u_block, v_block)) == True || u2 (w_grid ! (w_block, u_block, v_block)) == True then (Corner2_hit, 0)
-  else (Corner2, 0)
-intersect0 Corner3 w_grid w_block u_block v_block =
-  if u1 (w_grid ! (w_block, u_block, v_block)) == True || v1 (w_grid ! (w_block, u_block, v_block)) == True then (Corner3_hit, 0)
-  else (Corner3, 0)
+  scan_cube w_grid w u v = maybeToList (obj (w_grid ! (w, u, v))) ++ maybeToList (obj (w_grid ! (-w - 1, u, v)))
 
 ray_trace1 :: Float -> Float -> Float -> Float -> Float -> Float -> Int -> Bool -> Bool -> UArray (Int, Int) Float -> Ray_hit
 ray_trace1 u v u1_bound u2_bound v1_bound v2_bound a True True look_up =
@@ -357,61 +373,58 @@ ray_trace1 u v u1_bound u2_bound v1_bound v2_bound a False False look_up =
   else if (v - v1_bound) / (u - u1_bound) > look_up ! (3, a) then U1
   else V1
 
-ray_trace0 :: Float -> Float -> Int -> Bool -> Bool -> Int -> Int -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> UArray (Int, Int) Float -> Int -> [Obj_place] -> Int -> Int -> Int -> Int -> (Wall_place, [Obj_place], Int)
-ray_trace0 u v a u_positive v_positive u_block v_block w_grid f_grid obj_grid look_up w_block acc target_u target_v seek_mode c =
+ray_trace0 :: Ray_test a => Float -> Float -> Int -> Bool -> Bool -> Int -> Int -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) a -> UArray (Int, Int) Float -> Int -> [Obj_place] -> Int -> Int -> Int -> Int -> (Wall_place, [Obj_place], Int)
+{-# SPECIALISE ray_trace0 :: Float -> Float -> Int -> Bool -> Bool -> Int -> Int -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) Wall_grid -> UArray (Int, Int) Float -> Int -> [Obj_place] -> Int -> Int -> Int -> Int -> (Wall_place, [Obj_place], Int) #-}
+ray_trace0 u v a u_positive v_positive u_block v_block w_grid f_grid grid look_up w_block acc target_u target_v seek_mode c =
   let grid_i = w_grid ! (w_block, u_block, v_block)
-      result0 = intersect0 (ray_trace1 u v (u1_bound grid_i) (u2_bound grid_i) (v1_bound grid_i) (v2_bound grid_i) a u_positive v_positive look_up) w_grid w_block u_block v_block
-      result1 = intersect1 (ray_trace1 u v (u1_bound grid_i) (u2_bound grid_i) (v1_bound grid_i) (v2_bound grid_i) a u_positive v_positive look_up) f_grid obj_grid w_block u_block v_block seek_mode c
-      result = \mode -> if mode == 0 then result0
-                        else result1
-      found = acc ++ maybeToList (obj grid_i) ++ maybeToList (obj (w_grid ! (-w_block - 1, u_block, v_block)))
+      result = intersect (ray_trace1 u v (u1_bound grid_i) (u2_bound grid_i) (v1_bound grid_i) (v2_bound grid_i) a u_positive v_positive look_up) grid f_grid w_block u_block v_block seek_mode c
+      found = acc ++ scan_cube grid w_block u_block v_block
   in
-  if u_block < 0 || v_block < 0 then (Wall_place {rotate = 0, translate_u = 0, translate_v = 0, translate_w = 0, wall_flag_ = 0, texture_ = 0, isNull = True}, acc, 0)
-  else if bound_check u_block 0 (bounds w_grid) == False then (Wall_place {rotate = 0, translate_u = 0, translate_v = 0, translate_w = 0, wall_flag_ = 0, texture_ = 0, isNull = True}, acc, 0)
-  else if bound_check v_block 1 (bounds w_grid) == False then (Wall_place {rotate = 0, translate_u = 0, translate_v = 0, translate_w = 0, wall_flag_ = 0, texture_ = 0, isNull = True}, acc, 0)
-  else if seek_mode == 1 && c == 2 then (def_wall_place, [], 0)
+  if seek_mode == 1 && c == 2 then (def_wall_place, [], 0)
   else if seek_mode > 1 && u_block == target_u && v_block == target_v then (def_wall_place, [], 0)
-  else if fst (result seek_mode) == U1_hit then (Wall_place {rotate = 0, translate_u = u1_bound grid_i, translate_v = v1_bound grid_i, translate_w = w_level grid_i, wall_flag_ = wall_flag grid_i !! 3, texture_ = texture grid_i !! 3, isNull = False}, found, 0)
-  else if fst (result seek_mode) == U2_hit then (Wall_place {rotate = 1, translate_u = u2_bound grid_i, translate_v = v1_bound grid_i, translate_w = w_level grid_i, wall_flag_ = wall_flag grid_i !! 1, texture_ = texture grid_i !! 1, isNull = False}, found, 0)
-  else if fst (result seek_mode) == V1_hit then (Wall_place {rotate = 2, translate_u = u1_bound grid_i, translate_v = v1_bound grid_i, translate_w = w_level grid_i, wall_flag_ = wall_flag grid_i !! 2, texture_ = texture grid_i !! 2, isNull = False}, found, 0)
-  else if fst (result seek_mode) == V2_hit then (Wall_place {rotate = 3, translate_u = u1_bound grid_i, translate_v = v2_bound grid_i, translate_w = w_level grid_i, wall_flag_ = wall_flag grid_i !! 0, texture_ = texture grid_i !! 0, isNull = False}, found, 0)
-  else if fst (result seek_mode) == Corner0_hit then (Wall_place {rotate = 3, translate_u = u1_bound grid_i, translate_v = v2_bound grid_i, translate_w = w_level grid_i, wall_flag_ = wall_flag grid_i !! 0, texture_ = texture grid_i !! 0, isNull = False}, found, 0)
-  else if fst (result seek_mode) == Corner1_hit then (Wall_place {rotate = 1, translate_u = u2_bound grid_i, translate_v = v1_bound grid_i, translate_w = w_level grid_i, wall_flag_ = wall_flag grid_i !! 1, texture_ = texture grid_i !! 1, isNull = False}, found, 0)
-  else if fst (result seek_mode) == Corner2_hit then (Wall_place {rotate = 2, translate_u = u1_bound grid_i, translate_v = v1_bound grid_i, translate_w = w_level grid_i, wall_flag_ = wall_flag grid_i !! 2, texture_ = texture grid_i !! 2, isNull = False}, found, 0)
-  else if fst (result seek_mode) == Corner3_hit then (Wall_place {rotate = 0, translate_u = u1_bound grid_i, translate_v = v1_bound grid_i, translate_w = w_level grid_i, wall_flag_ = wall_flag grid_i !! 3, texture_ = texture grid_i !! 3, isNull = False}, found, 0)
-  else if fst (result seek_mode) == U1 && v_positive == True then ray_trace0 (u1_bound grid_i) (v + (look_up ! (3, a)) * (u - u1_bound grid_i)) a u_positive v_positive (u_block - 1) v_block w_grid f_grid obj_grid look_up w_block found target_u target_v seek_mode (c + 1)
-  else if fst (result seek_mode) == U1 && v_positive == False then ray_trace0 (u1_bound grid_i) (v - (look_up ! (3, a)) * (u - u1_bound grid_i)) a u_positive v_positive (u_block - 1) v_block w_grid f_grid obj_grid look_up w_block found target_u target_v seek_mode (c + 1)
-  else if fst (result seek_mode) == U2 && v_positive == True then ray_trace0 (u2_bound grid_i) (v + (look_up ! (3, a)) * ((u2_bound grid_i) - u)) a u_positive v_positive (u_block + 1) v_block w_grid f_grid obj_grid look_up w_block found target_u target_v seek_mode (c + 1)
-  else if fst (result seek_mode) == U2 && v_positive == False then ray_trace0 (u2_bound grid_i) (v - (look_up ! (3, a)) * ((u2_bound grid_i) - u)) a u_positive v_positive (u_block + 1) v_block w_grid f_grid obj_grid look_up w_block found target_u target_v seek_mode (c + 1)
-  else if fst (result seek_mode) == V1 && u_positive == True then ray_trace0 (u + (1 / look_up ! (3, a)) * (v - v1_bound grid_i)) (v1_bound grid_i) a u_positive v_positive u_block (v_block - 1) w_grid f_grid obj_grid look_up w_block found target_u target_v seek_mode (c + 1)
-  else if fst (result seek_mode) == V1 && u_positive == False then ray_trace0 (u - (1 / look_up ! (3, a)) * (v - v1_bound grid_i)) (v1_bound grid_i) a u_positive v_positive u_block (v_block - 1) w_grid f_grid obj_grid look_up w_block found target_u target_v seek_mode (c + 1)
-  else if fst (result seek_mode) == V2 && u_positive == True then ray_trace0 (u + (1 / look_up ! (3, a)) * ((v2_bound grid_i) - v)) (v2_bound grid_i) a u_positive v_positive u_block (v_block + 1) w_grid f_grid obj_grid look_up w_block found target_u target_v seek_mode (c + 1)
-  else if fst (result seek_mode) == V2 && u_positive == False then ray_trace0 (u - (1 / look_up ! (3, a)) * ((v2_bound grid_i) - v)) (v2_bound grid_i) a u_positive v_positive u_block (v_block + 1) w_grid f_grid obj_grid look_up w_block found target_u target_v seek_mode (c + 1)
-  else if fst (result seek_mode) == Corner0 then ray_trace0 (u1_bound grid_i) (v2_bound grid_i) a u_positive v_positive (u_block - 1) (v_block + 1) w_grid f_grid obj_grid look_up w_block found target_u target_v seek_mode (c + 1)
-  else if fst (result seek_mode) == Corner1 then ray_trace0 (u2_bound grid_i) (v2_bound grid_i) a u_positive v_positive (u_block + 1) (v_block + 1) w_grid f_grid obj_grid look_up w_block found target_u target_v seek_mode (c + 1)
-  else if fst (result seek_mode) == Corner2 then ray_trace0 (u2_bound grid_i) (v1_bound grid_i) a u_positive v_positive (u_block + 1) (v_block - 1) w_grid f_grid obj_grid look_up w_block found target_u target_v seek_mode (c + 1)
-  else if fst (result seek_mode) == Object_hit then (def_wall_place, [], c)
-  else if fst (result seek_mode) == Ramp_found then (def_wall_place, [], snd (result seek_mode))
-  else ray_trace0 (u1_bound grid_i) (v1_bound grid_i) a u_positive v_positive (u_block - 1) (v_block - 1) w_grid f_grid obj_grid look_up w_block found target_u target_v seek_mode (c + 1)
+  else if fst result == U1 && v_positive == True then ray_trace0 (u1_bound grid_i) (v + (look_up ! (3, a)) * (u - u1_bound grid_i)) a u_positive v_positive (u_block - 1) v_block w_grid f_grid grid look_up w_block found target_u target_v seek_mode (c + 1)
+  else if fst result == U1 && v_positive == False then ray_trace0 (u1_bound grid_i) (v - (look_up ! (3, a)) * (u - u1_bound grid_i)) a u_positive v_positive (u_block - 1) v_block w_grid f_grid grid look_up w_block found target_u target_v seek_mode (c + 1)
+  else if fst result == U2 && v_positive == True then ray_trace0 (u2_bound grid_i) (v + (look_up ! (3, a)) * ((u2_bound grid_i) - u)) a u_positive v_positive (u_block + 1) v_block w_grid f_grid grid look_up w_block found target_u target_v seek_mode (c + 1)
+  else if fst result == U2 && v_positive == False then ray_trace0 (u2_bound grid_i) (v - (look_up ! (3, a)) * ((u2_bound grid_i) - u)) a u_positive v_positive (u_block + 1) v_block w_grid f_grid grid look_up w_block found target_u target_v seek_mode (c + 1)
+  else if fst result == V1 && u_positive == True then ray_trace0 (u + (1 / look_up ! (3, a)) * (v - v1_bound grid_i)) (v1_bound grid_i) a u_positive v_positive u_block (v_block - 1) w_grid f_grid grid look_up w_block found target_u target_v seek_mode (c + 1)
+  else if fst result == V1 && u_positive == False then ray_trace0 (u - (1 / look_up ! (3, a)) * (v - v1_bound grid_i)) (v1_bound grid_i) a u_positive v_positive u_block (v_block - 1) w_grid f_grid grid look_up w_block found target_u target_v seek_mode (c + 1)
+  else if fst result == V2 && u_positive == True then ray_trace0 (u + (1 / look_up ! (3, a)) * ((v2_bound grid_i) - v)) (v2_bound grid_i) a u_positive v_positive u_block (v_block + 1) w_grid f_grid grid look_up w_block found target_u target_v seek_mode (c + 1)
+  else if fst result == V2 && u_positive == False then ray_trace0 (u - (1 / look_up ! (3, a)) * ((v2_bound grid_i) - v)) (v2_bound grid_i) a u_positive v_positive u_block (v_block + 1) w_grid f_grid grid look_up w_block found target_u target_v seek_mode (c + 1)
+  else if fst result == Corner0 then ray_trace0 (u1_bound grid_i) (v2_bound grid_i) a u_positive v_positive (u_block - 1) (v_block + 1) w_grid f_grid grid look_up w_block found target_u target_v seek_mode (c + 1)
+  else if fst result == Corner1 then ray_trace0 (u2_bound grid_i) (v2_bound grid_i) a u_positive v_positive (u_block + 1) (v_block + 1) w_grid f_grid grid look_up w_block found target_u target_v seek_mode (c + 1)
+  else if fst result == Corner2 then ray_trace0 (u2_bound grid_i) (v1_bound grid_i) a u_positive v_positive (u_block + 1) (v_block - 1) w_grid f_grid grid look_up w_block found target_u target_v seek_mode (c + 1)
+  else if fst result == U1_hit then (Wall_place {rotate = 0, translate_u = u1_bound grid_i, translate_v = v1_bound grid_i, translate_w = w_level grid_i, wall_flag_ = wall_flag grid_i !! 3, texture_ = texture grid_i !! 3, isNull = False}, found, 0)
+  else if fst result == U2_hit then (Wall_place {rotate = 1, translate_u = u2_bound grid_i, translate_v = v1_bound grid_i, translate_w = w_level grid_i, wall_flag_ = wall_flag grid_i !! 1, texture_ = texture grid_i !! 1, isNull = False}, found, 0)
+  else if fst result == V1_hit then (Wall_place {rotate = 2, translate_u = u1_bound grid_i, translate_v = v1_bound grid_i, translate_w = w_level grid_i, wall_flag_ = wall_flag grid_i !! 2, texture_ = texture grid_i !! 2, isNull = False}, found, 0)
+  else if fst result == V2_hit then (Wall_place {rotate = 3, translate_u = u1_bound grid_i, translate_v = v2_bound grid_i, translate_w = w_level grid_i, wall_flag_ = wall_flag grid_i !! 0, texture_ = texture grid_i !! 0, isNull = False}, found, 0)
+  else if fst result == Corner0_hit then (Wall_place {rotate = 3, translate_u = u1_bound grid_i, translate_v = v2_bound grid_i, translate_w = w_level grid_i, wall_flag_ = wall_flag grid_i !! 0, texture_ = texture grid_i !! 0, isNull = False}, found, 0)
+  else if fst result == Corner1_hit then (Wall_place {rotate = 1, translate_u = u2_bound grid_i, translate_v = v1_bound grid_i, translate_w = w_level grid_i, wall_flag_ = wall_flag grid_i !! 1, texture_ = texture grid_i !! 1, isNull = False}, found, 0)
+  else if fst result == Corner2_hit then (Wall_place {rotate = 2, translate_u = u1_bound grid_i, translate_v = v1_bound grid_i, translate_w = w_level grid_i, wall_flag_ = wall_flag grid_i !! 2, texture_ = texture grid_i !! 2, isNull = False}, found, 0)
+  else if fst result == Corner3_hit then (Wall_place {rotate = 0, translate_u = u1_bound grid_i, translate_v = v1_bound grid_i, translate_w = w_level grid_i, wall_flag_ = wall_flag grid_i !! 3, texture_ = texture grid_i !! 3, isNull = False}, found, 0)
+  else if fst result == Object_hit then (def_wall_place, [], c)
+  else if fst result == Ramp_found then (def_wall_place, [], snd result)
+  else ray_trace0 (u1_bound grid_i) (v1_bound grid_i) a u_positive v_positive (u_block - 1) (v_block - 1) w_grid f_grid grid look_up w_block found target_u target_v seek_mode (c + 1)
+
+proc_angle :: Int -> (Int, Bool, Bool)
+{-# INLINE proc_angle #-}
+proc_angle a =
+  if a < 158 then (a, True, True)
+  else if a < 315 then (157 - (a - 157), False, True)
+  else if a < 472 then (a - 314, False, False)
+  else (157 - (a - 471), True, False)
 
 -- These two functions handle the tracing of rays over the range of the field of view, returning a list of the wall sections that border the visible region and a list of any objects visible within that region.
-survey_view :: Int -> Int -> Int -> Float -> Float -> Int -> Int -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> UArray (Int, Int) Float -> Int -> [Wall_place] -> [Obj_place] -> ([Wall_place], [Obj_place])
-survey_view a da limit u v u_block v_block w_grid f_grid obj_grid look_up w_block acc0 acc1 =
-  let ray0 = (ray_trace0 u v a True True u_block v_block w_grid f_grid obj_grid look_up w_block [] 0 0 0 0)
-      ray1 = (ray_trace0 u v (157 - (a - 157)) False True u_block v_block w_grid f_grid obj_grid look_up w_block [] 0 0 0 0)
-      ray2 = (ray_trace0 u v (a - 314) False False u_block v_block w_grid f_grid obj_grid look_up w_block [] 0 0 0 0)
-      ray3 = (ray_trace0 u v (157 - (a - 471)) True False u_block v_block w_grid f_grid obj_grid look_up w_block [] 0 0 0 0)
+survey_view :: Int -> Int -> Int -> Float -> Float -> Int -> Int -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> UArray (Int, Int) Float -> Int -> [Wall_place] -> [Obj_place] -> ([Wall_place], [Obj_place])
+survey_view a da limit u v u_block v_block w_grid f_grid look_up w_block acc0 acc1 =
+  let proc_angle_ = proc_angle a
+      ray = ray_trace0 u v (fst__ proc_angle_) (snd__ proc_angle_) (third_ proc_angle_) u_block v_block w_grid f_grid w_grid look_up w_block [] 0 0 0 0
   in
   if da > limit then (acc0, acc1)
-  else
-    if a >= 0 && a < 158 then survey_view (mod_angle a 3) (da + 3) limit u v u_block v_block w_grid f_grid obj_grid look_up w_block (acc0 ++ [fst__ ray0]) (acc1 ++ snd__ ray0)
-    else if a >= 158 && a < 315 then survey_view (mod_angle a 3) (da + 3) limit u v u_block v_block w_grid f_grid obj_grid look_up w_block (acc0 ++ [fst__ ray1]) (acc1 ++ snd__ ray1)
-    else if a >= 315 && a < 472 then survey_view (mod_angle a 3) (da + 3) limit u v u_block v_block w_grid f_grid obj_grid look_up w_block (acc0 ++ [fst__ ray2]) (acc1 ++ snd__ ray2)
-    else survey_view (mod_angle a 3) (da + 3) limit u v u_block v_block w_grid f_grid obj_grid look_up w_block (acc0 ++ [fst__ ray3]) (acc1 ++ snd__ ray3)
+  else survey_view (mod_angle a 3) (da + 3) limit u v u_block v_block w_grid f_grid look_up w_block (acc0 ++ [fst__ ray]) (acc1 ++ snd__ ray)
 
 multi_survey :: Int -> Int -> Float -> Float -> Int -> Int -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> UArray (Int, Int) Float -> Int -> Int -> [Wall_place] -> [Obj_place] -> ([Wall_place], [Obj_place])
 multi_survey a a_limit u v u_block v_block w_grid f_grid obj_grid look_up w_limit w_block acc0 acc1 =
-  let survey = (survey_view a 0 a_limit u v u_block v_block w_grid f_grid obj_grid look_up w_block [] [])
+  let survey = (survey_view a 0 a_limit u v u_block v_block w_grid f_grid look_up w_block [] [])
   in
   if w_block > w_limit then (acc0, acc1)
   else multi_survey a a_limit u v u_block v_block w_grid f_grid obj_grid look_up w_limit (w_block + 1) (acc0 ++ fst survey) (acc1 ++ snd survey)
