@@ -116,21 +116,24 @@ grid_setup0 (x:xs) u v w u_max v_max w_max acc0 acc1 =
   else grid_setup0 xs u (v + 1) w u_max v_max w_max (acc0 >< fromList w_grid) (acc1 >< fromList (pad_walls x u v w))
 
 -- These two functions handle the transformation of the floor grid part of the map file into an intermediate text format.
-make_floor1 :: Int -> Char -> [Char]
-make_floor1 w 'a' = (show w) ++ ", " ++ "0"
-make_floor1 w 'b' = (show w) ++ ", " ++ "1"
-make_floor1 w 'c' = (show w) ++ ", " ++ "2"
-make_floor1 w 'd' = (show w) ++ ", " ++ "3"
-make_floor1 w 'e' = (show w) ++ ", " ++ "4"
-make_floor1 w 'f' = (show w) ++ ", " ++ "5"
-make_floor1 w 'g' = (show (w + 1)) ++ ", " ++ "0"
+make_floor1 :: Int -> Int -> Int -> Char -> [Char]
+make_floor1 w u v 'a' = (show w) ++ ", " ++ "0"
+make_floor1 w u v 'b' = (show w) ++ ", " ++ "1"
+make_floor1 w u v 'c' = (show w) ++ ", " ++ "2"
+make_floor1 w u v 'd' = (show w) ++ ", " ++ "3"
+make_floor1 w u v 'e' = (show w) ++ ", " ++ "4"
+make_floor1 w u v 'f' = (show w) ++ ", " ++ "5"
+make_floor1 w u v 'g' = (show (w + 1)) ++ ", " ++ "0"
+make_floor1 w u v match = error ("\nmake_floor1 error.  w: " ++ show w ++ " u: " ++ show u ++ " v: " ++ show v ++ " non - match: " ++ [match])
 
-make_floor0 :: [Char] -> Int -> Int -> Int -> Int -> Int -> Int -> [Char]
-make_floor0 (x:xs) u v w u_max v_max w_max =
-  if u == u_max && v == v_max && w == w_max then make_floor1 w x
-  else if u == u_max && v == v_max then make_floor1 w x ++ "&" ++ make_floor0 xs 0 0 (w + 1) u_max v_max w_max
-  else if v == v_max then make_floor1 w x ++ ":" ++ make_floor0 xs (u + 1) 0 w u_max v_max w_max
-  else make_floor1 w x ++ ", " ++ make_floor0 xs u (v + 1) w u_max v_max w_max
+make_floor0 :: [[Char]] -> Int -> Int -> Int -> Int -> Int -> Int -> [Char]
+make_floor0 (x0:x1:x2:x3:x4:xs) u v w u_max v_max w_max =
+  let f_map = ", " ++ x1 ++ ", " ++ x2 ++ ", " ++ x3 ++ ", " ++ x4
+  in
+  if u == u_max && v == v_max && w == w_max then make_floor1 w u v (head x0) ++ f_map
+  else if u == u_max && v == v_max then make_floor1 w u v (head x0) ++ f_map ++ "&" ++ make_floor0 xs 0 0 (w + 1) u_max v_max w_max
+  else if v == v_max then make_floor1 w u v (head x0) ++ f_map ++ ":" ++ make_floor0 xs (u + 1) 0 w u_max v_max w_max
+  else make_floor1 w u v (head x0) ++ f_map ++ ", " ++ make_floor0 xs u (v + 1) w u_max v_max w_max
 
 -- The entry point to this module, called from Main.setup_game
 proc_map :: [[Char]] -> Int -> Int -> Int -> ([Char], [Char])
@@ -138,7 +141,7 @@ proc_map pre_map u_max v_max w_max =
   let next_c = div ((u_max + 1) * (v_max + 1)) 4
       flag_seq = concat [grid_setup2 c c 0 0 0 u_max v_max | c <- [0, next_c..(next_c * w_max)]]
       c_max = 4 * (u_max + 1) * (v_max + 1) - 1
-      floor = make_floor0 (concat (splitOn " " (map filter0 (concat [pre_map !! w | w <- [(w_max + 2)..(w_max + 2 + w_max)]])))) 0 0 0 ((div (u_max + 1) 2) - 1) ((div (v_max + 1) 2) - 1) w_max
+      floor = make_floor0 (splitOn " " (map filter0 (concat [pre_map !! w | w <- [(w_max + 2)..(w_max + 2 + w_max)]]))) 0 0 0 ((div (u_max + 1) 2) - 1) ((div (v_max + 1) 2) - 1) w_max
       w_grid = grid_setup0 (concat [grid_setup1 (pre_map !! (w + 1)) (grid_setup2 (next_c * w) (next_c * w) 0 0 0 u_max v_max) (load_object (splitOn ", " (filter1 (pre_map !! 0)))) 0 0 w v_max ((u_max + 1) * (v_max + 1) * w * 4) | w <- [0..w_max]]) 0 0 0 u_max v_max w_max empty empty
   in (toList (fst w_grid) ++ floor, toList (snd w_grid))
   

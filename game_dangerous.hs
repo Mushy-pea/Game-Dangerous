@@ -135,10 +135,10 @@ foreign import ccall "wingdi.h SwapBuffers"
 main = do
   args <- getArgs
   contents <- bracket (openFile (args !! 0) ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nconfig file size: " ++ show (length contents)); return contents)
-  putStr ("\nGame :: Dangerous engine version 0.7 (for Windows x64)\nLoading content: " ++ ((splitOneOf "=\n" contents) !! 3))
+  putStr ("\nGame :: Dangerous engine version 0.8 (for Windows x64)\nLoading content: " ++ ((splitOneOf "=\n" contents) !! 3))
   putStr "\nOpening window..."
-  if length args > 3 then open_window ((listArray (0, 49) (splitOneOf "=\n" contents)) // [(1, args !! 1), (9, args !! 2), (11, args !! 3), (13, args !! 4), (15, args !! 5), (17, args !! 6), (19, args !! 7), (21, args !! 8), (23, args !! 9), (25, args !! 10), (27, args !! 11), (29, args !! 12), (31, args !! 13), (33, args !! 14), (35, args !! 15), (39, "n")])
-  else open_window ((listArray (0, 49) (splitOneOf "=\n" contents)) // [(31, args !! 1), (33, args !! 2)])
+  if length args > 3 then open_window ((listArray (0, 51) (splitOneOf "=\n" contents)) // [(1, args !! 1), (9, args !! 2), (11, args !! 3), (13, args !! 4), (15, args !! 5), (17, args !! 6), (19, args !! 7), (21, args !! 8), (23, args !! 9), (25, args !! 10), (27, args !! 11), (29, args !! 12), (31, args !! 13), (33, args !! 14), (35, args !! 15), (39, "n")])
+  else open_window ((listArray (0, 51) (splitOneOf "=\n" contents)) // [(31, args !! 1), (33, args !! 2)])
 
 -- This function initialises the window and loads the map file.
 open_window :: Array Int [Char] -> IO ()
@@ -288,11 +288,9 @@ start_game :: HWND -> HDC -> UArray Int Int32 -> (UArray Int Word32, Int) -> [Ch
 start_game hwnd hdc uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag_j) save_state sound_array =
   let w_grid = (make_array0 ((build_table0 (elems (build_table1 (splitOn ", " ((splitOn "~" c) !! 7)) (empty_w_grid (read ((splitOn "~" c) !! 8)) (read ((splitOn "~" c) !! 9)) (read ((splitOn "~" c) !! 10))) 7500)) (read ((splitOn "~" c) !! 8)) (read ((splitOn "~" c) !! 9)) (read ((splitOn "~" c) !! 10))) ++ (sort_grid0 (splitOn "&" ((splitOn "~" c) !! 4)))) (read ((splitOn "~" c) !! 8)) (read ((splitOn "~" c) !! 9)) (read ((splitOn "~" c) !! 10)))
       f_grid = (make_array1 (load_floor0 (splitOn "&" ((splitOn "~" c) !! 5))) (read ((splitOn "~" c) !! 8)) (read ((splitOn "~" c) !! 9)) (read ((splitOn "~" c) !! 10)))
-      floor_map = gen_floor_map2 f_grid (def_floor_map (read ((splitOn "~" c) !! 8)) (read ((splitOn "~" c) !! 9))) [] 0 0 0 (read ((splitOn "~" c) !! 8)) (read ((splitOn "~" c) !! 9)) 0 (0, 0)
-      f_grid' = gen_floor_map0 0 0 0 (read ((splitOn "~" c) !! 8)) (read ((splitOn "~" c) !! 9)) f_grid (fst__ floor_map) (snd__ floor_map) (third_ floor_map)
       obj_grid = ((empty_obj_grid (read ((splitOn "~" c) !! 8)) (read ((splitOn "~" c) !! 9)) (read ((splitOn "~" c) !! 10))) // load_obj_grid (splitOn ", " ((splitOn "~" c) !! 6)))
       look_up_ = look_up [make_table 0 0, make_table 1 0, make_table 2 0, make_table 3 0]
-      camera_to_clip' = fromList 4 4 [frustumScale, 0, 0, 0, 0, frustumScale, 0, 0, 0, 0, ((zFar + zNear) / (zNear - zFar)), ((2 * zFar * zNear) / (zNear - zFar)), 0, 0, -1, 0]
+      camera_to_clip' = fromList 4 4 [read (cfg' "frustumScale"), 0, 0, 0, 0, read (cfg' "frustumScale"), 0, 0, 0, 0, ((zFar + zNear) / (zNear - zFar)), ((2 * zFar * zNear) / (zNear - zFar)), 0, 0, -1, 0]
       cfg' = cfg conf_reg 0
   in do
   if mode == -1 then do
@@ -499,8 +497,8 @@ bind_texture (x:xs) p_bind w h offset = do
 -- This function manages the rendering of all environmental models and in game messages.  It recurses once per frame rendered and is the central branching point of the rendering thread.
 show_frame :: HDC -> (UArray Int Word32, Int) -> UArray Int Int32 -> Ptr GLfloat -> (Ptr Int, Ptr Int) -> Float -> Float -> Float -> Int -> Int -> Int -> MVar (Play_state0, Array (Int, Int, Int) Wall_grid, Save_state) -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> UArray (Int, Int) Float -> Int -> Int -> Matrix Float -> DWORD -> DWORD -> IO ([Int], Save_state)
 show_frame hdc p_bind uniform p_mt_matrix filter_table u v w a a' game_t' state_ref w_grid f_grid obj_grid look_up w_limit msg_timer camera_to_clip min_frame_t t =
-  let survey0 = multi_survey (mod_angle a (-126)) 251 u v (truncate u) (truncate v) w_grid f_grid obj_grid look_up w_limit 0 [] []
-      survey1 = multi_survey (mod_angle (mod_angle a' a) 188) 251 (fst view_circle') (snd view_circle') (truncate (fst view_circle')) (truncate (snd view_circle')) w_grid f_grid obj_grid look_up w_limit 0 [] []
+  let survey0 = multi_survey (mod_angle a (-92)) 183 u v (truncate u) (truncate v) w_grid f_grid obj_grid look_up w_limit 0 [] []
+      survey1 = multi_survey (mod_angle (mod_angle a' a) (-92)) 183 (fst view_circle') (snd view_circle') (truncate (fst view_circle')) (truncate (snd view_circle')) w_grid f_grid obj_grid look_up w_limit 0 [] []
       view_circle' = view_circle u v 2 (mod_angle a a') look_up
       world_to_clip0 = multStd camera_to_clip (world_to_camera (-u) (-v) (-w) a look_up)
       world_to_clip1 = multStd camera_to_clip (world_to_camera (- (fst view_circle')) (- (snd view_circle')) (-w) (mod_angle (mod_angle a' a) 314) look_up)

@@ -180,12 +180,11 @@ chg_floor state_val abs v (i0, i1, i2) grid d_list =
   if d_list !! state_val == 0 then grid // [(index, (grid ! index) {w_ = upd (d_list !! abs) (w_ (grid ! index)) (int_to_float (d_list !! v))})]
   else grid // [(index, (grid ! index) {surface = int_to_surface (d_list !! v)})]
 
-chg_value :: Int -> Int -> (Int, Int, Int) -> [Int] -> [Int] -> Array (Int, Int, Int) (Int, [Int]) -> Array (Int, Int, Int) (Int, [Int])
-chg_value val abs (i0, i1, i2) v d_list obj_grid =
+chg_value :: Int -> Int -> Int -> (Int, Int, Int) -> [Int] -> Array (Int, Int, Int) (Int, [Int]) -> Array (Int, Int, Int) (Int, [Int])
+chg_value val abs v (i0, i1, i2) d_list obj_grid =
   let target = obj_grid ! (d_list !! i0, d_list !! i1, d_list !! i2)
-      length' = length v
   in
-  obj_grid // [((d_list !! i0, d_list !! i1, d_list !! i2), (fst target, (take val (snd target)) ++ [upd (d_list !! abs) ((snd target) !! (val + c)) (v !! c) | c <- [0..length' - 1]] ++ drop (val + length') (snd target)))]
+  obj_grid // [((d_list !! i0, d_list !! i1, d_list !! i2), (fst target, (take val (snd target)) ++ [upd (d_list !! abs) ((snd target) !! val) (d_list !! v)] ++ drop (val + 1) (snd target)))]
 
 chg_ps0 :: Int -> Int -> Int -> [Int] -> Play_state0 -> Play_state0
 chg_ps0 state_val abs v d_list s0 =
@@ -387,7 +386,7 @@ init_npc offset i s1 d_list =
       i_attack_mode = int_to_bool (d_list !! (offset + 23))
       i_fire_prob = d_list !! (offset + 24)
   in
-  s1 {npc_states = (npc_states s1) // [(i, NPC_state {npc_type = i_npc_type, c_health = i_c_health, node_locations = i_node_locations, arr_node_locs = i_arr_node_locs, fg_position = i_fg_position, dir_vector = i_dir_vector, direction = i_direction, last_dir = i_last_dir, speed = i_speed, avoid_dist = i_avoid_dist, attack_mode = i_attack_mode, fire_prob = i_fire_prob})]}
+  s1 {npc_states = (npc_states s1) // [(i, NPC_state {npc_type = i_npc_type, c_health = i_c_health, ticks_left0 = 0, ticks_left1 = 0, node_locations = i_node_locations, arr_node_locs = i_arr_node_locs, fg_position = i_fg_position, dir_vector = i_dir_vector, direction = i_direction, last_dir = i_last_dir, target_u' = 0, target_v' = 0, target_w' = 0, speed = i_speed, avoid_dist = i_avoid_dist, attack_mode = i_attack_mode, final_appr = False, fire_prob = i_fire_prob})]}
 
 det_rand_target :: Play_state0 -> Int -> Int -> (Int, Int, Int)
 det_rand_target s0 u_bound v_bound =
@@ -400,14 +399,8 @@ chk_line_sight mode a w_block u_block v_block (fg_u, fg_v) target_u target_v w_g
   in
   third_ (ray_trace0 fg_u fg_v (fst__ proc_angle_) (snd__ proc_angle_) (third_ proc_angle_) u_block v_block w_grid f_grid obj_grid look_up w_block [] target_u target_v mode 1)
 
-npc_dir_table 1 = 0
-npc_dir_table 2 = 79
-npc_dir_table 3 = 157
-npc_dir_table 4 = 236
-npc_dir_table 5 = 314
-npc_dir_table 6 = 393
-npc_dir_table 7 = 471
-npc_dir_table 8 = 550
+npc_dir_table :: Int -> Int
+npc_dir_table dir = truncate (78.625 * fromIntegral (dir - 1))
 
 npc_dir_remap (-1) = 1
 npc_dir_remap (-2) = 5
@@ -672,7 +665,7 @@ run_gplc (x0:x1:x2:x3:xs) d_list w_grid f_grid obj_grid s0 s1 location look_up 4
 run_gplc (x0:x1:x2:x3:x4:x5:xs) d_list w_grid f_grid obj_grid s0 s1 location look_up 5 = do
   report_state (verbose_mode s1) 1 (snd (obj_grid ! location)) [] []
   report_state (verbose_mode s1) 2 [] [] ("\nchg_value run with arguments " ++ "0: " ++ show x0 ++ " 1: " ++ show (d_list !! x1) ++ " 2: " ++ show (d_list !! x2) ++ " 3: " ++ show (d_list !! x3) ++ " 4: " ++ show (d_list !! x4) ++ " 5: " ++ show (d_list !! x5))
-  run_gplc (tail_ (drop x5 xs)) d_list w_grid f_grid (chg_value x0 x1 (x2, x3, x4) (take x5 xs) d_list obj_grid) s0 s1 location look_up (head_ (drop x5 xs))
+  run_gplc (tail_ xs) d_list w_grid f_grid (chg_value x0 x1 x2 (x3, x4, x5) d_list obj_grid) s0 s1 location look_up (head_ xs)
 run_gplc (x0:x1:x2:x3:x4:x5:xs) d_list w_grid f_grid obj_grid s0 s1 location look_up 6 = do
   report_state (verbose_mode s1) 1 (snd (obj_grid ! location)) [] []
   report_state (verbose_mode s1) 2 [] [] ("\nchg_floor run with arguments " ++ "0: " ++ show (d_list !! x0) ++ " 1: " ++ show (d_list !! x1) ++ " 2: " ++ show (d_list !! x2) ++ " 3: " ++ show (d_list !! x3) ++ " 4: " ++ show (d_list !! x4) ++ " 5: " ++ show (d_list !! x5))

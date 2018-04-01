@@ -74,7 +74,7 @@ cosAngIncidence0 = clamp(cosAngIncidence0, 0, 1);
 cosAngIncidence1 = clamp(cosAngIncidence1, 0, 1);
 float adjust0 = lmap_t0[t];
 float adjust1 = lmap_t1[t];
-vec4 totalLight = (attenuation0 * adjust0 * cosAngIncidence0 * intensity0 * diffColour) + (attenuation1 * adjust1 * cosAngIncidence1 * intensity1 * diffColour);
+vec4 totalLight = (attenuation0 * adjust0 * cosAngIncidence0 * intensity0 * diffColour) + (attenuation1 * adjust1 * cosAngIncidence1 * intensity1 * diffColour) + (vec4(0.1, 0.1, 0.1, 1) * diffColour);
 outputColour = pow(totalLight, gamma);
 }
 
@@ -157,7 +157,7 @@ vec4 diffColour = texture(tex_unit0, tex_coord);
 //vec4 diffColour = vec4(tex_coord.x, 0, tex_coord.y, 1);
 float adjust0 = lmap_t0[t];
 float adjust1 = lmap_t1[t];
-vec4 totalLight = (attenuation0 * adjust0 * cosAngIncidence0 * intensity0 * diffColour) + (attenuation1 * adjust1 * cosAngIncidence1 * intensity1 * diffColour);
+vec4 totalLight = (attenuation0 * adjust0 * cosAngIncidence0 * intensity0 * diffColour) + (attenuation1 * adjust1 * cosAngIncidence1 * intensity1 * diffColour) + (vec4(0.1, 0.1, 0.1, 1) * diffColour);
 outputColour = pow(totalLight, gamma);
 }
 
@@ -396,7 +396,7 @@ cosAngIncidence1 = clamp(cosAngIncidence1, 0, 1);
 vec4 diffColour = texture(tex_unit0, tex_coord);
 float adjust0 = lmap_t0[t];
 float adjust1 = lmap_t1[t];
-vec4 totalLight = (attenuation0 * adjust0 * cosAngIncidence0 * intensity0 * diffColour) + (attenuation1 * adjust1 * cosAngIncidence1 * intensity1 * diffColour);
+vec4 totalLight = (attenuation0 * adjust0 * cosAngIncidence0 * intensity0 * diffColour) + (attenuation1 * adjust1 * cosAngIncidence1 * intensity1 * diffColour) + (vec4(0.1, 0.1, 0.1, 1) * diffColour);
 outputColour = pow(totalLight, gamma);
 }
 

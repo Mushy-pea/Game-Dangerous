@@ -420,7 +420,7 @@ survey_view a da limit u v u_block v_block w_grid f_grid look_up w_block acc0 ac
       ray = ray_trace0 u v (fst__ proc_angle_) (snd__ proc_angle_) (third_ proc_angle_) u_block v_block w_grid f_grid w_grid look_up w_block [] 0 0 0 0
   in
   if da > limit then (acc0, acc1)
-  else survey_view (mod_angle a 3) (da + 3) limit u v u_block v_block w_grid f_grid look_up w_block (acc0 ++ [fst__ ray]) (acc1 ++ snd__ ray)
+  else survey_view (mod_angle a 2) (da + 2) limit u v u_block v_block w_grid f_grid look_up w_block (acc0 ++ [fst__ ray]) (acc1 ++ snd__ ray)
 
 multi_survey :: Int -> Int -> Float -> Float -> Int -> Int -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> UArray (Int, Int) Float -> Int -> Int -> [Wall_place] -> [Obj_place] -> ([Wall_place], [Obj_place])
 multi_survey a a_limit u v u_block v_block w_grid f_grid obj_grid look_up w_limit w_block acc0 acc1 =
@@ -471,13 +471,13 @@ make_array0 grid u_max v_max w_max = array ((-w_max - 1, 0, 0), (w_max, u_max, v
 
 load_floor2 :: [[Char]] -> [Floor_grid]
 load_floor2 [] = []
-load_floor2 (x0:x1:xs) =
-  if x1 == "0" then Floor_grid {w_ = read x0, surface = Flat} : load_floor2 xs
-  else if x1 == "1" then Floor_grid {w_ = read x0, surface = Positive_u} : load_floor2 xs
-  else if x1 == "2" then Floor_grid {w_ = read x0, surface = Negative_u} : load_floor2 xs
-  else if x1 == "3" then Floor_grid {w_ = read x0, surface = Positive_v} : load_floor2 xs
-  else if x1 == "4" then Floor_grid {w_ = read x0, surface = Negative_v} : load_floor2 xs
-  else Floor_grid {w_ = read x0, surface = Open} : load_floor2 xs
+load_floor2 (x0:x1:x2:x3:x4:x5:xs) =
+  if x1 == "0" then Floor_grid {w_ = read x0, surface = Flat, local_up_ramp = (read x2, read x3), local_down_ramp = (read x4, read x5)} : load_floor2 xs
+  else if x1 == "1" then Floor_grid {w_ = read x0, surface = Positive_u, local_up_ramp = (read x2, read x3), local_down_ramp = (read x4, read x5)} : load_floor2 xs
+  else if x1 == "2" then Floor_grid {w_ = read x0, surface = Negative_u, local_up_ramp = (read x2, read x3), local_down_ramp = (read x4, read x5)} : load_floor2 xs
+  else if x1 == "3" then Floor_grid {w_ = read x0, surface = Positive_v, local_up_ramp = (read x2, read x3), local_down_ramp = (read x4, read x5)} : load_floor2 xs
+  else if x1 == "4" then Floor_grid {w_ = read x0, surface = Negative_v, local_up_ramp = (read x2, read x3), local_down_ramp = (read x4, read x5)} : load_floor2 xs
+  else Floor_grid {w_ = read x0, surface = Open, local_up_ramp = (read x2, read x3), local_down_ramp = (read x4, read x5)} : load_floor2 xs
 
 load_floor1 :: [[Char]] -> [[Floor_grid]]
 load_floor1 [] = []
@@ -549,7 +549,7 @@ set_play_state1 3 (x0:xs) s1 = s1 {state_chg = read x0}
 -- Used to query the conf_reg array, which holds startup parameters passed at the command line or from the engine's configuration file.
 cfg :: Array Int [Char] -> Int -> [Char] -> [Char]
 cfg conf_reg i query =
-  if i > 49 then throw Invalid_conf_reg_field
+  if i > 51 then throw Invalid_conf_reg_field
   else if conf_reg ! i == query then conf_reg ! (i + 1)
   else cfg conf_reg (i + 2) query
 
