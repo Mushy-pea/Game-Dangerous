@@ -123,6 +123,10 @@ head_ ls = head ls
 tail_ [] = []
 tail_ ls = tail ls
 
+show_ints :: [Int] -> [Char]
+show_ints [] = []
+show_ints (x:xs) = (show x) ++ ", " ++ show_ints xs
+
 -- These three functions perform GPLC conditional expression folding, evaluating conditional op - codes at the start of a GPLC program run to yield unconditional code.
 on_signal :: [Int] -> [Int] -> Int -> [Int]
 on_signal [] code sig = []
@@ -541,9 +545,9 @@ det_dir_vector dir speed look_up =
   if dir == 0 then (0, 0)
   else (speed * look_up ! (2, dir'), speed * look_up ! (1, dir'))
 
-char_rotation :: Int -> Int -> Int -> Int
-char_rotation 0 last_dir base_id = base_id + last_dir * 2
-char_rotation current_dir last_dir base_id = base_id + current_dir * 2
+char_rotation :: Int -> Int -> Int -> Int -> Int
+char_rotation 0 last_dir base_id mode = base_id + last_dir + mode
+char_rotation current_dir last_dir base_id mode = base_id + current_dir + mode
 
 add_vel_pos (fg_w, fg_u, fg_v) (vel_u, vel_v) = (fg_w, fg_u + vel_u, fg_v + vel_v)
 
@@ -592,8 +596,8 @@ npc_move offset d_list (w:u:v:w1:u1:v1:blocks) w_grid f_grid obj_grid s0 s1 look
       ramp_fill_ = \dw voxel -> ramp_fill (w + dw) u v voxel (surface (f_grid ! (w, div u 2, div v 2)))
       conv_ramp_fill0 = conv_ramp_fill w u v 1 (surface (f_grid ! (w, div u 2, div v 2)))
       conv_ramp_fill1 = conv_ramp_fill w u v 0 (surface (f_grid ! (w, div u 2, div v 2)))
-      w_grid' = w_grid // [((-w - 1, u, v), (w_grid ! (-w - 1, u, v)) {obj = Just (o_target {ident_ = char_rotation (direction char_state) (last_dir char_state) (head d_list), u__ = u__ o_target + fst dir_vector', v__ = v__ o_target + snd dir_vector'})})]
-      w_grid'' = w_grid' // [((-w - 1, u, v), def_w_grid), ((-w - 1, u', v'), w_grid ! (-w - 1, u, v))]
+      w_grid' = w_grid // [((-w - 1, u, v), (w_grid ! (-w - 1, u, v)) {obj = Just (o_target {u__ = u__ o_target + fst dir_vector', v__ = v__ o_target + snd dir_vector'})})]
+      w_grid'' = w_grid' // [((-w - 1, u, v), def_w_grid), ((-w - 1, u', v'), (w_grid ! (-w - 1, u, v)) {obj = Just (o_target {ident_ = char_rotation (direction char_state) (last_dir char_state) (d_list !! 1) (-1), texture__ = 8 - char_rotation (direction char_state) (last_dir char_state) 0 0})})]
       w_grid''' = w_grid // take 4 (ramp_fill (-w - 1) u v ((w_grid ! (-w - 1, u, v)) {obj = Just (o_target {u__ = fst__ (fg_position char_state) + fst__ ramp_climb_, v__ = snd__ (fg_position char_state) + snd__ ramp_climb_, w__ = third_ (fg_position char_state) + third_ ramp_climb_})}) Positive_u)
       w_grid_4 = \dw -> w_grid // (take 4 (ramp_fill (-w - 1) u v def_w_grid Positive_u) ++ drop 4 (ramp_fill (-w - 1 + dw) u v ((w_grid ! (-w - 1, u, v)) {obj = Just (o_target {u__ = fst__ ramp_climb_, v__ = snd__ ramp_climb_, w__ = third_ ramp_climb_})}) (surface (f_grid ! (w, div u 2, div v 2)))))
       obj_grid' = \x y -> obj_grid // [((w, u, v), (fst prog, take offset (snd prog) ++ [x, y] ++ drop (offset + 2) (snd prog)))]
@@ -613,7 +617,7 @@ npc_move offset d_list (w:u:v:w1:u1:v1:blocks) w_grid f_grid obj_grid s0 s1 look
       if (w - 1, u', v') == (truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)) then (w_grid, obj_grid, s1 {next_sig_q = next_sig_q s1 ++ [3, w, u', v']})
       else (w_grid // ([((-w - 1, u, v), def_w_grid)] ++ take 4 (ramp_fill (-w - 1 + 1) u' v' (w_grid ! (-w - 1, u, v)) Positive_u)), (obj_grid' 1 0) // ((take 4 (ramp_fill (w - 1) u' v' (2, []) Positive_u)) ++ [((w, u, v), def_obj_grid), ((w - 1, u', v'), prog)]), s1 {npc_states = (npc_states s1) // [(head d_list, char_state {node_locations = [w - 1, u', v', 0, 0, 0], ticks_left0 = 41})], next_sig_q = next_sig_q s1 ++ [3, w, u', v']})
   else if npc_type char_state < 2 && ticks_left0 char_state == 1 then
-    if direction char_state >= 0 then (w_grid', obj_grid, s1 {npc_states = (npc_states s1) // [(head d_list, char_state {fg_position = add_vel_pos (fg_position char_state) (dir_vector char_state)})]})
+    if direction char_state >= 0 then (w_grid', obj_grid, s1 {npc_states = (npc_states s1) // [(head d_list, char_state {fg_position = add_vel_pos (fg_position char_state) (dir_vector char_state)})], next_sig_q = next_sig_q s1 ++ [3, w, u, v]})
     else if direction char_state < -4 then
       if (w + 1, conv_ramp_fill0 !! 1, conv_ramp_fill0 !! 2) == (truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)) then (w_grid, obj_grid, s1 {next_sig_q = next_sig_q s1 ++ [3, w, u', v']})
       else if fst (obj_grid ! (w + 1, conv_ramp_fill0 !! 1, conv_ramp_fill0 !! 2)) > 0 then (w_grid, obj_grid, s1 {next_sig_q = next_sig_q s1 ++ [3, w, u', v']})
@@ -629,11 +633,10 @@ npc_damage :: [Int] -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) 
 npc_damage (w:u:v:blocks) w_grid obj_grid s0 s1 d_list =
   let damage = det_damage ("d", 6, 10, 14) s0
       char_state = (npc_states s1) ! (head d_list)
+      o_target = fromJust (obj (w_grid ! (-w - 1, u, v)))
   in
-  if c_health ((npc_states s1) ! (head d_list)) - damage <= 0 then throw NPC_feature_not_implemented
+  if c_health char_state - damage <= 0 then (w_grid // [((-w - 1, u, v), (w_grid ! (-w - 1, u, v)) {obj = Just (o_target {ident_ = (d_list !! 1) + 9, texture__ = 1})})], obj_grid // [((w, u, v), def_obj_grid)], s1 {message = message s1 ++ [2, 4, 14]})
   else (w_grid, obj_grid, s1 {npc_states = (npc_states s1) // [(head d_list, char_state {c_health = (c_health char_state) - damage})], message = message s1 ++ [2, 4, 16]})
-
---(w_grid // [((-w - 1, u, v), (w_grid ! (-w - 1, u, v)) {obj = Just ((obj (w_grid ! (-w - 1, u, v))) {ident_ = (d_list !! 1) + 16}))]}, obj_grid // [((w, u, v), (0, []))], s1 {message = message s1 ++ [2, 4, 14]})
 
 -- Branch on each GPLC op - code to call the corresponding function, with optional per op - code status reports for debugging.
 run_gplc :: [Int] -> [Int] -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> Play_state0 -> Play_state1 -> (Int, Int, Int) -> UArray (Int, Int) Float -> Int -> IO (Array (Int, Int, Int) Wall_grid, Array (Int, Int, Int) Floor_grid, Array (Int, Int, Int) (Int, [Int]), Play_state0, Play_state1)
@@ -736,7 +739,8 @@ run_gplc (x0:xs) d_list w_grid f_grid obj_grid s0 s1 location look_up 21 =
   in do
   report_state (verbose_mode s1) 1 (snd (obj_grid ! location)) [] []
   report_state (verbose_mode s1) 2 [] [] ("\nnpc_move run with arguments " ++ "0: " ++ show x0)
-  run_gplc (tail_ xs) d_list (fst__ npc_move_) f_grid (snd__ npc_move_) s0 (third_ npc_move_) location look_up (head_ xs)
+  putStr ("\nnext_sig_q: " ++ show_ints (next_sig_q (third_ npc_move_)))
+  run_gplc xs d_list (fst__ npc_move_) f_grid (snd__ npc_move_) s0 (third_ npc_move_) location look_up (-1)
 run_gplc code d_list w_grid f_grid obj_grid s0 s1 location look_up 22 =
   let npc_damage_ = npc_damage (node_locations ((npc_states s1) ! (head d_list))) w_grid obj_grid s0 s1 d_list
   in do
@@ -754,7 +758,7 @@ report_state False mode prog d_list message = return ()
 report_state True 0 prog d_list message = do
   putStr ("\nProgram list: " ++ show prog)
   putStr ("\nData list: " ++ show d_list)
-report_state True 1 prog d_list message = putStr ("\nProgram list: " ++ show prog)
+report_state True 1 prog d_list message = putStr ("\n\nProgram list: " ++ show prog)
 report_state True 2 prog d_list message = putStr message
 
 gplc_error :: Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> Play_state0 -> Play_state1 -> SomeException -> IO (Array (Int, Int, Int) Wall_grid, Array (Int, Int, Int) Floor_grid, Array (Int, Int, Int) (Int, [Int]), Play_state0, Play_state1)

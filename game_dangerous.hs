@@ -22,6 +22,7 @@ import qualified Data.ByteString as BS
 import Control.Exception
 import System.Exit
 import System.Random
+import System.Clock
 import Build_model
 import Game_logic
 import Decompress_map
@@ -306,7 +307,7 @@ start_game hwnd hdc uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag_j)
     r_gen <- getStdGen
     if mode == 0 then do
       tid <- forkIO (update_play (Io_box {hwnd_ = hwnd, hdc_ = hdc, uniform_ = uniform, p_bind_ = p_bind}) state_ref (ps0_init {pos_u = u, pos_v = v, pos_w = w, show_fps_ = select_mode (cfg' "show_fps"), prob_seq = gen_prob_seq 0 239 (read (cfg' "prob_c")) r_gen}) (ps1_init {verbose_mode = select_mode (cfg' "verbose_mode"), angle_step = set_angle_step (cfg' "fps_limit")}) False ((read (cfg' "fps_limit")) / 1.25) (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up_ conf_reg save_state sound_array)
-      result <- show_frame hdc p_bind uniform p_mt_matrix (p_f_table0, p_f_table1) 0 0 0 0 0 1 state_ref w_grid f_grid obj_grid look_up_ (read ((splitOn "~" c) !! 10)) 0 camera_to_clip' (div 1000 (read (cfg' "fps_limit"))) 0
+      result <- show_frame hdc p_bind uniform p_mt_matrix (p_f_table0, p_f_table1) 0 0 0 0 0 1 state_ref w_grid f_grid obj_grid look_up_ (read ((splitOn "~" c) !! 10)) 0 camera_to_clip' (div 1000 (read (cfg' "fps_limit"))) []
       free p_mt_matrix
       free p_f_table0
       free p_f_table1
@@ -314,7 +315,7 @@ start_game hwnd hdc uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag_j)
       start_game hwnd hdc uniform p_bind c conf_reg ((head (fst result)) + 1) (u, v, w, g, f, mag_r, mag_j) (snd result) sound_array
     else do
       tid <- forkIO (update_play (Io_box {hwnd_ = hwnd, hdc_ = hdc, uniform_ = uniform, p_bind_ = p_bind}) state_ref (s0_ save_state) (s1_ save_state) False ((read (cfg' "fps_limit")) / 1.25) (g, f, mag_r, mag_j) (w_grid_ save_state) (f_grid_ save_state) (obj_grid_ save_state) look_up_ conf_reg save_state sound_array)
-      result <- show_frame hdc p_bind uniform p_mt_matrix (p_f_table0, p_f_table1) 0 0 0 0 0 1 state_ref w_grid f_grid obj_grid look_up_ (read ((splitOn "~" c) !! 10)) 0 camera_to_clip' (div 1000 (read (cfg' "fps_limit"))) 0
+      result <- show_frame hdc p_bind uniform p_mt_matrix (p_f_table0, p_f_table1) 0 0 0 0 0 1 state_ref w_grid f_grid obj_grid look_up_ (read ((splitOn "~" c) !! 10)) 0 camera_to_clip' (div 1000 (read (cfg' "fps_limit"))) []
       free p_mt_matrix
       free p_f_table0
       free p_f_table1
@@ -495,8 +496,8 @@ bind_texture (x:xs) p_bind w h offset = do
   bind_texture xs p_bind w h (offset + 1)
 
 -- This function manages the rendering of all environmental models and in game messages.  It recurses once per frame rendered and is the central branching point of the rendering thread.
-show_frame :: HDC -> (UArray Int Word32, Int) -> UArray Int Int32 -> Ptr GLfloat -> (Ptr Int, Ptr Int) -> Float -> Float -> Float -> Int -> Int -> Int -> MVar (Play_state0, Array (Int, Int, Int) Wall_grid, Save_state) -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> UArray (Int, Int) Float -> Int -> Int -> Matrix Float -> DWORD -> DWORD -> IO ([Int], Save_state)
-show_frame hdc p_bind uniform p_mt_matrix filter_table u v w a a' game_t' state_ref w_grid f_grid obj_grid look_up w_limit msg_timer camera_to_clip min_frame_t t =
+show_frame :: HDC -> (UArray Int Word32, Int) -> UArray Int Int32 -> Ptr GLfloat -> (Ptr Int, Ptr Int) -> Float -> Float -> Float -> Int -> Int -> Int -> MVar (Play_state0, Array (Int, Int, Int) Wall_grid, Save_state) -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> UArray (Int, Int) Float -> Int -> Int -> Matrix Float -> DWORD -> [DWORD] -> IO ([Int], Save_state)
+show_frame hdc p_bind uniform p_mt_matrix filter_table u v w a a' game_t' state_ref w_grid f_grid obj_grid look_up w_limit msg_timer camera_to_clip min_frame_t ts =
   let survey0 = multi_survey (mod_angle a (-92)) 183 u v (truncate u) (truncate v) w_grid f_grid obj_grid look_up w_limit 0 [] []
       survey1 = multi_survey (mod_angle (mod_angle a' a) (-92)) 183 (fst view_circle') (snd view_circle') (truncate (fst view_circle')) (truncate (snd view_circle')) w_grid f_grid obj_grid look_up w_limit 0 [] []
       view_circle' = view_circle u v 2 (mod_angle a a') look_up
@@ -543,9 +544,9 @@ show_frame hdc p_bind uniform p_mt_matrix filter_table u v w a a' game_t' state_
     show_walls filtered_surv0 uniform p_bind (plusPtr p_mt_matrix (glfloat * 16)) u v w a look_up (rend_mode (fst__ p_state))
     show_object filtered_surv1 uniform p_bind (plusPtr p_mt_matrix (glfloat * 48)) u v w a look_up (rend_mode (fst__ p_state))
   tick1 <- getTickCount
-  t' <- show_fps (fst__ p_state) t tick1
   if (tick1 - tick0) < min_frame_t then sleep (min_frame_t - (tick1 - tick0))
   else return ()
+  ts' <- show_fps (fst__ p_state) (tick1 - tick0) ts
   if msg_count (fst__ p_state) == -1 then do
     putStr "\nshow_frame: case -1"
     return ([1], third_ p_state)
@@ -569,7 +570,7 @@ show_frame hdc p_bind uniform p_mt_matrix filter_table u v w a a' game_t' state_
     return (([(abs (msg_count (fst__ p_state)))] ++ (snd (head (message_ (fst__ p_state))))), third_ p_state)
   else if msg_count (fst__ p_state) > 0 then do
     Main.swapBuffers hdc
-    show_frame hdc p_bind uniform p_mt_matrix filter_table (pos_u (fst__ p_state)) (pos_v (fst__ p_state)) (pos_w (fst__ p_state)) (angle (fst__ p_state)) (view_angle (fst__ p_state)) (game_t (fst__ p_state)) state_ref (snd__ p_state) f_grid obj_grid look_up w_limit (msg_count (fst__ p_state)) camera_to_clip min_frame_t t'
+    show_frame hdc p_bind uniform p_mt_matrix filter_table (pos_u (fst__ p_state)) (pos_v (fst__ p_state)) (pos_w (fst__ p_state)) (angle (fst__ p_state)) (view_angle (fst__ p_state)) (game_t (fst__ p_state)) state_ref (snd__ p_state) f_grid obj_grid look_up w_limit (msg_count (fst__ p_state)) camera_to_clip min_frame_t ts'
   else if msg_timer > 0 then do
     p_mt_matrix1 <- mallocBytes ((length (snd (head (message_ (fst__ p_state))))) * glfloat * 16)
     glBindVertexArray (unsafeCoerce ((fst p_bind) ! 933))
@@ -579,18 +580,20 @@ show_frame hdc p_bind uniform p_mt_matrix filter_table u v w a a' game_t' state_
     glEnable GL_DEPTH_TEST
     free p_mt_matrix1
     Main.swapBuffers hdc
-    show_frame hdc p_bind uniform p_mt_matrix filter_table (pos_u (fst__ p_state)) (pos_v (fst__ p_state)) (pos_w (fst__ p_state)) (angle (fst__ p_state)) (view_angle (fst__ p_state)) (game_t (fst__ p_state)) state_ref (snd__ p_state) f_grid obj_grid look_up w_limit (msg_timer - 1) camera_to_clip min_frame_t t'
+    show_frame hdc p_bind uniform p_mt_matrix filter_table (pos_u (fst__ p_state)) (pos_v (fst__ p_state)) (pos_w (fst__ p_state)) (angle (fst__ p_state)) (view_angle (fst__ p_state)) (game_t (fst__ p_state)) state_ref (snd__ p_state) f_grid obj_grid look_up w_limit (msg_timer - 1) camera_to_clip min_frame_t ts'
   else do
     Main.swapBuffers hdc
-    show_frame hdc p_bind uniform p_mt_matrix filter_table (pos_u (fst__ p_state)) (pos_v (fst__ p_state)) (pos_w (fst__ p_state)) (angle (fst__ p_state)) (view_angle (fst__ p_state)) (game_t (fst__ p_state)) state_ref (snd__ p_state) f_grid obj_grid look_up w_limit 0 camera_to_clip min_frame_t t'
+    show_frame hdc p_bind uniform p_mt_matrix filter_table (pos_u (fst__ p_state)) (pos_v (fst__ p_state)) (pos_w (fst__ p_state)) (angle (fst__ p_state)) (view_angle (fst__ p_state)) (game_t (fst__ p_state)) state_ref (snd__ p_state) f_grid obj_grid look_up w_limit 0 camera_to_clip min_frame_t ts'
 
 -- Optionally report the frame rate in the console during game play.
-show_fps :: Play_state0 -> DWORD -> DWORD -> IO DWORD
-show_fps s0 t0 t1 = do
-  if mod (game_t s0) 40 == 0 && show_fps_ s0 == True then do
-    putStr ("\n\nFPS: " ++ show (div 40000 (t1 - t0)))
-    return t1
-  else return t0
+show_fps :: Play_state0 -> DWORD -> [DWORD] -> IO [DWORD]
+show_fps s0 t ts = do
+  if show_fps_ s0 == True then
+    if (mod (game_t s0) 40) == 0 then do
+      putStr ("\n\nFPS: " ++ show (div 1000 (div (foldl (+) 0 ts) 40)))
+      return []
+    else return (t : ts)
+  else return []
 
 -- These three functions pass transformation matrices to the shaders and make the GL draw calls that render models.
 show_walls :: [Wall_place] -> UArray Int Int32 -> (UArray Int Word32, Int) -> Ptr GLfloat -> Float -> Float -> Float -> Int -> UArray (Int, Int) Float -> Int -> IO ()
