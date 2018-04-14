@@ -1,3 +1,6 @@
+-- Game :: Dangerous code by Steven Tinsley.  You are free to use this software and view its source code.
+-- If you wish to redistribute it or use it as part of your own work, this is permitted as long as you acknowledge the work is by the abovementioned author.
+
 module Main where
 
 import System.IO
@@ -282,7 +285,7 @@ proc_splash text 0 = (0, []) : proc_splash text 1
 proc_splash text c = (c, conv_msg_ (take 48 text)) : proc_splash (drop 48 text) (c + 1)
 
 gen_prob_seq :: RandomGen g => Int -> Int -> Int -> g -> UArray Int Int
-gen_prob_seq i0 i1 i2 g = listArray (i0, i1) (drop i2 (randomRs (0, 9) g))
+gen_prob_seq i0 i1 i2 g = listArray (i0, i1) (drop i2 (randomRs (0, 99) g))
 
 -- This function initialises the game logic and rendering threads each time a new game is started and handles user input from the main menu.
 start_game :: HWND -> HDC -> UArray Int Int32 -> (UArray Int Word32, Int) -> [Char] -> Array Int [Char] -> Int -> (Float, Float, Float, Float, Float, Float, Float) -> Save_state -> Array Int Source -> IO ()

@@ -1,3 +1,6 @@
+-- Game :: Dangerous code by Steven Tinsley.  You are free to use this software and view its source code.
+-- If you wish to redistribute it or use it as part of your own work, this is permitted as long as you acknowledge the work is by the abovementioned author.
+
 -- The .dan map file format encodes map geometry in a form intended to be space efficient and editable with minimal tools.  This module transforms (and expands) that text format into an intermediate text format
 -- that is then parsed and used to initialise the Wall_grid and Floor_grid arrays.  This transformation was originally done by a tool chain program as a pre - processing step and was later moved into the engine.
 -- I have retained the intermediate text format to avoid having to re - write some of the game state initialisation code, which appeared needless.

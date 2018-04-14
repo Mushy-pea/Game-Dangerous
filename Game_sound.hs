@@ -1,3 +1,6 @@
+-- Game :: Dangerous code by Steven Tinsley.  You are free to use this software and view its source code.
+-- If you wish to redistribute it or use it as part of your own work, this is permitted as long as you acknowledge the work is by the abovementioned author.
+
 -- This module implements the sound sub system.  Its functions are called from Main (for system initialisation) and Game_logic (for playing samples in game).
 -- When trying to use the library Sound.OpenAL.AL I found that it didn't behave as the documentation on Hackage indicated.
 -- GHC reported "No instance for GeneratableObjectName Buffer" despite this instance being declared in the relevant module.

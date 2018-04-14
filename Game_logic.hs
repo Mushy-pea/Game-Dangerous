@@ -1,3 +1,6 @@
+-- Game :: Dangerous code by Steven Tinsley.  You are free to use this software and view its source code.
+-- If you wish to redistribute it or use it as part of your own work, this is permitted as long as you acknowledge the work is by the abovementioned author.
+
 module Game_logic where
 
 import System.IO
@@ -359,8 +362,8 @@ project_update p_state p_state' (i0, i1, i2) w_grid obj_grid s0 s1 d_list =
 
 det_damage :: ([Char], Int, Int, Int) -> Play_state0 -> Int
 det_damage (d, low, med, high) s0 =
-  if (prob_seq s0) ! (mod (game_t s0) 240) < 2 then low
-  else if (prob_seq s0) ! (mod (game_t s0) 240) > 7 then high
+  if (prob_seq s0) ! (mod (game_t s0) 240) < 20 then low
+  else if (prob_seq s0) ! (mod (game_t s0) 240) > 70 then high
   else med
 
 binary_dice :: Int -> Int -> (Int, Int, Int) -> Int -> Play_state0 -> Array (Int, Int, Int) (Int, [Int]) -> [Int] -> Array (Int, Int, Int) (Int, [Int])
@@ -733,13 +736,14 @@ run_gplc (x0:xs) d_list w_grid f_grid obj_grid s0 s1 location look_up 20 =
   in do
   report_state (verbose_mode s1) 1 (snd (obj_grid ! location)) [] []
   report_state (verbose_mode s1) 2 [] [] ("\nnpc_decision run with arguments " ++ "0: " ++ show x0)
+  report_npc_states (verbose_mode s1) s1 (head d_list)
   run_gplc (tail_ xs) d_list w_grid f_grid (fst npc_decision_) s0 (snd npc_decision_) location look_up (head_ xs)
 run_gplc (x0:xs) d_list w_grid f_grid obj_grid s0 s1 location look_up 21 =
   let npc_move_ = npc_move x0 d_list (node_locations ((npc_states s1) ! (head d_list))) w_grid f_grid obj_grid s0 s1 look_up
   in do
   report_state (verbose_mode s1) 1 (snd (obj_grid ! location)) [] []
   report_state (verbose_mode s1) 2 [] [] ("\nnpc_move run with arguments " ++ "0: " ++ show x0)
-  putStr ("\nnext_sig_q: " ++ show_ints (next_sig_q (third_ npc_move_)))
+  report_npc_states (verbose_mode s1) s1 (head d_list)
   run_gplc xs d_list (fst__ npc_move_) f_grid (snd__ npc_move_) s0 (third_ npc_move_) location look_up (-1)
 run_gplc code d_list w_grid f_grid obj_grid s0 s1 location look_up 22 =
   let npc_damage_ = npc_damage (node_locations ((npc_states s1) ! (head d_list))) w_grid obj_grid s0 s1 d_list
@@ -753,6 +757,31 @@ run_gplc code d_list w_grid f_grid obj_grid s0 s1 location look_up c = do
   throw Invalid_GPLC_opcode
 
 -- These functions deal with GPLC debugging output and error reporting.
+report_npc_states :: Bool -> Play_state1 -> Int -> IO ()
+report_npc_states False s1 i = return ()
+report_npc_states True s1 i =
+  let char_state = (npc_states s1) ! i
+      v0 = show (npc_type char_state)
+      v1 = show (c_health char_state)
+      v2 = show (ticks_left0 char_state)
+      v3 = show (ticks_left1 char_state)
+      v4 = show (node_locations char_state)
+      v5 = show (arr_node_locs char_state)
+      v6 = show (fg_position char_state)
+      v7 = show (dir_vector char_state)
+      v8 = show (direction char_state)
+      v9 = show (last_dir char_state)
+      v10 = show (target_u' char_state)
+      v11 = show (target_v' char_state)
+      v12 = show (target_w' char_state)
+      v13 = show (speed char_state)
+      v14 = show (avoid_dist char_state)
+      v15 = show (attack_mode char_state)
+      v16 = show (final_appr char_state)
+      v17 = show (fire_prob char_state)
+  in do
+  putStr ("\nNPC_state {npc_type = " ++ v0 ++ ", c_health = " ++ v1 ++ ", ticks_left0 = " ++ v2 ++ ", ticks_left1 = " ++ v3 ++ ", node_locations = " ++ v4 ++ ", arr_node_locs = " ++ v5 ++ ", fg_position = " ++ v6 ++ ", dir_vector = " ++ v7 ++ ", direction = " ++ v8 ++ ", last_dir = " ++ v9 ++ ", target_u' = " ++ v10 ++ ", target_v' = " ++ v11 ++ ", target_w' = " ++ v12 ++ ", speed = " ++ v13 ++ ", avoid_dist = " ++ v14 ++ ", attack_mode = " ++ v15 ++ ", final_appr = " ++ v16 ++ ", fire_prob = " ++ v17)
+
 report_state :: Bool -> Int -> [Int] -> [Int] -> [Char] -> IO ()
 report_state False mode prog d_list message = return ()
 report_state True 0 prog d_list message = do

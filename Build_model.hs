@@ -1,3 +1,6 @@
+-- Game :: Dangerous code by Steven Tinsley.  You are free to use this software and view its source code.
+-- If you wish to redistribute it or use it as part of your own work, this is permitted as long as you acknowledge the work is by the abovementioned author.
+
 -- The purpose of the functions in this module mostly fall into one of the following three catagories.
 -- 1. Initialisation of the arrays that hold game state using the decompressed form of the map.
 -- 2. Generation of vector transforms, which are either passed to the shaders for rendering purposes or used in the game logic.
