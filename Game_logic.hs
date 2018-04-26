@@ -360,6 +360,7 @@ project_update p_state p_state' (i0, i1, i2) w_grid obj_grid s0 s1 d_list =
       else (w_grid // [((w_block, u_block, v_block), def_w_grid)], obj_grid // [(location, (fst target, (take (p_state' + 11) (snd target)) ++ [1] ++ drop (p_state' + 12) (snd target)))], s1 {health = health s1 - det_damage (difficulty s1) s0, state_chg = 1, message = 0 : msg25})
     else (chg_grid 0 (1, 2, 3) (4, 5, 6) (w_grid // [(index, (w_grid ! index) {obj = Just (grid_i {u__ = u__ grid_i + int_to_float vel_u, v__ = v__ grid_i + int_to_float vel_v})})]) def_w_grid [1, w_block, u_block, v_block, w_block, u_block - 1 , v_block + 1], obj_grid // [(location, (fst target, (take p_state' (snd target)) ++ [u', v'] ++ drop (p_state' + 2) (snd target)))], s1)
 
+-- Called from project_update, npc_move and npc_damage.  Used to determine the damage taken by the player and non - player characters from adverse events.
 det_damage :: ([Char], Int, Int, Int) -> Play_state0 -> Int
 det_damage (d, low, med, high) s0 =
   if (prob_seq s0) ! (mod (game_t s0) 240) < 20 then low
@@ -378,6 +379,7 @@ binary_dice_ prob s0 =
   if (prob_seq s0) ! (mod (game_t s0) 240) < prob then True
   else False  
 
+-- These functions implement non - player character (NPC) logic, which is runnable but still in test as of build 8_05.
 init_npc :: Int -> Int -> Play_state1 -> [Int] -> Play_state1
 init_npc offset i s1 d_list =
   let i_npc_type = d_list !! offset
@@ -395,11 +397,13 @@ init_npc offset i s1 d_list =
   in
   s1 {npc_states = (npc_states s1) // [(i, NPC_state {npc_type = i_npc_type, c_health = i_c_health, ticks_left0 = 0, ticks_left1 = 0, node_locations = i_node_locations, arr_node_locs = i_arr_node_locs, fg_position = i_fg_position, dir_vector = i_dir_vector, direction = i_direction, last_dir = i_last_dir, target_u' = 0, target_v' = 0, target_w' = 0, speed = i_speed, avoid_dist = i_avoid_dist, attack_mode = i_attack_mode, final_appr = False, fire_prob = i_fire_prob})]}
 
+-- Used to determine a pseudorandom target destination for an NPC, so it can wander around when not set on attacking the player.
 det_rand_target :: Play_state0 -> Int -> Int -> (Int, Int, Int)
 det_rand_target s0 u_bound v_bound =
   let n = \i -> (prob_seq s0) ! (mod ((game_t s0) + i) 240)
   in (mod (n 0) 2, mod (((n 1) + 1) * ((n 2) + 1)) u_bound, mod (((n 1) + 1) * ((n 2) + 1)) v_bound)
 
+-- The NPC path finding is based around line of sight checks, which use the Obj_grid ( (Int, [Int]) ) instance of the ray tracer.
 chk_line_sight :: Int -> Int -> Int -> Int -> Int -> (Float, Float) -> Int -> Int -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> UArray (Int, Int) Float -> Int
 chk_line_sight mode a w_block u_block v_block (fg_u, fg_v) target_u target_v w_grid f_grid obj_grid look_up =
   let proc_angle_ = proc_angle a
@@ -418,6 +422,7 @@ npc_dir_remap (-6) = 5
 npc_dir_remap (-7) = 3
 npc_dir_remap (-8) = 7
 
+-- Determine an alternative viable direction if an NPC is blocked from following its primary choice of direction.
 another_dir :: [Int] -> Int -> Int -> Int -> Int -> (Float, Float) -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> UArray (Int, Int) Float -> Play_state0 -> Int
 another_dir [] c w_block u_block v_block (fg_u, fg_v) w_grid f_grid obj_grid look_up s0 = 0
 another_dir poss_dirs c w_block u_block v_block (fg_u, fg_v) w_grid f_grid obj_grid look_up s0 =
@@ -426,6 +431,7 @@ another_dir poss_dirs c w_block u_block v_block (fg_u, fg_v) w_grid f_grid obj_g
   if chk_line_sight 1 (npc_dir_table choice) w_block u_block v_block (fg_u, fg_v) 0 0 w_grid f_grid obj_grid look_up == 0 then choice
   else another_dir (delete choice poss_dirs) (c - 1) w_block u_block v_block (fg_u, fg_v) w_grid f_grid obj_grid look_up s0
 
+-- Non - player characters have 8 possible directions of movement (4 for centipedes).  This function is involved in implementing that restriction.
 quantise_angle :: Int -> (Int, Int)
 quantise_angle a =
   if a < 79 then (0, 1)
@@ -442,6 +448,7 @@ no_cpede_reverse 3 = 7
 no_cpede_reverse 5 = 1
 no_cpede_reverse 7 = 3
 
+-- There are two NPC behavioural models; standard creatures and centipedes.  This function contains the logic specific to the centipede model and is called from the more general npc_decision function.
 cpede_decision :: Int -> Int -> Int -> Int -> Int -> Int -> Int -> Int -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> Play_state0 -> Play_state1 -> UArray (Int, Int) Float -> (Int, Bool)
 cpede_decision 0 choice i target_u target_v w u v w_grid f_grid obj_grid s0 s1 look_up =
   let char_state = (npc_states s1) ! i
