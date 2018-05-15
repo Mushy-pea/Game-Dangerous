@@ -110,7 +110,7 @@ assm_gplc0 (x:xs) sym ind size_block sig_block code_block c =
   else if x == "pass_msg" then assm_gplc0 (drop msg_length xs) sym ind size_block sig_block (code_block ++ [13] ++ (assm_gplc2 13 (take msg_length xs) sym ind)) (c + msg_length)
   else if x == "chg_ps0" then assm_gplc0 (drop 3 xs) sym ind size_block sig_block (code_block ++ [14] ++ (assm_gplc2 14 (take 3 xs) sym ind)) (c + 4)
   else if x == "copy_ps0" then assm_gplc0 (drop 4 xs) sym ind size_block sig_block (code_block ++ [15] ++ (assm_gplc2 15 (take 4 xs) sym ind)) (c + 5)
-  else if x == "block" then assm_gplc0 (drop 4 xs) sym ind size_block sig_block (code_block ++ [5, 0, 1] ++ [read (xs !! 0)] ++ [assm_gplc3 0 (xs !! 1) sym ind] ++ [assm_gplc3 0 (xs !! 2) sym ind] ++ [assm_gplc3 0 (xs !! 3) sym ind]) (c + 7)
+  else if x == "block" then assm_gplc0 (drop 4 xs) sym ind size_block sig_block (code_block ++ [5, 0, 0] ++ [read (xs !! 0)] ++ [assm_gplc3 0 (xs !! 1) sym ind] ++ [assm_gplc3 0 (xs !! 2) sym ind] ++ [assm_gplc3 0 (xs !! 3) sym ind]) (c + 7)
   else if x == "binary_dice" then assm_gplc0 (drop 6 xs) sym ind size_block sig_block (code_block ++ [16] ++ (assm_gplc2 16 (take 6 xs) sym ind)) (c + 7)
   else if x == "project_init" then assm_gplc0 (drop 10 xs) sym ind size_block sig_block (code_block ++ [17] ++ (assm_gplc2 17 (take 10 xs) sym ind)) (c + 11)
   else if x == "project_update" then assm_gplc0 (drop 5 xs) sym ind size_block sig_block (code_block ++ [18] ++ (assm_gplc2 18 (take 5 xs) sym ind)) (c + 6)
