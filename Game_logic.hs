@@ -490,6 +490,15 @@ cpede_decision 1 choice i target_u target_v w u v w_grid f_grid obj_grid s0 s1 l
     if line_sight1 == 1 then (another_dir (delete (no_cpede_reverse choice) (delete choice [1, 3, 5, 7])) 2 w u v (snd__ (fg_position char_state), third_ (fg_position char_state)) w_grid f_grid obj_grid look_up s0, False)
     else (choice, False)
 
+vector_to_angle :: Float -> Float -> Int
+vector_to_angle u_comp v_comp =
+  let a = truncate ((atan (abs v_comp / abs u_comp)) * 100)
+  in
+  if u_comp >= 0 && v_comp >= 0 then a
+  else if u_comp < 0 && v_comp >= 0 then 314 - a
+  else if u_comp < 0 && v_comp < 0 then 314 + a
+  else 628 - a
+
 npc_decision :: Int -> Int -> Int -> Int -> Int -> Int -> [Int] -> [Int] -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> Play_state0 -> Play_state1 -> UArray (Int, Int) Float -> (Array (Int, Int, Int) (Int, [Int]), Play_state1)
 npc_decision 0 flag offset target_w target_u target_v d_list (x0:x1:x2:xs) w_grid f_grid obj_grid s0 s1 look_up =
   let char_state = (npc_states s1) ! (head d_list)
@@ -518,7 +527,7 @@ npc_decision 1 flag offset target_w target_u target_v d_list (x0:x1:x2:xs) w_gri
 npc_decision 2 flag offset target_w target_u target_v d_list (x0:x1:x2:xs) w_grid f_grid obj_grid s0 s1 look_up =
   let char_state = (npc_states s1) ! (head d_list)
       fg_pos = fg_position char_state
-      a = (truncate (atan (((fromIntegral target_v) + 0.5 - (snd__ fg_pos) / ((fromIntegral target_u) + 0.5 - (third_ fg_pos))) * 100)))
+      a = vector_to_angle (((fromIntegral target_u) + 0.5) - snd__ fg_pos) (((fromIntegral target_v) + 0.5) - third_ fg_pos)
       qa = quantise_angle a
       prog = obj_grid ! (x0, x1, x2)
       line_sight0 = chk_line_sight 2 (fst qa) x0 x1 x2 (snd__ (fg_position char_state), third_ (fg_position char_state)) target_u target_v w_grid f_grid obj_grid look_up
@@ -526,7 +535,7 @@ npc_decision 2 flag offset target_w target_u target_v d_list (x0:x1:x2:xs) w_gri
   in
   if final_appr char_state == True then
     if line_sight0 == 0 then
-      if (prob_seq s0) ! (mod (game_t s0) 240) < fire_prob char_state && final_appr char_state == True && attack_mode char_state == True then
+      if (prob_seq s0) ! (mod (game_t s0) 240) < fire_prob char_state && attack_mode char_state == True then
         (obj_grid // [((x0, x1, x2), (fst prog, take offset (snd prog) ++ [1, fl_to_int (fst__ fg_pos), fl_to_int (snd__ fg_pos), fl_to_int (third_ fg_pos), a] ++ drop (offset + 5) (snd prog)))], s1 {npc_states = (npc_states s1) // [(head d_list, char_state {direction = snd qa})]})
       else (obj_grid, s1 {npc_states = (npc_states s1) // [(head d_list, char_state {direction = snd qa})]})
     else if line_sight0 > avoid_dist char_state then (obj_grid, s1 {npc_states = (npc_states s1) // [(head d_list, char_state {direction = snd qa})]})

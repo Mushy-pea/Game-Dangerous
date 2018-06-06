@@ -57,13 +57,13 @@ int__ = 0 :: Int; int_ = sizeOf int__
 ptr_size = 8 :: Int -- Corresponds to the 8 byte pointers used on the Windows x86_64 platform.  This value should be changed to 4 if compiling for systems with 4 byte pointers
 
 -- Data types that store information about the environment and game state, as well as an exception type.
-data Wall_grid = Wall_grid {u1 :: Bool, u2 :: Bool, v1 :: Bool, v2 :: Bool, u1_bound :: Float, u2_bound :: Float, v1_bound :: Float, v2_bound :: Float, w_level :: Float,  wall_flag :: [Int], texture :: [Int], obj :: Maybe Obj_place} deriving (Show)
+data Wall_grid = Wall_grid {u1 :: Bool, u2 :: Bool, v1 :: Bool, v2 :: Bool, u1_bound :: Float, u2_bound :: Float, v1_bound :: Float, v2_bound :: Float, w_level :: Float,  wall_flag :: [Int], texture :: [Int], obj :: Maybe Obj_place} deriving (Eq, Show)
 
 data Object = Object {ident :: Int, att_offset :: Int, num_tex :: Int, tex_w :: GLsizei, tex_h :: GLsizei, behaviours :: [Int]} deriving (Show)
 
 data Wall_place = Wall_place {rotate :: GLint, translate_u :: Float, translate_v :: Float, translate_w :: Float, wall_flag_ :: Int, texture_ :: Int, isNull :: Bool} deriving (Show)
 
-data Obj_place = Obj_place {ident_ :: Int, u__ :: Float, v__ :: Float, w__ :: Float, rotation :: [Int], rotate_ :: Bool, phase :: Float, texture__ :: Int, num_elem :: CInt, obj_flag :: Int} deriving (Show)
+data Obj_place = Obj_place {ident_ :: Int, u__ :: Float, v__ :: Float, w__ :: Float, rotation :: [Int], rotate_ :: Bool, phase :: Float, texture__ :: Int, num_elem :: CInt, obj_flag :: Int} deriving (Eq, Show)
 
 data Ray_hit = U1 | U2 | V1 | V2 | Corner0 | Corner1 | Corner2 | Corner3 | U1_hit | U2_hit | V1_hit | V2_hit | Corner0_hit | Corner1_hit | Corner2_hit | Corner3_hit | Object_hit | Ramp_found deriving (Eq)
 
@@ -72,13 +72,13 @@ data Terrain = Flat | Positive_u | Negative_u | Positive_v | Negative_v | Open d
 data Floor_grid = Floor_grid {w_ :: Float, surface :: Terrain, local_up_ramp :: (Int, Int), local_down_ramp :: (Int, Int)} deriving (Show)
 
 data Play_state0 = Play_state0 {pos_u :: Float, pos_v :: Float, pos_w :: Float, vel :: [Float], angle :: Int, message_ :: [(Int, [Int])], msg_count :: Int, rend_mode :: Int, view_mode :: Int, view_angle :: Int,
-game_t :: Int, torch_t0 :: Int, torch_t_limit :: Int, show_fps_ :: Bool, prob_seq :: UArray Int Int} deriving (Show)
+game_t :: Int, torch_t0 :: Int, torch_t_limit :: Int, show_fps_ :: Bool, prob_seq :: UArray Int Int} deriving (Eq, Show)
 
 data Play_state1 = Play_state1 {health :: Int, ammo :: Int, gems :: Int, torches :: Int, keys :: [Int], region :: [Int], difficulty :: ([Char], Int, Int, Int), sig_q :: [Int], next_sig_q :: [Int],
-message :: [Int], state_chg :: Int, verbose_mode :: Bool, angle_step :: Int, npc_states :: Array Int NPC_state}
+message :: [Int], state_chg :: Int, verbose_mode :: Bool, angle_step :: Int, npc_states :: Array Int NPC_state} deriving (Eq)
 
 data NPC_state = NPC_state {npc_type :: Int, c_health :: Int, ticks_left0 :: Int, ticks_left1 :: Int, node_locations :: [Int], arr_node_locs :: [Int], fg_position :: (Float, Float, Float), dir_vector :: (Float, Float), direction :: Int, last_dir :: Int,
-target_u' :: Int, target_v' :: Int, target_w' :: Int, speed :: Float, avoid_dist :: Int, attack_mode :: Bool, final_appr :: Bool, fire_prob :: Int}
+target_u' :: Int, target_v' :: Int, target_w' :: Int, speed :: Float, avoid_dist :: Int, attack_mode :: Bool, final_appr :: Bool, fire_prob :: Int} deriving (Eq)
 
 data Save_state = Save_state {is_set :: Bool, w_grid_ :: Array (Int, Int, Int) Wall_grid, f_grid_ :: Array (Int, Int, Int) Floor_grid, obj_grid_ :: Array (Int, Int, Int) (Int, [Int]), s0_ :: Play_state0, s1_ :: Play_state1}
 
@@ -188,7 +188,8 @@ mod_angle a b =
 
 mod_angle' a b = b
 
--- These functions implement a ray tracing algorhythm, which is part of the visible surface determination system and is used for line of sight checks by the non - player character logic.
+-- These functions implement a ray tracing algorhythm, which is part of the visible surface determination (VSD) system and is used for line of sight checks by the non - player character logic.
+-- The Ray_test class exists so that the ray tracer can conveniently provide differing functionality when called from the VSD system or game logic.
 bound_check :: Int -> Int -> ((Int, Int, Int), (Int, Int, Int)) -> Bool
 bound_check block axis ((a, b, c), (w_max, u_max, v_max)) =
   if axis == 0 && block > u_max then False
@@ -216,7 +217,7 @@ class Ray_test a where
 
 instance Ray_test (Int, [Int]) where
   intersect U1 obj_grid f_grid w_block u_block v_block seek_mode c =
-    let f_target0 = surface (f_grid ! (w_block, div u_block 2, div v_block 2))
+    let f_target0 = surface (f_grid ! (w_block, div (u_block - 1) 2, div v_block 2))
         f_block_ = f_block w_block (u_block - 1) v_block f_target0 f_grid obj_grid
     in
     if seek_mode < 3 then
@@ -230,13 +231,13 @@ instance Ray_test (Int, [Int]) where
       else if fst (obj_grid ! (w_block, u_block - 1, v_block)) > 0 then (Object_hit, 0)
       else (U1, 0)
   intersect U2 obj_grid f_grid w_block u_block v_block seek_mode c =
-    let f_target0 = surface (f_grid ! (w_block, div u_block 2, div v_block 2))
+    let f_target0 = surface (f_grid ! (w_block, div (u_block + 1) 2, div v_block 2))
         f_block_ = f_block w_block (u_block + 1) v_block f_target0 f_grid obj_grid
     in
     if seek_mode < 3 then
       if fst (obj_grid ! (w_block, u_block + 1, v_block)) > 0 then (Object_hit, 0)
       else if surface (f_grid ! (w_block, div (u_block + 1) 2, div v_block 2)) /= Flat then (Object_hit, 0)
-      else (U1, 0)
+      else (U2, 0)
     else
       if c == 1 && f_target0 /= Flat then
         if f_block_ == 0 then (Object_hit, 0)
@@ -244,7 +245,7 @@ instance Ray_test (Int, [Int]) where
       else if fst (obj_grid ! (w_block, u_block + 1, v_block)) > 0 then (Object_hit, 0)
       else (U2, 0)
   intersect V1 obj_grid f_grid w_block u_block v_block seek_mode c =
-    let f_target0 = surface (f_grid ! (w_block, div u_block 2, div v_block 2))
+    let f_target0 = surface (f_grid ! (w_block, div u_block 2, div (v_block - 1) 2))
         f_block_ = f_block w_block u_block (v_block - 1) f_target0 f_grid obj_grid
     in
     if seek_mode < 3 then
@@ -258,7 +259,7 @@ instance Ray_test (Int, [Int]) where
       else if fst (obj_grid ! (w_block, u_block, v_block - 1)) > 0 then (Object_hit, 0)
       else (V1, 0)
   intersect V2 obj_grid f_grid w_block u_block v_block seek_mode c =
-    let f_target0 = surface (f_grid ! (w_block, div u_block 2, div v_block 2))
+    let f_target0 = surface (f_grid ! (w_block, div u_block 2, div (v_block + 1) 2))
         f_block_ = f_block w_block u_block (v_block + 1) f_target0 f_grid obj_grid
     in
     if seek_mode < 3 then
@@ -272,7 +273,7 @@ instance Ray_test (Int, [Int]) where
       else if fst (obj_grid ! (w_block, u_block, v_block + 1)) > 0 then (Object_hit, 0)
       else (V2, 0)
   intersect Corner0 obj_grid f_grid w_block u_block v_block seek_mode c =
-    let f_target0 = surface (f_grid ! (w_block, div u_block 2, div v_block 2))
+    let f_target0 = surface (f_grid ! (w_block, div (u_block - 1) 2, div (v_block + 1) 2))
         f_block_ = f_block w_block (u_block - 1) (v_block + 1) f_target0 f_grid obj_grid
     in
     if seek_mode < 3 then
@@ -286,7 +287,7 @@ instance Ray_test (Int, [Int]) where
       else if fst (obj_grid ! (w_block, u_block - 1, v_block + 1)) > 0 then (Object_hit, 0)
       else (Corner0, 0)
   intersect Corner1 obj_grid f_grid w_block u_block v_block seek_mode c =
-    let f_target0 = surface (f_grid ! (w_block, div u_block 2, div v_block 2))
+    let f_target0 = surface (f_grid ! (w_block, div (u_block + 1) 2, div (v_block + 1) 2))
         f_block_ = f_block w_block (u_block + 1) (v_block + 1) f_target0 f_grid obj_grid
     in
     if seek_mode < 3 then
@@ -300,7 +301,7 @@ instance Ray_test (Int, [Int]) where
       else if fst (obj_grid ! (w_block, u_block + 1, v_block + 1)) > 0 then (Object_hit, 0)
       else (Corner1, 0)
   intersect Corner2 obj_grid f_grid w_block u_block v_block seek_mode c =
-    let f_target0 = surface (f_grid ! (w_block, div u_block 2, div v_block 2))
+    let f_target0 = surface (f_grid ! (w_block, div (u_block + 1) 2, div (v_block - 1) 2))
         f_block_ = f_block w_block (u_block + 1) (v_block - 1) f_target0 f_grid obj_grid
     in
     if seek_mode < 3 then
@@ -314,7 +315,7 @@ instance Ray_test (Int, [Int]) where
       else if fst (obj_grid ! (w_block, u_block + 1, v_block - 1)) > 0 then (Object_hit, 0)
       else (Corner2, 0)
   intersect Corner3 obj_grid f_grid w_block u_block v_block seek_mode c =
-    let f_target0 = surface (f_grid ! (w_block, div u_block 2, div v_block 2))
+    let f_target0 = surface (f_grid ! (w_block, div (u_block - 1) 2, div (v_block - 1) 2))
         f_block_ = f_block w_block (u_block - 1) (v_block - 1) f_target0 f_grid obj_grid
     in
     if seek_mode < 3 then

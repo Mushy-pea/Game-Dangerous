@@ -1,3 +1,6 @@
+-- Game :: Dangerous code by Steven Tinsley.  You are free to use this software and view its source code.
+-- If you wish to redistribute it or use it as part of your own work, this is permitted as long as you acknowledge the work is by the abovementioned author.
+
 module Main where
 
 import System.IO
@@ -21,8 +24,10 @@ import Control.Concurrent
 import qualified Data.ByteString as BS
 import Control.Exception
 import System.Exit
+import System.Random
+import System.Clock
 import Build_model
-import Game_logic
+import Game_logic_
 import Decompress_map
 import Game_sound
 
@@ -134,10 +139,10 @@ foreign import ccall "wingdi.h SwapBuffers"
 main = do
   args <- getArgs
   contents <- bracket (openFile (args !! 0) ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nconfig file size: " ++ show (length contents)); return contents)
-  putStr ("\nGame :: Dangerous engine version 0.7 (for Windows x64)\nLoading content: " ++ ((splitOneOf "=\n" contents) !! 3))
+  putStr ("\nGame :: Dangerous engine version 0.8 (for Windows x64)\nLoading content: " ++ ((splitOneOf "=\n" contents) !! 3))
   putStr "\nOpening window..."
-  if length args > 3 then open_window ((listArray (0, 45) (splitOneOf "=\n" contents)) // [(1, args !! 1), (9, args !! 2), (11, args !! 3), (13, args !! 4), (15, args !! 5), (17, args !! 6), (19, args !! 7), (21, args !! 8), (23, args !! 9), (25, args !! 10), (27, args !! 11), (29, args !! 12), (31, args !! 13), (33, args !! 14), (35, args !! 15), (39, "n")])
-  else open_window ((listArray (0, 45) (splitOneOf "=\n" contents)) // [(31, args !! 1), (33, args !! 2)])
+  if length args > 3 then open_window ((listArray (0, 51) (splitOneOf "=\n" contents)) // [(1, args !! 1), (9, args !! 2), (11, args !! 3), (13, args !! 4), (15, args !! 5), (17, args !! 6), (19, args !! 7), (21, args !! 8), (23, args !! 9), (25, args !! 10), (27, args !! 11), (29, args !! 12), (31, args !! 13), (33, args !! 14), (35, args !! 15), (39, "n")])
+  else open_window ((listArray (0, 51) (splitOneOf "=\n" contents)) // [(31, args !! 1), (33, args !! 2)])
 
 -- This function initialises the window and loads the map file.
 open_window :: Array Int [Char] -> IO ()
@@ -180,10 +185,10 @@ setup_game hwnd hdc comp_env_map conf_reg =
   putStr "\nInitialising OpenGL context..."
   hrc <- wglCreateContext hdc
   wglMakeCurrent hdc hrc
-  glEnable gl_DEPTH_TEST
-  glDepthFunc gl_LEQUAL
+  glEnable GL_DEPTH_TEST
+  glDepthFunc GL_LEQUAL
   glDepthRange 0 1
-  glEnable gl_DEPTH_CLAMP
+  glEnable GL_DEPTH_CLAMP
   contents0 <- bracket (openFile (cfg' "shader_file") ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nshader file size: " ++ show (length contents)); return contents)
   p_gl_program <- mallocBytes (7 * gluint)
   make_gl_program (tail (splitOn "#" contents0)) p_gl_program 0
@@ -191,7 +196,7 @@ setup_game hwnd hdc comp_env_map conf_reg =
   gl_program0 <- peekElemOff p_gl_program 0; gl_program1 <- peekElemOff p_gl_program 1; gl_program2 <- peekElemOff p_gl_program 2; gl_program3 <- peekElemOff p_gl_program 3; gl_program4 <- peekElemOff p_gl_program 4; gl_program5 <- peekElemOff p_gl_program 5; gl_program6 <- peekElemOff p_gl_program 6
   glClearColor 0 0 0 0
   glClearDepth 1
-  contents1 <- bracket (openFile ((splitOn "\n~\n" comp_env_map) !! 9) ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nlight map file size: " ++ show (length contents)); return contents)
+  contents1 <- bracket (openFile ((cfg' "model_data_dir") ++ ((splitOn "\n~\n" comp_env_map) !! 9)) ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nlight map file size: " ++ show (length contents)); return contents)
   p_lmap_pos0 <- callocBytes (glfloat * 300)
   p_lmap_pos1 <- callocBytes (glfloat * 300)
   p_lmap_int0 <- callocBytes (glfloat * 300)
@@ -248,8 +253,8 @@ setup_game hwnd hdc comp_env_map conf_reg =
   free p_gl_program; free p_lmap_pos0; free p_lmap_pos1; free p_lmap_int0; free p_lmap_int1; free p_lmap_t0; free p_lmap_t1
   p_bind_ <- buffer_to_array (castPtr mod_bind) p_bind 0 0 (p_bind_limit - 16)
   init_al_context
-  contents2 <- bracket (openFile (last (splitOn ", " ((splitOn "\n~\n" comp_env_map) !! 8))) ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nsound map size: " ++ show (length contents)); return contents)
-  sound_array <- init_al_effect0 (splitOneOf "\n " contents2) (array (0, 255) [(x, Source 0) | x <- [0..255]])
+  contents2 <- bracket (openFile ((cfg' "sound_data_dir") ++ (last (splitOn ", " ((splitOn "\n~\n" comp_env_map) !! 8)))) ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nsound map size: " ++ show (length contents)); return contents)
+  sound_array <- init_al_effect0 (splitOneOf "\n " contents2) (cfg' "sound_data_dir") (array (0, 255) [(x, Source 0) | x <- [0..255]])
   start_game hwnd hdc (listArray (0, 52) uniform) (p_bind_, p_bind_limit + 1) env_map conf_reg (-1) (read (cfg' "init_u"), read (cfg' "init_v"), read (cfg' "init_w"), read (cfg' "gravity"), read (cfg' "friction"), read (cfg' "run_power"), read (cfg' "jump_power")) def_save_state sound_array
 
 -- The model file(s) that describe all 3D and 2D models referenced in the current map are loaded here.
@@ -279,6 +284,9 @@ proc_splash [] c = []
 proc_splash text 0 = (0, []) : proc_splash text 1
 proc_splash text c = (c, conv_msg_ (take 48 text)) : proc_splash (drop 48 text) (c + 1)
 
+gen_prob_seq :: RandomGen g => Int -> Int -> Int -> g -> UArray Int Int
+gen_prob_seq i0 i1 i2 g = listArray (i0, i1) (drop i2 (randomRs (0, 99) g))
+
 -- This function initialises the game logic and rendering threads each time a new game is started and handles user input from the main menu.
 start_game :: HWND -> HDC -> UArray Int Int32 -> (UArray Int Word32, Int) -> [Char] -> Array Int [Char] -> Int -> (Float, Float, Float, Float, Float, Float, Float) -> Save_state -> Array Int Source -> IO ()
 start_game hwnd hdc uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag_j) save_state sound_array =
@@ -286,7 +294,7 @@ start_game hwnd hdc uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag_j)
       f_grid = (make_array1 (load_floor0 (splitOn "&" ((splitOn "~" c) !! 5))) (read ((splitOn "~" c) !! 8)) (read ((splitOn "~" c) !! 9)) (read ((splitOn "~" c) !! 10)))
       obj_grid = ((empty_obj_grid (read ((splitOn "~" c) !! 8)) (read ((splitOn "~" c) !! 9)) (read ((splitOn "~" c) !! 10))) // load_obj_grid (splitOn ", " ((splitOn "~" c) !! 6)))
       look_up_ = look_up [make_table 0 0, make_table 1 0, make_table 2 0, make_table 3 0]
-      camera_to_clip' = fromList 4 4 [frustumScale, 0, 0, 0, 0, frustumScale, 0, 0, 0, 0, ((zFar + zNear) / (zNear - zFar)), ((2 * zFar * zNear) / (zNear - zFar)), 0, 0, -1, 0]
+      camera_to_clip' = fromList 4 4 [read (cfg' "frustumScale"), 0, 0, 0, 0, read (cfg' "frustumScale"), 0, 0, 0, 0, ((zFar + zNear) / (zNear - zFar)), ((2 * zFar * zNear) / (zNear - zFar)), 0, 0, -1, 0]
       cfg' = cfg conf_reg 0
   in do
   if mode == -1 then do
@@ -299,9 +307,10 @@ start_game hwnd hdc uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag_j)
     p_f_table0 <- callocBytes (int_ * 120000)
     p_f_table1 <- callocBytes (int_ * 37500)
     state_ref <- newEmptyMVar
+    r_gen <- getStdGen
     if mode == 0 then do
-      tid <- forkIO (update_play (Io_box {hwnd_ = hwnd, hdc_ = hdc, uniform_ = uniform, p_bind_ = p_bind}) state_ref (ps0_init {pos_u = u, pos_v = v, pos_w = w, show_fps_ = select_mode (cfg' "show_fps")}) (ps1_init {verbose_mode = select_mode (cfg' "verbose_mode"), angle_step = set_angle_step (cfg' "fps_limit")}) False ((read (cfg' "fps_limit")) / 1.25) (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up_ conf_reg save_state sound_array)
-      result <- show_frame hdc p_bind uniform p_mt_matrix (p_f_table0, p_f_table1) 0 0 0 0 0 1 state_ref w_grid f_grid obj_grid look_up_ (read ((splitOn "~" c) !! 10)) 0 camera_to_clip' (div 1000 (read (cfg' "fps_limit"))) 0
+      tid <- forkIO (update_play (Io_box {hwnd_ = hwnd, hdc_ = hdc, uniform_ = uniform, p_bind_ = p_bind}) state_ref (ps0_init {pos_u = u, pos_v = v, pos_w = w, show_fps_ = select_mode (cfg' "show_fps"), prob_seq = gen_prob_seq 0 239 (read (cfg' "prob_c")) r_gen}) (ps1_init {verbose_mode = select_mode (cfg' "verbose_mode"), angle_step = set_angle_step (cfg' "fps_limit")}) False ((read (cfg' "fps_limit")) / 1.25) (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up_ conf_reg save_state sound_array)
+      result <- show_frame hdc p_bind uniform p_mt_matrix (p_f_table0, p_f_table1) 0 0 0 0 0 1 state_ref w_grid f_grid obj_grid look_up_ (read ((splitOn "~" c) !! 10)) 0 camera_to_clip' (div 1000 (read (cfg' "fps_limit"))) []
       free p_mt_matrix
       free p_f_table0
       free p_f_table1
@@ -309,7 +318,7 @@ start_game hwnd hdc uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag_j)
       start_game hwnd hdc uniform p_bind c conf_reg ((head (fst result)) + 1) (u, v, w, g, f, mag_r, mag_j) (snd result) sound_array
     else do
       tid <- forkIO (update_play (Io_box {hwnd_ = hwnd, hdc_ = hdc, uniform_ = uniform, p_bind_ = p_bind}) state_ref (s0_ save_state) (s1_ save_state) False ((read (cfg' "fps_limit")) / 1.25) (g, f, mag_r, mag_j) (w_grid_ save_state) (f_grid_ save_state) (obj_grid_ save_state) look_up_ conf_reg save_state sound_array)
-      result <- show_frame hdc p_bind uniform p_mt_matrix (p_f_table0, p_f_table1) 0 0 0 0 0 1 state_ref w_grid f_grid obj_grid look_up_ (read ((splitOn "~" c) !! 10)) 0 camera_to_clip' (div 1000 (read (cfg' "fps_limit"))) 0
+      result <- show_frame hdc p_bind uniform p_mt_matrix (p_f_table0, p_f_table1) 0 0 0 0 0 1 state_ref w_grid f_grid obj_grid look_up_ (read ((splitOn "~" c) !! 10)) 0 camera_to_clip' (div 1000 (read (cfg' "fps_limit"))) []
       free p_mt_matrix
       free p_f_table0
       free p_f_table1
@@ -347,8 +356,8 @@ make_gl_program [] p_prog i = return ()
 make_gl_program (x0:x1:xs) p_prog i = do
   sc0 <- shader_code ["#" ++ x0] nullPtr 0
   sc1 <- shader_code ["#" ++ x1] nullPtr 0
-  shader0 <- make_shader gl_VERTEX_SHADER sc0
-  shader1 <- make_shader gl_FRAGMENT_SHADER sc1
+  shader0 <- make_shader GL_VERTEX_SHADER sc0
+  shader1 <- make_shader GL_FRAGMENT_SHADER sc1
   gl_program <- make_program [shader0, shader1] 0 0
   pokeElemOff p_prog i gl_program
   free sc0; free sc1
@@ -371,10 +380,10 @@ make_shader t_shader source = do
   glCompileShader shader
   p0 <- mallocBytes (sizeOf glint)
   p1 <- mallocBytes (sizeOf glint)
-  glGetShaderiv shader gl_COMPILE_STATUS p0
+  glGetShaderiv shader GL_COMPILE_STATUS p0
   status <- peek p0
   if status == 0 then do
-    glGetShaderiv shader gl_INFO_LOG_LENGTH p1
+    glGetShaderiv shader GL_INFO_LOG_LENGTH p1
     p2 <- mallocBytes 1024
     glGetShaderInfoLog shader 1024 nullPtr p2
     e <- peekCString p2
@@ -399,7 +408,7 @@ validate_prog :: GLuint -> Int -> IO ()
 validate_prog program n = do
   glValidateProgram program
   p0 <- mallocBytes (sizeOf glint)
-  glGetProgramiv program gl_VALIDATE_STATUS p0
+  glGetProgramiv program GL_VALIDATE_STATUS p0
   e0 <- peek p0
   p1 <- mallocBytes 1024
   glGetProgramInfoLog program 1024 nullPtr p1
@@ -434,7 +443,7 @@ load_bitmap1 bs0 bs1 w h pad y =
 
 load_bitmap2 :: GLsizei -> GLsizei -> Ptr CChar -> IO ()
 load_bitmap2 w h p_tex = do
-  glTexImage2D gl_TEXTURE_2D 0 (fromIntegral gl_RGB) w h 0 gl_RGB gl_UNSIGNED_BYTE p_tex
+  glTexImage2D GL_TEXTURE_2D 0 (fromIntegral GL_RGB) w h 0 GL_RGB GL_UNSIGNED_BYTE p_tex
 
 -- These two functions load vertex data and bind OpenGL vertex array objects and texture objects, which are used to render all environmental models.
 setup_object :: [Object] -> [[Int]] -> [Float] -> [GLushort] -> [BS.ByteString] -> Ptr GLuint -> IO ()
@@ -453,23 +462,23 @@ setup_object (x:xs) (y:ys) vertex element bs_tex p_bind = do
   load_array (take (y !! 1) (drop (y !! 0) vertex)) p2 0
   load_array (take (y !! 3) (drop (y !! 2) element)) p3 0
   glBindVertexArray vao
-  glBindBuffer gl_ARRAY_BUFFER a_buf
-  glBufferData gl_ARRAY_BUFFER (unsafeCoerce (plusPtr zero_ptr (glfloat * y !! 1)) :: GLsizeiptr) p2 gl_STREAM_DRAW
-  glBindBuffer gl_ELEMENT_ARRAY_BUFFER e_buf
-  glBufferData gl_ELEMENT_ARRAY_BUFFER (unsafeCoerce (plusPtr zero_ptr (glushort * y !! 3)) :: GLsizeiptr) p3 gl_STREAM_DRAW
+  glBindBuffer GL_ARRAY_BUFFER a_buf
+  glBufferData GL_ARRAY_BUFFER (unsafeCoerce (plusPtr zero_ptr (glfloat * y !! 1)) :: GLsizeiptr) p2 GL_STREAM_DRAW
+  glBindBuffer GL_ELEMENT_ARRAY_BUFFER e_buf
+  glBufferData GL_ELEMENT_ARRAY_BUFFER (unsafeCoerce (plusPtr zero_ptr (glushort * y !! 3)) :: GLsizeiptr) p3 GL_STREAM_DRAW
   free p0; free p1; free p2; free p3
-  glVertexAttribPointer 0 4 gl_FLOAT 0 0 zero_ptr
+  glVertexAttribPointer 0 4 GL_FLOAT 0 0 zero_ptr
   if num_tex x > 0 then do
-    glVertexAttribPointer 1 2 gl_FLOAT 0 0 (plusPtr zero_ptr ((att_offset x) * 4 * glfloat))
+    glVertexAttribPointer 1 2 GL_FLOAT 0 0 (plusPtr zero_ptr ((att_offset x) * 4 * glfloat))
     bind_texture (take (num_tex x) bs_tex) (plusPtr p_bind ((ident x) * gluint + gluint)) (tex_w x) (tex_h x) 0
-    glVertexAttribPointer 2 3 gl_FLOAT 0 0 (plusPtr zero_ptr ((att_offset x) * 6 * glfloat))
+    glVertexAttribPointer 2 3 GL_FLOAT 0 0 (plusPtr zero_ptr ((att_offset x) * 6 * glfloat))
     glEnableVertexAttribArray 0
     glEnableVertexAttribArray 1
     glEnableVertexAttribArray 2
     setup_object xs ys vertex element (drop (num_tex x) bs_tex) p_bind
   else do
-    glVertexAttribPointer 1 4 gl_FLOAT 0 0 (plusPtr zero_ptr ((att_offset x) * 4 * glfloat))
-    glVertexAttribPointer 2 3 gl_FLOAT 0 0 (plusPtr zero_ptr ((att_offset x) * 8 * glfloat))
+    glVertexAttribPointer 1 4 GL_FLOAT 0 0 (plusPtr zero_ptr ((att_offset x) * 4 * glfloat))
+    glVertexAttribPointer 2 3 GL_FLOAT 0 0 (plusPtr zero_ptr ((att_offset x) * 8 * glfloat))
     glEnableVertexAttribArray 0
     glEnableVertexAttribArray 1
     glEnableVertexAttribArray 2
@@ -480,27 +489,27 @@ bind_texture [] p_bind w h offset = return ()
 bind_texture (x:xs) p_bind w h offset = do
   glGenTextures 1 (plusPtr p_bind (offset * gluint))
   tex <- peek (plusPtr p_bind (offset * gluint))
-  glBindTexture gl_TEXTURE_2D tex
+  glBindTexture GL_TEXTURE_2D tex
   BS.useAsCString (BS.take (fromIntegral (w * h * 3)) (BS.reverse x)) (load_bitmap2 w h)
-  glGenerateMipmap gl_TEXTURE_2D
+  glGenerateMipmap GL_TEXTURE_2D
 --  glTexParameteri gl_TEXTURE_2D gl_TEXTURE_WRAP_S (fromIntegral gl_REPEAT)
 --  glTexParameteri gl_TEXTURE_2D gl_TEXTURE_WRAP_T (fromIntegral gl_REPEAT)
-  glTexParameteri gl_TEXTURE_2D gl_TEXTURE_MIN_FILTER (fromIntegral gl_NEAREST)
-  glTexParameteri gl_TEXTURE_2D gl_TEXTURE_MAG_FILTER (fromIntegral gl_NEAREST)
+  glTexParameteri GL_TEXTURE_2D GL_TEXTURE_MIN_FILTER (fromIntegral GL_NEAREST)
+  glTexParameteri GL_TEXTURE_2D GL_TEXTURE_MAG_FILTER (fromIntegral GL_NEAREST)
   bind_texture xs p_bind w h (offset + 1)
 
 -- This function manages the rendering of all environmental models and in game messages.  It recurses once per frame rendered and is the central branching point of the rendering thread.
-show_frame :: HDC -> (UArray Int Word32, Int) -> UArray Int Int32 -> Ptr GLfloat -> (Ptr Int, Ptr Int) -> Float -> Float -> Float -> Int -> Int -> Int -> MVar (Play_state0, Array (Int, Int, Int) Wall_grid, Save_state) -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> UArray (Int, Int) Float -> Int -> Int -> Matrix Float -> DWORD -> DWORD -> IO ([Int], Save_state)
-show_frame hdc p_bind uniform p_mt_matrix filter_table u v w a a' game_t' state_ref w_grid f_grid obj_grid look_up w_limit msg_timer camera_to_clip min_frame_t t =
-  let survey0 = multi_survey (mod_angle a (-126)) 251 u v (truncate u) (truncate v) w_grid f_grid obj_grid look_up w_limit 0 [] []
-      survey1 = multi_survey (mod_angle (mod_angle a' a) 188) 251 (fst view_circle') (snd view_circle') (truncate (fst view_circle')) (truncate (snd view_circle')) w_grid f_grid obj_grid look_up w_limit 0 [] []
+show_frame :: HDC -> (UArray Int Word32, Int) -> UArray Int Int32 -> Ptr GLfloat -> (Ptr Int, Ptr Int) -> Float -> Float -> Float -> Int -> Int -> Int -> MVar (Play_state0, Array (Int, Int, Int) Wall_grid, Save_state) -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> UArray (Int, Int) Float -> Int -> Int -> Matrix Float -> DWORD -> [DWORD] -> IO ([Int], Save_state)
+show_frame hdc p_bind uniform p_mt_matrix filter_table u v w a a' game_t' state_ref w_grid f_grid obj_grid look_up w_limit msg_timer camera_to_clip min_frame_t ts =
+  let survey0 = multi_survey (mod_angle a (-92)) 183 u v (truncate u) (truncate v) w_grid f_grid obj_grid look_up w_limit 0 [] []
+      survey1 = multi_survey (mod_angle (mod_angle a' a) (-92)) 183 (fst view_circle') (snd view_circle') (truncate (fst view_circle')) (truncate (snd view_circle')) w_grid f_grid obj_grid look_up w_limit 0 [] []
       view_circle' = view_circle u v 2 (mod_angle a a') look_up
       world_to_clip0 = multStd camera_to_clip (world_to_camera (-u) (-v) (-w) a look_up)
       world_to_clip1 = multStd camera_to_clip (world_to_camera (- (fst view_circle')) (- (snd view_circle')) (-w) (mod_angle (mod_angle a' a) 314) look_up)
   in do
   tick0 <- getTickCount
   p_state <- takeMVar state_ref
-  glClear (gl_COLOR_BUFFER_BIT .|. gl_DEPTH_BUFFER_BIT)
+  glClear (GL_COLOR_BUFFER_BIT .|. GL_DEPTH_BUFFER_BIT)
   if view_mode (fst__ p_state) == 0 then load_array (toList world_to_clip0) (castPtr p_mt_matrix) 0
   else do
     load_array (toList world_to_clip1) (castPtr p_mt_matrix) 0
@@ -538,9 +547,9 @@ show_frame hdc p_bind uniform p_mt_matrix filter_table u v w a a' game_t' state_
     show_walls filtered_surv0 uniform p_bind (plusPtr p_mt_matrix (glfloat * 16)) u v w a look_up (rend_mode (fst__ p_state))
     show_object filtered_surv1 uniform p_bind (plusPtr p_mt_matrix (glfloat * 48)) u v w a look_up (rend_mode (fst__ p_state))
   tick1 <- getTickCount
-  t' <- show_fps (fst__ p_state) t tick1
   if (tick1 - tick0) < min_frame_t then sleep (min_frame_t - (tick1 - tick0))
   else return ()
+  ts' <- show_fps (fst__ p_state) (tick1 - tick0) ts
   if msg_count (fst__ p_state) == -1 then do
     putStr "\nshow_frame: case -1"
     return ([1], third_ p_state)
@@ -549,9 +558,9 @@ show_frame hdc p_bind uniform p_mt_matrix filter_table u v w a a' game_t' state_
     p_mt_matrix1 <- mallocBytes ((length (snd (head (message_ (fst__ p_state))))) * glfloat * 16)
     glBindVertexArray (unsafeCoerce ((fst p_bind) ! 933))
     glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 3)))
-    glDisable gl_DEPTH_TEST
+    glDisable GL_DEPTH_TEST
     show_text (snd (head (message_ (fst__ p_state)))) 0 933 uniform p_bind p_mt_matrix1 (-0.9) 0.9 0
-    glEnable gl_DEPTH_TEST
+    glEnable GL_DEPTH_TEST
     free p_mt_matrix1
     Main.swapBuffers hdc
     sleep 5000
@@ -564,28 +573,30 @@ show_frame hdc p_bind uniform p_mt_matrix filter_table u v w a a' game_t' state_
     return (([(abs (msg_count (fst__ p_state)))] ++ (snd (head (message_ (fst__ p_state))))), third_ p_state)
   else if msg_count (fst__ p_state) > 0 then do
     Main.swapBuffers hdc
-    show_frame hdc p_bind uniform p_mt_matrix filter_table (pos_u (fst__ p_state)) (pos_v (fst__ p_state)) (pos_w (fst__ p_state)) (angle (fst__ p_state)) (view_angle (fst__ p_state)) (game_t (fst__ p_state)) state_ref (snd__ p_state) f_grid obj_grid look_up w_limit (msg_count (fst__ p_state)) camera_to_clip min_frame_t t'
+    show_frame hdc p_bind uniform p_mt_matrix filter_table (pos_u (fst__ p_state)) (pos_v (fst__ p_state)) (pos_w (fst__ p_state)) (angle (fst__ p_state)) (view_angle (fst__ p_state)) (game_t (fst__ p_state)) state_ref (snd__ p_state) f_grid obj_grid look_up w_limit (msg_count (fst__ p_state)) camera_to_clip min_frame_t ts'
   else if msg_timer > 0 then do
     p_mt_matrix1 <- mallocBytes ((length (snd (head (message_ (fst__ p_state))))) * glfloat * 16)
     glBindVertexArray (unsafeCoerce ((fst p_bind) ! 933))
     glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 3)))
-    glDisable gl_DEPTH_TEST
+    glDisable GL_DEPTH_TEST
     show_text (snd (head (message_ (fst__ p_state)))) 0 933 uniform p_bind p_mt_matrix1 (-0.96) 0.9 0
-    glEnable gl_DEPTH_TEST
+    glEnable GL_DEPTH_TEST
     free p_mt_matrix1
     Main.swapBuffers hdc
-    show_frame hdc p_bind uniform p_mt_matrix filter_table (pos_u (fst__ p_state)) (pos_v (fst__ p_state)) (pos_w (fst__ p_state)) (angle (fst__ p_state)) (view_angle (fst__ p_state)) (game_t (fst__ p_state)) state_ref (snd__ p_state) f_grid obj_grid look_up w_limit (msg_timer - 1) camera_to_clip min_frame_t t'
+    show_frame hdc p_bind uniform p_mt_matrix filter_table (pos_u (fst__ p_state)) (pos_v (fst__ p_state)) (pos_w (fst__ p_state)) (angle (fst__ p_state)) (view_angle (fst__ p_state)) (game_t (fst__ p_state)) state_ref (snd__ p_state) f_grid obj_grid look_up w_limit (msg_timer - 1) camera_to_clip min_frame_t ts'
   else do
     Main.swapBuffers hdc
-    show_frame hdc p_bind uniform p_mt_matrix filter_table (pos_u (fst__ p_state)) (pos_v (fst__ p_state)) (pos_w (fst__ p_state)) (angle (fst__ p_state)) (view_angle (fst__ p_state)) (game_t (fst__ p_state)) state_ref (snd__ p_state) f_grid obj_grid look_up w_limit 0 camera_to_clip min_frame_t t'
+    show_frame hdc p_bind uniform p_mt_matrix filter_table (pos_u (fst__ p_state)) (pos_v (fst__ p_state)) (pos_w (fst__ p_state)) (angle (fst__ p_state)) (view_angle (fst__ p_state)) (game_t (fst__ p_state)) state_ref (snd__ p_state) f_grid obj_grid look_up w_limit 0 camera_to_clip min_frame_t ts'
 
 -- Optionally report the frame rate in the console during game play.
-show_fps :: Play_state0 -> DWORD -> DWORD -> IO DWORD
-show_fps s0 t0 t1 = do
-  if mod (game_t s0) 40 == 0 && show_fps_ s0 == True then do
-    putStr ("\n\nFPS: " ++ show (div 40000 (t1 - t0)))
-    return t1
-  else return t0
+show_fps :: Play_state0 -> DWORD -> [DWORD] -> IO [DWORD]
+show_fps s0 t ts = do
+  if show_fps_ s0 == True then
+    if (mod (game_t s0) 40) == 0 then do
+      putStr ("\n\nFPS: " ++ show (div 1000 (div (foldl (+) 0 ts) 40)))
+      return []
+    else return (t : ts)
+  else return []
 
 -- These three functions pass transformation matrices to the shaders and make the GL draw calls that render models.
 show_walls :: [Wall_place] -> UArray Int Int32 -> (UArray Int Word32, Int) -> Ptr GLfloat -> Float -> Float -> Float -> Int -> UArray (Int, Int) Float -> Int -> IO ()
@@ -600,7 +611,7 @@ show_walls (x:xs) uniform p_bind p_mt_matrix u v w a look_up mode = do
       glUniformMatrix4fv (coerce (uniform ! 2)) 1 1 (plusPtr p_mt_matrix (glfloat * 16))
     else if texture_ x > 0 && texture_ x < (snd p_bind) && mode == 0 then do
       glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 6)))
-      glBindTexture gl_TEXTURE_2D (unsafeCoerce ((fst p_bind) ! texture_ x))
+      glBindTexture GL_TEXTURE_2D (unsafeCoerce ((fst p_bind) ! texture_ x))
       glUniformMatrix4fv (coerce (uniform ! 11)) 1 1 p_mt_matrix
       glUniformMatrix4fv (coerce (uniform ! 13)) 1 1 (plusPtr p_mt_matrix (glfloat * 16))
     else if texture_ x == 0 && mode == 1 then do
@@ -609,14 +620,14 @@ show_walls (x:xs) uniform p_bind p_mt_matrix u v w a look_up mode = do
       glUniformMatrix4fv (coerce (uniform ! 25)) 1 1 (plusPtr p_mt_matrix (glfloat * 16))
     else if texture_ x > 0 && texture_ x < (snd p_bind) && mode == 1 then do
       glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 4)))
-      glBindTexture gl_TEXTURE_2D (unsafeCoerce ((fst p_bind) ! texture_ x))
+      glBindTexture GL_TEXTURE_2D (unsafeCoerce ((fst p_bind) ! texture_ x))
       glUniformMatrix4fv (coerce (uniform ! 29)) 1 1 p_mt_matrix
       glUniformMatrix4fv (coerce (uniform ! 31)) 1 1 (plusPtr p_mt_matrix (glfloat * 16))
     else do
       putStr "\nshow_walls: Invalid wall_place texture reference in map..."
       show_walls xs uniform p_bind p_mt_matrix u v w a look_up mode
-    if Build_model.rotate x < 2 then glDrawElements gl_TRIANGLES 36 gl_UNSIGNED_SHORT (plusPtr zero_ptr (glushort * 36))
-    else glDrawElements gl_TRIANGLES 36 gl_UNSIGNED_SHORT zero_ptr
+    if Build_model.rotate x < 2 then glDrawElements GL_TRIANGLES 36 GL_UNSIGNED_SHORT (plusPtr zero_ptr (glushort * 36))
+    else glDrawElements GL_TRIANGLES 36 GL_UNSIGNED_SHORT zero_ptr
     show_walls xs uniform p_bind p_mt_matrix u v w a look_up mode
   else show_walls xs uniform p_bind p_mt_matrix u v w a look_up mode
 
@@ -633,7 +644,7 @@ show_object (x:xs) uniform p_bind p_mt_matrix u v w a look_up mode = do
     glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 6)))
     glUniformMatrix4fv (coerce (uniform ! 11)) 1 1 p_mt_matrix
     glUniformMatrix4fv (coerce (uniform ! 13)) 1 1 (plusPtr p_mt_matrix (glfloat * 16))
-    glBindTexture gl_TEXTURE_2D (unsafeCoerce ((fst p_bind) ! ((ident_ x) + (texture__ x))))
+    glBindTexture GL_TEXTURE_2D (unsafeCoerce ((fst p_bind) ! ((ident_ x) + (texture__ x))))
   else if ident_ x < (snd p_bind) && texture__ x == 0 && mode == 1 then do
     glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 5)))
     glUniformMatrix4fv (coerce (uniform ! 23)) 1 1 p_mt_matrix
@@ -642,12 +653,12 @@ show_object (x:xs) uniform p_bind p_mt_matrix u v w a look_up mode = do
     glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 4)))
     glUniformMatrix4fv (coerce (uniform ! 29)) 1 1 p_mt_matrix
     glUniformMatrix4fv (coerce (uniform ! 31)) 1 1 (plusPtr p_mt_matrix (glfloat * 16))
-    glBindTexture gl_TEXTURE_2D (unsafeCoerce ((fst p_bind) ! ((ident_ x) + (texture__ x))))
+    glBindTexture GL_TEXTURE_2D (unsafeCoerce ((fst p_bind) ! ((ident_ x) + (texture__ x))))
   else do
     putStr "\nshow_object: Invalid obj_place object or texture reference in map..."
     show_object xs uniform p_bind p_mt_matrix u v w a look_up mode
   glBindVertexArray (unsafeCoerce ((fst p_bind) ! (ident_ x)))
-  glDrawElements gl_TRIANGLES (num_elem x) gl_UNSIGNED_SHORT zero_ptr
+  glDrawElements GL_TRIANGLES (coerce (num_elem x)) GL_UNSIGNED_SHORT zero_ptr
   show_object xs uniform p_bind p_mt_matrix u v w a look_up mode
 
 show_player :: UArray Int Int32 -> (UArray Int Word32, Int) -> Ptr GLfloat -> Float -> Float -> Float -> Int -> UArray (Int, Int) Float -> Int -> Int -> IO ()
@@ -664,6 +675,6 @@ show_player uniform p_bind p_mt_matrix u v w a look_up game_t mode = do
     glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 1)))
     glUniformMatrix4fv (coerce (uniform ! 51)) 1 1 p_mt_matrix
   glBindVertexArray (unsafeCoerce ((fst p_bind) ! 1024))
-  glBindTexture gl_TEXTURE_2D (unsafeCoerce ((fst p_bind) ! 1025))
-  glDrawElements gl_TRIANGLES 36 gl_UNSIGNED_SHORT zero_ptr
+  glBindTexture GL_TEXTURE_2D (unsafeCoerce ((fst p_bind) ! 1025))
+  glDrawElements GL_TRIANGLES 36 GL_UNSIGNED_SHORT zero_ptr
 
