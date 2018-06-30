@@ -261,3 +261,12 @@ if 0 climb_flag npc_type 2 4
 npc_move 31
 npc_decision 32
 npc_move 31
+~
+ammo (17)
+~
+ammo 1 add 0 v_ 10 mode 0 w0 -1 w1 0 u 0 v 0
+~
+--signal 1
+chg_ps1 ammo add v_
+chg_grid mode w0 u v w0 u v
+chg_grid_ mode w1 u v w1 u v

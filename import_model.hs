@@ -1,8 +1,3 @@
--- Game :: Dangerous code by Steven Tinsley.  You are free to use this software and view its source code.
--- If you wish to redistribute it or use it as part of your own work, this is permitted as long as you acknowledge the work is by the abovementioned author.
-
--- This is a development tool that transforms a modified form of the OBJ file format into the model import file format used by the engine.
-
 module Main where
 
 import System.IO
@@ -43,7 +38,7 @@ concat_ :: Int -> [[Char]] -> [Char]
 concat_ 0 x = (intercalate ", " x)
 concat_ 1 x = (intercalate ", " x) ++ ", 1"
 
--- These two functions are used to generate the indices needed for element drawing.
+-- These two functions are used to generate the indices needed for element drawing
 face_index :: Int -> Int -> [Int]
 face_index order 0 =
   if order < 4 then [1, 2, 3]
@@ -68,7 +63,7 @@ gen_indices (x:xs) mode n num_i acc =
   else if mode == 0 then gen_indices xs mode (n + (div order 2)) (num_i + length f_ind0) (acc ++ show_ints (map (+ (n - 2)) f_ind0))
   else gen_indices xs mode (n + (div order 3)) (num_i + length f_ind1) (acc ++ show_ints (map (+ (n - 2)) f_ind1))
 
--- These two functions deal with reading vertex attribute data from the OBJ file and transforming this into the form used by the engine for rendering.
+-- These two functions deal with reading vertex attribute data from the OBJ file and transforming this into the form used by the engine for rendering
 get_vert :: [[Char]] -> Int -> Int -> Model -> Model
 get_vert [] phase mode model = model
 get_vert (x:xs) 0 mode model =
@@ -144,7 +139,7 @@ main = do
   hClose h2
 
 unroll_data :: [[Char]] -> [[Char]] -> Handle -> Loader -> [Char] -> [Char] -> Int -> Int -> Int -> IO ()
-unroll_data [] _ h2 load_acc vert_acc ind_acc e_count i_count mat_count = hPutStr h2 (init_ (tex_image load_acc) ++ "~" ++ init (mod_descrip load_acc) ++ "~" ++ init_ (data_layout load_acc) ++ "~" ++ init_ vert_acc ++ "~" ++ init_ ind_acc)
+unroll_data [] _ h2 load_acc vert_acc ind_acc e_count i_count mat_count = hPutStr h2 (init_ (tex_image load_acc ++ mod_descrip load_acc ++ data_layout load_acc) ++ "\n\n" ++ init_ vert_acc ++ "\n\n" ++ init_ ind_acc)
 unroll_data (x0:x1:xs) mat h2 load_acc vert_acc ind_acc e_count i_count mat_count =
   let mode = det_mode (read (i_list (splitOn ", " x0) 1 "x"))
       col_attrib = add_colour0 (splitOneOf "\n /" (drop_double x1 '/' 'x')) (get_colour (splitOneOf "\n " (i_list mat mat_count "x"))) []
@@ -154,8 +149,8 @@ unroll_data (x0:x1:xs) mat h2 load_acc vert_acc ind_acc e_count i_count mat_coun
       vertices1 = fst pl_vert1
       indices = gen_indices (splitOn "\n" (drop_double x1 '/' 'x')) mode 1 0 []
       m_data = (splitOn ", " x0)
-      l_data0 = load_acc {mod_descrip = mod_descrip load_acc ++ (i_list m_data 0 "x") ++ ", " ++ show (snd pl_vert0) ++ ", " ++ concat_ 0 (drop 1 m_data) ++ "&", data_layout = data_layout load_acc ++ show_ints [e_count, num_elem 0 (snd pl_vert0), i_count, snd indices]}
-      l_data1 = load_acc {tex_image = tex_image load_acc ++ (concat_ 0 (drop 5 (splitOn ", " x0))) ++ ", ", mod_descrip = mod_descrip load_acc ++ (i_list m_data 0 "x") ++ ", " ++ show (snd pl_vert0) ++ ", " ++ (concat_ 0 (take 4 (drop 1 m_data))) ++ "&", data_layout = data_layout load_acc ++ show_ints [e_count, num_elem 1 (snd pl_vert1), i_count, snd indices]}
+      l_data0 = load_acc {mod_descrip = mod_descrip load_acc ++ (i_list m_data 0 "x") ++ ", " ++ show (snd pl_vert0) ++ ", " ++ concat_ 0 (drop 1 m_data) ++ ", ", data_layout = data_layout load_acc ++ show_ints [e_count, num_elem 0 (snd pl_vert0), i_count, snd indices]}
+      l_data1 = load_acc {tex_image = tex_image load_acc ++ (concat_ 0 (drop 5 (splitOn ", " x0))) ++ ", ",mod_descrip = mod_descrip load_acc ++ (i_list m_data 0 "x") ++ ", " ++ show (snd pl_vert0) ++ ", " ++ (concat_ 0 (take 4 (drop 1 m_data))) ++ ", ", data_layout = data_layout load_acc ++ show_ints [e_count, num_elem 1 (snd pl_vert1), i_count, snd indices]}
   in do
   if mode == 0 then unroll_data xs mat h2 l_data0 (vert_acc ++ fst pl_vert0 ++ ", ") (ind_acc ++ fst indices) (e_count + num_elem 0 (snd pl_vert0)) (i_count + snd indices) (mat_count + 1)
   else unroll_data xs mat h2 l_data1 (vert_acc ++ fst pl_vert1 ++ ", ") (ind_acc ++ fst indices) (e_count + num_elem 1 (snd pl_vert1)) (i_count + snd indices) mat_count
