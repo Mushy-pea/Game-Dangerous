@@ -18,6 +18,7 @@ import Foreign hiding (rotate)
 import Foreign.C.String
 import Foreign.C.Types
 import Unsafe.Coerce
+import System.IO.Unsafe
 import Data.Maybe
 import Control.Exception
 import Graphics.GL.Core33
@@ -69,7 +70,7 @@ data Ray_hit = U1 | U2 | V1 | V2 | Corner0 | Corner1 | Corner2 | Corner3 | U1_hi
 
 data Terrain = Flat | Positive_u | Negative_u | Positive_v | Negative_v | Open deriving (Eq, Show, Read)
 
-data Floor_grid = Floor_grid {w_ :: Float, surface :: Terrain, local_up_ramp :: (Int, Int), local_down_ramp :: (Int, Int)} deriving (Show)
+data Floor_grid = Floor_grid {w_ :: Float, surface :: Terrain, local_up_ramp :: (Int, Int), local_down_ramp :: (Int, Int)} deriving (Eq, Show)
 
 data Play_state0 = Play_state0 {pos_u :: Float, pos_v :: Float, pos_w :: Float, vel :: [Float], angle :: Int, message_ :: [(Int, [Int])], msg_count :: Int, rend_mode :: Int, view_mode :: Int, view_angle :: Int,
 game_t :: Int, torch_t0 :: Int, torch_t_limit :: Int, show_fps_ :: Bool, prob_seq :: UArray Int Int} deriving (Eq, Show)
@@ -84,7 +85,7 @@ data Save_state = Save_state {is_set :: Bool, w_grid_ :: Array (Int, Int, Int) W
 
 data Io_box = Io_box {hwnd_ :: HWND, hdc_ :: HDC, uniform_ :: UArray Int Int32, p_bind_ :: (UArray Int Word32, Int)}
 
-data EngineError = Invalid_wall_flag | Invalid_obj_flag | Invalid_GPLC_opcode | Invalid_conf_reg_field | NPC_feature_not_implemented deriving (Show)
+data EngineError = Invalid_wall_flag | Invalid_obj_flag | Invalid_GPLC_opcode | Invalid_conf_reg_field | NPC_feature_not_implemented | Invalid_map_element deriving (Show)
 
 instance Exception EngineError
 
@@ -102,6 +103,11 @@ def_obj_grid = (0, [])
 
 def_obj_grid_arr :: Array (Int, Int, Int) (Int, [Int])
 def_obj_grid_arr = array ((0, 0, 0), (2, 99, 99)) [((w, u, v), def_obj_grid) | w <- [0..2], u <- [0..99], v <- [0..99]] :: Array (Int, Int, Int) (Int, [Int])
+
+obj_place_flag = Obj_place {ident_ = 0, u__ = 0, v__ = 0, w__ = 0, rotation = [], rotate_ = False, phase = 0, texture__ = 0, num_elem = 0, obj_flag = 0}
+w_grid_flag = Wall_grid {u1 = True, u2 = True, v1 = True, v2 = True, u1_bound = 0, u2_bound = 0, v1_bound = 0, v2_bound = 0, w_level = 0,  wall_flag = [], texture = [], obj = Just obj_place_flag}
+f_grid_flag = Floor_grid {w_ = 3, surface = Flat, local_up_ramp = (0, 0), local_down_ramp = (0, 0)}
+obj_grid_flag = (5, []) :: (Int, [Int])
 
 def_save_state = Save_state {is_set = False, w_grid_ = def_w_grid_arr, f_grid_ = def_f_grid_arr, obj_grid_ = def_obj_grid_arr, s0_ = ps0_init, s1_ = ps1_init}
 def_wall_place = Wall_place {rotate = 0, translate_u = 0, translate_v = 0, translate_w = 0, wall_flag_ = 0, texture_ = 0, isNull = True}
@@ -570,3 +576,42 @@ buffer_to_array p arr i0 i1 limit = do
   else do
     val <- peekElemOff p i0
     buffer_to_array p (arr // [(i1, val)]) (i0 + 1) (i1 + 1) limit
+
+class Sub_index a where
+  sub_i :: Array (Int, Int, Int) a -> ((Int, Int, Int), (Int, Int, Int)) -> (Int, Int, Int) -> a
+
+instance Sub_index Wall_grid where
+  sub_i grid ((w_min, u_min, v_min), (w_max, u_max, v_max)) (w, u, v) =
+    if w > w_max || w < w_min || u > u_max || u < u_min || v > v_max || v < v_min then error ("Invalid array index (w_grid).  bounds: " ++ show (w_min, u_min, v_min) ++ " " ++ show (w_max, u_max, v_max) ++ " index: " ++ show (w, u, v))
+    else grid ! (w, u, v)
+
+instance Sub_index Floor_grid where
+  sub_i grid ((w_min, u_min, v_min), (w_max, u_max, v_max)) (w, u, v) =
+    if w > w_max || w < w_min || u > u_max || u < u_min || v > v_max || v < v_min then error ("Invalid array index (f_grid).  bounds: " ++ show (w_min, u_min, v_min) ++ " " ++ show (w_max, u_max, v_max) ++ " index: " ++ show (w, u, v))
+    else grid ! (w, u, v)
+
+instance Sub_index (Int, [Int]) where
+  sub_i grid ((w_min, u_min, v_min), (w_max, u_max, v_max)) (w, u, v) =
+    if w > w_max || w < w_min || u > u_max || u < u_min || v > v_max || v < v_min then error ("Invalid array index (obj_grid).  bounds: " ++ show (w_min, u_min, v_min) ++ " " ++ show (w_max, u_max, v_max) ++ " index: " ++ show (w, u, v))
+    else grid ! (w, u, v)
+
+class Completion_test a where
+  test :: Array (Int, Int, Int) a -> Array (Int, Int, Int) a
+
+instance Completion_test Wall_grid where
+  test grid = unsafePerformIO (putStr "\ncheck_map_layer completed (Wall_grid)" >> return grid)
+
+instance Completion_test Floor_grid where
+  test grid = unsafePerformIO (putStr "\ncheck_map_layer completed (Floor_grid)" >> return grid)
+
+instance Completion_test (Int, [Int]) where
+  test grid = unsafePerformIO (putStr "\ncheck_map_layer completed (Obj_grid)" >> return grid)
+
+check_map_layer :: (Eq a, Sub_index a, Completion_test a) => Int -> Int -> Int -> Int -> Int -> Array (Int, Int, Int) a -> a -> Array (Int, Int, Int) a
+check_map_layer w u v u_limit v_limit grid flag =
+  if w == 2 && u > u_limit then test grid
+  else if u > u_limit then check_map_layer (w + 1) 0 0 u_limit v_limit grid flag
+  else if v > v_limit then check_map_layer w (u + 1) 0 u_limit v_limit grid flag
+  else
+    if grid ! (w, u, v) == flag then throw Invalid_map_element
+    else check_map_layer w u (v + 1) u_limit v_limit grid flag
