@@ -258,9 +258,9 @@ init_npc npc_type 0
 send_signal sig3 w u v
 --signal 3
 if 0 climb_flag npc_type 2 4
-npc_move 31
-npc_decision 32
-npc_move 31
+npc_move 36
+npc_decision 37
+npc_move 36
 ~
 ammo (17)
 ~
