@@ -565,18 +565,17 @@ det_dir_vector dir speed look_up =
   if dir == 0 then (0, 0)
   else (speed * look_up ! (2, dir'), speed * look_up ! (1, dir'))
 
-char_rotation :: Int -> Int -> Int -> Int -> Int
-char_rotation 0 last_dir base_id mode = base_id + ((last_dir + mode) * 2)
-char_rotation current_dir last_dir base_id mode = base_id + ((current_dir + mode) * 2)
+char_rotation :: Int -> Int -> Int
+char_rotation dir base_id = base_id + ((dir - 1) * 2)
 
 add_vel_pos (fg_w, fg_u, fg_v) (vel_u, vel_v) = (fg_w, fg_u + vel_u, fg_v + vel_v)
 
 ramp_climb :: Int -> Int -> (Float, Float, Float) -> (Float, Float, Float)
 ramp_climb dir c (fg_w, fg_u, fg_v) =
-  if dir == -1 then (fg_w - 0.025 * fromIntegral c, fg_u + 0.05 * (fromIntegral c), fg_v)
-  else if dir == -2 then (fg_w - 0.025 * fromIntegral c, fg_u - 0.05 * (fromIntegral c), fg_v)
-  else if dir == -3 then (fg_w - 0.025 * fromIntegral c, fg_u, fg_v + 0.05 * (fromIntegral c))
-  else if dir == -4 then (fg_w - 0.025 * fromIntegral c, fg_u, fg_v - 0.05 * (fromIntegral c))
+  if dir == -1 then (fg_w - 0.025 * fromIntegral c, fg_u - 0.05 * (fromIntegral c), fg_v)
+  else if dir == -2 then (fg_w - 0.025 * fromIntegral c, fg_u + 0.05 * (fromIntegral c), fg_v)
+  else if dir == -3 then (fg_w - 0.025 * fromIntegral c, fg_u, fg_v - 0.05 * (fromIntegral c))
+  else if dir == -4 then (fg_w - 0.025 * fromIntegral c, fg_u, fg_v + 0.05 * (fromIntegral c))
   else if dir == -5 then (fg_w + 0.025 * fromIntegral c, fg_u + 0.05 * (fromIntegral c), fg_v)
   else if dir == -6 then (fg_w + 0.025 * fromIntegral c, fg_u - 0.05 * (fromIntegral c), fg_v)
   else if dir == -7 then (fg_w + 0.025 * fromIntegral c, fg_u, fg_v + 0.05 * (fromIntegral c))
@@ -611,7 +610,7 @@ npc_move offset d_list (w:u:v:w1:u1:v1:blocks) w_grid f_grid obj_grid s0 s1 look
       conv_ramp_fill0 = conv_ramp_fill w u v 1 (surface (f_grid ! (w, div u 2, div v 2)))
       conv_ramp_fill1 = conv_ramp_fill w u v 0 (surface (f_grid ! (w, div u 2, div v 2)))
       w_grid' = w_grid // [((-w - 1, u, v), (w_grid ! (-w - 1, u, v)) {obj = Just (o_target {u__ = u__ o_target + fst dir_vector', v__ = v__ o_target + snd dir_vector'})})]
-      w_grid'' = w_grid' // [((-w - 1, u, v), def_w_grid), ((-w - 1, u', v'), (w_grid ! (-w - 1, u, v)) {obj = Just (o_target {ident_ = char_rotation (direction char_state) (last_dir char_state) (d_list !! 1) (-1)})})]
+      w_grid'' = w_grid' // [((-w - 1, u, v), def_w_grid), ((-w - 1, u', v'), (w_grid ! (-w - 1, u, v)) {obj = Just (o_target {ident_ = char_rotation (direction char_state) (d_list !! 1)})})]
       w_grid''' = w_grid // [((-w - 1, u, v), (w_grid ! (-w - 1, u, v)) {obj = Just (o_target {w__ = fst__ ramp_climb_, u__ = snd__ ramp_climb_, v__ = third_ ramp_climb_})})]
       w_grid_4 = \dw -> w_grid // ([((-w - 1, u, v), def_w_grid)] ++ drop 4 (ramp_fill (-w - 1 + dw) u v ((w_grid ! (-w - 1, u, v)) {obj = Just (o_target {w__ = fst__ ramp_climb_, u__ = snd__ ramp_climb_, v__ = third_ ramp_climb_})}) (surface (f_grid ! (w, div u 2, div v 2)))))
       damage = det_damage (difficulty s1) s0 
@@ -625,10 +624,10 @@ npc_move offset d_list (w:u:v:w1:u1:v1:blocks) w_grid f_grid obj_grid s0 s1 look
     else if direction char_state >= 0 then
       if d_list !! 3 == 1 then (w_grid'', obj_grid // [((w, u, v), def_obj_grid), ((w, u', v'), prog' 0 0)], s1 {npc_states = (npc_states s1) // [(head d_list, char_state {dir_vector = dir_vector', fg_position = add_vel_pos (fg_position char_state) dir_vector', node_locations = [w, u', v', 0, 0, 0], ticks_left0 = 1})], next_sig_q = next_sig_q s1 ++ [3, w, u', v'] ++ [5, w, u', v']})
       else (w_grid'', obj_grid // [((w, u, v), def_obj_grid), ((w, u', v'), prog)], s1 {npc_states = (npc_states s1) // [(head d_list, char_state {dir_vector = dir_vector', fg_position = add_vel_pos (fg_position char_state) dir_vector', node_locations = [w, u', v', 0, 0, 0], ticks_left0 = 1})], next_sig_q = next_sig_q s1 ++ [3, w, u', v']})
-    else if direction char_state < -4 then (w_grid // [((-w - 1, u, v), def_w_grid), ((-w - 1, u', v'), (w_grid ! (-w - 1, u, v)) {obj = Just (o_target {ident_ = char_rotation (last_dir char_state) (last_dir char_state) (d_list !! 1) (-1)})})], obj_grid // ((take 4 (ramp_fill w u' v' (2, []) (surface (f_grid ! (w, div u' 2, div v' 2))))) ++ [((w, u, v), def_obj_grid), ((w, u', v'), prog' 1 0)]), s1 {npc_states = (npc_states s1) // [(head d_list, char_state {node_locations = [w, u', v', 0, 0, 0], ticks_left0 = 41})], next_sig_q = next_sig_q s1 ++ [3, w, u', v']})
+    else if direction char_state < -4 then (w_grid // [((-w - 1, u, v), def_w_grid), ((-w - 1, u', v'), (w_grid ! (-w - 1, u, v)) {obj = Just (o_target {ident_ = char_rotation (npc_dir_remap (direction char_state)) (d_list !! 1)})})], obj_grid // ((take 4 (ramp_fill w u' v' (2, []) (surface (f_grid ! (w, div u' 2, div v' 2))))) ++ [((w, u, v), def_obj_grid), ((w, u', v'), prog' 1 0)]), s1 {npc_states = (npc_states s1) // [(head d_list, char_state {node_locations = [w, u', v', 0, 0, 0], ticks_left0 = 41})], next_sig_q = next_sig_q s1 ++ [3, w, u', v']})
     else
       if (w - 1, u', v') == (truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)) then (w_grid, obj_grid, s1 {next_sig_q = next_sig_q s1 ++ [3, w, u', v']})
-      else (w_grid // ([((-w - 1, u, v), def_w_grid)] ++ take 4 (ramp_fill (-w - 1 + 1) u' v' (w_grid ! (-w - 1, u, v)) Positive_u)), obj_grid // ((take 4 (ramp_fill (w - 1) u' v' (2, []) Positive_u)) ++ [((w, u, v), def_obj_grid), ((w - 1, u', v'), prog' 1 0)]), s1 {npc_states = (npc_states s1) // [(head d_list, char_state {node_locations = [w - 1, u', v', 0, 0, 0], ticks_left0 = 41})], next_sig_q = next_sig_q s1 ++ [3, w, u', v']})
+      else (w_grid // [((-w - 1, u, v), def_w_grid), ((-w, u', v'), (w_grid ! (-w - 1, u, v)) {obj = Just (o_target {ident_ = char_rotation (npc_dir_remap (direction char_state)) (d_list !! 1)})})], obj_grid // ((take 4 (ramp_fill (w - 1) u' v' (2, []) (surface (f_grid ! (w - 1, div u' 2, div v' 2))))) ++ [((w, u, v), def_obj_grid), ((w - 1, u', v'), prog' 1 0)]), s1 {npc_states = (npc_states s1) // [(head d_list, char_state {node_locations = [w - 1, u', v', 0, 0, 0], ticks_left0 = 41})], next_sig_q = next_sig_q s1 ++ [3, w - 1, u', v']})
   else if npc_type char_state < 2 && ticks_left0 char_state == 1 then
     if direction char_state >= 0 then (w_grid', obj_grid, s1 {npc_states = (npc_states s1) // [(head d_list, char_state {fg_position = add_vel_pos (fg_position char_state) (dir_vector char_state)})], next_sig_q = next_sig_q s1 ++ [3, w, u, v]})
     else if direction char_state < -4 then
