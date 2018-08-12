@@ -290,9 +290,12 @@ gen_prob_seq i0 i1 i2 g = listArray (i0, i1) (drop i2 (randomRs (0, 99) g))
 -- This function initialises the game logic and rendering threads each time a new game is started and handles user input from the main menu.
 start_game :: HWND -> HDC -> UArray Int Int32 -> (UArray Int Word32, Int) -> [Char] -> Array Int [Char] -> Int -> (Float, Float, Float, Float, Float, Float, Float) -> Save_state -> Array Int Source -> IO ()
 start_game hwnd hdc uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag_j) save_state sound_array =
-  let w_grid = (make_array0 ((build_table0 (elems (build_table1 (splitOn ", " ((splitOn "~" c) !! 7)) (empty_w_grid (read ((splitOn "~" c) !! 8)) (read ((splitOn "~" c) !! 9)) (read ((splitOn "~" c) !! 10))) 7500)) (read ((splitOn "~" c) !! 8)) (read ((splitOn "~" c) !! 9)) (read ((splitOn "~" c) !! 10))) ++ (sort_grid0 (splitOn "&" ((splitOn "~" c) !! 4)))) (read ((splitOn "~" c) !! 8)) (read ((splitOn "~" c) !! 9)) (read ((splitOn "~" c) !! 10)))
-      f_grid = (make_array1 (load_floor0 (splitOn "&" ((splitOn "~" c) !! 5))) (read ((splitOn "~" c) !! 8)) (read ((splitOn "~" c) !! 9)) (read ((splitOn "~" c) !! 10)))
-      obj_grid = ((empty_obj_grid (read ((splitOn "~" c) !! 8)) (read ((splitOn "~" c) !! 9)) (read ((splitOn "~" c) !! 10))) // load_obj_grid (splitOn ", " ((splitOn "~" c) !! 6)))
+  let u_limit = (read ((splitOn "~" c) !! 8))
+      v_limit = (read ((splitOn "~" c) !! 9))
+      w_limit = (read ((splitOn "~" c) !! 10))
+      w_grid = check_map_layer (-3) 0 0 u_limit v_limit (make_array0 ((build_table0 (elems (build_table1 (splitOn ", " ((splitOn "~" c) !! 7)) (empty_w_grid u_limit v_limit w_limit) 7500)) u_limit v_limit w_limit) ++ (sort_grid0 (splitOn "&" ((splitOn "~" c) !! 4)))) u_limit v_limit w_limit) w_grid_flag
+      f_grid = check_map_layer 0 0 0 ((div (u_limit + 1) 2) - 1) ((div (v_limit + 1) 2) - 1) (make_array1 (load_floor0 (splitOn "&" ((splitOn "~" c) !! 5))) ((div (u_limit + 1) 2) - 1) ((div (v_limit + 1) 2) - 1) w_limit) f_grid_flag
+      obj_grid = check_map_layer 0 0 0 u_limit v_limit (empty_obj_grid u_limit v_limit w_limit // load_obj_grid (splitOn ", " ((splitOn "~" c) !! 6))) obj_grid_flag
       look_up_ = look_up [make_table 0 0, make_table 1 0, make_table 2 0, make_table 3 0]
       camera_to_clip' = fromList 4 4 [read (cfg' "frustumScale"), 0, 0, 0, 0, read (cfg' "frustumScale"), 0, 0, 0, 0, ((zFar + zNear) / (zNear - zFar)), ((2 * zFar * zNear) / (zNear - zFar)), 0, 0, -1, 0]
       cfg' = cfg conf_reg 0
