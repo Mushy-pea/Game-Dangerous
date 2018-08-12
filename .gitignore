@@ -22,3 +22,5 @@ Wave.hs
 game_dangerous__.hs
 Build_model__.hs
 Game_logic__.hs
+test_map2.dan
+test_map3.dan

@@ -126,6 +126,9 @@ head_ ls = head ls
 tail_ [] = []
 tail_ ls = tail ls
 
+head__ [] = error "Invalid Obj_grid structure detected."
+head__ ls = head ls
+
 show_ints :: [Int] -> [Char]
 show_ints [] = []
 show_ints (x:xs) = (show x) ++ ", " ++ show_ints xs
@@ -413,10 +416,10 @@ chk_line_sight mode a w_block u_block v_block (fg_u, fg_v) target_u target_v w_g
 npc_dir_table :: Int -> Int
 npc_dir_table dir = truncate (78.625 * fromIntegral (dir - 1))
 
-npc_dir_remap (-1) = 1
-npc_dir_remap (-2) = 5
-npc_dir_remap (-3) = 3
-npc_dir_remap (-4) = 7
+npc_dir_remap (-1) = 5
+npc_dir_remap (-2) = 1
+npc_dir_remap (-3) = 7
+npc_dir_remap (-4) = 3
 npc_dir_remap (-5) = 1
 npc_dir_remap (-6) = 5
 npc_dir_remap (-7) = 3
@@ -626,7 +629,7 @@ npc_move offset d_list (w:u:v:w1:u1:v1:blocks) w_grid f_grid obj_grid s0 s1 look
       else (w_grid'', obj_grid // [((w, u, v), def_obj_grid), ((w, u', v'), prog)], s1 {npc_states = (npc_states s1) // [(head d_list, char_state {dir_vector = dir_vector', fg_position = add_vel_pos (fg_position char_state) dir_vector', node_locations = [w, u', v', 0, 0, 0], ticks_left0 = 1})], next_sig_q = next_sig_q s1 ++ [3, w, u', v']})
     else if direction char_state < -4 then (w_grid // [((-w - 1, u, v), def_w_grid), ((-w - 1, u', v'), (w_grid ! (-w - 1, u, v)) {obj = Just (o_target {ident_ = char_rotation (npc_dir_remap (direction char_state)) (d_list !! 1)})})], obj_grid // ((take 4 (ramp_fill w u' v' (2, []) (surface (f_grid ! (w, div u' 2, div v' 2))))) ++ [((w, u, v), def_obj_grid), ((w, u', v'), prog' 1 0)]), s1 {npc_states = (npc_states s1) // [(head d_list, char_state {node_locations = [w, u', v', 0, 0, 0], ticks_left0 = 41})], next_sig_q = next_sig_q s1 ++ [3, w, u', v']})
     else
-      if (w - 1, u', v') == (truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)) then (w_grid, obj_grid, s1 {next_sig_q = next_sig_q s1 ++ [3, w, u', v']})
+      if (w - 1, u', v') == (truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)) then (w_grid, obj_grid, s1 {npc_states = (npc_states s1) // [(head d_list, char_state {direction = (last_dir char_state)})], next_sig_q = next_sig_q s1 ++ [3, w, u, v]})
       else (w_grid // [((-w - 1, u, v), def_w_grid), ((-w, u', v'), (w_grid ! (-w - 1, u, v)) {obj = Just (o_target {ident_ = char_rotation (npc_dir_remap (direction char_state)) (d_list !! 1)})})], obj_grid // ((take 4 (ramp_fill (w - 1) u' v' (2, []) (surface (f_grid ! (w - 1, div u' 2, div v' 2))))) ++ [((w, u, v), def_obj_grid), ((w - 1, u', v'), prog' 1 0)]), s1 {npc_states = (npc_states s1) // [(head d_list, char_state {node_locations = [w - 1, u', v', 0, 0, 0], ticks_left0 = 41})], next_sig_q = next_sig_q s1 ++ [3, w - 1, u', v']})
   else if npc_type char_state < 2 && ticks_left0 char_state == 1 then
     if direction char_state >= 0 then (w_grid', obj_grid, s1 {npc_states = (npc_states s1) // [(head d_list, char_state {fg_position = add_vel_pos (fg_position char_state) (dir_vector char_state)})], next_sig_q = next_sig_q s1 ++ [3, w, u, v]})
@@ -816,7 +819,7 @@ link_gplc0 (x0:x1:xs) (z0:z1:z2:zs) w_grid f_grid obj_grid s0 s1 look_up swap_fl
       obj_grid1' = (send_signal 1 1 (z0, z1 + 1, z2) obj_grid s1 [])
       obj_grid2' = (send_signal 1 1 (z0, z1, z2 - 1) obj_grid s1 [])
       obj_grid3' = (send_signal 1 1 (z0, z1 - 1, z2) obj_grid s1 [])
-      obj_grid4' = obj_grid // [(dest, (fst (obj_grid ! dest), (head prog) : ((sig_q s1) !! 0) : drop 2 prog))]
+      obj_grid4' = obj_grid // [(dest, (fst (obj_grid ! dest), (head__ prog) : ((sig_q s1) !! 0) : drop 2 prog))]
   in do
   if sig_q s1 == [] && swap_flag == False then link_gplc0 (x0:x1:xs) (z0:z1:z2:zs) w_grid f_grid obj_grid s0 (s1 {sig_q = next_sig_q s1, next_sig_q = []}) look_up True
   else if swap_flag == True then
