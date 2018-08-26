@@ -93,11 +93,11 @@ pass_msg 13 msg_length0 0 14 41 63 27 39 39 41 2 4 0
 ~
 shooter (6)
 ~
-dice_result 0 w 0 u 17 v 0 w' 0 u' 1 v' 0 w_ 1 u_ 18 v_ 24 v_base 25 v_limit 45 obj_flag 0 obj_flag_base 0 prob_fac 1 diff_fac 0 on_switch 1 sig2 2 sig3 3 add 0 abs 1 copy 2
-pos_u 0 pos_v 0 pos_w 0 angle 0 speed 200000 off 0
+dice_result 0 w 0 u 17 v 0 w' 0 u' 1 v' 0 w_ 1 u_ 18 v_ 24 v_base 25 v_limit 45 obj_flag 0 obj_flag_base 0 prob_fac 10 diff_fac 0 on_switch 1 sig2 2 sig3 3 add 0 abs 1 copy 2
+pos_u 0 pos_v 0 pos_w 0 angle 0 speed 200000 off 0 on 1
 ~
 --signal 2
-if 0 on_switch prob_fac 44 0
+if 0 on_switch on 44 0
 if 0 dice_result off 12 26
 binary_dice prob_fac diff_fac w u v 124
 send_signal sig2 w u v
@@ -249,7 +249,7 @@ pass_msg 6 msg_length1 3 1500000 32500000 2100000
 zombie smiley (16)
 ~
 array_index 0 base_id 148 climb_flag 0 fireball_flag 0 fb_w 0 fb_u 0 fb_v 0 fb_angle 0 npc_type 1 c_health 40 w 0 u 25 v 22 w_ 0 u_ 0 v_ 0 arr_node0 0 arr_node1 0 arr_node2 0 arr_node3 0 arr_node4 0 arr_node5 0
-fg_pos_w 0 fg_pos_u 25500000 fg_pos_v 22500000 dir_vector_u 25000 dir_vector_v 0 direction 0 last_dir 0 speed 10000 avoid_dist 2 attack_mode 0 fire_prob 0 sig3 3
+fg_pos_w 0 fg_pos_u 25500000 fg_pos_v 22500000 dir_vector_u 25000 dir_vector_v 0 direction 0 last_dir 0 speed 25000 avoid_dist 2 attack_mode 1 fire_prob 0 sig3 3
 ~
 --signal 0
 npc_damage

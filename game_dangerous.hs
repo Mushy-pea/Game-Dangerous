@@ -25,7 +25,6 @@ import qualified Data.ByteString as BS
 import Control.Exception
 import System.Exit
 import System.Random
-import System.Clock
 import Build_model
 import Game_logic
 import Decompress_map
