@@ -50,7 +50,7 @@ assm_gplc4 [] = []
 assm_gplc4 (x0:x1:xs) = (read x1) : assm_gplc4 xs
 
 assm_gplc3 :: Int -> [Char] -> [[Char]] -> [(Int, Int)] -> Int
-assm_gplc3 t symbol [] [] = 536870910
+assm_gplc3 t symbol [] [] = error "Undeclared op - code reference argument used."
 assm_gplc3 t symbol (x:xs) (y:ys) =
   if symbol == x then
     if t == 0 then fst y
@@ -59,7 +59,7 @@ assm_gplc3 t symbol (x:xs) (y:ys) =
 
 assm_gplc2 :: Int -> [[Char]] -> [[Char]] -> [(Int, Int)] -> [Int]
 assm_gplc2 1 (x0:x1:x2:x3:x4:xs) sym ind = (read x0) : (assm_gplc3 0 x1 sym ind) : (assm_gplc3 0 x2 sym ind) : (read x3) : [read x4]
-assm_gplc2 2 (x0:x1:x2:x3:x4:x5:xs) sym ind = (assm_gplc3 0 x0 sym ind) : (assm_gplc3 0 x1 sym ind) : (assm_gplc3 0 x2 sym ind) : (assm_gplc3 0 x3 sym ind) : (assm_gplc3 0 x4 sym ind) : [assm_gplc3 0 x5 sym ind]
+assm_gplc2 2 (x0:x1:x2:x3:x4:x5:x6:x7:x8:xs) sym ind = (assm_gplc3 0 x0 sym ind) : (assm_gplc3 0 x1 sym ind) : (assm_gplc3 0 x2 sym ind) : (assm_gplc3 0 x3 sym ind) : (assm_gplc3 0 x4 sym ind) : (assm_gplc3 0 x5 sym ind) : (assm_gplc3 0 x6 sym ind) : (assm_gplc3 0 x7 sym ind) : [assm_gplc3 0 x8 sym ind]
 assm_gplc2 3 (x0:x1:x2:x3:x4:x5:x6:xs) sym ind = (assm_gplc3 0 x0 sym ind) : (assm_gplc3 0 x1 sym ind) : (assm_gplc3 0 x2 sym ind) : (assm_gplc3 0 x3 sym ind) : (assm_gplc3 0 x4 sym ind) : (assm_gplc3 0 x5 sym ind) : [assm_gplc3 0 x6 sym ind]
 assm_gplc2 4 (x0:x1:x2:x3:xs) sym ind = (assm_gplc3 0 x0 sym ind) : (assm_gplc3 0 x1 sym ind) : (assm_gplc3 0 x2 sym ind) : [assm_gplc3 0 x3 sym ind]
 assm_gplc2 5 (x0:x1:x2:x3:x4:x5:xs) sym ind = (assm_gplc3 1 x0 sym ind) : (assm_gplc3 0 x1 sym ind) : (assm_gplc3 0 x2 sym ind) : (assm_gplc3 0 x3 sym ind) : (assm_gplc3 0 x4 sym ind) : [assm_gplc3 0 x5 sym ind]
@@ -96,7 +96,7 @@ assm_gplc0 (x:xs) sym ind size_block sig_block code_block c =
   let msg_length = (read (xs !! 0))
   in
   if x == "if" then assm_gplc0 (drop 5 xs) sym ind size_block sig_block (code_block ++ [1] ++ (assm_gplc2 1 (take 5 xs) sym ind)) (c + 6)
-  else if x == "chg_state" then assm_gplc0 (drop 6 xs) sym ind size_block sig_block (code_block ++ [2] ++ (assm_gplc2 2 (take 6 xs) sym ind)) (c + 7)
+  else if x == "chg_state" then assm_gplc0 (drop 9 xs) sym ind size_block sig_block (code_block ++ [2] ++ (assm_gplc2 2 (take 9 xs) sym ind)) (c + 10)
   else if x == "chg_grid" then assm_gplc0 (drop 7 xs) sym ind size_block sig_block (code_block ++ [3] ++ (assm_gplc2 3 (take 7 xs) sym ind)) (c + 8)
   else if x == "send_signal" then assm_gplc0 (drop 4 xs) sym ind size_block sig_block (code_block ++ [4] ++ (assm_gplc2 4 (take 4 xs) sym ind)) (c + 5)
   else if x == "chg_value" then assm_gplc0 (drop 6 xs) sym ind size_block sig_block (code_block ++ [5] ++ (assm_gplc2 5 (take 6 xs) sym ind)) (c + 7)

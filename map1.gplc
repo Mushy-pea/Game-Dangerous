@@ -1,7 +1,7 @@
 initial script (1)
 ~
 msg_length0 102 msg_length1 580 hntr 5 podp 6 ud 7 null 0 sig5 5 w 0 u 23 v 18 torch_w -1 torch_u 16 torch_v0 9 torch_v1 10
-cr_w 0 cr_u 25 cr_v 22 sig2 2
+cr_w 0 cr_u 25 cr_v 22 sig2 2 ammo 1 rep 1 shots 10
 ~
 --signal 1
 pass_msg 104 msg_length0 1 0 23 18 -1 0 16 38 31 27 45 31 63 45 31 38 31 29 46 63 30 35 32 32 35 29 47 38 46 51 63 38 31 48 31 38 -1 0 63 -1 1 8 31 51 64 63 40 41 46 63 46 41 41 63 44 35 45 37 51 73 -1 2 16 38 31 40 46 51 63 41 32 63 30 27 40 33 31 44 63 42 38 31 27 45 31 -1 3 21 38 46 44 27 63 30 27 40 33 31 44 2 4 8
@@ -23,6 +23,7 @@ chg_grid_ null w torch_u torch_v1 w torch_u torch_v1
 --signal 5
 chg_grid_ null w u v w u v
 pass_msg 582 msg_length1 1 0 23 18 -1 0 25 41 47 63 27 44 31 63 2 31 40 63 4 41 40 41 34 47 33 34 64 63 27 63 2 47 45 35 40 31 45 45 63 3 41 40 46 35 40 47 35 46 51 -1 0 13 27 40 27 33 31 44 63 49 35 46 34 63 46 34 31 63 3 41 44 42 41 44 27 46 35 41 40 63 41 32 63 1 31 44 41 45 42 27 29 31 63 21 40 35 41 40 45 -1 0 75 3 1 21 75 64 63 31 39 42 38 41 51 31 30 63 35 40 63 46 34 31 35 44 63 13 27 44 45 63 28 27 45 31 30 63 33 31 39 63 39 35 40 35 40 33 -1 0 32 27 29 35 38 35 46 51 66 63 1 32 46 31 44 63 33 41 35 40 33 63 46 41 63 28 31 30 63 41 40 31 63 40 35 33 34 46 63 51 41 47 63 27 49 27 37 31 -1 0 35 40 63 27 63 30 35 32 32 31 44 31 40 46 63 42 27 44 46 63 41 32 63 46 34 31 63 28 27 45 31 63 51 41 47 65 44 31 63 40 41 46 -1 0 32 27 39 35 38 35 27 44 63 49 35 46 34 63 27 40 30 63 40 41 63 35 30 31 27 63 34 41 49 63 51 41 47 63 33 41 46 63 46 34 31 44 31 66 -1 0 20 34 35 40 33 45 63 45 31 31 39 63 41 30 30 38 51 63 43 47 35 31 46 63 32 41 44 63 27 63 28 27 45 31 63 49 35 46 34 63 44 41 46 27 46 35 40 33 -1 0 45 34 35 32 46 45 64 63 49 35 46 34 63 40 41 63 41 40 31 63 27 44 41 47 40 30 63 27 40 30 63 41 40 38 51 63 46 34 31 63 32 27 35 40 46 31 45 46 -1 0 49 34 35 45 42 31 44 63 41 32 63 27 35 44 63 32 44 41 39 63 46 34 31 63 38 35 32 31 63 45 47 42 42 41 44 46 63 48 31 40 46 45 63 32 41 44 -1 0 29 41 39 42 27 40 51 66 63 3 27 40 63 51 41 47 63 45 41 38 48 31 63 46 34 31 63 39 51 45 46 31 44 51 67 63 18 31 39 31 39 28 31 44 64 -1 0 51 41 47 65 44 31 63 2 47 45 35 40 31 45 45 63 3 41 40 46 35 40 47 35 46 51 63 13 27 40 27 33 31 44 63 32 41 44 63 27 63 44 31 27 45 41 40 66 -1 1 20 34 31 63 29 41 40 46 35 40 47 35 46 51 63 35 45 63 35 40 63 51 41 47 66 63 16 44 31 45 45 63 50 63 46 41 63 29 41 40 46 35 40 47 31 66
+chg_ps1 ammo rep shots
 send_signal sig2 cr_w cr_u cr_v
 ~
 torch (2)
@@ -37,13 +38,15 @@ pass_msg 22 msg_length 0 25 41 47 63 33 41 46 63 27 63 46 41 44 29 34 66 2 4 4
 ~
 gem (3)
 ~
-health 0 gems 2 add 0 v_ 1 mode 0 w0 -1 w1 0 u 0 v 0 msg_length 29
+health 0 gems 2 add 0 v_ 1 mode 0 w0 -1 w1 0 u 0 v 0 msg_length 29 u' 25 v' 18 del 0 u__ 1 v__ 2 rep 1 new_u 25000000 new_v 18000000 copy 2
 ~
 --signal 1
 chg_ps1 health add v_
 chg_ps1 gems add v_
-chg_grid mode w0 u v w0 u v
-chg_grid_ mode w1 u v w1 u v
+chg_state u__ rep new_u w0 u v w0 u' v'
+chg_state v__ rep new_v w0 u v w0 u' v'
+chg_grid del w0 u v w0 u v
+chg_grid_ copy w1 u v w1 u' v'
 pass_msg 31 msg_length 0 25 41 47 63 33 41 46 63 27 63 33 31 39 66 63 8 31 27 38 46 34 63 70 54 66 2 4 2
 ~
 projectile prototype (4)
@@ -52,10 +55,9 @@ u 0 v 0 w_block 0 vel_u 0 vel_v 0 i0 0 i1 0 i2 0 init_u_block 0 init_v_block 0 o
 one 1 two 2 obj_flag_ 11
 ~
 --signal 2
-chg_grid copy model_w model_u model_v w_block init_u_block init_v_block
-chg_state one one u w_block init_u_block init_v_block
-chg_state two one v w_block init_u_block init_v_block
-chg_state obj_flag_ zero obj_flag w_block init_u_block init_v_block
+chg_state one one u model_w model_u model_v model_w init_u_block init_v_block
+chg_state two one v model_w model_u model_v model_w init_u_block init_v_block
+chg_state obj_flag_ zero obj_flag model_w model_u model_v model_w init_u_block init_v_block
 send_signal sig3 i0 i1 i2
 --signal 3
 if 2 hit_state zero 27 11
@@ -86,7 +88,7 @@ chg_value obj_flag v obj_flag_base w u v
 send_signal sig3 w u v
 chg_ps1 v copy v
 chg_grid_ copy w v u w u v_
-project_init pos_u pos_v pos_w angle speed w u v_ 88 obj_flag
+project_init pos_u pos_v pos_w angle speed w u v_ 89 obj_flag
 pass_msg 5 msg_length1 2 15 15
 send_signal sig2 w u v_
 pass_msg 13 msg_length0 0 14 41 63 27 39 39 41 2 4 0
@@ -102,8 +104,8 @@ if 0 dice_result off 12 26
 binary_dice prob_fac diff_fac w u v 124
 send_signal sig2 w u v
 binary_dice prob_fac diff_fac w u v 124
-chg_value v_ add prob_fac w u v
-chg_value obj_flag add prob_fac w u v
+chg_value v_ add on w u v
+chg_value obj_flag add on w u v
 send_signal sig3 w u v
 --signal 3
 if 2 v_ v_limit 19 29
@@ -111,7 +113,7 @@ chg_value v_ abs v_base w u v
 chg_value obj_flag abs obj_flag_base w u v
 send_signal sig3 w u v
 chg_grid_ copy w' u' v' w_ u_ v_
-project_init pos_u pos_v pos_w angle speed w_ u_ v_ 88 obj_flag
+project_init pos_u pos_v pos_w angle speed w_ u_ v_ 89 obj_flag
 send_signal sig2 w_ u_ v_
 send_signal sig2 w u v
 --signal 4
@@ -157,7 +159,7 @@ send_signal sig4 w_ u_ v_6
 send_signal sig4 w_ u_ v_7
 send_signal sig4 w_ u_ v_8
 send_signal sig2 w_ u_door v_door
-chg_state texture abs tex1 w' u__ v
+chg_state texture abs tex1 w' u__ v w' u__ v
 pass_msg 33 msg_length0 0 4 31 32 31 40 29 31 63 45 51 45 46 31 39 63 30 31 27 29 46 35 48 27 46 31 30 73 2 4 9
 chg_obj_type w w u v
 pass_msg 50 msg_length1 0 25 41 47 63 40 31 31 30 63 27 63 28 38 47 31 63 37 31 51 63 29 27 44 30 63 46 41 63 47 45 31 63 46 34 35 45 63 45 49 35 46 29 34 66 2 4 5
@@ -172,10 +174,10 @@ chg_obj_type zero w u_ v_9
 chg_obj_type zero w u_ v_10
 chg_obj_type zero w u_ v_11
 chg_obj_type zero w u_ v_12
-chg_state pos_v sub mod_step w_ u_ v_9
-chg_state pos_v sub mod_step w_ u_ v_10
-chg_state pos_v sub mod_step w_ u_ v_11
-chg_state pos_v sub mod_step w_ u_ v_12
+chg_state pos_v sub mod_step w_ u_ v_9 w_ u_ v_9
+chg_state pos_v sub mod_step w_ u_ v_10 w_ u_ v_10
+chg_state pos_v sub mod_step w_ u_ v_11 w_ u_ v_11
+chg_state pos_v sub mod_step w_ u_ v_12 w_ u_ v_12
 chg_value c sub c_step w u v
 send_signal sig2 w u v
 ~

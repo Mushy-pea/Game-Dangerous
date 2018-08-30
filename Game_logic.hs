@@ -92,9 +92,11 @@ messagePump hwnd = allocaMessage $ \ msg ->
 upd' x y = x + y
 upd'' x y = y
 upd''' x y = x - y
+upd_ x y = x
 upd 0 = upd'
 upd 1 = upd''
 upd 2 = upd'''
+upd 3 = upd_
 upd_a 0 = mod_angle
 upd_a 1 = mod_angle'
 upd_b 0 = False
@@ -158,21 +160,24 @@ if0 code d_list =
   else code
 
 -- The remaining GPLC op - codes are implemented here.  The GPLC specification document explains their functions in the context of a game logic virtual machine.
-chg_state :: Int -> Int -> Int -> (Int, Int, Int) -> Array (Int, Int, Int) Wall_grid -> [((Int, Int, Int), Wall_grid)] -> [Int] -> [((Int, Int, Int), Wall_grid)]
-chg_state state_val abs v (i0, i1, i2) w_grid w_grid_upd d_list =
-  let index = (d_list !! i0, d_list !! i1, d_list !! i2)
-      grid_i = fromJust (obj (w_grid ! index))
-      grid_i' = (obj (w_grid ! index))
-  in
-  if isNothing grid_i' == True then w_grid_upd
-  else if d_list !! state_val == 0 then (index, (w_grid ! index) {obj = Just (grid_i {ident_ = upd (d_list !! abs) (ident_ grid_i) (d_list !! v)})}) : w_grid_upd
-  else if d_list !! state_val == 1 then (index, (w_grid ! index) {obj = Just (grid_i {u__ = upd (d_list !! abs) (u__ grid_i) (int_to_float (d_list !! v))})}) : w_grid_upd
-  else if d_list !! state_val == 2 then (index, (w_grid ! index) {obj = Just (grid_i {v__ = upd (d_list !! abs) (v__ grid_i) (int_to_float (d_list !! v))})}) : w_grid_upd
-  else if d_list !! state_val == 3 then (index, (w_grid ! index) {obj = Just (grid_i {w__ = upd (d_list !! abs) (w__ grid_i) (int_to_float (d_list !! v))})}) : w_grid_upd
-  else if d_list !! state_val == 9 then (index, (w_grid ! index) {obj = Just (grid_i {texture__ = upd (d_list !! abs) (texture__ grid_i) (d_list !! v)})}) : w_grid_upd
-  else if d_list !! state_val == 10 then (index, (w_grid ! index) {obj = Just (grid_i {num_elem = fromIntegral (d_list !! v)})}) : w_grid_upd
-  else if d_list !! state_val == 11 then (index, (w_grid ! index) {obj = Just (grid_i {obj_flag = d_list !! v})}) : w_grid_upd
-  else w_grid_upd
+chg_state :: [Int] -> (Int, Int, Int) -> (Int, Int, Int) -> Array (Int, Int, Int) Wall_grid -> UArray Int Int -> [((Int, Int, Int), Wall_grid)] -> [Int] -> ([((Int, Int, Int), Wall_grid)], [Int])
+chg_state (2:x1:x2:x3:x4:x5:x6:x7:x8:x9:xs) (i0, i1, i2) (i3, i4, i5) w_grid update w_grid_upd d_list =
+  if d_list !! x1 == 0 then chg_state xs (x4, x5, x6) (x7, x8, x9) w_grid (update // [(0, d_list !! x2), (1, d_list !! x3)]) w_grid_upd d_list
+  else if d_list !! x1 == 1 then chg_state xs (x4, x5, x6) (x7, x8, x9) w_grid (update // [(2, d_list !! x2), (3, d_list !! x3)]) w_grid_upd d_list
+  else if d_list !! x1 == 2 then chg_state xs (x4, x5, x6) (x7, x8, x9) w_grid (update // [(4, d_list !! x2), (5, d_list !! x3)]) w_grid_upd d_list
+  else if d_list !! x1 == 3 then chg_state xs (x4, x5, x6) (x7, x8, x9) w_grid (update // [(6, d_list !! x2), (7, d_list !! x3)]) w_grid_upd d_list
+  else if d_list !! x1 == 9 then chg_state xs (x4, x5, x6) (x7, x8, x9) w_grid (update // [(8, d_list !! x2), (9, d_list !! x3)]) w_grid_upd d_list
+  else if d_list !! x1 == 10 then chg_state xs (x4, x5, x6) (x7, x8, x9) w_grid (update // [(10, d_list !! x2), (11, d_list !! x3)]) w_grid_upd d_list
+  else if d_list !! x1 == 11 then chg_state xs (x4, x5, x6) (x7, x8, x9) w_grid (update // [(12, d_list !! x2), (13, d_list !! x3)]) w_grid_upd d_list
+  else throw Invalid_GPLC_op_argument
+chg_state code (i0, i1, i2) (i3, i4, i5) w_grid update w_grid_upd d_list =
+  let source = (d_list !! i0, d_list !! i1, d_list !! i2)
+      dest = (d_list !! i3, d_list !! i4, d_list !! i5)
+      grid_i = fromJust (obj (w_grid ! source))
+      grid_i' = (obj (w_grid ! source))
+  in 
+  if isNothing grid_i' == True then (w_grid_upd, code)
+  else ((dest, (w_grid ! source) {obj = Just (grid_i {ident_ = upd (update ! 0) (ident_ grid_i) (update ! 1), u__ = upd (update ! 2) (u__ grid_i) (int_to_float (update ! 3)), v__ = upd (update ! 4) (v__ grid_i) (int_to_float (update ! 5)), w__ = upd (update ! 6) (w__ grid_i) (int_to_float (update ! 7)), texture__ = upd (update ! 8) (texture__ grid_i) (update ! 9), num_elem = upd (update ! 10) (num_elem grid_i) (fromIntegral (update ! 11)), obj_flag = upd (update ! 12) (obj_flag grid_i) (update ! 13)})}) : w_grid_upd, code)
 
 chg_grid :: Int -> (Int, Int, Int) -> (Int, Int, Int) -> Array (Int, Int, Int) Wall_grid -> Wall_grid -> [((Int, Int, Int), Wall_grid)] -> [Int] -> [((Int, Int, Int), Wall_grid)]
 chg_grid mode (i0, i1, i2) (i3, i4, i5) w_grid def w_grid_upd d_list =
@@ -313,64 +318,64 @@ project_update p_state p_state' (i0, i1, i2) w_grid w_grid_upd obj_grid s0 s1 d_
       grid_i = fromJust (obj (w_grid ! index))
       grid_i' = (obj (w_grid ! index))
   in
-  if isNothing grid_i' == True then (((w_block, u_block, v_block), def_w_grid) : w_grid_upd, obj_grid // [(location, (fst target, (take (p_state' + 11) (snd target)) ++ [1] ++ drop (p_state' + 12) (snd target)))], s1)
+  if isNothing grid_i' == True then ((index, def_w_grid) : w_grid_upd, obj_grid // [(location, (fst target, (take (p_state' + 11) (snd target)) ++ [1] ++ drop (p_state' + 12) (snd target)))], s1)
   else if u_block' == u_block && v_block' == v_block then ((index, (w_grid ! index) {obj = Just (grid_i {u__ = u__ grid_i + int_to_float vel_u, v__ = v__ grid_i + int_to_float vel_v})}) : w_grid_upd, obj_grid // [(location, (fst target, (take p_state' (snd target)) ++ [u', v'] ++ drop (p_state' + 2) (snd target)))], s1)
   else if u_block' == u_block && v_block' == v_block + 1 then
-    if v2 (w_grid ! (w_block_, u_block, v_block)) == True then (((w_block, u_block, v_block), def_w_grid) : w_grid_upd, obj_grid // [(location, (fst target, (take (p_state' + 11) (snd target)) ++ [1] ++ drop (p_state' + 12) (snd target)))], s1)
-    else if fst (obj_grid ! (w_block_, u_block, v_block + 1)) > 0 && fst (obj_grid ! (w_block_, u_block, v_block + 1)) < 4 then (((w_block, u_block, v_block), def_w_grid) : w_grid_upd, obj_grid // [(location, (fst target, (take (p_state' + 11) (snd target)) ++ [2, w_block_, u_block, v_block + 1] ++ drop (p_state' + 15) (snd target)))], s1)
+    if v2 (w_grid ! (w_block_, u_block, v_block)) == True then ((index, def_w_grid) : w_grid_upd, obj_grid // [(location, (fst target, (take (p_state' + 11) (snd target)) ++ [1] ++ drop (p_state' + 12) (snd target)))], s1)
+    else if fst (obj_grid ! (w_block_, u_block, v_block + 1)) > 0 && fst (obj_grid ! (w_block_, u_block, v_block + 1)) < 4 then ((index, def_w_grid) : w_grid_upd, obj_grid // [(location, (fst target, (take (p_state' + 11) (snd target)) ++ [2, w_block_, u_block, v_block + 1] ++ drop (p_state' + 15) (snd target)))], s1)
     else if (truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)) == (w_block_, u_block, v_block + 1) && d_list !! i0 /= 0 then
       if health s1 - det_damage (difficulty s1) s0 <= 0 then (w_grid_upd, obj_grid, s1 {health = 0, state_chg = 1, message = 0 : msg27})
-      else (((w_block, u_block, v_block), def_w_grid) : w_grid_upd, obj_grid // [(location, (fst target, (take (p_state' + 11) (snd target)) ++ [1] ++ drop (p_state' + 12) (snd target)))], s1 {health = health s1 - det_damage (difficulty s1) s0, state_chg = 1, message = 0 : msg25})
-    else ([(index, (w_grid ! index) {obj = Just (grid_i {u__ = u__ grid_i + int_to_float vel_u, v__ = v__ grid_i + int_to_float vel_v})}), ((w_block, u_block, v_block + 1), w_grid ! index), (index, def_w_grid)] ++ w_grid_upd, obj_grid // [(location, (fst target, (take p_state' (snd target)) ++ [u', v'] ++ drop (p_state' + 2) (snd target)))], s1)
+      else ((index, def_w_grid) : w_grid_upd, obj_grid // [(location, (fst target, (take (p_state' + 11) (snd target)) ++ [1] ++ drop (p_state' + 12) (snd target)))], s1 {health = health s1 - det_damage (difficulty s1) s0, state_chg = 1, message = 0 : msg25})
+    else ([((w_block, u_block, v_block + 1), (w_grid ! index) {obj = Just (grid_i {u__ = u__ grid_i + int_to_float vel_u, v__ = v__ grid_i + int_to_float vel_v})}), (index, def_w_grid)] ++ w_grid_upd, obj_grid // [(location, (fst target, (take p_state' (snd target)) ++ [u', v'] ++ drop (p_state' + 2) (snd target)))], s1)
   else if u_block' == u_block + 1 && v_block' == v_block then
-    if u2 (w_grid ! (w_block_, u_block, v_block)) == True then (((w_block, u_block, v_block), def_w_grid) : w_grid_upd, obj_grid // [(location, (fst target, (take (p_state' + 11) (snd target)) ++ [1] ++ drop (p_state' + 12) (snd target)))], s1)
-    else if fst (obj_grid ! (w_block_, u_block + 1, v_block)) > 0 && fst (obj_grid ! (w_block_, u_block + 1, v_block)) < 4 then (((w_block, u_block, v_block), def_w_grid) : w_grid_upd, obj_grid // [(location, (fst target, (take (p_state' + 11) (snd target)) ++ [2, w_block_, u_block + 1, v_block] ++ drop (p_state' + 15) (snd target)))], s1)
+    if u2 (w_grid ! (w_block_, u_block, v_block)) == True then ((index, def_w_grid) : w_grid_upd, obj_grid // [(location, (fst target, (take (p_state' + 11) (snd target)) ++ [1] ++ drop (p_state' + 12) (snd target)))], s1)
+    else if fst (obj_grid ! (w_block_, u_block + 1, v_block)) > 0 && fst (obj_grid ! (w_block_, u_block + 1, v_block)) < 4 then ((index, def_w_grid) : w_grid_upd, obj_grid // [(location, (fst target, (take (p_state' + 11) (snd target)) ++ [2, w_block_, u_block + 1, v_block] ++ drop (p_state' + 15) (snd target)))], s1)
     else if (truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)) == (w_block_, u_block + 1, v_block) && d_list !! i0 /= 0 then
       if health s1 - det_damage (difficulty s1) s0 <= 0 then (w_grid_upd, obj_grid, s1 {health = 0, state_chg = 1, message = 0 : msg27})
-      else (((w_block, u_block, v_block), def_w_grid) : w_grid_upd, obj_grid // [(location, (fst target, (take (p_state' + 11) (snd target)) ++ [1] ++ drop (p_state' + 12) (snd target)))], s1 {health = health s1 - det_damage (difficulty s1) s0, state_chg = 1, message = 0 : msg25})
-    else ([(index, (w_grid ! index) {obj = Just (grid_i {u__ = u__ grid_i + int_to_float vel_u, v__ = v__ grid_i + int_to_float vel_v})}), ((w_block, u_block + 1, v_block), w_grid ! index), ((w_block, u_block, v_block), def_w_grid)] ++ w_grid_upd, obj_grid // [(location, (fst target, (take p_state' (snd target)) ++ [u', v'] ++ drop (p_state' + 2) (snd target)))], s1)
+      else ((index, def_w_grid) : w_grid_upd, obj_grid // [(location, (fst target, (take (p_state' + 11) (snd target)) ++ [1] ++ drop (p_state' + 12) (snd target)))], s1 {health = health s1 - det_damage (difficulty s1) s0, state_chg = 1, message = 0 : msg25})
+    else ([((w_block, u_block + 1, v_block), (w_grid ! index) {obj = Just (grid_i {u__ = u__ grid_i + int_to_float vel_u, v__ = v__ grid_i + int_to_float vel_v})}), (index, def_w_grid)] ++ w_grid_upd, obj_grid // [(location, (fst target, (take p_state' (snd target)) ++ [u', v'] ++ drop (p_state' + 2) (snd target)))], s1)
   else if u_block' == u_block && v_block' == v_block - 1 then
-    if v1 (w_grid ! (w_block_, u_block, v_block)) == True then (((w_block, u_block, v_block), def_w_grid) : w_grid_upd, obj_grid // [(location, (fst target, (take (p_state' + 11) (snd target)) ++ [1] ++ drop (p_state' + 12) (snd target)))], s1)
-    else if fst (obj_grid ! (w_block_, u_block, v_block - 1)) > 0 && fst (obj_grid ! (w_block_, u_block, v_block - 1)) < 4 then (((w_block, u_block, v_block), def_w_grid) : w_grid_upd, obj_grid // [(location, (fst target, (take (p_state' + 11) (snd target)) ++ [2, w_block_, u_block, v_block - 1] ++ drop (p_state' + 15) (snd target)))], s1)
+    if v1 (w_grid ! (w_block_, u_block, v_block)) == True then ((index, def_w_grid) : w_grid_upd, obj_grid // [(location, (fst target, (take (p_state' + 11) (snd target)) ++ [1] ++ drop (p_state' + 12) (snd target)))], s1)
+    else if fst (obj_grid ! (w_block_, u_block, v_block - 1)) > 0 && fst (obj_grid ! (w_block_, u_block, v_block - 1)) < 4 then ((index, def_w_grid) : w_grid_upd, obj_grid // [(location, (fst target, (take (p_state' + 11) (snd target)) ++ [2, w_block_, u_block, v_block - 1] ++ drop (p_state' + 15) (snd target)))], s1)
     else if (truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)) == (w_block_, u_block, v_block - 1) && d_list !! i0 /= 0 then
       if health s1 - det_damage (difficulty s1) s0 <= 0 then (w_grid_upd, obj_grid, s1 {health = 0, state_chg = 1, message = 0 : msg27})
-      else (((w_block, u_block, v_block), def_w_grid) : w_grid_upd, obj_grid // [(location, (fst target, (take (p_state' + 11) (snd target)) ++ [1] ++ drop (p_state' + 12) (snd target)))], s1 {health = health s1 - det_damage (difficulty s1) s0, state_chg = 1, message = 0 : msg25})
-    else ([(index, (w_grid ! index) {obj = Just (grid_i {u__ = u__ grid_i + int_to_float vel_u, v__ = v__ grid_i + int_to_float vel_v})}), ((w_block, u_block, v_block - 1), w_grid ! index), ((w_block, u_block, v_block), def_w_grid)] ++ w_grid_upd, obj_grid // [(location, (fst target, (take p_state' (snd target)) ++ [u', v'] ++ drop (p_state' + 2) (snd target)))], s1)
+      else ((index, def_w_grid) : w_grid_upd, obj_grid // [(location, (fst target, (take (p_state' + 11) (snd target)) ++ [1] ++ drop (p_state' + 12) (snd target)))], s1 {health = health s1 - det_damage (difficulty s1) s0, state_chg = 1, message = 0 : msg25})
+    else ([((w_block, u_block, v_block - 1), (w_grid ! index) {obj = Just (grid_i {u__ = u__ grid_i + int_to_float vel_u, v__ = v__ grid_i + int_to_float vel_v})}), (index, def_w_grid)] ++ w_grid_upd, obj_grid // [(location, (fst target, (take p_state' (snd target)) ++ [u', v'] ++ drop (p_state' + 2) (snd target)))], s1)
   else if u_block' == u_block - 1 && v_block' == v_block then
-    if u1 (w_grid ! (w_block_, u_block, v_block)) == True then (((w_block, u_block, v_block), def_w_grid) : w_grid_upd, obj_grid // [(location, (fst target, (take (p_state' + 11) (snd target)) ++ [1] ++ drop (p_state' + 12) (snd target)))], s1)
-    else if fst (obj_grid ! (w_block_, u_block - 1, v_block)) > 0 && fst (obj_grid ! (w_block_, u_block - 1, v_block)) < 4 then (((w_block, u_block, v_block), def_w_grid) : w_grid_upd, obj_grid // [(location, (fst target, (take (p_state' + 11) (snd target)) ++ [2, w_block_, u_block - 1, v_block] ++ drop (p_state' + 15) (snd target)))], s1)
+    if u1 (w_grid ! (w_block_, u_block, v_block)) == True then ((index, def_w_grid) : w_grid_upd, obj_grid // [(location, (fst target, (take (p_state' + 11) (snd target)) ++ [1] ++ drop (p_state' + 12) (snd target)))], s1)
+    else if fst (obj_grid ! (w_block_, u_block - 1, v_block)) > 0 && fst (obj_grid ! (w_block_, u_block - 1, v_block)) < 4 then ((index, def_w_grid) : w_grid_upd, obj_grid // [(location, (fst target, (take (p_state' + 11) (snd target)) ++ [2, w_block_, u_block - 1, v_block] ++ drop (p_state' + 15) (snd target)))], s1)
     else if (truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)) == (w_block_, u_block - 1, v_block) && d_list !! i0 /= 0 then
       if health s1 - det_damage (difficulty s1) s0 <= 0 then (w_grid_upd, obj_grid, s1 {health = 0, state_chg = 1, message = 0 : msg27})
-      else (((w_block, u_block, v_block), def_w_grid) : w_grid_upd, obj_grid // [(location, (fst target, (take (p_state' + 11) (snd target)) ++ [1] ++ drop (p_state' + 12) (snd target)))], s1 {health = health s1 - det_damage (difficulty s1) s0, state_chg = 1, message = 0 : msg25})
-    else ([(index, (w_grid ! index) {obj = Just (grid_i {u__ = u__ grid_i + int_to_float vel_u, v__ = v__ grid_i + int_to_float vel_v})}), ((w_block, u_block - 1, v_block), w_grid ! index), ((w_block, u_block, v_block), def_w_grid)] ++ w_grid_upd, obj_grid // [(location, (fst target, (take p_state' (snd target)) ++ [u', v'] ++ drop (p_state' + 2) (snd target)))], s1)
+      else ((index, def_w_grid) : w_grid_upd, obj_grid // [(location, (fst target, (take (p_state' + 11) (snd target)) ++ [1] ++ drop (p_state' + 12) (snd target)))], s1 {health = health s1 - det_damage (difficulty s1) s0, state_chg = 1, message = 0 : msg25})
+    else ([((w_block, u_block - 1, v_block), (w_grid ! index) {obj = Just (grid_i {u__ = u__ grid_i + int_to_float vel_u, v__ = v__ grid_i + int_to_float vel_v})}), (index, def_w_grid)] ++ w_grid_upd, obj_grid // [(location, (fst target, (take p_state' (snd target)) ++ [u', v'] ++ drop (p_state' + 2) (snd target)))], s1)
   else if u_block' == u_block + 1 && v_block' == v_block + 1 then
-    if u2 (w_grid ! (w_block_, u_block, v_block)) == True then (((w_block, u_block, v_block), def_w_grid) : w_grid_upd, obj_grid // [(location, (fst target, (take (p_state' + 11) (snd target)) ++ [1] ++ drop (p_state' + 12) (snd target)))], s1)
-    else if fst (obj_grid ! (w_block_, u_block + 1, v_block + 1)) > 0 && fst (obj_grid ! (w_block_, u_block + 1, v_block + 1)) < 4 then (((w_block, u_block, v_block), def_w_grid) : w_grid_upd, obj_grid // [(location, (fst target, (take (p_state' + 11) (snd target)) ++ [2, w_block_, u_block + 1, v_block + 1] ++ drop (p_state' + 15) (snd target)))], s1)
+    if u2 (w_grid ! (w_block_, u_block, v_block)) == True then ((index, def_w_grid) : w_grid_upd, obj_grid // [(location, (fst target, (take (p_state' + 11) (snd target)) ++ [1] ++ drop (p_state' + 12) (snd target)))], s1)
+    else if fst (obj_grid ! (w_block_, u_block + 1, v_block + 1)) > 0 && fst (obj_grid ! (w_block_, u_block + 1, v_block + 1)) < 4 then ((index, def_w_grid) : w_grid_upd, obj_grid // [(location, (fst target, (take (p_state' + 11) (snd target)) ++ [2, w_block_, u_block + 1, v_block + 1] ++ drop (p_state' + 15) (snd target)))], s1)
     else if (truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)) == (w_block_, u_block + 1, v_block + 1) && d_list !! i0 /= 0 then
       if health s1 - det_damage (difficulty s1) s0 <= 0 then (w_grid_upd, obj_grid, s1 {health = 0, state_chg = 1, message = 0 : msg27})
-      else (((w_block, u_block, v_block), def_w_grid) : w_grid_upd, obj_grid // [(location, (fst target, (take (p_state' + 11) (snd target)) ++ [1] ++ drop (p_state' + 12) (snd target)))], s1 {health = health s1 - det_damage (difficulty s1) s0, state_chg = 1, message = 0 : msg25})
-    else ([(index, (w_grid ! index) {obj = Just (grid_i {u__ = u__ grid_i + int_to_float vel_u, v__ = v__ grid_i + int_to_float vel_v})}), ((w_block, u_block + 1, v_block + 1), w_grid ! index), ((w_block, u_block, v_block), def_w_grid)] ++ w_grid_upd, obj_grid // [(location, (fst target, (take p_state' (snd target)) ++ [u', v'] ++ drop (p_state' + 2) (snd target)))], s1)
+      else ((index, def_w_grid) : w_grid_upd, obj_grid // [(location, (fst target, (take (p_state' + 11) (snd target)) ++ [1] ++ drop (p_state' + 12) (snd target)))], s1 {health = health s1 - det_damage (difficulty s1) s0, state_chg = 1, message = 0 : msg25})
+    else ([((w_block, u_block + 1, v_block + 1), (w_grid ! index) {obj = Just (grid_i {u__ = u__ grid_i + int_to_float vel_u, v__ = v__ grid_i + int_to_float vel_v})}), (index, def_w_grid)] ++ w_grid_upd, obj_grid // [(location, (fst target, (take p_state' (snd target)) ++ [u', v'] ++ drop (p_state' + 2) (snd target)))], s1)
   else if u_block' == u_block + 1 && v_block' == v_block - 1 then
-    if v1 (w_grid ! (w_block_, u_block, v_block)) == True then (((w_block, u_block, v_block), def_w_grid) : w_grid_upd, obj_grid // [(location, (fst target, (take (p_state' + 11) (snd target)) ++ [1] ++ drop (p_state' + 12) (snd target)))], s1)
-    else if fst (obj_grid ! (w_block_, u_block + 1, v_block - 1)) > 0 && fst (obj_grid ! (w_block_, u_block + 1, v_block - 1)) < 4 then (((w_block, u_block, v_block), def_w_grid) : w_grid_upd, obj_grid // [(location, (fst target, (take (p_state' + 11) (snd target)) ++ [2, w_block_, u_block + 1, v_block - 1] ++ drop (p_state' + 15) (snd target)))], s1)
+    if v1 (w_grid ! (w_block_, u_block, v_block)) == True then ((index, def_w_grid) : w_grid_upd, obj_grid // [(location, (fst target, (take (p_state' + 11) (snd target)) ++ [1] ++ drop (p_state' + 12) (snd target)))], s1)
+    else if fst (obj_grid ! (w_block_, u_block + 1, v_block - 1)) > 0 && fst (obj_grid ! (w_block_, u_block + 1, v_block - 1)) < 4 then ((index, def_w_grid) : w_grid_upd, obj_grid // [(location, (fst target, (take (p_state' + 11) (snd target)) ++ [2, w_block_, u_block + 1, v_block - 1] ++ drop (p_state' + 15) (snd target)))], s1)
     else if (truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)) == (w_block_, u_block + 1, v_block - 1) && d_list !! i0 /= 0 then
       if health s1 - det_damage (difficulty s1) s0 <= 0 then (w_grid_upd, obj_grid, s1 {health = 0, state_chg = 1, message = 0 : msg27})
-      else (((w_block, u_block, v_block), def_w_grid) : w_grid_upd, obj_grid // [(location, (fst target, (take (p_state' + 11) (snd target)) ++ [1] ++ drop (p_state' + 12) (snd target)))], s1 {health = health s1 - det_damage (difficulty s1) s0, state_chg = 1, message = 0 : msg25})
-    else ([(index, (w_grid ! index) {obj = Just (grid_i {u__ = u__ grid_i + int_to_float vel_u, v__ = v__ grid_i + int_to_float vel_v})}), ((w_block, u_block + 1, v_block - 1), w_grid ! index), ((w_block, u_block, v_block), def_w_grid)] ++ w_grid_upd, obj_grid // [(location, (fst target, (take p_state' (snd target)) ++ [u', v'] ++ drop (p_state' + 2) (snd target)))], s1)
+      else ((index, def_w_grid) : w_grid_upd, obj_grid // [(location, (fst target, (take (p_state' + 11) (snd target)) ++ [1] ++ drop (p_state' + 12) (snd target)))], s1 {health = health s1 - det_damage (difficulty s1) s0, state_chg = 1, message = 0 : msg25})
+    else ([((w_block, u_block + 1, v_block - 1), (w_grid ! index) {obj = Just (grid_i {u__ = u__ grid_i + int_to_float vel_u, v__ = v__ grid_i + int_to_float vel_v})}), (index, def_w_grid)] ++ w_grid_upd, obj_grid // [(location, (fst target, (take p_state' (snd target)) ++ [u', v'] ++ drop (p_state' + 2) (snd target)))], s1)
   else if u_block' == u_block - 1 && v_block' == v_block - 1 then
-    if u1 (w_grid ! (w_block_, u_block, v_block)) == True then (((w_block, u_block, v_block), def_w_grid) : w_grid_upd, obj_grid // [(location, (fst target, (take (p_state' + 11) (snd target)) ++ [1] ++ drop (p_state' + 12) (snd target)))], s1)
-    else if fst (obj_grid ! (w_block_, u_block - 1, v_block - 1)) > 0 && fst (obj_grid ! (w_block_, u_block - 1, v_block - 1)) < 4 then (((w_block, u_block, v_block), def_w_grid) : w_grid_upd, obj_grid // [(location, (fst target, (take (p_state' + 11) (snd target)) ++ [2, w_block_, u_block - 1, v_block - 1] ++ drop (p_state' + 15) (snd target)))], s1)
+    if u1 (w_grid ! (w_block_, u_block, v_block)) == True then ((index, def_w_grid) : w_grid_upd, obj_grid // [(location, (fst target, (take (p_state' + 11) (snd target)) ++ [1] ++ drop (p_state' + 12) (snd target)))], s1)
+    else if fst (obj_grid ! (w_block_, u_block - 1, v_block - 1)) > 0 && fst (obj_grid ! (w_block_, u_block - 1, v_block - 1)) < 4 then ((index, def_w_grid) : w_grid_upd, obj_grid // [(location, (fst target, (take (p_state' + 11) (snd target)) ++ [2, w_block_, u_block - 1, v_block - 1] ++ drop (p_state' + 15) (snd target)))], s1)
     else if (truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)) == (w_block_, u_block - 1, v_block - 1) && d_list !! i0 /= 0 then
       if health s1 - det_damage (difficulty s1) s0 <= 0 then (w_grid_upd, obj_grid, s1 {health = 0, state_chg = 1, message = 0 : msg27})
-      else (((w_block, u_block, v_block), def_w_grid) : w_grid_upd, obj_grid // [(location, (fst target, (take (p_state' + 11) (snd target)) ++ [1] ++ drop (p_state' + 12) (snd target)))], s1 {health = health s1 - det_damage (difficulty s1) s0, state_chg = 1, message = 0 : msg25})
-    else ([(index, (w_grid ! index) {obj = Just (grid_i {u__ = u__ grid_i + int_to_float vel_u, v__ = v__ grid_i + int_to_float vel_v})}), ((w_block, u_block - 1 , v_block - 1), w_grid ! index), ((w_block, u_block, v_block), def_w_grid)] ++ w_grid_upd, obj_grid // [(location, (fst target, (take p_state' (snd target)) ++ [u', v'] ++ drop (p_state' + 2) (snd target)))], s1)
+      else ((index, def_w_grid) : w_grid_upd, obj_grid // [(location, (fst target, (take (p_state' + 11) (snd target)) ++ [1] ++ drop (p_state' + 12) (snd target)))], s1 {health = health s1 - det_damage (difficulty s1) s0, state_chg = 1, message = 0 : msg25})
+    else ([((w_block, u_block - 1, v_block - 1), (w_grid ! index) {obj = Just (grid_i {u__ = u__ grid_i + int_to_float vel_u, v__ = v__ grid_i + int_to_float vel_v})}), (index, def_w_grid)] ++ w_grid_upd, obj_grid // [(location, (fst target, (take p_state' (snd target)) ++ [u', v'] ++ drop (p_state' + 2) (snd target)))], s1)
   else
-    if v2 (w_grid ! (w_block_, u_block, v_block)) == True then (((w_block, u_block, v_block), def_w_grid) : w_grid_upd, obj_grid // [(location, (fst target, (take (p_state' + 11) (snd target)) ++ [1] ++ drop (p_state' + 12) (snd target)))], s1)
-    else if fst (obj_grid ! (w_block_, u_block - 1, v_block + 1)) > 0 && fst (obj_grid ! (w_block_, u_block - 1, v_block + 1)) < 4 then (((w_block, u_block, v_block), def_w_grid) : w_grid_upd, obj_grid // [(location, (fst target, (take (p_state' + 11) (snd target)) ++ [2, w_block_, u_block - 1, v_block + 1] ++ drop (p_state' + 15) (snd target)))], s1)
+    if v2 (w_grid ! (w_block_, u_block, v_block)) == True then ((index, def_w_grid) : w_grid_upd, obj_grid // [(location, (fst target, (take (p_state' + 11) (snd target)) ++ [1] ++ drop (p_state' + 12) (snd target)))], s1)
+    else if fst (obj_grid ! (w_block_, u_block - 1, v_block + 1)) > 0 && fst (obj_grid ! (w_block_, u_block - 1, v_block + 1)) < 4 then ((index, def_w_grid) : w_grid_upd, obj_grid // [(location, (fst target, (take (p_state' + 11) (snd target)) ++ [2, w_block_, u_block - 1, v_block + 1] ++ drop (p_state' + 15) (snd target)))], s1)
     else if (truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)) == (w_block_, u_block - 1, v_block + 1) && d_list !! i0 /= 0 then
       if health s1 - det_damage (difficulty s1) s0 <= 0 then (w_grid_upd, obj_grid, s1 {health = 0, state_chg = 1, message = 0 : msg27})
-      else (((w_block, u_block, v_block), def_w_grid) : w_grid_upd, obj_grid // [(location, (fst target, (take (p_state' + 11) (snd target)) ++ [1] ++ drop (p_state' + 12) (snd target)))], s1 {health = health s1 - det_damage (difficulty s1) s0, state_chg = 1, message = 0 : msg25})
-    else ([(index, (w_grid ! index) {obj = Just (grid_i {u__ = u__ grid_i + int_to_float vel_u, v__ = v__ grid_i + int_to_float vel_v})}), ((w_block, u_block - 1, v_block + 1), w_grid ! index), ((w_block, u_block, v_block), def_w_grid)] ++ w_grid_upd, obj_grid // [(location, (fst target, (take p_state' (snd target)) ++ [u', v'] ++ drop (p_state' + 2) (snd target)))], s1)
+      else ((index, def_w_grid) : w_grid_upd, obj_grid // [(location, (fst target, (take (p_state' + 11) (snd target)) ++ [1] ++ drop (p_state' + 12) (snd target)))], s1 {health = health s1 - det_damage (difficulty s1) s0, state_chg = 1, message = 0 : msg25})
+    else ([((w_block, u_block - 1, v_block + 1), (w_grid ! index) {obj = Just (grid_i {u__ = u__ grid_i + int_to_float vel_u, v__ = v__ grid_i + int_to_float vel_v})}), (index, def_w_grid)] ++ w_grid_upd, obj_grid // [(location, (fst target, (take p_state' (snd target)) ++ [u', v'] ++ drop (p_state' + 2) (snd target)))], s1)
 
 -- Called from project_update, npc_move and npc_damage.  Used to determine the damage taken by the player and non - player characters from adverse events.
 det_damage :: ([Char], Int, Int, Int) -> Play_state0 -> Int
@@ -627,7 +632,7 @@ npc_move offset d_list (w:u:v:w1:u1:v1:blocks) w_grid w_grid_upd f_grid obj_grid
       conv_ramp_fill0 = conv_ramp_fill w u v 1 (surface (f_grid ! (w, div u 2, div v 2)))
       conv_ramp_fill1 = conv_ramp_fill w u v 0 (surface (f_grid ! (w, div u 2, div v 2)))
       w_grid' = ((-w - 1, u, v), (w_grid ! (-w - 1, u, v)) {obj = Just (o_target {u__ = snd__ (fg_position char_state), v__ = third_ (fg_position char_state)})})
-      w_grid'' = w_grid' : [((-w - 1, u, v), def_w_grid), ((-w - 1, u', v'), (w_grid ! (-w - 1, u, v)) {obj = Just (o_target {ident_ = char_rotation (direction char_state) (d_list !! 1)})})]
+      w_grid'' = [((-w - 1, u, v), def_w_grid), ((-w - 1, u', v'), (w_grid ! (-w - 1, u, v)) {obj = Just (o_target {ident_ = char_rotation (direction char_state) (d_list !! 1)})})]
       w_grid''' = ((-w - 1, u, v), (w_grid ! (-w - 1, u, v)) {obj = Just (o_target {w__ = fst__ ramp_climb_, u__ = snd__ ramp_climb_, v__ = third_ ramp_climb_})})
       w_grid_4 = \dw -> ([((-w - 1, u, v), def_w_grid)] ++ drop 4 (ramp_fill (-w - 1 + dw) u v ((w_grid ! (-w - 1, u, v)) {obj = Just (o_target {w__ = fst__ ramp_climb_, u__ = snd__ ramp_climb_, v__ = third_ ramp_climb_})}) (surface (f_grid ! (w, div u 2, div v 2)))))
       damage = det_damage (difficulty s1) s0 
@@ -680,10 +685,12 @@ run_gplc code d_list w_grid w_grid_upd f_grid obj_grid s0 s1 location look_up 1 
   report_state (verbose_mode s1) 2 [] [] "\nif expression folding run.  State is..."
   report_state (verbose_mode s1) 1 (snd (obj_grid ! location)) [] []
   run_gplc (tail_ if0') d_list w_grid w_grid_upd f_grid obj_grid s0 s1 location look_up (head_ if0')
-run_gplc (x0:x1:x2:x3:x4:x5:xs) d_list w_grid w_grid_upd f_grid obj_grid s0 s1 location look_up 2 = do
-  report_state (verbose_mode s1) 1 (snd (obj_grid ! location)) [] []
-  report_state (verbose_mode s1) 2 [] [] ("\nchg_state run with arguments " ++ "0: " ++ show (d_list !! x0) ++ " 1: " ++ show (d_list !! x1) ++ " 2: " ++ show (d_list !! x2) ++ " 3: " ++ show (d_list !! x3) ++ " 4: " ++ show (d_list !! x4) ++ " 5: " ++ show (d_list !! x5))
-  run_gplc (tail_ xs) d_list w_grid (chg_state x0 x1 x2 (x3, x4, x5) w_grid w_grid_upd d_list) f_grid obj_grid s0 s1 location look_up (head_ xs)
+run_gplc xs d_list w_grid w_grid_upd f_grid obj_grid s0 s1 location look_up 2 =
+  let chg_state_ = chg_state (2 : xs) (0, 0, 0) (0, 0, 0) w_grid (array (0, 13) [(0, 3), (1, 0), (2, 3), (3, 0), (4, 3), (5, 0), (6, 3), (7, 0), (8, 3), (9, 0), (10, 3), (11, 0), (12, 3), (13, 0)]) w_grid_upd d_list
+  in do
+--  report_state (verbose_mode s1) 1 (snd (obj_grid ! location)) [] []
+--  report_state (verbose_mode s1) 2 [] [] ("\nchg_state run with arguments " ++ "0: " ++ show (d_list !! x0) ++ " 1: " ++ show (d_list !! x1) ++ " 2: " ++ show (d_list !! x2) ++ " 3: " ++ show (d_list !! x3) ++ " 4: " ++ show (d_list !! x4) ++ " 5: " ++ show (d_list !! x5))
+  run_gplc (tail_ (snd chg_state_)) d_list w_grid (fst chg_state_) f_grid obj_grid s0 s1 location look_up (head_ (snd chg_state_))
 run_gplc (x0:x1:x2:x3:x4:x5:x6:xs) d_list w_grid w_grid_upd f_grid obj_grid s0 s1 location look_up 3 = do
   report_state (verbose_mode s1) 1 (snd (obj_grid ! location)) [] []
   report_state (verbose_mode s1) 2 [] [] ("\nchg_grid run with arguments " ++ "0: " ++ show (d_list !! x0) ++ " 1: " ++ show (d_list !! x1) ++ " 2: " ++ show (d_list !! x2) ++ " 3: " ++ show (d_list !! x3) ++ " 4: " ++ show (d_list !! x4) ++ " 5: " ++ show (d_list !! x5) ++ " 6: " ++ show (d_list !! x6))

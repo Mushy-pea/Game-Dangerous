@@ -85,7 +85,7 @@ data Save_state = Save_state {is_set :: Bool, w_grid_ :: Array (Int, Int, Int) W
 
 data Io_box = Io_box {hwnd_ :: HWND, hdc_ :: HDC, uniform_ :: UArray Int Int32, p_bind_ :: (UArray Int Word32, Int)}
 
-data EngineError = Invalid_wall_flag | Invalid_obj_flag | Invalid_GPLC_opcode | Invalid_conf_reg_field | NPC_feature_not_implemented | Invalid_map_element deriving (Show)
+data EngineError = Invalid_wall_flag | Invalid_obj_flag | Invalid_GPLC_opcode | Invalid_conf_reg_field | Invalid_GPLC_op_argument | Invalid_map_element | NPC_feature_not_implemented deriving (Show)
 
 instance Exception EngineError
 
@@ -586,27 +586,27 @@ check_map_layer w u v u_limit v_limit grid flag =
     if grid ! (w, u, v) == flag then throw Invalid_map_element
     else check_map_layer w u (v + 1) u_limit v_limit grid flag
 
-class Sub_index i where
-  sub_i :: Int -> Array i e -> i -> e
+--class Sub_index i where
+--  sub_i :: Int -> Array i e -> i -> e
 
-instance Sub_index Int where
-  sub_i location arr i =
-    let bd = bounds arr
-    in
-    if i < fst bd || i > snd bd then error ("Error in array index.  location: " ++ show location ++ " index: " ++ show i ++ " bounds: " ++ show bd)
-    else arr ! i
+--instance Sub_index Int where
+--  sub_i location arr i =
+--    let bd = bounds arr
+--    in
+--    if i < fst bd || i > snd bd then error ("Error in array index.  location: " ++ show location ++ " index: " ++ show i ++ " bounds: " ++ show bd)
+--    else arr ! i
 
-instance Sub_index (Int, Int) where
-  sub_i location arr (i0, i1) =
-    let bd = bounds arr
-    in
-    if i0 < fst (fst bd) || i0 > fst (snd bd) || i1 < snd (fst bd) || i1 > snd (snd bd) then error ("Error in array index.  location: " ++ show location ++ " index: " ++ show (i0, i1) ++ " bounds: " ++ show bd)
-    else arr ! (i0, i1)
+--instance Sub_index (Int, Int) where
+--  sub_i location arr (i0, i1) =
+--    let bd = bounds arr
+--    in
+--    if i0 < fst (fst bd) || i0 > fst (snd bd) || i1 < snd (fst bd) || i1 > snd (snd bd) then error ("Error in array index.  location: " ++ show location ++ " index: " ++ show (i0, i1) ++ " bounds: " ++ show bd)
+--    else arr ! (i0, i1)
 
-instance Sub_index (Int, Int, Int) where
-  sub_i location arr (i0, i1, i2) =
-    let bd = bounds arr
-    in
-    if i0 < fst__ (fst bd) || i0 > fst__ (snd bd) || i1 < snd__ (fst bd) || i1 > snd__ (snd bd) || i2 < third_ (fst bd) || i2 > third_ (snd bd) then error ("Error in array index.  location: " ++ show location ++ " index: " ++ show (i0, i1, i2) ++ " bounds: " ++ show bd)
-    else arr ! (i0, i1, i2)
+--instance Sub_index (Int, Int, Int) where
+--  sub_i location arr (i0, i1, i2) =
+--    let bd = bounds arr
+--    in
+--    if i0 < fst__ (fst bd) || i0 > fst__ (snd bd) || i1 < snd__ (fst bd) || i1 > snd__ (snd bd) || i2 < third_ (fst bd) || i2 > third_ (snd bd) then error ("Error in array index.  location: " ++ show location ++ " index: " ++ show (i0, i1, i2) ++ " bounds: " ++ show bd)
+--    else arr ! (i0, i1, i2)
 
