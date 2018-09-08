@@ -51,7 +51,7 @@ pass_msg 31 msg_length 0 25 41 47 63 33 41 46 63 27 63 33 31 39 66 63 8 31 27 38
 ~
 projectile prototype (4)
 ~
-u 0 v 0 w_block 0 vel_u 0 vel_v 0 i0 0 i1 0 i2 0 init_u_block 0 init_v_block 0 obj_flag 0 hit_state 0 w_ 0 u_ 0 v_ 0 copy 2 model_w -1 model_u 0 model_v 1 sig3 3 zero 0
+i0 0 i1 0 i2 0 u 0 v 0 w_block 0 vel_u 0 vel_v 0 init_u_block 0 init_v_block 0 obj_flag 0 hit_state 0 w_ 0 u_ 0 v_ 0 copy 2 model_w -1 model_u 0 model_v 1 sig3 3 zero 0
 one 1 two 2 obj_flag_ 11
 ~
 --signal 2
