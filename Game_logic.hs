@@ -179,14 +179,21 @@ chg_state code (i0, i1, i2) (i3, i4, i5) w_grid update w_grid_upd d_list =
   if isNothing grid_i' == True then (w_grid_upd, code)
   else ((dest, (w_grid ! source) {obj = Just (grid_i {ident_ = upd (update ! 0) (ident_ grid_i) (update ! 1), u__ = upd (update ! 2) (u__ grid_i) (int_to_float (update ! 3)), v__ = upd (update ! 4) (v__ grid_i) (int_to_float (update ! 5)), w__ = upd (update ! 6) (w__ grid_i) (int_to_float (update ! 7)), texture__ = upd (update ! 8) (texture__ grid_i) (update ! 9), num_elem = upd (update ! 10) (num_elem grid_i) (fromIntegral (update ! 11)), obj_flag = upd (update ! 12) (obj_flag grid_i) (update ! 13)})}) : w_grid_upd, code)
 
-chg_grid :: Int -> (Int, Int, Int) -> (Int, Int, Int) -> Array (Int, Int, Int) a -> a -> [((Int, Int, Int), a)] -> [Int] -> [((Int, Int, Int), a)]
-chg_grid mode (i0, i1, i2) (i3, i4, i5) grid def grid_upd d_list =
+chg_grid :: Int -> (Int, Int, Int) -> (Int, Int, Int) -> Array (Int, Int, Int) Wall_grid -> Wall_grid -> [((Int, Int, Int), Wall_grid)] -> [Int] -> [((Int, Int, Int), Wall_grid)]
+chg_grid mode (i0, i1, i2) (i3, i4, i5) w_grid def w_grid_upd d_list =
   let dest0 = (d_list !! i0, d_list !! i1, d_list !! i2)
       dest1 = (d_list !! i3, d_list !! i4, d_list !! i5)
   in
   if d_list !! mode == 0 then (dest0, def) : grid_upd
   else if d_list !! mode == 1 then [(dest1, grid ! dest0), (dest0, def)] ++ grid_upd
   else (dest1, grid ! dest0) : grid_upd
+
+chg_grid_ :: Int -> (Int, Int, Int) -> (Int, Int, Int) -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> [Int] -> [((Int, Int, Int), (Int, [(Int, Int)]))]
+chg_grid_ mode (i0, i1, i2) (i3, i4, i5) obj_grid_upd d_list =
+  let source = (d_list !! i0, d_list !! i1, d_list !! i2)
+      dest = (d_list !! i3, d_list !! i4, d_list !! i5)
+  in
+  if d_list !! mode == 0 then (source, (-1, 
 
 chg_floor :: Int -> Int -> Int -> (Int, Int, Int) -> Array (Int, Int, Int) Floor_grid -> [Int] -> Array (Int, Int, Int) Floor_grid
 chg_floor state_val abs v (i0, i1, i2) grid d_list =
@@ -195,11 +202,12 @@ chg_floor state_val abs v (i0, i1, i2) grid d_list =
   if d_list !! state_val == 0 then grid // [(index, (grid ! index) {w_ = upd (d_list !! abs) (w_ (grid ! index)) (int_to_float (d_list !! v))})]
   else grid // [(index, (grid ! index) {surface = int_to_surface (d_list !! v)})]
 
-chg_value :: Int -> Int -> Int -> (Int, Int, Int) -> [Int] -> Array (Int, Int, Int) (Int, [Int]) -> [((Int, Int, Int), (Int, [Int]))] -> [((Int, Int, Int), (Int, [Int]))]
+chg_value :: Int -> Int -> Int -> (Int, Int, Int) -> [Int] -> Array (Int, Int, Int) (Int, [Int]) -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> [((Int, Int, Int), (Int, [(Int, Int)]))]
 chg_value val abs v (i0, i1, i2) d_list obj_grid obj_grid_upd =
   let target = obj_grid ! (d_list !! i0, d_list !! i1, d_list !! i2)
   in
-  ((d_list !! i0, d_list !! i1, d_list !! i2), (fst target, (take val (snd target)) ++ [upd (d_list !! abs) ((snd target) !! val) (d_list !! v)] ++ drop (val + 1) (snd target))) : obj_grid_upd
+  if val == 536870910 then ((d_list !! i0, d_list !! i1, d_list !! i2), (fst target, [(0, d_list !! v)])) : obj_grid_upd
+  else ((d_list !! i0, d_list !! i1, d_list !! i2), (fst target, [(val, upd (d_list !! abs) ((snd target) !! val) (d_list !! v))])) : obj_grid_upd
 
 chg_ps0 :: Int -> Int -> Int -> [Int] -> Play_state0 -> Play_state0
 chg_ps0 state_val abs v d_list s0 =

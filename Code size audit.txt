@@ -1,0 +1,13 @@
+Game :: Dangerous code size audit (18/09/2018)
+
+Engine (Haskell): 217 KB
+
+Development tool chain, comprising GPLC compiler and 3D model importer (Haskell): 22 KB
+
+Total Haskell code: 239 KB
+
+Rendering shaders (OpenGL Shading Language core 3.3): 13 KB
+
+Map editor early stage development (C#): 29 KB
+
+Total: 281 KB

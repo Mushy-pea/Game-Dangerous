@@ -3,7 +3,6 @@
 *.hi
 *.o
 *.wav
-*.txt
 *.exe
 *.dump-stg
 *.odt#
@@ -25,3 +24,15 @@ Wave.hs
 test_map2.dan
 test_map3.dan
 game_dangerous.prof
+config.txt
+floor_frag0.txt
+floor_frag0_.txt
+frag0.txt
+init_npc_map.txt
+light_map0.txt
+map1_.txt
+map1__.txt
+map1_structure.txt
+map6.txt
+sound_map.txt
+test_map_struct.txt
