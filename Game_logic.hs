@@ -420,7 +420,7 @@ binary_dice prob diff (i0, i1, i2) offset s0 obj_grid obj_grid_upd d_list =
   let target = obj_grid ! (d_list !! i0, d_list !! i1, d_list !! i2)
   in
   if (prob_seq s0) ! (mod ((game_t s0) + (d_list !! diff)) 240) < d_list !! prob then ((d_list !! i0, d_list !! i1, d_list !! i2), (fst target, [(offset, 1)])) : obj_grid_upd
-  else ((d_list !! i0, d_list !! i1, d_list !! i2), (fst target, [(offset, 0])) : obj_grid_upd
+  else ((d_list !! i0, d_list !! i1, d_list !! i2), (fst target, [(offset, 0)])) : obj_grid_upd
 
 binary_dice_ :: Int -> Play_state0 -> Bool
 binary_dice_ prob s0 =
@@ -709,7 +709,7 @@ npc_damage (w:u:v:blocks) w_grid w_grid_upd obj_grid obj_grid_upd s0 s1 d_list =
   else (w_grid_upd, obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {c_health = (c_health char_state) - damage})], message = message s1 ++ [2, 4, 16]})
 
 -- Branch on each GPLC op - code to call the corresponding function, with optional per op - code status reports for debugging.
-run_gplc :: [Int] -> [Int] -> Array (Int, Int, Int) Wall_grid -> [((Int, Int, Int), Wall_grid)] -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> [((Int, Int, Int), (Int, [Int]))] -> Play_state0 -> Play_state1 -> UArray (Int, Int) Float -> Int -> IO ([((Int, Int, Int), Wall_grid)], Array (Int, Int, Int) Floor_grid, [((Int, Int, Int), (Int, [Int]))], Play_state0, Play_state1)
+run_gplc :: [Int] -> [Int] -> Array (Int, Int, Int) Wall_grid -> [((Int, Int, Int), Wall_grid)] -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> Play_state0 -> Play_state1 -> UArray (Int, Int) Float -> Int -> IO ([((Int, Int, Int), Wall_grid)], Array (Int, Int, Int) Floor_grid, [((Int, Int, Int), (Int, [(Int, Int)]))], Play_state0, Play_state1)
 run_gplc [] d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up c = return (w_grid_upd, f_grid, obj_grid_upd, s0, s1)
 run_gplc code d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up 0 =
   let location = ((splitOn [536870911] code) !! 2)
@@ -866,6 +866,28 @@ force_update0 [] acc c = do
   return acc
 force_update0 (x:xs) acc c = force_update0 xs (x : acc) (c + force_update1 x)
 
+-- Due to the complexity characteristics of the array update operator ( // ) it was decided at some point to replace all such operations on Wall_grid and Obj_grid in the GPLC op - code functions with
+-- accumulations to lists.  Each element of the respective list would encode for an element update that would be performed by the list being passed to a single ( // ) operation at the end of each game
+-- time tick.  This proved fairly simple for Wall_grid, although some updates that previously relied on sequential applications of ( // ) were made to work by making these updates atomic in the op - code
+-- functions.  Solving the same problem for Obj_grid was less simple and the solution chosen involves encoding updates in a list of one type and mapping that to the type taken by the ( // ) operation.
+-- This mapping is done by the function below.
+atomise_obj_grid_upd :: Int -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> [(Int, Int)] -> Array (Int, Int, Int) (Int, [Int]) -> [((Int, Int, Int), (Int, [Int]))]
+atomise_obj_grid_upd m [] acc obj_grid = []
+atomise_obj_grid_upd m (x:xs) acc obj_grid =
+  let source = (obj_grid ! (fst x))
+      prog = snd source
+      new_prog0 = elems ((listArray (0, (length prog) - 1) prog :: UArray Int Int) // (snd (snd (xs !! 0))))
+      new_prog1 = elems ((listArray (0, (length prog) - 1) prog :: UArray Int Int) // (acc ++ snd (snd x)))
+  in
+  if m == 0 then
+    if fst (snd x) >= 0 then atomise_obj_grid_upd 1 (x:xs) acc obj_grid
+    else if fst (snd x) == -1 then (fst x, def_obj_grid) : atomise_obj_grid_upd 0 xs acc obj_grid
+    else if fst (snd x) == -2 then (fst (xs !! 0), (fst source, new_prog0)) : (fst x, def_obj_grid) : atomise_obj_grid_upd 0 (drop 1 xs) acc obj_grid
+    else (fst (xs !! 0), (fst source, new_prog0)) : atomise_obj_grid_upd 0 (drop 1 xs) acc obj_grid
+  else
+    if fst x == fst (xs !! 0) then atomise_obj_grid_upd 1 xs (acc ++ snd (snd x)) obj_grid
+    else (fst x, (fst source, new_prog1)) : atomise_obj_grid_upd 0 xs [] obj_grid
+  
 -- These two functions (together with send_signal) implement the signalling system that drives GPLC program runs.  This involves signalling programs in response to player object collisions and handling
 -- the signal queue, which allows programs to signal each other.
 link_gplc0 :: Bool -> [Float] -> [Int] -> Array (Int, Int, Int) Wall_grid -> [((Int, Int, Int), Wall_grid)] -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> [((Int, Int, Int), (Int, [Int]))] -> Play_state0 -> Play_state1 -> UArray (Int, Int) Float -> Bool -> IO (Array (Int, Int, Int) Wall_grid, Array (Int, Int, Int) Floor_grid, Array (Int, Int, Int) (Int, [Int]), Play_state0, Play_state1)
@@ -885,25 +907,25 @@ link_gplc0 True (x0:x1:xs) (z0:z1:z2:zs) w_grid w_grid_upd f_grid obj_grid obj_g
       report_state (verbose_mode s1) 2 [] [] ("\nPlayer starts GPLC program at Obj_grid " ++ show (z0, z1, z2 + 1))
       run_gplc' <- catch (run_gplc (snd ((fst obj_grid0') ! (z0, z1, z2 + 1))) [] w_grid w_grid_upd f_grid (fst obj_grid0') obj_grid_upd s0 s1 look_up 0) (\e -> gplc_error w_grid_upd f_grid obj_grid_upd s0 s1 e)
       upd <- force_update0 (fst_ run_gplc') [] 0
-      return (w_grid // upd, (snd_ run_gplc'), obj_grid // (third run_gplc'), (fourth run_gplc'), (fifth run_gplc'))
+      return (w_grid // upd, (snd_ run_gplc'), obj_grid // (atomise_obj_grid_upd 0 (third run_gplc') [] obj_grid), (fourth run_gplc'), (fifth run_gplc'))
     else if (x1 == 1 || x1 == 3) && x0 == 1 && head (snd (obj_grid ! (z0, z1 + 1, z2))) == 0 then do
       report_state (verbose_mode s1) 2 [] [] ("\nPlayer starts GPLC program at Obj_grid " ++ show (z0, z1 + 1, z2))
       run_gplc' <- catch (run_gplc (snd ((fst obj_grid1') ! (z0, z1 + 1, z2))) [] w_grid w_grid_upd f_grid (fst obj_grid1') obj_grid_upd s0 s1 look_up 0) (\e -> gplc_error w_grid_upd f_grid obj_grid_upd s0 s1 e)
       upd <- force_update0 (fst_ run_gplc') [] 0
-      return (w_grid // upd, (snd_ run_gplc'), obj_grid // (third run_gplc'), (fourth run_gplc'), (fifth run_gplc'))
+      return (w_grid // upd, (snd_ run_gplc'), obj_grid // (atomise_obj_grid_upd 0 (third run_gplc') [] obj_grid), (fourth run_gplc'), (fifth run_gplc'))
     else if (x1 == 1 || x1 == 3) && x0 == 2 && head (snd (obj_grid ! (z0, z1, z2 - 1))) == 0 then do
       report_state (verbose_mode s1) 2 [] [] ("\nPlayer starts GPLC program at Obj_grid " ++ show (z0, z1, z2 - 1))
       run_gplc' <- catch (run_gplc (snd ((fst obj_grid2') ! (z0, z1, z2 - 1))) [] w_grid w_grid_upd f_grid (fst obj_grid2') obj_grid_upd s0 s1 look_up 0) (\e -> gplc_error w_grid_upd f_grid obj_grid_upd s0 s1 e)
       upd <- force_update0 (fst_ run_gplc') [] 0
-      return (w_grid // upd, (snd_ run_gplc'), obj_grid // (third run_gplc'), (fourth run_gplc'), (fifth run_gplc'))
+      return (w_grid // upd, (snd_ run_gplc'), obj_grid // (atomise_obj_grid_upd 0 (third run_gplc') [] obj_grid), (fourth run_gplc'), (fifth run_gplc'))
     else if (x1 == 1 || x1 == 3) && x0 == 3 && head (snd (obj_grid ! (z0, z1 - 1, z2))) == 0 then do
       report_state (verbose_mode s1) 2 [] [] ("\nPlayer starts GPLC program at Obj_grid " ++ show (z0, z1 - 1, z2))
       run_gplc' <- catch (run_gplc (snd ((fst obj_grid3') ! (z0, z1 - 1, z2))) [] w_grid w_grid_upd f_grid (fst obj_grid3') obj_grid_upd s0 s1 look_up 0) (\e -> gplc_error w_grid_upd f_grid obj_grid_upd s0 s1 e)
       upd <- force_update0 (fst_ run_gplc') [] 0
-      return (w_grid // upd, (snd_ run_gplc'), obj_grid // (third run_gplc'), (fourth run_gplc'), (fifth run_gplc'))
+      return (w_grid // upd, (snd_ run_gplc'), obj_grid // (atomise_obj_grid_upd 0 (third run_gplc') [] obj_grid), (fourth run_gplc'), (fifth run_gplc'))
     else do
       upd <- force_update0 w_grid_upd [] 0
-      return (w_grid // upd, f_grid, obj_grid // obj_grid_upd, s0, s1)
+      return (w_grid // upd, f_grid, obj_grid // (atomise_obj_grid_upd 0 obj_grid_upd [] obj_grid), s0, s1)
   else do
     if fst (obj_grid ! dest) == 1 || fst (obj_grid ! dest) == 3 then do
       report_state (verbose_mode s1) 2 [] [] ("\nGPLC program run at Obj_grid " ++ show ((sig_q s1) !! 1, (sig_q s1) !! 2, (sig_q s1) !! 3))
