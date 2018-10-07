@@ -74,11 +74,12 @@ assm_gplc2 13 (x0:x1:xs) sym ind = (assm_gplc3 0 x1 sym ind) : proc_ints xs
 assm_gplc2 14 (x0:x1:x2:xs) sym ind = (assm_gplc3 0 x0 sym ind) : (assm_gplc3 0 x1 sym ind) : [assm_gplc3 0 x2 sym ind]
 assm_gplc2 15 (x0:x1:x2:x3:xs) sym ind = (read x0) : (assm_gplc3 0 x1 sym ind) : (assm_gplc3 0 x2 sym ind) : [assm_gplc3 0 x3 sym ind]
 assm_gplc2 16 (x0:x1:x2:x3:x4:x5:xs) sym ind = (assm_gplc3 0 x0 sym ind) : (assm_gplc3 0 x1 sym ind) : (assm_gplc3 0 x2 sym ind) : (assm_gplc3 0 x3 sym ind) : (assm_gplc3 0 x4 sym ind) : [read x5]
-assm_gplc2 17 (x0:x1:x2:x3:x4:x5:x6:x7:x8:x9:xs) sym ind = (assm_gplc3 0 x0 sym ind) : (assm_gplc3 0 x1 sym ind) : (assm_gplc3 0 x2 sym ind) : (assm_gplc3 0 x3 sym ind) : (assm_gplc3 0 x4 sym ind) : (assm_gplc3 0 x5 sym ind) : (assm_gplc3 0 x6 sym ind) : (assm_gplc3 0 x7 sym ind) : (read x8) : [assm_gplc3 0 x9 sym ind]
+assm_gplc2 17 (x0:x1:x2:x3:x4:x5:x6:x7:x8:x9:x10:x11:x12:xs) sym ind = (assm_gplc3 0 x0 sym ind) : (assm_gplc3 0 x1 sym ind) : (assm_gplc3 0 x2 sym ind) : (assm_gplc3 0 x3 sym ind) : (assm_gplc3 0 x4 sym ind) : (assm_gplc3 0 x5 sym ind) : (assm_gplc3 0 x6 sym ind) : (assm_gplc3 0 x7 sym ind) : (assm_gplc3 0 x8 sym ind) : (assm_gplc3 0 x9 sym ind) : (assm_gplc3 0 x10 sym ind) : (read x11) : [assm_gplc3 0 x12 sym ind]
 assm_gplc2 18 (x0:x1:x2:x3:x4:xs) sym ind = (assm_gplc3 0 x0 sym ind) : (assm_gplc3 1 x1 sym ind) : (assm_gplc3 0 x2 sym ind) : (assm_gplc3 0 x3 sym ind) : [assm_gplc3 0 x4 sym ind]
 assm_gplc2 19 (x0:x1:xs) sym ind = (assm_gplc3 0 x0 sym ind) : [read x1]
 assm_gplc2 20 (x0:xs) sym ind = [read x0]
 assm_gplc2 21 (x0:xs) sym ind = [read x0]
+assm_gplc2 23 (x0:x1:x2:x3:xs) sym ind = (read x0) : (assm_gplc3 0 x1 sym ind) : (assm_gplc3 0 x2 sym ind) : [assm_gplc3 0 x3 sym ind]
 
 assm_gplc1 :: [[Char]] -> Int -> Int -> [[Char]] -> [(Int, Int)] -> [Char] -> [Char] -> Int -> ([[Char]], [(Int, Int)], [Char])
 assm_gplc1 [] offset i acc0 acc1 log prog_name mode = (acc0, acc1, log)
@@ -110,14 +111,15 @@ assm_gplc0 (x:xs) sym ind size_block sig_block code_block c =
   else if x == "pass_msg" then assm_gplc0 (drop msg_length xs) sym ind size_block sig_block (code_block ++ [13] ++ (assm_gplc2 13 (take msg_length xs) sym ind)) (c + msg_length)
   else if x == "chg_ps0" then assm_gplc0 (drop 3 xs) sym ind size_block sig_block (code_block ++ [14] ++ (assm_gplc2 14 (take 3 xs) sym ind)) (c + 4)
   else if x == "copy_ps0" then assm_gplc0 (drop 4 xs) sym ind size_block sig_block (code_block ++ [15] ++ (assm_gplc2 15 (take 4 xs) sym ind)) (c + 5)
-  else if x == "block" then assm_gplc0 (drop 4 xs) sym ind size_block sig_block (code_block ++ [5, 0, 0] ++ [read (xs !! 0)] ++ [assm_gplc3 0 (xs !! 1) sym ind] ++ [assm_gplc3 0 (xs !! 2) sym ind] ++ [assm_gplc3 0 (xs !! 3) sym ind]) (c + 7)
+  else if x == "block" then assm_gplc0 (drop 4 xs) sym ind size_block sig_block (code_block ++ [5, 536870910, 0, read (xs !! 0), assm_gplc3 0 (xs !! 1) sym ind, assm_gplc3 0 (xs !! 2) sym ind, assm_gplc3 0 (xs !! 3) sym ind]) (c + 7)
   else if x == "binary_dice" then assm_gplc0 (drop 6 xs) sym ind size_block sig_block (code_block ++ [16] ++ (assm_gplc2 16 (take 6 xs) sym ind)) (c + 7)
-  else if x == "project_init" then assm_gplc0 (drop 10 xs) sym ind size_block sig_block (code_block ++ [17] ++ (assm_gplc2 17 (take 10 xs) sym ind)) (c + 11)
+  else if x == "project_init" then assm_gplc0 (drop 13 xs) sym ind size_block sig_block (code_block ++ [17] ++ (assm_gplc2 17 (take 13 xs) sym ind)) (c + 14)
   else if x == "project_update" then assm_gplc0 (drop 5 xs) sym ind size_block sig_block (code_block ++ [18] ++ (assm_gplc2 18 (take 5 xs) sym ind)) (c + 6)
   else if x == "init_npc" then assm_gplc0 (drop 2 xs) sym ind size_block sig_block (code_block ++ [19] ++ assm_gplc2 19 (take 2 xs) sym ind) (c + 3)
   else if x == "npc_decision" then assm_gplc0 (tail xs) sym ind size_block sig_block (code_block ++ [20] ++ assm_gplc2 20 (take 1 xs) sym ind) (c + 2)
   else if x == "npc_move" then assm_gplc0 (tail xs) sym ind size_block sig_block (code_block ++ [21] ++ assm_gplc2 21 (take 1 xs) sym ind) (c + 2)
   else if x == "npc_damage" then assm_gplc0 xs sym ind size_block sig_block (code_block ++ [22]) (c + 1)
+  else if x == "inspect_obj_grid" then assm_gplc0 (drop 4 xs) sym ind size_block sig_block (code_block ++ [23] ++ assm_gplc2 23 (take 4 xs) sym ind) (c + 5)
   else if x == "--signal" then assm_gplc0 (drop 1 xs) sym ind (tail size_block) (sig_block ++ [read (xs !! 0), c, head size_block]) code_block c
   else throw Invalid_opcode
 

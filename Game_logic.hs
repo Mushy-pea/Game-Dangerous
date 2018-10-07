@@ -208,7 +208,7 @@ chg_value :: Int -> Int -> Int -> (Int, Int, Int) -> [Int] -> Array (Int, Int, I
 chg_value val abs v (i0, i1, i2) d_list obj_grid obj_grid_upd =
   let target = obj_grid ! (d_list !! i0, d_list !! i1, d_list !! i2)
   in
-  if val == 536870910 then ((d_list !! i0, d_list !! i1, d_list !! i2), (fst target, [(0, d_list !! v)])) : obj_grid_upd
+  if val == 536870910 then ((d_list !! i0, d_list !! i1, d_list !! i2), (fst target, [(0, v)])) : obj_grid_upd
   else ((d_list !! i0, d_list !! i1, d_list !! i2), (fst target, [(val, upd (d_list !! abs) ((snd target) !! val) (d_list !! v))])) : obj_grid_upd
 
 chg_ps0 :: Int -> Int -> Int -> [Int] -> Play_state0 -> Play_state0
@@ -300,9 +300,7 @@ send_signal :: Int -> Int -> (Int, Int, Int) -> Array (Int, Int, Int) (Int, [Int
 send_signal 0 sig (i0, i1, i2) obj_grid s1 d_list =
   let dest = (d_list !! i0, d_list !! i1, d_list !! i2)
       prog = (snd (obj_grid ! dest))
-  in
-  if fst (obj_grid ! dest) == 1 || fst (obj_grid ! dest) == 3 then (obj_grid, s1 {next_sig_q = next_sig_q s1 ++ [d_list !! sig, d_list !! i0, d_list !! i1, d_list !! i2]})
-  else (obj_grid, s1)
+  in (obj_grid, s1 {next_sig_q = next_sig_q s1 ++ [d_list !! sig, d_list !! i0, d_list !! i1, d_list !! i2]})
 send_signal 1 sig dest obj_grid s1 d_list =
   let prog = (snd (obj_grid ! dest))
   in
@@ -708,6 +706,12 @@ npc_damage (w:u:v:blocks) w_grid w_grid_upd obj_grid obj_grid_upd s0 s1 d_list =
   if c_health char_state - damage <= 0 then (((-w - 1, u, v), (w_grid ! (-w - 1, u, v)) {obj = Just (o_target {ident_ = (d_list !! 1) + 9, texture__ = 1})}) : w_grid_upd, ((w, u, v), (-1, [])) : obj_grid_upd, s1 {message = message s1 ++ [2, 4, 14]})
   else (w_grid_upd, obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {c_health = (c_health char_state) - damage})], message = message s1 ++ [2, 4, 16]})
 
+inspect_obj_grid :: Int -> (Int, Int, Int) -> Array (Int, Int, Int) (Int, [Int]) -> [Int] -> IO ()
+inspect_obj_grid n (i0, i1, i2) obj_grid d_list =
+  let target = (d_list !! i0, d_list !! i1, d_list !! i2)
+  in do
+  putStr ("\nObj_grid inspection point " ++ show n ++ ", index " ++ show target ++ ": " ++ show (obj_grid ! target))
+
 -- Branch on each GPLC op - code to call the corresponding function, with optional per op - code status reports for debugging.
 run_gplc :: [Int] -> [Int] -> Array (Int, Int, Int) Wall_grid -> [((Int, Int, Int), Wall_grid)] -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> Play_state0 -> Play_state1 -> UArray (Int, Int) Float -> Int -> IO ([((Int, Int, Int), Wall_grid)], Array (Int, Int, Int) Floor_grid, [((Int, Int, Int), (Int, [(Int, Int)]))], Play_state0, Play_state1)
 run_gplc [] d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up c = return (w_grid_upd, f_grid, obj_grid_upd, s0, s1)
@@ -815,13 +819,16 @@ run_gplc (x0:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 loo
   report_state (verbose_mode s1) 1 (snd (obj_grid ! (d_list !! 0, d_list !! 1, d_list !! 2))) [] []
   report_state (verbose_mode s1) 2 [] [] ("\nnpc_move run with arguments " ++ "0: " ++ show x0)
   report_npc_state (verbose_mode s1) s1 (head d_list)
-  run_gplc xs d_list w_grid (fst__ npc_move_) f_grid obj_grid (snd__ npc_move_) s0 (third_ npc_move_) look_up (-1)
+  run_gplc (tail_ xs) d_list w_grid (fst__ npc_move_) f_grid obj_grid (snd__ npc_move_) s0 (third_ npc_move_) look_up (head_ xs)
 run_gplc code d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up 22 =
   let npc_damage_ = npc_damage (node_locations ((npc_states s1) ! (head d_list))) w_grid w_grid_upd obj_grid obj_grid_upd s0 s1 d_list
   in do
   report_state (verbose_mode s1) 1 (snd (obj_grid ! (d_list !! 0, d_list !! 1, d_list !! 2))) [] []
   report_state (verbose_mode s1) 2 [] [] ("\nnpc_damage run...")
   run_gplc (tail_ code) d_list w_grid (fst__ npc_damage_) f_grid obj_grid (snd__ npc_damage_) s0 (third_ npc_damage_) look_up (head_ code)
+run_gplc (x0:x1:x2:x3:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up 23 = do
+  inspect_obj_grid x0 (x1, x2, x3) obj_grid d_list
+  run_gplc (tail_ xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up (head_ xs)
 run_gplc code d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up c = do
   putStr ("\nInvalid opcode: " ++ show c)
   putStr ("\nremaining code block: " ++ show code)
@@ -885,7 +892,8 @@ atomise_obj_grid_upd m (x:xs) acc obj_grid =
     else if fst (snd x) == -2 then (fst (xs !! 0), (fst source, new_prog0)) : (fst x, def_obj_grid) : atomise_obj_grid_upd 0 (drop 1 xs) acc obj_grid
     else (fst (xs !! 0), (fst source, new_prog0)) : atomise_obj_grid_upd 0 (drop 1 xs) acc obj_grid
   else
-    if fst x == fst (xs !! 0) then atomise_obj_grid_upd 1 xs (acc ++ snd (snd x)) obj_grid
+    if xs == [] then [(fst x, (fst source, new_prog1))]
+    else if fst x == fst (xs !! 0) then atomise_obj_grid_upd 1 xs (acc ++ snd (snd x)) obj_grid
     else (fst x, (fst source, new_prog1)) : atomise_obj_grid_upd 0 xs [] obj_grid
 
 -- These two functions (together with send_signal) implement the signalling system that drives GPLC program runs.  This involves signalling programs in response to player object collisions and handling
