@@ -627,17 +627,6 @@ ramp_climb dir c (fg_w, fg_u, fg_v) =
   else if dir == -7 then (fg_w + 0.025 * fromIntegral c, fg_u, fg_v + 0.05 * (fromIntegral c))
   else (fg_w + 0.025 * fromIntegral c, fg_u, fg_v - 0.05 * (fromIntegral c))
 
---class Ramp a where
---  ramp_fill :: Int -> Int -> Int -> a -> Terrain -> [((Int, Int, Int), a)]
-
---instance Ramp Wall_grid where
---  ramp_fill w u v x t = ramp_fill_ w u v x t
-
---instance Ramp (Int, [(Int, Int)]) where
---  ramp_fill w u v x t =
---    let rf = ramp_fill_ w u v x t
---    in [(fst (rf !! 0), (x, [])), (fst (rf !! 1), (x, [])), (fst (rf !! 2), (x, [])), (fst (rf !! 3), (x, [])), (fst (rf !! 4), (x, []))]
-
 ramp_fill :: Int -> Int -> Int -> a -> Terrain -> [((Int, Int, Int), a)]
 ramp_fill w u v x t =
   let fill_u = if div u 2 == div (u + 1) 2 then (u + 1, 1)
@@ -667,7 +656,7 @@ npc_move offset d_list (w:u:v:w1:u1:v1:blocks) w_grid w_grid_upd f_grid obj_grid
       conv_ramp_fill0 = conv_ramp_fill w u v 1 (surface (f_grid ! (w, div u 2, div v 2)))
       conv_ramp_fill1 = conv_ramp_fill w u v 0 (surface (f_grid ! (w, div u 2, div v 2)))
       w_grid' = ((-w - 1, u, v), (w_grid ! (-w - 1, u, v)) {obj = Just (o_target {u__ = snd__ (fg_position char_state), v__ = third_ (fg_position char_state)})})
-      w_grid'' = [((-w - 1, u', v'), (w_grid ! (-w - 1, u, v)) {obj = Just (o_target {ident_ = char_rotation (direction char_state) (d_list !! 4)})})]
+      w_grid'' = [((-w - 1, u', v'), (w_grid ! (-w - 1, u, v)) {obj = Just (o_target {ident_ = char_rotation (direction char_state) (d_list !! 4)})}), ((-w - 1, u, v), def_w_grid)]
       w_grid''' = ((-w - 1, u, v), (w_grid ! (-w - 1, u, v)) {obj = Just (o_target {w__ = fst__ ramp_climb_, u__ = snd__ ramp_climb_, v__ = third_ ramp_climb_})})
       w_grid_4 = \dw -> ([((-w - 1, u, v), def_w_grid)] ++ drop 4 (ramp_fill (-w - 1 + dw) u v ((w_grid ! (-w - 1, u, v)) {obj = Just (o_target {w__ = fst__ ramp_climb_, u__ = snd__ ramp_climb_, v__ = third_ ramp_climb_})}) (surface (f_grid ! (w, div u 2, div v 2)))))
       damage = det_damage (difficulty s1) s0 
@@ -889,7 +878,9 @@ atomise_obj_grid_upd m (x:xs) acc obj_grid =
   if m == 0 then
     if fst (snd x) >= 0 then atomise_obj_grid_upd 1 (x:xs) acc obj_grid
     else if fst (snd x) == -1 then (fst x, def_obj_grid) : atomise_obj_grid_upd 0 xs acc obj_grid
-    else if fst (snd x) == -2 then (fst (xs !! 0), (fst source, new_prog0)) : (fst x, def_obj_grid) : atomise_obj_grid_upd 0 (drop 1 xs) acc obj_grid
+    else if fst (snd x) == -2 then
+      if fst x == fst (xs !! 0) then (fst (xs !! 0), (fst source, new_prog0)) : atomise_obj_grid_upd 0 (drop 1 xs) acc obj_grid
+      else (fst (xs !! 0), (fst source, new_prog0)) : (fst x, def_obj_grid) : atomise_obj_grid_upd 0 (drop 1 xs) acc obj_grid
     else (fst (xs !! 0), (fst source, new_prog0)) : atomise_obj_grid_upd 0 (drop 1 xs) acc obj_grid
   else
     if xs == [] then [(fst x, (fst source, new_prog1))]
