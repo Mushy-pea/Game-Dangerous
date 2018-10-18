@@ -23,14 +23,16 @@ import Data.Maybe
 import Control.Exception
 import Graphics.GL.Core33
 
-fst_ (a, b, c, d, e) = a
-snd_ (a, b, c, d, e) = b
-third (a, b, c, d, e) = c
-fourth (a, b, c, d, e) = d
-fifth (a, b, c, d, e) = e
+fst_ (a, b, c, d, e, f) = a
+snd_ (a, b, c, d, e, f) = b
+third (a, b, c, d, e, f) = c
+fourth (a, b, c, d, e, f) = d
+fifth (a, b, c, d, e, f) = e
 fst__ (a, b, c) = a
 snd__ (a, b, c) = b
 third_ (a, b, c) = c
+
+
 
 -- These two functions generate trigonometric look up tables to time optimise various functions.
 make_table :: Int -> Float -> [Float]
