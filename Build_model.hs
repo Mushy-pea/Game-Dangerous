@@ -28,11 +28,10 @@ snd_ (a, b, c, d, e, f) = b
 third (a, b, c, d, e, f) = c
 fourth (a, b, c, d, e, f) = d
 fifth (a, b, c, d, e, f) = e
+sixth (a, b, c, d, e, f) = f
 fst__ (a, b, c) = a
 snd__ (a, b, c) = b
 third_ (a, b, c) = c
-
-
 
 -- These two functions generate trigonometric look up tables to time optimise various functions.
 make_table :: Int -> Float -> [Float]
@@ -567,7 +566,7 @@ set_play_state1 3 (x0:xs) s1 = s1 {state_chg = read x0}
 -- Used to query the conf_reg array, which holds startup parameters passed at the command line or from the engine's configuration file.
 cfg :: Array Int [Char] -> Int -> [Char] -> [Char]
 cfg conf_reg i query =
-  if i > 51 then throw Invalid_conf_reg_field
+  if i > 55 then throw Invalid_conf_reg_field
   else if conf_reg ! i == query then conf_reg ! (i + 1)
   else cfg conf_reg (i + 2) query
 

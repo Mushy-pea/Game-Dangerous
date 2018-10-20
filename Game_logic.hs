@@ -16,7 +16,9 @@ import Data.Maybe
 import Data.List
 import Data.List.Split
 import Data.Fixed
+import Data.Foldable
 import qualified Data.Sequence as SEQ
+import qualified Data.Sequence.Index as SEQ_
 import Control.Concurrent
 import Control.Exception
 import qualified Data.Matrix as MAT
@@ -711,13 +713,14 @@ run_gplc :: [Int] -> [Int] -> Array (Int, Int, Int) Wall_grid -> [((Int, Int, In
 run_gplc [] d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up c log = return (w_grid_upd, f_grid, obj_grid_upd, s0, s1, log)
 run_gplc code d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up 0 log =
   let location = ((splitOn [536870911] code) !! 2)
-      m0 = "\non_signal run.  Initial state is..."
-      m1 = ("\nProgram list: " ++ show (snd (obj_grid ! (location !! 0, location !! 1, location !! 2))) ++ "\nData list: " ++ show ((splitOn [536870911] code) !! 2))
+      m0 = SEQ.fromList ("\n\nGPLC program run at Obj_grid " ++ show (location !! 0, location !! 1, location !! 2))
+      m1 = SEQ.fromList ("\non_signal run.  Initial state is...")
+      m2 = SEQ.fromList ("\nProgram list: " ++ show (snd (obj_grid ! (location !! 0, location !! 1, location !! 2))) ++ "\nData list: " ++ show ((splitOn [536870911] code) !! 2))
   in do
-  run_gplc (on_signal (drop 2 ((splitOn [536870911] code) !! 0)) ((splitOn [536870911] code) !! 1) (code !! 1)) ((splitOn [536870911] code) !! 2) w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up 1 (log SEQ.>< SEQ.fromList m0 SEQ.>< fromList m1)
+  run_gplc (on_signal (drop 2 ((splitOn [536870911] code) !! 0)) ((splitOn [536870911] code) !! 1) (code !! 1)) ((splitOn [536870911] code) !! 2) w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up 1 (log SEQ.>< m0 SEQ.>< m1 SEQ.>< m2)
 run_gplc code d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up 1 log =
   let if0' = if0 code d_list
-      m = "\nIf expression folding run.  Code branch run: " ++ show if0'
+      m = SEQ.fromList ("\nIf expression folding run.  Branch selected: " ++ show if0')
   in do
   run_gplc (tail_ if0') d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up (head_ if0') (log SEQ.>< m)
 run_gplc xs d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up 2 log =
@@ -832,12 +835,8 @@ report_npc_state :: Bool -> Play_state1 -> Int -> IO ()
 report_npc_state False s1 i = return ()
 report_npc_state True s1 i = putStr ("\n" ++ show ((npc_states s1) ! i))
 
-gplc_error :: [((Int, Int, Int), Wall_grid)] -> Array (Int, Int, Int) Floor_grid -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> Play_state0 -> Play_state1 -> SomeException -> IO ([((Int, Int, Int), Wall_grid)], Array (Int, Int, Int) Floor_grid, [((Int, Int, Int), (Int, [(Int, Int)]))], Play_state0, Play_state1)
-gplc_error w_grid_upd f_grid obj_grid_upd s0 s1 e = do
-  putStr ("\nA GPLC program in the map has had a runtime exception and Game :: Dangerous engine is designed to shut down in this case.  Exception thrown: " ++ show e)
-  putStr "\nPlease see the readme.txt file for details of how to report this bug."
-  exitSuccess
-  return (w_grid_upd, f_grid, obj_grid_upd, s0, s1)
+gplc_error :: [((Int, Int, Int), Wall_grid)] -> Array (Int, Int, Int) Floor_grid -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> Play_state0 -> Play_state1 -> SEQ.Seq Char -> SomeException -> IO ([((Int, Int, Int), Wall_grid)], Array (Int, Int, Int) Floor_grid, [((Int, Int, Int), (Int, [(Int, Int)]))], Play_state0, Play_state1, SEQ.Seq Char)
+gplc_error w_grid_upd f_grid obj_grid_upd s0 s1 log e = return (w_grid_upd, f_grid, obj_grid_upd, s0 {game_t = -1}, s1, log SEQ.>< (SEQ.fromList ("\nException thrown: " ++ show e)))
 
 -- These two functions are to fix a major space leak, which occured when an NPC was active but not in view.  This appears to have been caused by an accumulation of pending updates to Wall_grid, delayed
 -- due to laziness.  Testing showed that nothing short of forcing the update list elements to normal form was sufficient.
@@ -895,38 +894,36 @@ link_gplc0 True (x0:x1:xs) (z0:z1:z2:zs) w_grid w_grid_upd f_grid obj_grid obj_g
       obj_grid2' = (send_signal 1 1 (z0, z1, z2 - 1) obj_grid s1 [])
       obj_grid3' = (send_signal 1 1 (z0, z1 - 1, z2) obj_grid s1 [])
       obj_grid4' = obj_grid // [(dest, (fst (obj_grid ! dest), (head__ prog) : ((sig_q s1) !! 0) : drop 2 prog))]
+      m0 = SEQ.fromList ("\n\nSignal addressed to Obj_grid " ++ show ((sig_q s1) !! 1, (sig_q s1) !! 2, (sig_q s1) !! 3) ++ " but this element is not set to run programs from.")
+      m1 = \x -> SEQ.fromList ("\n\nPlayer starts GPLC program at Obj_grid " ++ show x)
   in do
-  if sig_q s1 == [] && swap_flag == False then link_gplc0 True (x0:x1:xs) (z0:z1:z2:zs) w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 (s1 {sig_q = next_sig_q s1, next_sig_q = []}) look_up True
+  if sig_q s1 == [] && swap_flag == False then link_gplc0 True (x0:x1:xs) (z0:z1:z2:zs) w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 (s1 {sig_q = next_sig_q s1, next_sig_q = []}) look_up True log
   else if swap_flag == True then
     if (x1 == 1 || x1 == 3) && x0 == 0 && head (snd (obj_grid ! (z0, z1, z2 + 1))) == 0 then do
-      report_state (verbose_mode s1) 2 [] [] ("\nPlayer starts GPLC program at Obj_grid " ++ show (z0, z1, z2 + 1))
-      run_gplc' <- catch (run_gplc (snd ((fst obj_grid0') ! (z0, z1, z2 + 1))) [] w_grid w_grid_upd f_grid (fst obj_grid0') obj_grid_upd s0 s1 look_up 0) (\e -> gplc_error w_grid_upd f_grid obj_grid_upd s0 s1 e)
+      run_gplc' <- catch (run_gplc (snd ((fst obj_grid0') ! (z0, z1, z2 + 1))) [] w_grid w_grid_upd f_grid (fst obj_grid0') obj_grid_upd s0 s1 look_up 0 (log SEQ.>< m1 (z0, z1, z2 + 1))) (\e -> gplc_error w_grid_upd f_grid obj_grid_upd s0 s1 log e)
       upd <- force_update0 (fst_ run_gplc') [] 0
-      return (w_grid // upd, (snd_ run_gplc'), obj_grid // (atomise_obj_grid_upd 0 (third run_gplc') [] obj_grid), (fourth run_gplc'), (fifth run_gplc'))
+      return (w_grid // upd, snd_ run_gplc', obj_grid // (atomise_obj_grid_upd 0 (third run_gplc') [] obj_grid), fourth run_gplc', fifth run_gplc', sixth run_gplc')
     else if (x1 == 1 || x1 == 3) && x0 == 1 && head (snd (obj_grid ! (z0, z1 + 1, z2))) == 0 then do
-      report_state (verbose_mode s1) 2 [] [] ("\nPlayer starts GPLC program at Obj_grid " ++ show (z0, z1 + 1, z2))
-      run_gplc' <- catch (run_gplc (snd ((fst obj_grid1') ! (z0, z1 + 1, z2))) [] w_grid w_grid_upd f_grid (fst obj_grid1') obj_grid_upd s0 s1 look_up 0) (\e -> gplc_error w_grid_upd f_grid obj_grid_upd s0 s1 e)
+      run_gplc' <- catch (run_gplc (snd ((fst obj_grid1') ! (z0, z1 + 1, z2))) [] w_grid w_grid_upd f_grid (fst obj_grid1') obj_grid_upd s0 s1 look_up 0 (log SEQ.>< m1 (z0, z1 + 1, z2))) (\e -> gplc_error w_grid_upd f_grid obj_grid_upd s0 s1 log e)
       upd <- force_update0 (fst_ run_gplc') [] 0
-      return (w_grid // upd, (snd_ run_gplc'), obj_grid // (atomise_obj_grid_upd 0 (third run_gplc') [] obj_grid), (fourth run_gplc'), (fifth run_gplc'))
+      return (w_grid // upd, snd_ run_gplc', obj_grid // (atomise_obj_grid_upd 0 (third run_gplc') [] obj_grid), fourth run_gplc', fifth run_gplc', sixth run_gplc')
     else if (x1 == 1 || x1 == 3) && x0 == 2 && head (snd (obj_grid ! (z0, z1, z2 - 1))) == 0 then do
-      report_state (verbose_mode s1) 2 [] [] ("\nPlayer starts GPLC program at Obj_grid " ++ show (z0, z1, z2 - 1))
-      run_gplc' <- catch (run_gplc (snd ((fst obj_grid2') ! (z0, z1, z2 - 1))) [] w_grid w_grid_upd f_grid (fst obj_grid2') obj_grid_upd s0 s1 look_up 0) (\e -> gplc_error w_grid_upd f_grid obj_grid_upd s0 s1 e)
+      run_gplc' <- catch (run_gplc (snd ((fst obj_grid2') ! (z0, z1, z2 - 1))) [] w_grid w_grid_upd f_grid (fst obj_grid2') obj_grid_upd s0 s1 look_up 0 (log SEQ.>< m1 (z0, z1, z2 - 1))) (\e -> gplc_error w_grid_upd f_grid obj_grid_upd s0 s1 log e)
       upd <- force_update0 (fst_ run_gplc') [] 0
-      return (w_grid // upd, (snd_ run_gplc'), obj_grid // (atomise_obj_grid_upd 0 (third run_gplc') [] obj_grid), (fourth run_gplc'), (fifth run_gplc'))
+      return (w_grid // upd, snd_ run_gplc', obj_grid // (atomise_obj_grid_upd 0 (third run_gplc') [] obj_grid), fourth run_gplc', fifth run_gplc', sixth run_gplc')
     else if (x1 == 1 || x1 == 3) && x0 == 3 && head (snd (obj_grid ! (z0, z1 - 1, z2))) == 0 then do
-      report_state (verbose_mode s1) 2 [] [] ("\nPlayer starts GPLC program at Obj_grid " ++ show (z0, z1 - 1, z2))
-      run_gplc' <- catch (run_gplc (snd ((fst obj_grid3') ! (z0, z1 - 1, z2))) [] w_grid w_grid_upd f_grid (fst obj_grid3') obj_grid_upd s0 s1 look_up 0) (\e -> gplc_error w_grid_upd f_grid obj_grid_upd s0 s1 e)
+      run_gplc' <- catch (run_gplc (snd ((fst obj_grid3') ! (z0, z1 - 1, z2))) [] w_grid w_grid_upd f_grid (fst obj_grid3') obj_grid_upd s0 s1 look_up 0 (log SEQ.>< m1 (z0, z1 - 1, z2))) (\e -> gplc_error w_grid_upd f_grid obj_grid_upd s0 s1 log e)
       upd <- force_update0 (fst_ run_gplc') [] 0
-      return (w_grid // upd, (snd_ run_gplc'), obj_grid // (atomise_obj_grid_upd 0 (third run_gplc') [] obj_grid), (fourth run_gplc'), (fifth run_gplc'))
+      return (w_grid // upd, snd_ run_gplc', obj_grid // (atomise_obj_grid_upd 0 (third run_gplc') [] obj_grid), fourth run_gplc', fifth run_gplc', sixth run_gplc')
     else do
       upd <- force_update0 w_grid_upd [] 0
-      return (w_grid // upd, f_grid, obj_grid // (atomise_obj_grid_upd 0 obj_grid_upd [] obj_grid), s0, s1)
+      return (w_grid // upd, f_grid, obj_grid // (atomise_obj_grid_upd 0 obj_grid_upd [] obj_grid), s0, s1, log)
   else do
     if fst (obj_grid ! dest) == 1 || fst (obj_grid ! dest) == 3 then do
-      report_state (verbose_mode s1) 2 [] [] ("\nGPLC program run at Obj_grid " ++ show ((sig_q s1) !! 1, (sig_q s1) !! 2, (sig_q s1) !! 3))
-      run_gplc' <- catch (run_gplc (snd (obj_grid4' ! dest)) [] w_grid w_grid_upd f_grid obj_grid4' obj_grid_upd s0 (s1 {sig_q = drop 4 (sig_q s1)}) look_up 0) (\e -> gplc_error w_grid_upd f_grid obj_grid_upd s0 s1 e)
-      link_gplc0 True (x0:x1:xs) (z0:z1:z2:zs) w_grid (fst_ run_gplc') (snd_ run_gplc') obj_grid (third run_gplc') (fourth run_gplc') (fifth run_gplc') look_up False
-    else link_gplc0 True (x0:x1:xs) (z0:z1:z2:zs) w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 (s1 {sig_q = drop 4 (sig_q s1)}) look_up False
+      run_gplc' <- catch (run_gplc (snd (obj_grid4' ! dest)) [] w_grid w_grid_upd f_grid obj_grid4' obj_grid_upd s0 (s1 {sig_q = drop 4 (sig_q s1)}) look_up 0 log) (\e -> gplc_error w_grid_upd f_grid obj_grid_upd s0 s1 log e)
+      if game_t (fourth run_gplc') == -1 then return (w_grid, f_grid, obj_grid, fourth run_gplc', s1, sixth run_gplc')
+      else link_gplc0 True (x0:x1:xs) (z0:z1:z2:zs) w_grid (fst_ run_gplc') (snd_ run_gplc') obj_grid (third run_gplc') (fourth run_gplc') (fifth run_gplc') look_up False (sixth run_gplc')
+    else link_gplc0 True (x0:x1:xs) (z0:z1:z2:zs) w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 (s1 {sig_q = drop 4 (sig_q s1)}) look_up False (log SEQ.>< m0)
 
 link_gplc1 :: Play_state0 -> Play_state1 -> Array (Int, Int, Int) (Int, [Int]) -> Int -> IO Play_state1
 link_gplc1 s0 s1 obj_grid mode =
@@ -1032,20 +1029,43 @@ sync_game_t conf_reg s0 =
   else if fps_limit == 60 && mod (game_t s0) 3 == 2 then False
   else True
 
+-- Specific to the Heavy-dubbuging-output-variant branch.  This function limits the length of the sequence used to generate the log file.
+limit_log_length :: SEQ.Seq (SEQ.Seq Char) -> Array Int [Char] -> SEQ.Seq (SEQ.Seq Char)
+limit_log_length log conf_reg =
+  let cfg' = cfg conf_reg 0
+  in
+  if SEQ.length log > read (cfg' "log_file_size") then drop 1 log
+  else log
+
+save_log_file :: SEQ.Seq (SEQ.Seq Char) -> Handle -> IO ()
+save_log_file log h =
+  if null log == True then return ()
+  else do
+    hPutStr h (toList (SEQ_.index log 0))
+    save_log_file (drop 1 log) h
+
 -- This function recurses once per game logic clock tick and is the central branching point of the game logic thread.
-update_play :: Io_box -> MVar (Play_state0, Array (Int, Int, Int) Wall_grid, Save_state) -> Play_state0 -> Play_state1 -> Bool -> Float -> (Float, Float, Float, Float) -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> UArray (Int, Int) Float -> Array Int [Char] -> Save_state -> Array Int Source -> IO ()
-update_play io_box state_ref s0 s1 in_flight f_rate (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up conf_reg save_state sound_array =
+update_play :: Io_box -> MVar (Play_state0, Array (Int, Int, Int) Wall_grid, Save_state) -> Play_state0 -> Play_state1 -> Bool -> Float -> (Float, Float, Float, Float) -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> UArray (Int, Int) Float -> Array Int [Char] -> Save_state -> Array Int Source -> SEQ.Seq (SEQ.Seq Char) -> IO ()
+update_play io_box state_ref s0 s1 in_flight f_rate (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up conf_reg save_state sound_array log =
   let det = detect_coll (truncate (pos_w s0)) (pos_u s0, pos_v s0) ((vel s0) !! 0 / f_rate, (vel s0) !! 1 / f_rate) obj_grid w_grid
       floor = floor_surf (det !! 0) (det !! 1) (pos_w s0) f_grid
       vel_0 = update_vel (vel s0) [0, 0, 0] ((drop 2 det) ++ [0]) f_rate f
       vel_2 = update_vel (vel s0) [0, 0, g] ((drop 2 det) ++ [0]) f_rate 0
       game_t' = game_t s0 + 1
+      m = SEQ.fromList ("\n\ngame_t = " ++ show (game_t s0) ++ "\n--------------\n")
+      cfg' = cfg conf_reg 0
   in do
   control <- messagePump (hwnd_ io_box)
   link0 <- link_gplc0 (sync_game_t conf_reg s0) (drop 4 det) [truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)] w_grid [] f_grid obj_grid [] s0 s1 look_up False
   link1 <- link_gplc1 s0 s1 obj_grid 0
   link1_ <- link_gplc1 s0 s1 obj_grid 1
-  if control == 2 then do
+  if game_t (fourth link0) == -1 then do
+    h <- openFile (cfg' "log_file_name") WriteMode
+    save_log_file (sixth link0) h
+    hClose h
+    putStr "\n\nException thrown within GPLC interpreter.  Log file generated."
+    exitSuccess
+  else if control == 2 then do
     choice <- run_menu (pause_text s1 (difficulty s1)) [] io_box (-0.75) (-0.75) 1 0 0
     if choice == 1 then update_play io_box state_ref s0 s1 in_flight f_rate (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up conf_reg save_state sound_array
     else if choice == 2 then do
