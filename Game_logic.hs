@@ -18,7 +18,6 @@ import Data.List.Split
 import Data.Fixed
 import Data.Foldable
 import qualified Data.Sequence as SEQ
-import qualified Data.Sequence.Index as SEQ_
 import Control.Concurrent
 import Control.Exception
 import qualified Data.Matrix as MAT
@@ -63,7 +62,8 @@ main_menu_text = [(0, msg16), (0, []), (1, msg14), (2, msg18), (3, msg12)]
 -- These two functions are where the program interacts with the Windows message system and captures keyboard input.
 wndProc :: HWND -> WindowMessage -> WPARAM -> LPARAM -> IO LRESULT
 wndProc hwnd wmsg wParam lParam
-    | wmsg == 258 = if wParam == 120 then do return 2 -- pause and select menu option (X)
+    | wmsg == 258 = if wParam == 120 then return 2 -- pause and select menu option (X)
+                    else if wParam == 121 then return 14 -- exit and save log file (Y)
                     else if wParam == 97 then return 6  -- left (A)
                     else if wParam == 100 then return 4 -- right (D)
                     else if wParam == 115 then return 5 -- back (S)
@@ -74,7 +74,7 @@ wndProc hwnd wmsg wParam lParam
                     else if wParam == 116 then return 10 -- light torch (T)
                     else if wParam == 99 then return 11 -- switch view mode (C)
                     else if wParam == 118 then return 12 -- rotate 3rd person view (V)
-                    else if wParam == 32 then return 13 -- Fire (SPACE)
+                    else if wParam == 32 then return 13 -- fire (SPACE)
                     else do return 1
     | otherwise = do
         defWindowProc (Just hwnd) wmsg wParam lParam
@@ -167,6 +167,7 @@ chg_state :: [Int] -> (Int, Int, Int) -> (Int, Int, Int) -> Array (Int, Int, Int
 chg_state (2:x1:x2:x3:x4:x5:x6:x7:x8:x9:xs) (i0, i1, i2) (i3, i4, i5) w_grid update w_grid_upd d_list log =
   let m0 = SEQ.fromList "\nchg_state run with arguments "
       m1 = SEQ.fromList ("0: " ++ show (d_list !! x1) ++ " 1: " ++ show (d_list !! x2) ++ " 2: " ++ show (d_list !! x3) ++ " 3: " ++ show (d_list !! x4) ++ " 4: " ++ show (d_list !! x5) ++ " 5: " ++ show (d_list !! x6) ++ " 6: " ++ show (d_list !! x7) ++ " 7: " ++ show (d_list !! x8) ++ " 8: " ++ show (d_list !! x9))
+  in
   if d_list !! x1 == 0 then chg_state xs (x4, x5, x6) (x7, x8, x9) w_grid (update // [(0, d_list !! x2), (1, d_list !! x3)]) w_grid_upd d_list (log SEQ.>< m0 SEQ.>< m1)
   else if d_list !! x1 == 1 then chg_state xs (x4, x5, x6) (x7, x8, x9) w_grid (update // [(2, d_list !! x2), (3, d_list !! x3)]) w_grid_upd d_list (log SEQ.>< m0 SEQ.>< m1)
   else if d_list !! x1 == 2 then chg_state xs (x4, x5, x6) (x7, x8, x9) w_grid (update // [(4, d_list !! x2), (5, d_list !! x3)]) w_grid_upd d_list (log SEQ.>< m0 SEQ.>< m1)
@@ -726,7 +727,7 @@ run_gplc code d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_u
 run_gplc xs d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up 2 log =
   let chg_state_ = chg_state (2 : xs) (0, 0, 0) (0, 0, 0) w_grid (array (0, 13) [(0, 3), (1, 0), (2, 3), (3, 0), (4, 3), (5, 0), (6, 3), (7, 0), (8, 3), (9, 0), (10, 3), (11, 0), (12, 3), (13, 0)]) w_grid_upd d_list log
   in do
-  run_gplc (tail_ (snd__ chg_state_)) d_list w_grid (fst__ chg_state_) f_grid obj_grid obj_grid_upd s0 s1 look_up (head_ (snd chg_state_)) (third_ chg_state_)
+  run_gplc (tail_ (snd__ chg_state_)) d_list w_grid (fst__ chg_state_) f_grid obj_grid obj_grid_upd s0 s1 look_up (head_ (snd__ chg_state_)) (third_ chg_state_)
 run_gplc (x0:x1:x2:x3:x4:x5:x6:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up 3 log =
   let m = SEQ.fromList ("\nchg_grid run with arguments " ++ "0: " ++ show (d_list !! x0) ++ " 1: " ++ show (d_list !! x1) ++ " 2: " ++ show (d_list !! x2) ++ " 3: " ++ show (d_list !! x3) ++ " 4: " ++ show (d_list !! x4) ++ " 5: " ++ show (d_list !! x5) ++ " 6: " ++ show (d_list !! x6))
   in do
@@ -896,33 +897,35 @@ link_gplc0 True (x0:x1:xs) (z0:z1:z2:zs) w_grid w_grid_upd f_grid obj_grid obj_g
       obj_grid4' = obj_grid // [(dest, (fst (obj_grid ! dest), (head__ prog) : ((sig_q s1) !! 0) : drop 2 prog))]
       m0 = SEQ.fromList ("\n\nSignal addressed to Obj_grid " ++ show ((sig_q s1) !! 1, (sig_q s1) !! 2, (sig_q s1) !! 3) ++ " but this element is not set to run programs from.")
       m1 = \x -> SEQ.fromList ("\n\nPlayer starts GPLC program at Obj_grid " ++ show x)
+      m2 = \x -> SEQ.fromList ("\nw_grid_upd: " ++ show x)
+      m3 = \x -> SEQ.fromList ("\nobj_grid_upd: " ++ show x)
   in do
   if sig_q s1 == [] && swap_flag == False then link_gplc0 True (x0:x1:xs) (z0:z1:z2:zs) w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 (s1 {sig_q = next_sig_q s1, next_sig_q = []}) look_up True log
   else if swap_flag == True then
     if (x1 == 1 || x1 == 3) && x0 == 0 && head (snd (obj_grid ! (z0, z1, z2 + 1))) == 0 then do
-      run_gplc' <- catch (run_gplc (snd ((fst obj_grid0') ! (z0, z1, z2 + 1))) [] w_grid w_grid_upd f_grid (fst obj_grid0') obj_grid_upd s0 s1 look_up 0 (log SEQ.>< m1 (z0, z1, z2 + 1))) (\e -> gplc_error w_grid_upd f_grid obj_grid_upd s0 s1 log e)
-      upd <- force_update0 (fst_ run_gplc') [] 0
-      return (w_grid // upd, snd_ run_gplc', obj_grid // (atomise_obj_grid_upd 0 (third run_gplc') [] obj_grid), fourth run_gplc', fifth run_gplc', sixth run_gplc')
+      run_gplc' <- catch (run_gplc (snd ((fst obj_grid0') ! (z0, z1, z2 + 1))) [] w_grid [] f_grid (fst obj_grid0') [] s0 s1 look_up 0 (log SEQ.>< m1 (z0, z1, z2 + 1))) (\e -> gplc_error w_grid_upd f_grid obj_grid_upd s0 s1 log e)
+      upd <- force_update0 ((fst_ run_gplc') ++ w_grid_upd) [] 0
+      return (w_grid // upd, snd_ run_gplc', obj_grid // (atomise_obj_grid_upd 0 ((third run_gplc') ++ obj_grid_upd) [] obj_grid), fourth run_gplc', fifth run_gplc', sixth run_gplc' SEQ.>< m2 (fst_ run_gplc') SEQ.>< m3 (third run_gplc'))
     else if (x1 == 1 || x1 == 3) && x0 == 1 && head (snd (obj_grid ! (z0, z1 + 1, z2))) == 0 then do
-      run_gplc' <- catch (run_gplc (snd ((fst obj_grid1') ! (z0, z1 + 1, z2))) [] w_grid w_grid_upd f_grid (fst obj_grid1') obj_grid_upd s0 s1 look_up 0 (log SEQ.>< m1 (z0, z1 + 1, z2))) (\e -> gplc_error w_grid_upd f_grid obj_grid_upd s0 s1 log e)
-      upd <- force_update0 (fst_ run_gplc') [] 0
-      return (w_grid // upd, snd_ run_gplc', obj_grid // (atomise_obj_grid_upd 0 (third run_gplc') [] obj_grid), fourth run_gplc', fifth run_gplc', sixth run_gplc')
+      run_gplc' <- catch (run_gplc (snd ((fst obj_grid1') ! (z0, z1 + 1, z2))) [] w_grid [] f_grid (fst obj_grid1') [] s0 s1 look_up 0 (log SEQ.>< m1 (z0, z1 + 1, z2))) (\e -> gplc_error w_grid_upd f_grid obj_grid_upd s0 s1 log e)
+      upd <- force_update0 ((fst_ run_gplc') ++ w_grid_upd) [] 0
+      return (w_grid // upd, snd_ run_gplc', obj_grid // (atomise_obj_grid_upd 0 ((third run_gplc') ++ obj_grid_upd) [] obj_grid), fourth run_gplc', fifth run_gplc', sixth run_gplc' SEQ.>< m2 (fst_ run_gplc') SEQ.>< m3 (third run_gplc'))
     else if (x1 == 1 || x1 == 3) && x0 == 2 && head (snd (obj_grid ! (z0, z1, z2 - 1))) == 0 then do
-      run_gplc' <- catch (run_gplc (snd ((fst obj_grid2') ! (z0, z1, z2 - 1))) [] w_grid w_grid_upd f_grid (fst obj_grid2') obj_grid_upd s0 s1 look_up 0 (log SEQ.>< m1 (z0, z1, z2 - 1))) (\e -> gplc_error w_grid_upd f_grid obj_grid_upd s0 s1 log e)
-      upd <- force_update0 (fst_ run_gplc') [] 0
-      return (w_grid // upd, snd_ run_gplc', obj_grid // (atomise_obj_grid_upd 0 (third run_gplc') [] obj_grid), fourth run_gplc', fifth run_gplc', sixth run_gplc')
+      run_gplc' <- catch (run_gplc (snd ((fst obj_grid2') ! (z0, z1, z2 - 1))) [] w_grid [] f_grid (fst obj_grid2') [] s0 s1 look_up 0 (log SEQ.>< m1 (z0, z1, z2 - 1))) (\e -> gplc_error w_grid_upd f_grid obj_grid_upd s0 s1 log e)
+      upd <- force_update0 ((fst_ run_gplc') ++ w_grid_upd) [] 0
+      return (w_grid // upd, snd_ run_gplc', obj_grid // (atomise_obj_grid_upd 0 ((third run_gplc') ++ obj_grid_upd) [] obj_grid), fourth run_gplc', fifth run_gplc', sixth run_gplc' SEQ.>< m2 (fst_ run_gplc') SEQ.>< m3 (third run_gplc'))
     else if (x1 == 1 || x1 == 3) && x0 == 3 && head (snd (obj_grid ! (z0, z1 - 1, z2))) == 0 then do
-      run_gplc' <- catch (run_gplc (snd ((fst obj_grid3') ! (z0, z1 - 1, z2))) [] w_grid w_grid_upd f_grid (fst obj_grid3') obj_grid_upd s0 s1 look_up 0 (log SEQ.>< m1 (z0, z1 - 1, z2))) (\e -> gplc_error w_grid_upd f_grid obj_grid_upd s0 s1 log e)
-      upd <- force_update0 (fst_ run_gplc') [] 0
-      return (w_grid // upd, snd_ run_gplc', obj_grid // (atomise_obj_grid_upd 0 (third run_gplc') [] obj_grid), fourth run_gplc', fifth run_gplc', sixth run_gplc')
+      run_gplc' <- catch (run_gplc (snd ((fst obj_grid3') ! (z0, z1 - 1, z2))) [] w_grid [] f_grid (fst obj_grid3') [] s0 s1 look_up 0 (log SEQ.>< m1 (z0, z1 - 1, z2))) (\e -> gplc_error w_grid_upd f_grid obj_grid_upd s0 s1 log e)
+      upd <- force_update0 ((fst_ run_gplc') ++ w_grid_upd) [] 0
+      return (w_grid // upd, snd_ run_gplc', obj_grid // (atomise_obj_grid_upd 0 ((third run_gplc') ++ obj_grid_upd) [] obj_grid), fourth run_gplc', fifth run_gplc', sixth run_gplc' SEQ.>< m2 (fst_ run_gplc') SEQ.>< m3 (third run_gplc'))
     else do
       upd <- force_update0 w_grid_upd [] 0
       return (w_grid // upd, f_grid, obj_grid // (atomise_obj_grid_upd 0 obj_grid_upd [] obj_grid), s0, s1, log)
   else do
     if fst (obj_grid ! dest) == 1 || fst (obj_grid ! dest) == 3 then do
-      run_gplc' <- catch (run_gplc (snd (obj_grid4' ! dest)) [] w_grid w_grid_upd f_grid obj_grid4' obj_grid_upd s0 (s1 {sig_q = drop 4 (sig_q s1)}) look_up 0 log) (\e -> gplc_error w_grid_upd f_grid obj_grid_upd s0 s1 log e)
+      run_gplc' <- catch (run_gplc (snd (obj_grid4' ! dest)) [] w_grid [] f_grid obj_grid4' [] s0 (s1 {sig_q = drop 4 (sig_q s1)}) look_up 0 log) (\e -> gplc_error w_grid_upd f_grid obj_grid_upd s0 s1 log e)
       if game_t (fourth run_gplc') == -1 then return (w_grid, f_grid, obj_grid, fourth run_gplc', s1, sixth run_gplc')
-      else link_gplc0 True (x0:x1:xs) (z0:z1:z2:zs) w_grid (fst_ run_gplc') (snd_ run_gplc') obj_grid (third run_gplc') (fourth run_gplc') (fifth run_gplc') look_up False (sixth run_gplc')
+      else link_gplc0 True (x0:x1:xs) (z0:z1:z2:zs) w_grid ((fst_ run_gplc') ++ w_grid_upd) (snd_ run_gplc') obj_grid ((third run_gplc') ++ obj_grid_upd) (fourth run_gplc') (fifth run_gplc') look_up False ((sixth run_gplc') SEQ.>< m2 (fst_ run_gplc') SEQ.>< m3 (third run_gplc'))
     else link_gplc0 True (x0:x1:xs) (z0:z1:z2:zs) w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 (s1 {sig_q = drop 4 (sig_q s1)}) look_up False (log SEQ.>< m0)
 
 link_gplc1 :: Play_state0 -> Play_state1 -> Array (Int, Int, Int) (Int, [Int]) -> Int -> IO Play_state1
@@ -1030,19 +1033,21 @@ sync_game_t conf_reg s0 =
   else True
 
 -- Specific to the Heavy-dubbuging-output-variant branch.  This function limits the length of the sequence used to generate the log file.
-limit_log_length :: SEQ.Seq (SEQ.Seq Char) -> Array Int [Char] -> SEQ.Seq (SEQ.Seq Char)
+limit_log_length :: SEQ.Seq (SEQ.Seq Char) -> Array Int [Char] -> IO (SEQ.Seq (SEQ.Seq Char))
 limit_log_length log conf_reg =
   let cfg' = cfg conf_reg 0
-  in
-  if SEQ.length log > read (cfg' "log_file_size") then drop 1 log
-  else log
+  in do
+  putStr (toList (SEQ.index log 0))
+  if SEQ.length log > read (cfg' "log_file_size") then return (SEQ.drop 1 log)
+  else return log
 
+-- Specific to the Heavy-dubbuging-output-variant branch.  This function saves the debugging log to a file.
 save_log_file :: SEQ.Seq (SEQ.Seq Char) -> Handle -> IO ()
 save_log_file log h =
   if null log == True then return ()
   else do
-    hPutStr h (toList (SEQ_.index log 0))
-    save_log_file (drop 1 log) h
+    hPutStr h (toList (SEQ.index log 0))
+    save_log_file (SEQ.drop 1 log) h
 
 -- This function recurses once per game logic clock tick and is the central branching point of the game logic thread.
 update_play :: Io_box -> MVar (Play_state0, Array (Int, Int, Int) Wall_grid, Save_state) -> Play_state0 -> Play_state1 -> Bool -> Float -> (Float, Float, Float, Float) -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> UArray (Int, Int) Float -> Array Int [Char] -> Save_state -> Array Int Source -> SEQ.Seq (SEQ.Seq Char) -> IO ()
@@ -1056,75 +1061,76 @@ update_play io_box state_ref s0 s1 in_flight f_rate (g, f, mag_r, mag_j) w_grid 
       cfg' = cfg conf_reg 0
   in do
   control <- messagePump (hwnd_ io_box)
-  link0 <- link_gplc0 (sync_game_t conf_reg s0) (drop 4 det) [truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)] w_grid [] f_grid obj_grid [] s0 s1 look_up False
+  link0 <- link_gplc0 (sync_game_t conf_reg s0) (drop 4 det) [truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)] w_grid [] f_grid obj_grid [] s0 s1 look_up False m
   link1 <- link_gplc1 s0 s1 obj_grid 0
   link1_ <- link_gplc1 s0 s1 obj_grid 1
-  if game_t (fourth link0) == -1 then do
+  log' <- limit_log_length (log SEQ.>< SEQ.singleton (sixth link0)) conf_reg
+  if game_t (fourth link0) == -1 || control == 14 then do
     h <- openFile (cfg' "log_file_name") WriteMode
-    save_log_file (sixth link0) h
+    save_log_file log h
     hClose h
-    putStr "\n\nException thrown within GPLC interpreter.  Log file generated."
+    putStr "\n\nLog file generated."
     exitSuccess
   else if control == 2 then do
     choice <- run_menu (pause_text s1 (difficulty s1)) [] io_box (-0.75) (-0.75) 1 0 0
-    if choice == 1 then update_play io_box state_ref s0 s1 in_flight f_rate (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up conf_reg save_state sound_array
+    if choice == 1 then update_play io_box state_ref s0 s1 in_flight f_rate (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up conf_reg save_state sound_array log
     else if choice == 2 then do
-      update_play io_box state_ref s0 s1 in_flight f_rate (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up conf_reg (Save_state {is_set = True, w_grid_ = w_grid, f_grid_ = f_grid, obj_grid_ = obj_grid, s0_ = s0, s1_ = s1}) sound_array
+      update_play io_box state_ref s0 s1 in_flight f_rate (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up conf_reg (Save_state {is_set = True, w_grid_ = w_grid, f_grid_ = f_grid, obj_grid_ = obj_grid, s0_ = s0, s1_ = s1}) sound_array log
     else if choice == 3 then do
       putMVar state_ref (s0 {msg_count = -1}, w_grid, save_state)
-      update_play io_box state_ref s0 s1 in_flight f_rate (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up conf_reg save_state sound_array
+      update_play io_box state_ref s0 s1 in_flight f_rate (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up conf_reg save_state sound_array log
     else do
       putMVar state_ref (s0 {msg_count = -3}, w_grid, save_state)
-      update_play io_box state_ref s0 s1 in_flight f_rate (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up conf_reg save_state sound_array
-  else if control == 10 then update_play io_box state_ref (fourth link0) ((fifth link0) {sig_q = sig_q s1 ++ [2, 0, 0, 0]}) in_flight f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up conf_reg save_state sound_array
+      update_play io_box state_ref s0 s1 in_flight f_rate (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up conf_reg save_state sound_array log
+  else if control == 10 then update_play io_box state_ref (fourth link0) ((fifth link0) {sig_q = sig_q s1 ++ [2, 0, 0, 0]}) in_flight f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up conf_reg save_state sound_array log'
   else if control == 11 then do
-    if view_mode s0 == 0 then update_play io_box state_ref ((fourth link0) {view_mode = 1}) (fifth link0) in_flight f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up conf_reg save_state sound_array
-    else update_play io_box state_ref ((fourth link0) {view_mode = 0}) (fifth link0) in_flight f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up conf_reg save_state sound_array
-  else if control == 12 then update_play io_box state_ref ((fourth link0) {view_angle = mod_angle (view_angle s0) 5}) (fifth link0) in_flight f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up conf_reg save_state sound_array
-  else if control == 13 then update_play io_box state_ref (fourth link0) ((fifth link0) {sig_q = sig_q s1 ++ [2, 0, 0, 1]}) in_flight f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up conf_reg save_state sound_array
+    if view_mode s0 == 0 then update_play io_box state_ref ((fourth link0) {view_mode = 1}) (fifth link0) in_flight f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up conf_reg save_state sound_array log'
+    else update_play io_box state_ref ((fourth link0) {view_mode = 0}) (fifth link0) in_flight f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up conf_reg save_state sound_array log'
+  else if control == 12 then update_play io_box state_ref ((fourth link0) {view_angle = mod_angle (view_angle s0) 5}) (fifth link0) in_flight f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up conf_reg save_state sound_array log'
+  else if control == 13 then update_play io_box state_ref (fourth link0) ((fifth link0) {sig_q = sig_q s1 ++ [2, 0, 0, 1]}) in_flight f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up conf_reg save_state sound_array log'
   else if message s1 /= [] then do
     event <- proc_msg0 (message s1) s0 s1 io_box sound_array
     putMVar state_ref (fst event, w_grid, save_state)
-    update_play io_box state_ref ((fst event) {msg_count = 0}) (snd event) in_flight f_rate (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up conf_reg save_state sound_array
+    update_play io_box state_ref ((fst event) {msg_count = 0}) (snd event) in_flight f_rate (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up conf_reg save_state sound_array log'
   else
     if in_flight == False then
       if (pos_w s0) - floor > 0.02 then do
         putMVar state_ref (s0 {pos_u = det !! 0, pos_v = det !! 1}, w_grid, save_state)
-        update_play io_box state_ref ((fourth link0) {pos_u = det !! 0, pos_v = det !! 1, vel = vel_0, game_t = game_t'}) (fifth link0) True f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up conf_reg save_state sound_array
+        update_play io_box state_ref ((fourth link0) {pos_u = det !! 0, pos_v = det !! 1, vel = vel_0, game_t = game_t'}) (fifth link0) True f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up conf_reg save_state sound_array log'
       else if control > 2 && control < 7 then do
         putMVar state_ref (s0 {pos_u = det !! 0, pos_v = det !! 1, pos_w = floor}, w_grid, save_state)
-        update_play io_box state_ref ((fourth link0) {pos_u = det !! 0, pos_v = det !! 1, pos_w = floor, vel = update_vel (vel s0) (take 3 (thrust (fromIntegral control) (angle s0) mag_r f_rate look_up)) ((drop 2 det) ++ [0]) f_rate f, game_t = game_t'}) (fifth link0) False f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up conf_reg save_state sound_array
+        update_play io_box state_ref ((fourth link0) {pos_u = det !! 0, pos_v = det !! 1, pos_w = floor, vel = update_vel (vel s0) (take 3 (thrust (fromIntegral control) (angle s0) mag_r f_rate look_up)) ((drop 2 det) ++ [0]) f_rate f, game_t = game_t'}) (fifth link0) False f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up conf_reg save_state sound_array log'
       else if control == 7 then do
         putMVar state_ref (s0 {pos_u = det !! 0, pos_v = det !! 1, pos_w = floor, angle = mod_angle (angle s0) (angle_step s1)}, w_grid, save_state)
-        update_play io_box state_ref ((fourth link0) {pos_u = det !! 0, pos_v = det !! 1, pos_w = floor, vel = vel_0, angle = mod_angle (angle s0) (angle_step s1), game_t = game_t'}) (fifth link0) False f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up conf_reg save_state sound_array
+        update_play io_box state_ref ((fourth link0) {pos_u = det !! 0, pos_v = det !! 1, pos_w = floor, vel = vel_0, angle = mod_angle (angle s0) (angle_step s1), game_t = game_t'}) (fifth link0) False f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up conf_reg save_state sound_array log'
       else if control == 8 then do
         putMVar state_ref (s0 {pos_u = det !! 0, pos_v = det !! 1, pos_w = floor, angle = mod_angle (angle s0) (- (angle_step s1))}, w_grid, save_state)
-        update_play io_box state_ref ((fourth link0) {pos_u = det !! 0, pos_v = det !! 1, pos_w = floor, vel = vel_0, angle = mod_angle (angle s0) (- (angle_step s1)), game_t = game_t'}) (fifth link0) False f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up conf_reg save_state sound_array
+        update_play io_box state_ref ((fourth link0) {pos_u = det !! 0, pos_v = det !! 1, pos_w = floor, vel = vel_0, angle = mod_angle (angle s0) (- (angle_step s1)), game_t = game_t'}) (fifth link0) False f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up conf_reg save_state sound_array log'
       else if control == 9 then do
         putMVar state_ref (s0 {pos_u = det !! 0, pos_v = det !! 1, pos_w = floor + mag_j / f_rate}, w_grid, save_state)
-        update_play io_box state_ref ((fourth link0) {pos_u = det !! 0, pos_v = det !! 1, pos_w = floor + mag_j / f_rate, vel = (take 2 vel_0) ++ [mag_j], game_t = game_t'}) (fifth link0) False f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up conf_reg save_state sound_array
+        update_play io_box state_ref ((fourth link0) {pos_u = det !! 0, pos_v = det !! 1, pos_w = floor + mag_j / f_rate, vel = (take 2 vel_0) ++ [mag_j], game_t = game_t'}) (fifth link0) False f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up conf_reg save_state sound_array log'
       else if control == 13 then do
         putMVar state_ref (s0 {pos_u = det !! 0, pos_v = det !! 1, pos_w = floor}, w_grid, save_state)
-        update_play io_box state_ref ((fourth link0) {pos_u = det !! 0, pos_v = det !! 1, pos_w = floor, vel = vel_0, game_t = game_t'}) ((fifth link0) {sig_q = sig_q s1 ++ [0, 0, 1]}) False f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (fst (send_signal 1 1 (0, 0, 1) (third link0) s1 [])) look_up conf_reg save_state sound_array
+        update_play io_box state_ref ((fourth link0) {pos_u = det !! 0, pos_v = det !! 1, pos_w = floor, vel = vel_0, game_t = game_t'}) ((fifth link0) {sig_q = sig_q s1 ++ [0, 0, 1]}) False f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (fst (send_signal 1 1 (0, 0, 1) (third link0) s1 [])) look_up conf_reg save_state sound_array log'
       else do
         putMVar state_ref (s0 {pos_u = det !! 0, pos_v = det !! 1, pos_w = floor}, w_grid, save_state)
-        update_play io_box state_ref ((fourth link0) {pos_u = det !! 0, pos_v = det !! 1, pos_w = floor, vel = vel_0, game_t = game_t'}) (fifth link0) False f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up conf_reg save_state sound_array
+        update_play io_box state_ref ((fourth link0) {pos_u = det !! 0, pos_v = det !! 1, pos_w = floor, vel = vel_0, game_t = game_t'}) (fifth link0) False f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up conf_reg save_state sound_array log'
     else if in_flight == True && (pos_w s0) > floor then
       if control == 7 then do
         putMVar state_ref (s0 {pos_u = det !! 0, pos_v = det !! 1, pos_w = (pos_w s0) + ((vel s0) !! 2) / f_rate, angle = mod_angle (angle s0) (angle_step s1)}, w_grid, save_state)
-        update_play io_box state_ref ((fourth link0) {pos_u = det !! 0, pos_v = det !! 1, pos_w = (pos_w s0) + ((vel s0) !! 2) / f_rate, vel = vel_2, angle = mod_angle (angle s0) (angle_step s1), game_t = game_t'}) (fifth link0) True f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up conf_reg save_state sound_array
+        update_play io_box state_ref ((fourth link0) {pos_u = det !! 0, pos_v = det !! 1, pos_w = (pos_w s0) + ((vel s0) !! 2) / f_rate, vel = vel_2, angle = mod_angle (angle s0) (angle_step s1), game_t = game_t'}) (fifth link0) True f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up conf_reg save_state sound_array log'
       else if control == 8 then do
         putMVar state_ref (s0 {pos_u = det !! 0, pos_v = det !! 1, pos_w = (pos_w s0) + ((vel s0) !! 2) / f_rate, angle = mod_angle (angle s0) (- (angle_step s1))}, w_grid, save_state)
-        update_play io_box state_ref ((fourth link0) {pos_u = det !! 0, pos_v = det !! 1, pos_w = (pos_w s0) + ((vel s0) !! 2) / f_rate, vel = vel_2, angle = mod_angle (angle s0) (- (angle_step s1)), game_t = game_t'}) (fifth link0) True f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up conf_reg save_state sound_array
+        update_play io_box state_ref ((fourth link0) {pos_u = det !! 0, pos_v = det !! 1, pos_w = (pos_w s0) + ((vel s0) !! 2) / f_rate, vel = vel_2, angle = mod_angle (angle s0) (- (angle_step s1)), game_t = game_t'}) (fifth link0) True f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up conf_reg save_state sound_array log'
       else do
         putMVar state_ref (s0 {pos_u = det !! 0, pos_v = det !! 1, pos_w = (pos_w s0) + ((vel s0) !! 2) / f_rate}, w_grid, save_state)
-        update_play io_box state_ref ((fourth link0) {pos_u = det !! 0, pos_v = det !! 1, pos_w = (pos_w s0) + ((vel s0) !! 2) / f_rate, vel = vel_2, game_t = game_t'}) (fifth link0) True f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up conf_reg save_state sound_array
+        update_play io_box state_ref ((fourth link0) {pos_u = det !! 0, pos_v = det !! 1, pos_w = (pos_w s0) + ((vel s0) !! 2) / f_rate, vel = vel_2, game_t = game_t'}) (fifth link0) True f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up conf_reg save_state sound_array log'
     else do
       putMVar state_ref (s0 {pos_u = det !! 0, pos_v = det !! 1, pos_w = floor}, w_grid, save_state)
       if (vel s0) !! 2 < -4 then do
-        update_play io_box state_ref (s0 {pos_u = det !! 0, pos_v = det !! 1, pos_w = floor, vel = vel_0, game_t = game_t'}) link1_ False f_rate (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up conf_reg save_state sound_array
+        update_play io_box state_ref (s0 {pos_u = det !! 0, pos_v = det !! 1, pos_w = floor, vel = vel_0, game_t = game_t'}) link1_ False f_rate (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up conf_reg save_state sound_array log'
       else do
-        update_play io_box state_ref (s0 {pos_u = det !! 0, pos_v = det !! 1, pos_w = floor, vel = vel_0, game_t = game_t'}) link1 False f_rate (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up conf_reg save_state sound_array
+        update_play io_box state_ref (s0 {pos_u = det !! 0, pos_v = det !! 1, pos_w = floor, vel = vel_0, game_t = game_t'}) link1 False f_rate (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up conf_reg save_state sound_array log'
 
 -- These five functions handle events triggered by a call to pass_msg within a GPLC program.  These include on screen messages, object interaction menus and sound effects.
 conv_msg :: Int -> [Int]
