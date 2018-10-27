@@ -28,17 +28,9 @@ snd_ (a, b, c, d, e) = b
 third (a, b, c, d, e) = c
 fourth (a, b, c, d, e) = d
 fifth (a, b, c, d, e) = e
-
 fst__ (a, b, c) = a
 snd__ (a, b, c) = b
 third_ (a, b, c) = c
-
-fst___ (a, b, c, d, e, f) = a
-snd___ (a, b, c, d, e, f) = b
-third__ (a, b, c, d, e, f) = c
-fourth_ (a, b, c, d, e, f) = d
-fifth_ (a, b, c, d, e, f) = e
-sixth (a, b, c, d, e, f) = f
 
 -- These two functions generate trigonometric look up tables to time optimise various functions.
 make_table :: Int -> Float -> [Float]
