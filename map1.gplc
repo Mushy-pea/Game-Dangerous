@@ -260,11 +260,10 @@ npc_damage
 init_npc npc_type 0
 send_signal sig3 w u v
 --signal 3
-if 0 climb_flag npc_type 2 9
-npc_move 44
-npc_decision 45
-npc_move 44
-inspect_obj_grid 1 w' u' v'
+if 0 climb_flag npc_type 2 4
+npc_move 39
+npc_decision 40
+npc_move 39
 ~
 ammo (17)
 ~
