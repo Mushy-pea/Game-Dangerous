@@ -42,7 +42,8 @@ assm_gplc5 [] size_block size = (size_block ++ [size])
 assm_gplc5 (x:xs) size_block size =
   if x == "--signal" then assm_gplc5 (drop 1 xs) (size_block ++ [size]) 0
   else if x == "pass_msg" then assm_gplc5 (drop 1 xs) size_block (size + 1)
-  else if x == "block" then assm_gplc5 (drop 1 xs) size_block (size + 1)
+  else if x == "block" then assm_gplc5 (drop 1 xs) size_block (size + 3)
+  else if x == "npc_damage" then assm_gplc5 xs size_block (size + 2)
   else assm_gplc5 xs size_block (size + 1)
 
 assm_gplc4 :: [[Char]] -> [Int]
@@ -118,7 +119,7 @@ assm_gplc0 (x:xs) sym ind size_block sig_block code_block c =
   else if x == "init_npc" then assm_gplc0 (drop 2 xs) sym ind size_block sig_block (code_block ++ [19] ++ assm_gplc2 19 (take 2 xs) sym ind) (c + 3)
   else if x == "npc_decision" then assm_gplc0 (tail xs) sym ind size_block sig_block (code_block ++ [20] ++ assm_gplc2 20 (take 1 xs) sym ind) (c + 2)
   else if x == "npc_move" then assm_gplc0 (tail xs) sym ind size_block sig_block (code_block ++ [21] ++ assm_gplc2 21 (take 1 xs) sym ind) (c + 2)
-  else if x == "npc_damage" then assm_gplc0 xs sym ind size_block sig_block (code_block ++ [22]) (c + 1)
+  else if x == "npc_damage" then assm_gplc0 xs sym ind size_block sig_block (code_block ++ [22, 0]) (c + 2)
   else if x == "inspect_obj_grid" then assm_gplc0 (drop 4 xs) sym ind size_block sig_block (code_block ++ [23] ++ assm_gplc2 23 (take 4 xs) sym ind) (c + 5)
   else if x == "--signal" then assm_gplc0 (drop 1 xs) sym ind (tail size_block) (sig_block ++ [read (xs !! 0), c, head size_block]) code_block c
   else throw Invalid_opcode
