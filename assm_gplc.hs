@@ -42,7 +42,7 @@ assm_gplc5 [] size_block size = (size_block ++ [size])
 assm_gplc5 (x:xs) size_block size =
   if x == "--signal" then assm_gplc5 (drop 1 xs) (size_block ++ [size]) 0
   else if x == "pass_msg" then assm_gplc5 (drop 1 xs) size_block (size + 1)
-  else if x == "block" then assm_gplc5 (drop 1 xs) size_block (size + 3)
+  else if x == "block" then assm_gplc5 xs size_block (size + 3)
   else if x == "npc_damage" then assm_gplc5 xs size_block (size + 2)
   else assm_gplc5 xs size_block (size + 1)
 

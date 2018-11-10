@@ -348,7 +348,7 @@ project_update p_state p_state' (i0, i1, i2) w_grid w_grid_upd obj_grid obj_grid
       grid_i' = (obj (w_grid ! index))
   in
   if isNothing grid_i' == True then ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 1)])) : obj_grid_upd, s1)
-  else if ident_ grid_i /= 128 then ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 1)])) : obj_grid_upd, s1)
+  else if ident_ grid_i /= 128 then (w_grid_upd, (location, (fst target, [(p_state' + 8, 2), (p_state' + 9, w_block_), (p_state' + 10, u_block), (p_state' + 11, v_block)])) : obj_grid_upd, s1)
   else if u_block' == u_block && v_block' == v_block then ((index, (w_grid ! index) {obj = Just (grid_i {u__ = u__ grid_i + int_to_float vel_u, v__ = v__ grid_i + int_to_float vel_v})}) : w_grid_upd, (location, (fst target, [(p_state', u'), (p_state' + 1, v')])) : obj_grid_upd, s1)
   else if u_block' == u_block && v_block' == v_block + 1 then
     if v2 (w_grid ! (w_block_, u_block, v_block)) == True then ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 1)])) : obj_grid_upd, s1)
@@ -648,7 +648,7 @@ npc_move offset d_list (w:u:v:w1:u1:v1:blocks) w_grid w_grid_upd f_grid obj_grid
   let char_state = (npc_states s1) ! (d_list !! 3)
       u' = truncate ((snd__ (fg_position char_state)) + fst dir_vector')
       v' = truncate ((third_ (fg_position char_state)) + snd dir_vector')
-      o_target = fromJust (obj (w_grid ! (-w - 1, u, v)))
+      o_target = fromMaybe def_obj_place (obj (w_grid ! (-w - 1, u, v)))
       prog = obj_grid ! (w, u, v)
       prog' = \x y -> (fst prog, take offset (snd prog) ++ [x, y] ++ drop (offset + 2) (snd prog))
       ramp_fill' = \dw -> last (ramp_fill (w + dw) u v (-2, [(offset, 0)]) (surface (f_grid ! (w, div u 2, div v 2))))
@@ -669,7 +669,9 @@ npc_move offset d_list (w:u:v:w1:u1:v1:blocks) w_grid w_grid_upd f_grid obj_grid
         else (w_grid_upd, obj_grid_upd, s1 {health = health s1 - damage, message = message s1 ++ msg29, next_sig_q = next_sig_q s1 ++ [3, w, u, v]})
       else (w_grid_upd, obj_grid_upd, s1 {next_sig_q = next_sig_q s1 ++ [3, w, u, v]})
     else if direction char_state >= 0 then
-      (w_grid'' ++ w_grid_upd, ((w, u, v), (-2, [])) : ((w, u', v'), (-2, [])) : obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {dir_vector = dir_vector', fg_position = add_vel_pos (fg_position char_state) dir_vector', node_locations = [w, u', v', 0, 0, 0], ticks_left0 = 1})], next_sig_q = next_sig_q s1 ++ [3, w, u', v']})
+      if isNothing (obj (w_grid ! (-w - 1, u', v'))) == True || (u, v) == (u', v') then
+        (w_grid'' ++ w_grid_upd, ((w, u, v), (-2, [])) : ((w, u', v'), (-2, [])) : obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {dir_vector = dir_vector', fg_position = add_vel_pos (fg_position char_state) dir_vector', node_locations = [w, u', v', 0, 0, 0], ticks_left0 = 1})], next_sig_q = next_sig_q s1 ++ [3, w, u', v']})
+      else (w_grid_upd, obj_grid_upd, s1 {next_sig_q = next_sig_q s1 ++ [3, w, u, v]})
     else if direction char_state < -4 then ([((-w - 1, u, v), def_w_grid), ((-w - 1, u', v'), (w_grid ! (-w - 1, u, v)) {obj = Just (o_target {ident_ = char_rotation (npc_dir_remap (direction char_state)) (d_list !! 4)})})] ++ w_grid_upd, (take 4 (ramp_fill w u' v' (2, []) (surface (f_grid ! (w, div u' 2, div v' 2))))) ++ [((w, u, v), (-2, [])), ((w, u', v'), (-2, [(offset, 1)]))] ++ obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {node_locations = [w, u', v', 0, 0, 0], ticks_left0 = 41})], next_sig_q = next_sig_q s1 ++ [3, w, u', v']})
     else
       if (w - 1, u', v') == (truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)) then (w_grid_upd, obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {direction = (last_dir char_state)})], next_sig_q = next_sig_q s1 ++ [3, w, u, v]})
@@ -693,7 +695,7 @@ npc_damage (w:u:v:blocks) w_grid w_grid_upd obj_grid obj_grid_upd s0 s1 d_list =
       char_state = (npc_states s1) ! (d_list !! 3)
       o_target = fromJust (obj (w_grid ! (-w - 1, u, v)))
   in
-  if c_health char_state - damage <= 0 then (((-w - 1, u, v), (w_grid ! (-w - 1, u, v)) {obj = Just (o_target {ident_ = (d_list !! 1) + 9, texture__ = 1})}) : w_grid_upd, ((w, u, v), (-1, [])) : obj_grid_upd, s1 {message = message s1 ++ [2, 4, 14]})
+  if c_health char_state - damage <= 0 then (((-w - 1, u, v), def_w_grid) : w_grid_upd, ((w, u, v), (-1, [])) : obj_grid_upd, s1 {message = message s1 ++ [2, 4, 14]})
   else (w_grid_upd, obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {c_health = (c_health char_state) - damage})], message = message s1 ++ [2, 4, 16]})
 
 inspect_obj_grid :: Int -> (Int, Int, Int) -> Array (Int, Int, Int) (Int, [Int]) -> [Int] -> IO ()
@@ -810,12 +812,12 @@ run_gplc (x0:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 loo
   report_state (verbose_mode s1) 2 [] [] ("\nnpc_move run with arguments " ++ "0: " ++ show x0)
   report_npc_state (verbose_mode s1) s1 (head d_list)
   run_gplc (tail_ xs) d_list w_grid (fst__ npc_move_) f_grid obj_grid (snd__ npc_move_) s0 (third_ npc_move_) look_up (head_ xs)
-run_gplc code d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up 22 =
+run_gplc (x:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up 22 =
   let npc_damage_ = npc_damage (node_locations ((npc_states s1) ! (head d_list))) w_grid w_grid_upd obj_grid obj_grid_upd s0 s1 d_list
   in do
   report_state (verbose_mode s1) 1 (snd (obj_grid ! (d_list !! 0, d_list !! 1, d_list !! 2))) [] []
   report_state (verbose_mode s1) 2 [] [] ("\nnpc_damage run...")
-  run_gplc (tail_ code) d_list w_grid (fst__ npc_damage_) f_grid obj_grid (snd__ npc_damage_) s0 (third_ npc_damage_) look_up (head_ code)
+  run_gplc (tail_ xs) d_list w_grid (fst__ npc_damage_) f_grid obj_grid (snd__ npc_damage_) s0 (third_ npc_damage_) look_up (head_ xs)
 run_gplc (x0:x1:x2:x3:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up 23 = do
   inspect_obj_grid x0 (x1, x2, x3) obj_grid d_list
   run_gplc (tail_ xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up (head_ xs)
