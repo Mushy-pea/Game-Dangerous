@@ -251,7 +251,7 @@ pass_msg 6 msg_length1 3 1500000 32500000 2100000
 zombie smiley (16)
 ~
 w__ 0 u__ 0 v__ 0 array_index 0 base_id 148 climb_flag 0 fireball_flag 0 fb_w 0 fb_u 0 fb_v 0 fb_angle 0 npc_type 1 c_health 40 w 0 u 25 v 22 w_ 0 u_ 0 v_ 0
-arr_node0 0 arr_node1 0 arr_node2 0 arr_node3 0 arr_node4 0 arr_node5 0 fg_pos_w 0 fg_pos_u 25500000 fg_pos_v 22500000 dir_vector_u 25000 dir_vector_v 0 direction 0 last_dir 0 speed 25000 avoid_dist 2 attack_mode 1 fire_prob 0 sig3 3
+arr_node0 0 arr_node1 0 arr_node2 0 arr_node3 0 arr_node4 0 arr_node5 0 fg_pos_w 0 fg_pos_u 25500000 fg_pos_v 22500000 dir_vector_u 25000 dir_vector_v 0 direction 0 last_dir 0 speed 0 avoid_dist 2 attack_mode 1 fire_prob 0 sig3 3
 w' 0 u' 26 v' 22
 ~
 --signal 0
@@ -276,7 +276,8 @@ chg_grid_ mode w1 u v w1 u v
 ~
 start test (18)
 ~
-sig2 2 cr_w 0 cr_u 10 cr_v 10
+sig2 2 cr_w 0 cr_u 10 cr_v 10 ammo 1 rep 1 shots 10
 ~
 --signal 2
+chg_ps1 ammo rep shots
 send_signal sig2 cr_w cr_u cr_v
