@@ -300,7 +300,7 @@ send_signal :: Int -> Int -> (Int, Int, Int) -> Array (Int, Int, Int) (Int, [Int
 send_signal 0 sig (i0, i1, i2) obj_grid s1 d_list =
   let dest = (d_list !! i0, d_list !! i1, d_list !! i2)
       prog = (snd (obj_grid ! dest))
-  in (obj_grid, s1 {next_sig_q = next_sig_q s1 ++ [d_list !! sig, d_list !! i0, d_list !! i1, d_list !! i2]})
+  in (obj_grid, s1 {next_sig_q = [d_list !! sig, d_list !! i0, d_list !! i1, d_list !! i2] ++ next_sig_q s1})
 send_signal 1 sig dest obj_grid s1 d_list =
   let prog = (snd (obj_grid ! dest))
   in
@@ -666,27 +666,27 @@ npc_move offset d_list (w:u:v:w1:u1:v1:blocks) w_grid w_grid_upd f_grid obj_grid
     if (w, u', v') == (truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)) then
       if attack_mode char_state == True && binary_dice_ 1 s0 == True then
         if health s1 - damage <= 0 then (w_grid_upd, obj_grid_upd, s1 {health = 0, state_chg = 1, message = 0 : msg28})
-        else (w_grid_upd, obj_grid_upd, s1 {health = health s1 - damage, message = message s1 ++ msg29, next_sig_q = next_sig_q s1 ++ [3, w, u, v]})
-      else (w_grid_upd, obj_grid_upd, s1 {next_sig_q = next_sig_q s1 ++ [3, w, u, v]})
+        else (w_grid_upd, obj_grid_upd, s1 {health = health s1 - damage, message = message s1 ++ msg29, next_sig_q = [129, w, u, v] ++ next_sig_q s1})
+      else (w_grid_upd, obj_grid_upd, s1 {next_sig_q = [129, w, u, v] ++ next_sig_q s1})
     else if direction char_state >= 0 then
       if isNothing (obj (w_grid ! (-w - 1, u', v'))) == True || (u, v) == (u', v') then
-        (w_grid'' ++ w_grid_upd, ((w, u, v), (-2, [])) : ((w, u', v'), (-2, [])) : obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {dir_vector = dir_vector', fg_position = add_vel_pos (fg_position char_state) dir_vector', node_locations = [w, u', v', 0, 0, 0], ticks_left0 = 1})], next_sig_q = next_sig_q s1 ++ [3, w, u', v']})
-      else (w_grid_upd, obj_grid_upd, s1 {next_sig_q = next_sig_q s1 ++ [3, w, u, v]})
-    else if direction char_state < -4 then ([((-w - 1, u, v), def_w_grid), ((-w - 1, u', v'), (w_grid ! (-w - 1, u, v)) {obj = Just (o_target {ident_ = char_rotation (npc_dir_remap (direction char_state)) (d_list !! 4)})})] ++ w_grid_upd, (take 4 (ramp_fill w u' v' (2, []) (surface (f_grid ! (w, div u' 2, div v' 2))))) ++ [((w, u, v), (-2, [])), ((w, u', v'), (-2, [(offset, 1)]))] ++ obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {node_locations = [w, u', v', 0, 0, 0], ticks_left0 = 41})], next_sig_q = next_sig_q s1 ++ [3, w, u', v']})
+        (w_grid'' ++ w_grid_upd, ((w, u, v), (-2, [])) : ((w, u', v'), (-2, [])) : obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {dir_vector = dir_vector', fg_position = add_vel_pos (fg_position char_state) dir_vector', node_locations = [w, u', v', 0, 0, 0], ticks_left0 = 1})], next_sig_q = [129, w, u', v'] ++ next_sig_q s1})
+      else (w_grid_upd, obj_grid_upd, s1 {next_sig_q = [129, w, u, v] ++ next_sig_q s1})
+    else if direction char_state < -4 then ([((-w - 1, u, v), def_w_grid), ((-w - 1, u', v'), (w_grid ! (-w - 1, u, v)) {obj = Just (o_target {ident_ = char_rotation (npc_dir_remap (direction char_state)) (d_list !! 4)})})] ++ w_grid_upd, (take 4 (ramp_fill w u' v' (2, []) (surface (f_grid ! (w, div u' 2, div v' 2))))) ++ [((w, u, v), (-2, [])), ((w, u', v'), (-2, [(offset, 1)]))] ++ obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {node_locations = [w, u', v', 0, 0, 0], ticks_left0 = 41})], next_sig_q = [129, w, u', v'] ++ next_sig_q s1})
     else
-      if (w - 1, u', v') == (truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)) then (w_grid_upd, obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {direction = (last_dir char_state)})], next_sig_q = next_sig_q s1 ++ [3, w, u, v]})
-      else ([((-w - 1, u, v), def_w_grid), ((-w, u', v'), (w_grid ! (-w - 1, u, v)) {obj = Just (o_target {ident_ = char_rotation (npc_dir_remap (direction char_state)) (d_list !! 4)})})] ++ w_grid_upd, (take 4 (ramp_fill (w - 1) u' v' (2, []) (surface (f_grid ! (w - 1, div u' 2, div v' 2))))) ++ [((w, u, v), (-2, [])), ((w - 1, u', v'), (-2, [(offset, 1)]))] ++ obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {node_locations = [w - 1, u', v', 0, 0, 0], ticks_left0 = 41})], next_sig_q = next_sig_q s1 ++ [3, w - 1, u', v']})
+      if (w - 1, u', v') == (truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)) then (w_grid_upd, obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {direction = (last_dir char_state)})], next_sig_q = [129, w, u, v] ++ next_sig_q s1})
+      else ([((-w - 1, u, v), def_w_grid), ((-w, u', v'), (w_grid ! (-w - 1, u, v)) {obj = Just (o_target {ident_ = char_rotation (npc_dir_remap (direction char_state)) (d_list !! 4)})})] ++ w_grid_upd, (take 4 (ramp_fill (w - 1) u' v' (2, []) (surface (f_grid ! (w - 1, div u' 2, div v' 2))))) ++ [((w, u, v), (-2, [])), ((w - 1, u', v'), (-2, [(offset, 1)]))] ++ obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {node_locations = [w - 1, u', v', 0, 0, 0], ticks_left0 = 41})], next_sig_q = [129, w - 1, u', v'] ++ next_sig_q s1})
   else if npc_type char_state < 2 && ticks_left0 char_state == 1 then
-    if direction char_state >= 0 then (w_grid' : w_grid_upd, obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {fg_position = add_vel_pos (fg_position char_state) (dir_vector char_state)})], next_sig_q = next_sig_q s1 ++ [3, w, u, v]})
+    if direction char_state >= 0 then (w_grid' : w_grid_upd, obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {fg_position = add_vel_pos (fg_position char_state) (dir_vector char_state)})], next_sig_q = [129, w, u, v] ++ next_sig_q s1})
     else if direction char_state < -4 then
-      if (w + 1, conv_ramp_fill0 !! 1, conv_ramp_fill0 !! 2) == (truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)) then (w_grid_upd, obj_grid_upd, s1 {next_sig_q = next_sig_q s1 ++ [3, w, u', v']})
-      else if fst (obj_grid ! (w + 1, conv_ramp_fill0 !! 1, conv_ramp_fill0 !! 2)) > 0 then (w_grid_upd, obj_grid_upd, s1 {next_sig_q = next_sig_q s1 ++ [3, w, u', v']})
-      else (w_grid_4 (-1) ++ w_grid_upd, take 4 (ramp_fill w u v (0, []) (surface (f_grid ! (w, div u 2, div v 2)))) ++ [((w, u, v), (-2, [])), ramp_fill' 1] ++ obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {node_locations = conv_ramp_fill0 ++ [0, 0, 0], fg_position = ramp_climb_, direction = npc_dir_remap (direction char_state), ticks_left0 = 1})], next_sig_q = next_sig_q s1 ++ [3] ++ conv_ramp_fill0})
+      if (w + 1, conv_ramp_fill0 !! 1, conv_ramp_fill0 !! 2) == (truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)) then (w_grid_upd, obj_grid_upd, s1 {next_sig_q = [129, w, u', v'] ++ next_sig_q s1})
+      else if fst (obj_grid ! (w + 1, conv_ramp_fill0 !! 1, conv_ramp_fill0 !! 2)) > 0 then (w_grid_upd, obj_grid_upd, s1 {next_sig_q = [129, w, u', v'] ++ next_sig_q s1})
+      else (w_grid_4 (-1) ++ w_grid_upd, take 4 (ramp_fill w u v (0, []) (surface (f_grid ! (w, div u 2, div v 2)))) ++ [((w, u, v), (-2, [])), ramp_fill' 1] ++ obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {node_locations = conv_ramp_fill0 ++ [0, 0, 0], fg_position = ramp_climb_, direction = npc_dir_remap (direction char_state), ticks_left0 = 1})], next_sig_q = [129] ++ conv_ramp_fill0 ++ next_sig_q s1})
     else
-      if (w, conv_ramp_fill1 !! 1, conv_ramp_fill1 !! 2) == (truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)) then (w_grid_upd, obj_grid_upd, s1 {next_sig_q = next_sig_q s1 ++ [3, w, u', v']})
-      else if fst (obj_grid ! (w, conv_ramp_fill1 !! 1, conv_ramp_fill1 !! 2)) > 0 then (w_grid_upd, obj_grid_upd, s1 {next_sig_q = next_sig_q s1 ++ [3, w, u', v']})
-      else (w_grid_4 0 ++ w_grid_upd, take 4 (ramp_fill w u v (0, []) (surface (f_grid ! (w, div u 2, div v 2)))) ++ [((w, u, v), (-2, [])), ramp_fill' 0] ++ obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {node_locations = conv_ramp_fill1 ++ [0, 0, 0], fg_position = ramp_climb_, direction = npc_dir_remap (direction char_state), ticks_left0 = 1})], next_sig_q = next_sig_q s1 ++ [3] ++ conv_ramp_fill1})
-  else if npc_type char_state < 2 && ticks_left0 char_state > 1 then (w_grid''' : w_grid_upd, obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {ticks_left0 = ticks_left0 char_state - 1})], next_sig_q = next_sig_q s1 ++ [3, w, u', v']})
+      if (w, conv_ramp_fill1 !! 1, conv_ramp_fill1 !! 2) == (truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)) then (w_grid_upd, obj_grid_upd, s1 {next_sig_q = [129, w, u', v'] ++ next_sig_q s1})
+      else if fst (obj_grid ! (w, conv_ramp_fill1 !! 1, conv_ramp_fill1 !! 2)) > 0 then (w_grid_upd, obj_grid_upd, s1 {next_sig_q = [129, w, u', v'] ++ next_sig_q s1})
+      else (w_grid_4 0 ++ w_grid_upd, take 4 (ramp_fill w u v (0, []) (surface (f_grid ! (w, div u 2, div v 2)))) ++ [((w, u, v), (-2, [])), ramp_fill' 0] ++ obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {node_locations = conv_ramp_fill1 ++ [0, 0, 0], fg_position = ramp_climb_, direction = npc_dir_remap (direction char_state), ticks_left0 = 1})], next_sig_q = [129] ++ conv_ramp_fill1 ++ next_sig_q s1})
+  else if npc_type char_state < 2 && ticks_left0 char_state > 1 then (w_grid''' : w_grid_upd, obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {ticks_left0 = ticks_left0 char_state - 1})], next_sig_q = [129, w, u', v'] ++ next_sig_q s1})
   else throw NPC_feature_not_implemented
 
 npc_damage :: [Int] -> Array (Int, Int, Int) Wall_grid -> [((Int, Int, Int), Wall_grid)] -> Array (Int, Int, Int) (Int, [Int]) -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> Play_state0 -> Play_state1 -> [Int] -> ([((Int, Int, Int), Wall_grid)], [((Int, Int, Int), (Int, [(Int, Int)]))], Play_state1)
@@ -1029,6 +1029,14 @@ pause_text :: Play_state1 -> ([Char], Int, Int, Int) -> [(Int, [Int])]
 pause_text s1 (diff, a, b, c) =
   [(0, msg9), (0, []), (0, msg1 ++ conv_msg (health s1)), (0, msg2 ++ conv_msg (ammo s1)), (0, msg3 ++ conv_msg (gems s1)), (0, msg4 ++ conv_msg (torches s1)), (0, msg5 ++ keys s1), (0, msg6 ++ region s1), (0, conv_msg_ ("Difficulty: " ++ diff)), (0, []), (1, msg10), (2, msg17), (3, msg11), (4, msg12)]
 
+-- This function ensures that all signals sent to NPC GPLC programs are run before any others.  This is done to fix a corner case problem that occured when an NPC and projectile
+-- tried to enter the same voxel in the same tick.
+prioritise_npcs :: [Int] -> [Int] -> [Int] -> [Int]
+prioritise_npcs [] acc0 acc1 = acc0 ++ acc1
+prioritise_npcs (x0:x1:x2:x3:xs) acc0 acc1 =
+  if x0 > 127 then prioritise_npcs xs (x0 : x1 : x2 : x3 : acc0) acc1
+  else prioritise_npcs xs acc0 (x0 : x1 : x2 : x3 : acc1)
+
 -- This function causes the GPLC interpreter to skip an appropriate number of ticks (relative to frames rendered) when the frame rate limit is set to 50 or 60.  This means scripted game events run at
 -- the correct speed whether the frame rate limit is 40, 50 or 60.
 sync_game_t :: Array Int [Char] -> Play_state0 -> Bool
@@ -1049,7 +1057,7 @@ update_play io_box state_ref s0 s1 in_flight f_rate (g, f, mag_r, mag_j) w_grid 
       game_t' = game_t s0 + 1
   in do
   control <- messagePump (hwnd_ io_box)
-  link0 <- link_gplc0 (sync_game_t conf_reg s0) (drop 4 det) [truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)] w_grid [] f_grid obj_grid [] s0 s1 look_up False
+  link0 <- link_gplc0 (sync_game_t conf_reg s0) (drop 4 det) [truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)] w_grid [] f_grid obj_grid [] s0 (s1 {sig_q = prioritise_npcs (sig_q s1) [] []}) look_up False
   link1 <- link_gplc1 s0 s1 obj_grid 0
   link1_ <- link_gplc1 s0 s1 obj_grid 1
   if control == 2 then do

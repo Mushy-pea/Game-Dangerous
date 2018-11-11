@@ -1,7 +1,7 @@
 initial script (1)
 ~
 w 0 u 23 v 18 msg_length0 102 msg_length1 580 hntr 5 podp 6 ud 7 null 0 sig5 5 torch_w -1 torch_u 16 torch_v0 9 torch_v1 10
-cr_w 0 cr_u 25 cr_v 22 sig2 2 ammo 1 rep 1 shots 10
+cr_w 0 cr_u 25 cr_v 22 sig128 128 ammo 1 rep 1 shots 10
 ~
 --signal 1
 pass_msg 104 msg_length0 1 0 23 18 -1 0 16 38 31 27 45 31 63 45 31 38 31 29 46 63 30 35 32 32 35 29 47 38 46 51 63 38 31 48 31 38 -1 0 63 -1 1 8 31 51 64 63 40 41 46 63 46 41 41 63 44 35 45 37 51 73 -1 2 16 38 31 40 46 51 63 41 32 63 30 27 40 33 31 44 63 42 38 31 27 45 31 -1 3 21 38 46 44 27 63 30 27 40 33 31 44 2 4 8
@@ -23,7 +23,7 @@ chg_grid_ null w torch_u torch_v1 w torch_u torch_v1
 --signal 5
 chg_grid_ null w u v w u v
 pass_msg 582 msg_length1 1 0 23 18 -1 0 25 41 47 63 27 44 31 63 2 31 40 63 4 41 40 41 34 47 33 34 64 63 27 63 2 47 45 35 40 31 45 45 63 3 41 40 46 35 40 47 35 46 51 -1 0 13 27 40 27 33 31 44 63 49 35 46 34 63 46 34 31 63 3 41 44 42 41 44 27 46 35 41 40 63 41 32 63 1 31 44 41 45 42 27 29 31 63 21 40 35 41 40 45 -1 0 75 3 1 21 75 64 63 31 39 42 38 41 51 31 30 63 35 40 63 46 34 31 35 44 63 13 27 44 45 63 28 27 45 31 30 63 33 31 39 63 39 35 40 35 40 33 -1 0 32 27 29 35 38 35 46 51 66 63 1 32 46 31 44 63 33 41 35 40 33 63 46 41 63 28 31 30 63 41 40 31 63 40 35 33 34 46 63 51 41 47 63 27 49 27 37 31 -1 0 35 40 63 27 63 30 35 32 32 31 44 31 40 46 63 42 27 44 46 63 41 32 63 46 34 31 63 28 27 45 31 63 51 41 47 65 44 31 63 40 41 46 -1 0 32 27 39 35 38 35 27 44 63 49 35 46 34 63 27 40 30 63 40 41 63 35 30 31 27 63 34 41 49 63 51 41 47 63 33 41 46 63 46 34 31 44 31 66 -1 0 20 34 35 40 33 45 63 45 31 31 39 63 41 30 30 38 51 63 43 47 35 31 46 63 32 41 44 63 27 63 28 27 45 31 63 49 35 46 34 63 44 41 46 27 46 35 40 33 -1 0 45 34 35 32 46 45 64 63 49 35 46 34 63 40 41 63 41 40 31 63 27 44 41 47 40 30 63 27 40 30 63 41 40 38 51 63 46 34 31 63 32 27 35 40 46 31 45 46 -1 0 49 34 35 45 42 31 44 63 41 32 63 27 35 44 63 32 44 41 39 63 46 34 31 63 38 35 32 31 63 45 47 42 42 41 44 46 63 48 31 40 46 45 63 32 41 44 -1 0 29 41 39 42 27 40 51 66 63 3 27 40 63 51 41 47 63 45 41 38 48 31 63 46 34 31 63 39 51 45 46 31 44 51 67 63 18 31 39 31 39 28 31 44 64 -1 0 51 41 47 65 44 31 63 2 47 45 35 40 31 45 45 63 3 41 40 46 35 40 47 35 46 51 63 13 27 40 27 33 31 44 63 32 41 44 63 27 63 44 31 27 45 41 40 66 -1 1 20 34 31 63 29 41 40 46 35 40 47 35 46 51 63 35 45 63 35 40 63 51 41 47 66 63 16 44 31 45 45 63 50 63 46 41 63 29 41 40 46 35 40 47 31 66
-send_signal sig2 cr_w cr_u cr_v
+send_signal sig128 cr_w cr_u cr_v
 chg_ps1 ammo rep shots
 ~
 torch (2)
@@ -251,15 +251,15 @@ pass_msg 6 msg_length1 3 1500000 32500000 2100000
 zombie smiley (16)
 ~
 w__ 0 u__ 0 v__ 0 array_index 0 base_id 148 climb_flag 0 fireball_flag 0 fb_w 0 fb_u 0 fb_v 0 fb_angle 0 npc_type 1 c_health 40 w 0 u 25 v 22 w_ 0 u_ 0 v_ 0
-arr_node0 0 arr_node1 0 arr_node2 0 arr_node3 0 arr_node4 0 arr_node5 0 fg_pos_w 0 fg_pos_u 25500000 fg_pos_v 22500000 dir_vector_u 25000 dir_vector_v 0 direction 0 last_dir 0 speed 0 avoid_dist 2 attack_mode 1 fire_prob 0 sig3 3
-w' 0 u' 26 v' 22
+arr_node0 0 arr_node1 0 arr_node2 0 arr_node3 0 arr_node4 0 arr_node5 0 fg_pos_w 0 fg_pos_u 25500000 fg_pos_v 22500000 dir_vector_u 25000 dir_vector_v 0 direction 0 last_dir 0 speed 25000 avoid_dist 2 attack_mode 1 fire_prob 0
+w' 0 u' 26 v' 22 sig129 129
 ~
 --signal 0
 npc_damage
---signal 2
+--signal 128
 init_npc npc_type 0
-send_signal sig3 w u v
---signal 3
+send_signal sig129 w u v
+--signal 129
 if 0 climb_flag npc_type 2 4
 npc_move 39
 npc_decision 40
