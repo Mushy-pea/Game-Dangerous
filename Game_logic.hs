@@ -537,6 +537,9 @@ cpede_decision 1 choice i target_u target_v w u v w_grid f_grid obj_grid s0 s1 l
     if line_sight1 == 1 then (another_dir (delete (no_cpede_reverse choice) (delete choice [1, 3, 5, 7])) 2 w u v (snd__ (fg_position char_state), third_ (fg_position char_state)) w_grid f_grid obj_grid look_up s0, False)
     else (choice, False)
 
+upd_dir_list :: Int -> [Int] -> [Int]
+upd_dir_list dir (x0:x1:x2:x3:x4:x5) = [dir, x0, x1, x2, x3, x4]
+
 vector_to_angle :: Float -> Float -> Int
 vector_to_angle u_comp v_comp =
   let a = truncate ((atan (abs v_comp / abs u_comp)) * 100)
@@ -601,9 +604,9 @@ npc_decision 3 flag offset target_w target_u target_v d_list (x0:x1:x2:xs) w_gri
   in
   if snd choice == True then
     if (prob_seq s0) ! (mod (game_t s0) 240) < fire_prob char_state then
-      (((x0, x1, x2), (fst prog, [(offset, 1), (offset + 1, fl_to_int (fst__ fg_pos)), (offset + 2, fl_to_int (snd__ fg_pos)), (offset + 3, fl_to_int (third_ fg_pos)), (offset + 4, npc_dir_table (fst choice))])) : obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {direction = fst choice})]})
-    else (obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {direction = fst choice})]})
-  else (obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {direction = fst choice})]})
+      (((x0, x1, x2), (fst prog, [(offset, 1), (offset + 1, fl_to_int (fst__ fg_pos)), (offset + 2, fl_to_int (snd__ fg_pos)), (offset + 3, fl_to_int (third_ fg_pos)), (offset + 4, npc_dir_table (fst choice))])) : obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {dir_list = upd_dir_list (fst choice) dir_list})]})
+    else (obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {dir_list = upd_dir_list (fst choice) dir_list})]})
+  else (obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {dir_list = upd_dir_list (fst choice) dir_list})]})
 
 det_dir_vector :: Int -> Float -> UArray (Int, Int) Float -> (Float, Float)
 det_dir_vector dir speed look_up =

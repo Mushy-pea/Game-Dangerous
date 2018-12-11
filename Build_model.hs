@@ -78,8 +78,8 @@ game_t :: Int, torch_t0 :: Int, torch_t_limit :: Int, show_fps_ :: Bool, prob_se
 data Play_state1 = Play_state1 {health :: Int, ammo :: Int, gems :: Int, torches :: Int, keys :: [Int], region :: [Int], difficulty :: ([Char], Int, Int, Int), sig_q :: [Int], next_sig_q :: [Int],
 message :: [Int], state_chg :: Int, verbose_mode :: Bool, angle_step :: Int, npc_states :: Array Int NPC_state} deriving (Eq)
 
-data NPC_state = NPC_state {npc_type :: Int, c_health :: Int, ticks_left0 :: Int, ticks_left1 :: Int, node_locations :: [Int], arr_node_locs :: [Int], fg_position :: (Float, Float, Float), dir_vector :: (Float, Float), direction :: Int, last_dir :: Int,
-target_u' :: Int, target_v' :: Int, target_w' :: Int, speed :: Float, avoid_dist :: Int, attack_mode :: Bool, final_appr :: Bool, fire_prob :: Int} deriving (Eq, Show)
+data NPC_state = NPC_state {npc_type :: Int, c_health :: Int, ticks_left0 :: Int, ticks_left1 :: Int, node_locations :: [Int], cstate_arr_indices :: (int, Int), fg_position :: (Float, Float, Float), dir_vector :: (Float, Float), direction :: Int,
+last_dir :: Int, dir_list :: [Int], node_num :: Int, head_index :: Int, target_u' :: Int, target_v' :: Int, target_w' :: Int, speed :: Float, avoid_dist :: Int, attack_mode :: Bool, final_appr :: Bool, fire_prob :: Int} deriving (Eq, Show)
 
 data Save_state = Save_state {is_set :: Bool, w_grid_ :: Array (Int, Int, Int) Wall_grid, f_grid_ :: Array (Int, Int, Int) Floor_grid, obj_grid_ :: Array (Int, Int, Int) (Int, [Int]), s0_ :: Play_state0, s1_ :: Play_state1}
 
