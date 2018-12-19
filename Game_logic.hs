@@ -632,8 +632,12 @@ det_dir_vector dir speed look_up =
   if dir == 0 then (0, 0)
   else (speed * look_up ! (2, dir'), speed * look_up ! (1, dir'))
 
-char_rotation :: Int -> Int -> Int
-char_rotation dir base_id = base_id + ((dir - 1) * 2)
+char_rotation :: Int -> Int -> Int -> Int
+char_rotation 0 dir base_id = base_id + ((dir - 1) * 2)
+char_rotation 1 1 base_id = base_id
+char_rotation 1 3 base_id = base_id + 2
+char_rotation 1 5 base_id = base_id + 4
+char_rotation 1 7 base_id = base_id + 6
 
 add_vel_pos (fg_w, fg_u, fg_v) (vel_u, vel_v) = (fg_w, fg_u + vel_u, fg_v + vel_v)
 
@@ -677,7 +681,7 @@ npc_move offset d_list (w:u:v:w1:u1:v1:blocks) w_grid w_grid_upd f_grid obj_grid
       conv_ramp_fill0 = conv_ramp_fill w u v 1 (surface (f_grid ! (w, div u 2, div v 2)))
       conv_ramp_fill1 = conv_ramp_fill w u v 0 (surface (f_grid ! (w, div u 2, div v 2)))
       w_grid' = ((-w - 1, u, v), (w_grid ! (-w - 1, u, v)) {obj = Just (o_target {u__ = snd__ (fg_position char_state), v__ = third_ (fg_position char_state)})})
-      w_grid'' = [((-w - 1, u', v'), (w_grid ! (-w - 1, u, v)) {obj = Just (o_target {ident_ = char_rotation (direction char_state) (d_list !! 4)})}), ((-w - 1, u, v), def_w_grid)]
+      w_grid'' = [((-w - 1, u', v'), (w_grid ! (-w - 1, u, v)) {obj = Just (o_target {ident_ = char_rotation 0 (direction char_state) (d_list !! 4)})}), ((-w - 1, u, v), def_w_grid)]
       w_grid''' = ((-w - 1, u, v), (w_grid ! (-w - 1, u, v)) {obj = Just (o_target {w__ = fst__ ramp_climb_, u__ = snd__ ramp_climb_, v__ = third_ ramp_climb_})})
       w_grid_4 = \dw -> ([((-w - 1, u, v), def_w_grid)] ++ drop 4 (ramp_fill (-w - 1 + dw) u v ((w_grid ! (-w - 1, u, v)) {obj = Just (o_target {w__ = fst__ ramp_climb_, u__ = snd__ ramp_climb_, v__ = third_ ramp_climb_})}) (surface (f_grid ! (w, div u 2, div v 2)))))
       damage = det_damage (difficulty s1) s0
@@ -692,10 +696,10 @@ npc_move offset d_list (w:u:v:w1:u1:v1:blocks) w_grid w_grid_upd f_grid obj_grid
       if isNothing (obj (w_grid ! (-w - 1, u', v'))) == True || (u, v) == (u', v') then
         (w_grid'' ++ w_grid_upd, ((w, u, v), (-2, [])) : ((w, u', v'), (-2, [])) : obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {dir_vector = dir_vector', fg_position = add_vel_pos (fg_position char_state) dir_vector', node_locations = [w, u', v', 0, 0, 0], ticks_left0 = 1})], next_sig_q = [129, w, u', v'] ++ next_sig_q s1})
       else (w_grid_upd, obj_grid_upd, s1 {next_sig_q = [129, w, u, v] ++ next_sig_q s1})
-    else if direction char_state < -4 then ([((-w - 1, u, v), def_w_grid), ((-w - 1, u', v'), (w_grid ! (-w - 1, u, v)) {obj = Just (o_target {ident_ = char_rotation (npc_dir_remap (direction char_state)) (d_list !! 4)})})] ++ w_grid_upd, (take 4 (ramp_fill w u' v' (2, []) (surface (f_grid ! (w, div u' 2, div v' 2))))) ++ [((w, u, v), (-2, [])), ((w, u', v'), (-2, [(offset, 1)]))] ++ obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {node_locations = [w, u', v', 0, 0, 0], ticks_left0 = 41})], next_sig_q = [129, w, u', v'] ++ next_sig_q s1})
+    else if direction char_state < -4 then ([((-w - 1, u, v), def_w_grid), ((-w - 1, u', v'), (w_grid ! (-w - 1, u, v)) {obj = Just (o_target {ident_ = char_rotation 0 (npc_dir_remap (direction char_state)) (d_list !! 4)})})] ++ w_grid_upd, (take 4 (ramp_fill w u' v' (2, []) (surface (f_grid ! (w, div u' 2, div v' 2))))) ++ [((w, u, v), (-2, [])), ((w, u', v'), (-2, [(offset, 1)]))] ++ obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {node_locations = [w, u', v', 0, 0, 0], ticks_left0 = 41})], next_sig_q = [129, w, u', v'] ++ next_sig_q s1})
     else
       if (w - 1, u', v') == (truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)) then (w_grid_upd, obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {direction = (last_dir char_state)})], next_sig_q = [129, w, u, v] ++ next_sig_q s1})
-      else ([((-w - 1, u, v), def_w_grid), ((-w, u', v'), (w_grid ! (-w - 1, u, v)) {obj = Just (o_target {ident_ = char_rotation (npc_dir_remap (direction char_state)) (d_list !! 4)})})] ++ w_grid_upd, (take 4 (ramp_fill (w - 1) u' v' (2, []) (surface (f_grid ! (w - 1, div u' 2, div v' 2))))) ++ [((w, u, v), (-2, [])), ((w - 1, u', v'), (-2, [(offset, 1)]))] ++ obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {node_locations = [w - 1, u', v', 0, 0, 0], ticks_left0 = 41})], next_sig_q = [129, w - 1, u', v'] ++ next_sig_q s1})
+      else ([((-w - 1, u, v), def_w_grid), ((-w, u', v'), (w_grid ! (-w - 1, u, v)) {obj = Just (o_target {ident_ = char_rotation 0 (npc_dir_remap (direction char_state)) (d_list !! 4)})})] ++ w_grid_upd, (take 4 (ramp_fill (w - 1) u' v' (2, []) (surface (f_grid ! (w - 1, div u' 2, div v' 2))))) ++ [((w, u, v), (-2, [])), ((w - 1, u', v'), (-2, [(offset, 1)]))] ++ obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {node_locations = [w - 1, u', v', 0, 0, 0], ticks_left0 = 41})], next_sig_q = [129, w - 1, u', v'] ++ next_sig_q s1})
   else if ticks_left0 char_state == 1 then
     if direction char_state >= 0 then (w_grid' : w_grid_upd, obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {fg_position = add_vel_pos (fg_position char_state) (dir_vector char_state)})], next_sig_q = [129, w, u, v] ++ next_sig_q s1})
     else if direction char_state < -4 then
@@ -709,6 +713,9 @@ npc_move offset d_list (w:u:v:w1:u1:v1:blocks) w_grid w_grid_upd f_grid obj_grid
   else if ticks_left0 char_state > 1 then (w_grid''' : w_grid_upd, obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {ticks_left0 = ticks_left0 char_state - 1})], next_sig_q = [129, w, u', v'] ++ next_sig_q s1})
   else throw NPC_feature_not_implemented
 
+animate_cpede :: Int -> Int -> Int -> Int -> [Int] -> Int
+animate_cpede t n base_id model_id frames = frames !! ((mod (div t 4) n) + (7 - (model_id - base_id)))
+
 cpede_move :: Int -> [Int] -> [Int] -> Array (Int, Int, Int) Wall_grid -> [((Int, Int, Int), Wall_grid)] -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> Play_state0 -> Play_state1 -> UArray (Int, Int) Float -> ([((Int, Int, Int), Wall_grid)], [((Int, Int, Int), (Int, [(Int, Int)]))], Play_state1)
 cpede_move offset d_list (w:u:v:w1:u1:v1:blocks) w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up =
   let char_state = (npc_states s1) ! (d_list !! 3)
@@ -717,7 +724,9 @@ cpede_move offset d_list (w:u:v:w1:u1:v1:blocks) w_grid w_grid_upd f_grid obj_gr
       u' = fst (fst cpede_pos_)
       v' = snd (fst cpede_pos_)
       o_target = fromMaybe def_obj_place (obj (w_grid ! (-w - 1, u, v)))
-      w_grid'' = [((-w - 1, u', v'), (w_grid ! (-w - 1, u, v)) {obj = Just (o_target {ident_ = char_rotation ((dir_list h_char_state) !! (node_num char_state)) (d_list !! 4)})}), ((-w - 1, u, v), def_w_grid)]
+      char_rotation_ = char_rotation 1 ((dir_list h_char_state) !! (node_num char_state)) (d_list !! 4)
+      w_grid' = ((-w - 1, u, v), (w_grid ! (-w - 1, u, v) {obj = Just (o_target {u__ = fst (snd cpede_pos_), v__ = snd (snd cpede_pos_), texture__ = animate_cpede (game_t s0) 11 (d_list !! 4) char_rotation_ cpede_frames})})
+      w_grid'' = [((-w - 1, u', v'), (w_grid ! (-w - 1, u, v)) {obj = Just (o_target {ident_ = char_rotation_})}), ((-w - 1, u, v), def_w_grid)]
       damage = det_damage (difficulty s1) s0
   in
   if ticks_left0 char_state == 0 then
@@ -728,7 +737,8 @@ cpede_move offset d_list (w:u:v:w1:u1:v1:blocks) w_grid w_grid_upd f_grid obj_gr
       else (w_grid_upd, obj_grid_upd, s1 {next_sig_q = [129, w, u, v] ++ next_sig_q s1})
     else if isNothing (obj (w_grid ! (-w - 1, u', v'))) == True then
       (w_grid'' ++ w_grid_upd, ((w, u, v), (-2, [])) : ((w, u', v'), (-2, [])) : ((w, u, v), (2, [])) : obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {node_locations = [w, u', v', w, u, v], ticks_left0 = 40})], next_sig_q = cpede_sig_check ([129, w, u', v', 129] ++ drop 3 (node_locations char_state)) (node_num char_state) (end_node char_state)})
-
+    else (w_grid_upd, obj_grid_upd, s1 {next_sig_q = [129, w, u, v] ++ next_sig_q s1})
+  else (w_grid' : w_grid_upd, 
 
 npc_damage :: [Int] -> Array (Int, Int, Int) Wall_grid -> [((Int, Int, Int), Wall_grid)] -> Array (Int, Int, Int) (Int, [Int]) -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> Play_state0 -> Play_state1 -> [Int] -> ([((Int, Int, Int), Wall_grid)], [((Int, Int, Int), (Int, [(Int, Int)]))], Play_state1)
 npc_damage (w:u:v:blocks) w_grid w_grid_upd obj_grid obj_grid_upd s0 s1 d_list =
