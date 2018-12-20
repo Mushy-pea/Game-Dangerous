@@ -279,3 +279,6 @@ sig2 2 cr_w 0 cr_u 10 cr_v 10
 ~
 --signal 2
 send_signal sig2 cr_w cr_u cr_v
+~
+centipede (19)
+~
