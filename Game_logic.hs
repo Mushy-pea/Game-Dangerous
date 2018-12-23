@@ -432,20 +432,20 @@ init_npc offset i s1 d_list =
   let i_npc_type = d_list !! offset
       i_c_health = d_list !! (offset + 1)
       i_node_locations = take 6 (drop (offset + 2) d_list)
-      i_fg_position = int_to_float_v (d_list !! (offset + 14)) (d_list !! (offset + 15)) (d_list !! (offset + 16))
-      i_dir_vector = (int_to_float (d_list !! (offset + 17)), int_to_float (d_list !! (offset + 18)))
-      i_direction = d_list !! (offset + 19)
-      i_last_dir = d_list !! (offset + 20)
-      i_speed = int_to_float (d_list !! (offset + 21))
-      i_avoid_dist = d_list !! (offset + 22)
-      i_attack_mode = int_to_bool (d_list !! (offset + 23))
-      i_fire_prob = d_list !! (offset + 24)
-      i_dir_list = take 6 (drop (offset + 25) d_list)
-      i_node_num = d_list !! (offset + 31)
-      i_end_node = d_list !! (offset + 32)
-      i_head_index = d_list !! (offset + 33)
+      i_fg_position = int_to_float_v (d_list !! (offset + 8)) (d_list !! (offset + 9)) (d_list !! (offset + 10))
+      i_dir_vector = (int_to_float (d_list !! (offset + 11)), int_to_float (d_list !! (offset + 12)))
+      i_direction = d_list !! (offset + 13)
+      i_last_dir = d_list !! (offset + 14)
+      i_speed = int_to_float (d_list !! (offset + 15))
+      i_avoid_dist = d_list !! (offset + 16)
+      i_attack_mode = int_to_bool (d_list !! (offset + 17))
+      i_fire_prob = d_list !! (offset + 18)
+      i_dir_list = take 6 (drop (offset + 19) d_list)
+      i_node_num = d_list !! (offset + 25)
+      i_end_node = d_list !! (offset + 26)
+      i_head_index = d_list !! (offset + 27)
   in 
-  s1 {npc_states = (npc_states s1) // [(i, NPC_state {npc_type = i_npc_type, c_health = i_c_health, ticks_left0 = 0, ticks_left1 = 0, node_locations = i_node_locations,
+  s1 {npc_states = (npc_states s1) // [(d_list !! i, NPC_state {npc_type = i_npc_type, c_health = i_c_health, ticks_left0 = 0, ticks_left1 = 0, node_locations = i_node_locations,
       fg_position = i_fg_position, dir_vector = i_dir_vector, direction = i_direction, last_dir = i_last_dir, target_u' = 0, target_v' = 0, target_w' = 0, speed = i_speed, avoid_dist = i_avoid_dist,
       attack_mode = i_attack_mode, final_appr = False, fire_prob = i_fire_prob, dir_list = i_dir_list, node_num = i_node_num, end_node = i_end_node, head_index = i_head_index})]}
 
@@ -557,8 +557,8 @@ vector_to_angle u_comp v_comp =
 npc_decision :: Int -> Int -> Int -> Int -> Int -> Int -> [Int] -> [Int] -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> Play_state0 -> Play_state1 -> UArray (Int, Int) Float -> ([((Int, Int, Int), (Int, [(Int, Int)]))], Play_state1)
 npc_decision 0 flag offset target_w target_u target_v d_list (x0:x1:x2:xs) w_grid f_grid obj_grid obj_grid_upd s0 s1 look_up =
   let char_state = (npc_states s1) ! (d_list !! 3)
-      s1' = \t0 t1 w' u' v' -> s1 {npc_states = (npc_states s1) // [(head d_list, char_state {ticks_left0 = t0, ticks_left1 = t1, target_w' = w', target_u' = u', target_v' = v'})]}
-      s1'' = \t1 u' v' f -> s1 {npc_states = (npc_states s1) // [(head d_list, char_state {ticks_left1 = t1, target_u' = u', target_v' = v', final_appr = f})]}
+      s1' = \t0 t1 w' u' v' -> s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {ticks_left0 = t0, ticks_left1 = t1, target_w' = w', target_u' = u', target_v' = v'})]}
+      s1'' = \t1 u' v' f -> s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {ticks_left1 = t1, target_u' = u', target_v' = v', final_appr = f})]}
       rand_target = det_rand_target s0 (snd__ (snd (bounds w_grid))) (third_ (snd (bounds w_grid)))
       fg_pos = fg_position char_state
   in
@@ -571,7 +571,7 @@ npc_decision 0 flag offset target_w target_u target_v d_list (x0:x1:x2:xs) w_gri
     else if ticks_left1 char_state == 0 || (x0 == target_w' char_state && x1 == target_u' char_state && x2 == target_v' char_state) then npc_decision 1 0 offset (fst__ rand_target) (snd__ rand_target) (third_ rand_target) d_list (x0:x1:x2:xs) w_grid f_grid obj_grid obj_grid_upd s0 (s1' 0 1000 (fst__ rand_target) (snd__ rand_target) (third_ rand_target)) look_up
     else npc_decision 1 0 offset (target_w' char_state) (target_u' char_state) (target_v' char_state) d_list (x0:x1:x2:xs) w_grid f_grid obj_grid obj_grid_upd s0 (s1' 0 ((ticks_left1 char_state) - 1) (target_w' char_state) (target_u' char_state) (target_v' char_state)) look_up
   else if npc_type char_state < 2 then (obj_grid_upd, s1' 1 ((ticks_left1 char_state) - 1) (target_w' char_state) (target_u' char_state) (target_v' char_state))
-  else (obj_grid_upd, s1' ((ticks_left0 char_state) - 1) ((ticks_left1 char_state) - 1) (target_w' char_state) (target_u' char_state) (target_v' char_state))
+  else (obj_grid_upd, s1' (ticks_left0 char_state) ((ticks_left1 char_state) - 1) (target_w' char_state) (target_u' char_state) (target_v' char_state))
 npc_decision 1 flag offset target_w target_u target_v d_list (x0:x1:x2:xs) w_grid f_grid obj_grid obj_grid_upd s0 s1 look_up =
   let char_state = (npc_states s1) ! (d_list !! 3)
       down_ramp = local_down_ramp (f_grid ! (x0, div x1 2, div x2 2))
@@ -604,7 +604,7 @@ npc_decision 2 flag offset target_w target_u target_v d_list (x0:x1:x2:xs) w_gri
     else (obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {direction = another_dir_, last_dir = another_dir_})]})
 npc_decision 3 flag offset target_w target_u target_v d_list (x0:x1:x2:xs) w_grid f_grid obj_grid obj_grid_upd s0 s1 look_up =
   let char_state = (npc_states s1) ! (d_list !! 3)
-      choice = cpede_decision 0 0 (head d_list) target_u target_v x0 x1 x2 w_grid f_grid obj_grid s0 s1 look_up
+      choice = cpede_decision 0 0 (d_list !! 3) target_u target_v x0 x1 x2 w_grid f_grid obj_grid s0 s1 look_up
       prog = obj_grid ! (x0, x1, x2)
       fg_pos = fg_position char_state
   in
@@ -776,102 +776,82 @@ run_gplc xs d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up 
 --  report_state (verbose_mode s1) 2 [] [] ("\nchg_state run with arguments " ++ "0: " ++ show (d_list !! x0) ++ " 1: " ++ show (d_list !! x1) ++ " 2: " ++ show (d_list !! x2) ++ " 3: " ++ show (d_list !! x3) ++ " 4: " ++ show (d_list !! x4) ++ " 5: " ++ show (d_list !! x5))
   run_gplc (tail_ (snd chg_state_)) d_list w_grid (fst chg_state_) f_grid obj_grid obj_grid_upd s0 s1 look_up (head_ (snd chg_state_))
 run_gplc (x0:x1:x2:x3:x4:x5:x6:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up 3 = do
-  report_state (verbose_mode s1) 1 (snd (obj_grid ! (d_list !! 0, d_list !! 1, d_list !! 2))) [] []
   report_state (verbose_mode s1) 2 [] [] ("\nchg_grid run with arguments " ++ "0: " ++ show (d_list !! x0) ++ " 1: " ++ show (d_list !! x1) ++ " 2: " ++ show (d_list !! x2) ++ " 3: " ++ show (d_list !! x3) ++ " 4: " ++ show (d_list !! x4) ++ " 5: " ++ show (d_list !! x5) ++ " 6: " ++ show (d_list !! x6))
   run_gplc (tail_ xs) d_list w_grid (chg_grid x0 (x1, x2, x3) (x4, x5, x6) w_grid def_w_grid w_grid_upd d_list) f_grid obj_grid obj_grid_upd s0 s1 look_up (head_ xs)
 run_gplc (x0:x1:x2:x3:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up 4 =
   let sig = send_signal 0 x0 (x1, x2, x3) obj_grid s1 d_list
   in do
-  report_state (verbose_mode s1) 1 (snd (obj_grid ! (d_list !! 0, d_list !! 1, d_list !! 2))) [] []
   report_state (verbose_mode s1) 2 [] [] ("\nsend_signal run with arguments " ++ "0: " ++ show (d_list !! x0) ++ " 1: " ++ show (d_list !! x1) ++ " 2: " ++ show (d_list !! x2) ++ " 3: " ++ show (d_list !! x3))
   run_gplc (tail_ xs) d_list w_grid w_grid_upd f_grid (fst sig) obj_grid_upd s0 (snd sig) look_up (head_ xs)
 run_gplc (x0:x1:x2:x3:x4:x5:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up 5 = do
-  report_state (verbose_mode s1) 1 (snd (obj_grid ! (d_list !! 0, d_list !! 1, d_list !! 2))) [] []
   report_state (verbose_mode s1) 2 [] [] ("\nchg_value run with arguments " ++ "0: " ++ show x0 ++ " 1: " ++ show (d_list !! x1) ++ " 2: " ++ show (d_list !! x2) ++ " 3: " ++ show (d_list !! x3) ++ " 4: " ++ show (d_list !! x4) ++ " 5: " ++ show (d_list !! x5))
   run_gplc (tail_ xs) d_list w_grid w_grid_upd f_grid obj_grid (chg_value x0 x1 x2 (x3, x4, x5) d_list obj_grid obj_grid_upd) s0 s1 look_up (head_ xs)
 run_gplc (x0:x1:x2:x3:x4:x5:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up 6 = do
-  report_state (verbose_mode s1) 1 (snd (obj_grid ! (d_list !! 0, d_list !! 1, d_list !! 2))) [] []
   report_state (verbose_mode s1) 2 [] [] ("\nchg_floor run with arguments " ++ "0: " ++ show (d_list !! x0) ++ " 1: " ++ show (d_list !! x1) ++ " 2: " ++ show (d_list !! x2) ++ " 3: " ++ show (d_list !! x3) ++ " 4: " ++ show (d_list !! x4) ++ " 5: " ++ show (d_list !! x5))
   run_gplc (tail_ xs) d_list w_grid w_grid_upd (chg_floor x0 x1 x2 (x3, x4, x5) f_grid d_list) obj_grid obj_grid_upd s0 s1 look_up (head_ xs)
 run_gplc (x0:x1:x2:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up 7 = do
-  report_state (verbose_mode s1) 1 (snd (obj_grid ! (d_list !! 0, d_list !! 1, d_list !! 2))) [] []
   report_state (verbose_mode s1) 2 [] [] ("\nchg_ps1 run with arguments " ++ "0: " ++ show (d_list !! x0) ++ " 1: " ++ show (d_list !! x1) ++ " 2: " ++ show (d_list !! x2))
   run_gplc (tail_ xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 (chg_ps1 x0 x1 x2 d_list s1) look_up (head_ xs)
 run_gplc (x0:x1:x2:x3:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up 8 = do
-  report_state (verbose_mode s1) 1 (snd (obj_grid ! (d_list !! 0, d_list !! 1, d_list !! 2))) [] []
   report_state (verbose_mode s1) 2 [] [] ("\nchg_obj_type run with arguments " ++ "0: " ++ show (d_list !! x0) ++ " 1: " ++ show (d_list !! x1) ++ " 2: " ++ show (d_list !! x2) ++ " 3: " ++ show (d_list !! x3))
   run_gplc (tail_ xs) d_list w_grid w_grid_upd f_grid obj_grid (chg_obj_type x0 (x1, x2, x3) d_list obj_grid obj_grid_upd) s0 s1 look_up (head_ xs)
 run_gplc (x0:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up 9 = do
   report_state (verbose_mode s1) 1 (snd (obj_grid ! (d_list !! 0, d_list !! 1, d_list !! 2))) [] []
   run_gplc (tail_ xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 (place_hold x0 d_list s1) look_up (head_ xs)
 run_gplc (x0:x1:x2:x3:x4:x5:x6:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up 10 = do
-  report_state (verbose_mode s1) 1 (snd (obj_grid ! (d_list !! 0, d_list !! 1, d_list !! 2))) [] []
   report_state (verbose_mode s1) 2 [] [] ("\nchg_grid_ run with arguments " ++ "0: " ++ show (d_list !! x0) ++ " 1: " ++ show (d_list !! x1) ++ " 2: " ++ show (d_list !! x2) ++ " 3: " ++ show (d_list !! x3) ++ " 4: " ++ show (d_list !! x4) ++ " 5: " ++ show (d_list !! x5) ++ " 6: " ++ show (d_list !! x6))
   run_gplc (tail_ xs) d_list w_grid w_grid_upd f_grid obj_grid (chg_grid_ x0 (x1, x2, x3) (x4, x5, x6) obj_grid_upd d_list) s0 s1 look_up (head_ xs)
 run_gplc (x0:x1:x2:x3:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up 11 = do
-  report_state (verbose_mode s1) 1 (snd (obj_grid ! (d_list !! 0, d_list !! 1, d_list !! 2))) [] []
   report_state (verbose_mode s1) 2 [] [] ("\ncopy_ps1 run with arguments " ++ "0: " ++ show x0 ++ " 1: " ++ show (d_list !! x1) ++ " 2: " ++ show (d_list !! x2) ++ " 3: " ++ show (d_list !! x3))
   run_gplc (tail_ xs) d_list w_grid w_grid_upd f_grid obj_grid (copy_ps1 x0 (x1, x2, x3) s1 obj_grid obj_grid_upd d_list) s0 s1 look_up (head_ xs)
 run_gplc (x0:x1:x2:x3:x4:x5:x6:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up 12 = do
-  report_state (verbose_mode s1) 1 (snd (obj_grid ! (d_list !! 0, d_list !! 1, d_list !! 2))) [] []
   report_state (verbose_mode s1) 2 [] [] ("\ncopy_lstate run with arguments " ++ "0: " ++ show x0 ++ " 1: " ++ show (d_list !! x1) ++ " 2: " ++ show (d_list !! x2) ++ " 3: " ++ show (d_list !! x3) ++ " 4: " ++ show (d_list !! x4) ++ " 5: " ++ show (d_list !! x5) ++ " 6: " ++ show (d_list !! x6))
   run_gplc (tail_ xs) d_list w_grid w_grid_upd f_grid obj_grid (copy_lstate x0 (x1, x2, x3) (x4, x5, x6) w_grid obj_grid obj_grid_upd d_list) s0 s1 look_up (head_ xs)
 run_gplc (x:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up 13 =
   let pass_msg' = pass_msg x xs s1 d_list
   in do
-  report_state (verbose_mode s1) 1 (snd (obj_grid ! (d_list !! 0, d_list !! 1, d_list !! 2))) [] []
   report_state (verbose_mode s1) 2 [] [] ("\npass_msg run with arguments " ++ "msg_length: " ++ show (d_list !! x) ++ " message data: " ++ show (take (d_list !! x) xs))
   run_gplc (tail_ (fst pass_msg')) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 (snd pass_msg') look_up (head_ (fst pass_msg'))
 run_gplc (x0:x1:x2:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up 14 = do
-  report_state (verbose_mode s1) 1 (snd (obj_grid ! (d_list !! 0, d_list !! 1, d_list !! 2))) [] []
   report_state (verbose_mode s1) 2 [] [] ("\nchg_ps0 run with arguments " ++ "0: " ++ show (d_list !! x0) ++ " 1: " ++ show (d_list !! x1) ++ " 2: " ++ show (d_list !! x2))
   run_gplc (tail_ xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd (chg_ps0 x0 x1 x2 d_list s0) s1 look_up (head_ xs)
 run_gplc (x0:x1:x2:x3:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up 15 = do
-  report_state (verbose_mode s1) 1 (snd (obj_grid ! (d_list !! 0, d_list !! 1, d_list !! 2))) [] []
   report_state (verbose_mode s1) 2 [] [] ("\ncopy_ps0 run with arguments " ++ "0: " ++ show x0 ++ " 1: " ++ show (d_list !! x1) ++ " 2: " ++ show (d_list !! x2) ++ " 3: " ++ show (d_list !! x3))
   run_gplc (tail_ xs) d_list w_grid w_grid_upd f_grid obj_grid (copy_ps0 x0 (x1, x2, x3) s0 obj_grid obj_grid_upd d_list) s0 s1 look_up (head_ xs)
 run_gplc (x0:x1:x2:x3:x4:x5:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up 16 = do
-  report_state (verbose_mode s1) 1 (snd (obj_grid ! (d_list !! 0, d_list !! 1, d_list !! 2))) [] []
   report_state (verbose_mode s1) 2 [] [] ("\nbinary_dice run with arguments " ++ "0: " ++ show (d_list !! x0) ++ " 1: " ++ show (d_list !! x1) ++ " 2: " ++ show (d_list !! x2) ++ " 3: " ++ show (d_list !! x3) ++ " 4: " ++ show (d_list !! x4) ++ " 5: " ++ show x5)
   run_gplc (tail_ xs) d_list w_grid w_grid_upd f_grid obj_grid (binary_dice x0 x1 (x2, x3, x4) x5 s0 obj_grid obj_grid_upd d_list) s0 s1 look_up (head_ xs)
 run_gplc (x0:x1:x2:x3:x4:x5:x6:x7:x8:x9:x10:x11:x12:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up 17 = do
-  report_state (verbose_mode s1) 1 (snd (obj_grid ! (d_list !! 0, d_list !! 1, d_list !! 2))) [] []
   report_state (verbose_mode s1) 2 [] [] ("\nproject_init run with arguments " ++ "0: " ++ show (d_list !! x0) ++ " 1: " ++ show (d_list !! x1) ++ " 2: " ++ show (d_list !! x2) ++ " 3: " ++ show (d_list !! x3) ++ "4: " ++ show (d_list !! x4) ++ " 5: " ++ show (d_list !! x5) ++ " 6: " ++ show (d_list !! x6) ++ " 7: " ++ show (d_list !! x7) ++ " 8: " ++ show x8)
   run_gplc (tail_ xs) d_list w_grid w_grid_upd f_grid obj_grid (project_init x0 x1 x2 x3 x4 (x5, x6, x7) (x8, x9, x10) x11 x12 obj_grid obj_grid_upd d_list look_up) s0 s1 look_up (head_ xs)
 run_gplc (x0:x1:x2:x3:x4:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up 18 =
   let project_update' = project_update x0 x1 (x2, x3, x4) w_grid w_grid_upd obj_grid obj_grid_upd s0 s1 d_list
   in do
-  report_state (verbose_mode s1) 1 (snd (obj_grid ! (d_list !! 0, d_list !! 1, d_list !! 2))) [] []
   report_state (verbose_mode s1) 2 [] [] ("\nproject_update run with arguments " ++ "0: " ++ show x0 ++ " 1: " ++ show x1 ++ " 2: " ++ show (d_list !! x2) ++ " 3: " ++ show (d_list !! x3) ++ " 4: " ++ show (d_list !! x4))
   run_gplc (tail_ xs) d_list w_grid (fst__ project_update') f_grid obj_grid (snd__ project_update') s0 (third_ project_update') look_up (head_ xs)
 run_gplc (x0:x1:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up 19 = do
-  report_state (verbose_mode s1) 1 (snd (obj_grid ! (d_list !! 0, d_list !! 1, d_list !! 2))) [] []
   report_state (verbose_mode s1) 2 [] [] ("\ninit_npc run with arguments " ++ "0: " ++ show (d_list !! x0) ++ " 1: " ++ show x1)
   run_gplc (tail_ xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 (init_npc x0 x1 s1 d_list) look_up (head_ xs)
 run_gplc (x0:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up 20 =
   let npc_decision_ = npc_decision 0 0 x0 0 0 0 d_list (node_locations ((npc_states s1) ! (d_list !! 3))) w_grid f_grid obj_grid obj_grid_upd s0 s1 look_up
   in do
-  report_state (verbose_mode s1) 1 (snd (obj_grid ! (d_list !! 0, d_list !! 1, d_list !! 2))) [] []
   report_state (verbose_mode s1) 2 [] [] ("\nnpc_decision run with arguments " ++ "0: " ++ show x0)
   report_npc_state (verbose_mode s1) s1 (d_list !! 3)
   run_gplc (tail_ xs) d_list w_grid w_grid_upd f_grid obj_grid (fst npc_decision_) s0 (snd npc_decision_) look_up (head_ xs)
 run_gplc (x0:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up 21 =
   let npc_move_ = npc_move x0 d_list (node_locations ((npc_states s1) ! (d_list !! 3))) w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up
   in do
-  report_state (verbose_mode s1) 1 (snd (obj_grid ! (d_list !! 0, d_list !! 1, d_list !! 2))) [] []
   report_state (verbose_mode s1) 2 [] [] ("\nnpc_move run with arguments " ++ "0: " ++ show x0)
   report_npc_state (verbose_mode s1) s1 (d_list !! 3)
   run_gplc (tail_ xs) d_list w_grid (fst__ npc_move_) f_grid obj_grid (snd__ npc_move_) s0 (third_ npc_move_) look_up (head_ xs)
 run_gplc (x:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up 22 =
   let npc_damage_ = npc_damage (node_locations ((npc_states s1) ! (d_list !! 3))) w_grid w_grid_upd obj_grid obj_grid_upd s0 s1 d_list
   in do
-  report_state (verbose_mode s1) 1 (snd (obj_grid ! (d_list !! 0, d_list !! 1, d_list !! 2))) [] []
   report_state (verbose_mode s1) 2 [] [] ("\nnpc_damage run...")
   run_gplc (tail_ xs) d_list w_grid (fst__ npc_damage_) f_grid obj_grid (snd__ npc_damage_) s0 (third_ npc_damage_) look_up (head_ xs)
 run_gplc (x0:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up 23 =
   let cpede_move_ = cpede_move x0 d_list (node_locations ((npc_states s1) ! (d_list !! 3))) w_grid w_grid_upd obj_grid obj_grid_upd s0 s1
   in do
-  report_state (verbose_mode s1) 1 (snd (obj_grid ! (d_list !! 0, d_list !! 1, d_list !! 2))) [] []
   report_state (verbose_mode s1) 2 [] [] ("\nnpc_move run with arguments " ++ "0: " ++ show x0)
   report_npc_state (verbose_mode s1) s1 (d_list !! 3)
   run_gplc (tail_ xs) d_list w_grid (fst__ cpede_move_) f_grid obj_grid (snd__ cpede_move_) s0 (third_ cpede_move_) look_up (head_ xs)
