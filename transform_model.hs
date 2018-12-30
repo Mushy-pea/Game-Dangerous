@@ -88,12 +88,12 @@ conv_to_model (x:xs) =
   let ls = toList x
   in [show ((sub_i 9 ls 0)), show ((sub_i 10 ls 1)), show ((sub_i 11 ls 2))] ++ conv_to_model xs
 
-rotate_model :: Model -> Int -> UArray (Int, Int) Float -> [Model]
-rotate_model model a look_up =
+rotate_model :: Model -> Int -> Int -> UArray (Int, Int) Float -> [Model]
+rotate_model model a da look_up =
   let vector_form = conv_to_vector 0 model [] []
   in
   if a > 553 then []
-  else model {vertex = conv_to_model (transform (fst vector_form) (rotation_w a look_up)), normal = conv_to_model (transform (snd vector_form) (rotation_w a look_up))} : rotate_model model (a + 79) look_up
+  else model {vertex = conv_to_model (transform (fst vector_form) (rotation_w a look_up)), normal = conv_to_model (transform (snd vector_form) (rotation_w a look_up))} : rotate_model model (a + da) da look_up
 
 translate_model :: Model -> Float -> Float -> Float -> Model
 translate_model model u v w =
@@ -211,22 +211,22 @@ prep_meta_data :: [[Char]] -> Int -> [[Char]]
 prep_meta_data (x0:x1:x2:x3:x4:x5:xs) 16 = []
 prep_meta_data (x0:x1:x2:x3:x4:x5:xs) c = (show ((read x0) + c) ++ x1 ++ x2 ++ x3 ++ x4 ++ x5) : prep_meta_data (x0:x1:x2:x3:x4:x5:xs) (c + 2)
 
-proc_data :: Int -> Float -> Float -> Float -> [Char] -> [Char] -> Int -> UArray (Int, Int) Float -> [Char]
-proc_data mode u v w meta_data vert_data face_order look_up =
+proc_data :: Int -> Int -> Float -> Float -> Float -> [Char] -> [Char] -> UArray (Int, Int) Float -> [Char]
+proc_data mode da u v w meta_data vert_data look_up =
   let meta_data' = prep_meta_data (splitOn ", " meta_data) 0
       model = get_vert (splitOneOf "\n /" (drop_double vert_data '/' 'x')) 0 0 blank_model
-      rotated_set = model : rotate_model model 79 look_up
+      rotated_set = model : rotate_model model da da look_up
       translated_model = translate_model model u v w
   in
-  if mode == 0 then intercalate "\n~\n" (model_to_obj0 [translated_model] meta_data' face_order)
-  else intercalate "\n~\n" (model_to_obj0 rotated_set meta_data' face_order)
+  if mode == 0 then intercalate "\n~\n" (model_to_obj0 [translated_model] meta_data' 0)
+  else intercalate "\n~\n" (model_to_obj0 rotated_set meta_data' 0)
 
 main = do
   args <- getArgs
   h0 <- openFile ((sub_i 21 args 0)) ReadMode
   h1 <- openFile ((sub_i 22 args 1)) WriteMode
   contents <- hGetContents h0
-  hPutStr h1 (proc_data (read ((sub_i 34 args 2))) (read ((sub_i 35 args 4))) (read ((sub_i 36 args 5))) (read ((sub_i 37 args 6))) ((sub_i 23 (splitOn "\n~\n" contents) 0)) ((sub_i 24 (splitOn "\n~\n" contents) 1)) (read ((sub_i 25 args 3))) (look_up [make_table 0 0, make_table 1 0, make_table 2 0, make_table 3 0]))
+  hPutStr h1 (proc_data (read ((sub_i 34 args 2))) (read ((sub_i 38 args 3))) (read ((sub_i 35 args 4))) (read ((sub_i 36 args 5))) (read ((sub_i 37 args 6))) ((sub_i 23 (splitOn "\n~\n" contents) 0)) ((sub_i 24 (splitOn "\n~\n" contents) 1)) (look_up [make_table 0 0, make_table 1 0, make_table 2 0, make_table 3 0]))
   hClose h0
   hClose h1
 
