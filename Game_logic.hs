@@ -540,11 +540,11 @@ cpede_decision 0 choice i target_u target_v w u v w_grid f_grid obj_grid s0 s1 l
     else cpede_decision 1 7 i target_u target_v w u v w_grid f_grid obj_grid s0 s1 look_up
 cpede_decision 1 choice i target_u target_v w u v w_grid f_grid obj_grid s0 s1 look_up =
   let char_state = (npc_states s1) ! i
-      line_sight = chk_line_sight 2 (npc_dir_table choice) w u v (snd__ (fg_position char_state), third_ (fg_position char_state)) target_u target_v w_grid f_grid obj_grid look_up
+      line_sight = chk_line_sight 2 (npc_dir_table choice) w u v ((fromIntegral u) + 0.5, (fromIntegral v) + 0.5) target_u target_v w_grid f_grid obj_grid look_up
   in
   if line_sight == 0 then (choice, True && attack_mode char_state)
   else if line_sight > avoid_dist char_state then (choice, False)
-  else (another_dir (delete (no_cpede_reverse choice) (delete choice [1, 3, 5, 7])) 2 w u v (snd__ (fg_position char_state), third_ (fg_position char_state)) w_grid f_grid obj_grid look_up s0, False)
+  else (another_dir (delete (no_cpede_reverse choice) (delete choice [1, 3, 5, 7])) 2 w u v ((fromIntegral u) + 0.5, (fromIntegral v) + 0.5) w_grid f_grid obj_grid look_up s0, False)
 
 upd_dir_list :: Int -> [Int] -> [Int]
 upd_dir_list dir (x0:x1:x2:x3:x4:x5:xs) = [dir, x0, x1, x2, x3, x4]
@@ -645,10 +645,10 @@ det_dir_vector dir speed look_up =
 char_rotation :: Int -> Int -> Int -> Int
 char_rotation 0 dir base_id = base_id + ((dir - 1) * 2)
 char_rotation 1 0 base_id = base_id
-char_rotation 1 1 base_id = base_id
-char_rotation 1 3 base_id = base_id + 2
-char_rotation 1 5 base_id = base_id + 4
-char_rotation 1 7 base_id = base_id + 6
+char_rotation 1 1 base_id = base_id + 6
+char_rotation 1 3 base_id = base_id
+char_rotation 1 5 base_id = base_id + 2
+char_rotation 1 7 base_id = base_id + 4
 
 add_vel_pos (fg_w, fg_u, fg_v) (vel_u, vel_v) = (fg_w, fg_u + vel_u, fg_v + vel_v)
 
@@ -739,12 +739,13 @@ cpede_move offset d_list (w:u:v:blocks) w_grid w_grid_upd obj_grid obj_grid_upd 
       u' = fst (fst cpede_pos_)
       v' = snd (fst cpede_pos_)
       o_target = fromMaybe def_obj_place (obj (w_grid ! (-w - 1, u, v)))
-      char_rotation_ = char_rotation 1 ((dir_list h_char_state) !! (node_num char_state)) (d_list !! 4)
+      char_rotation_ = char_rotation 1 (dir_list' !! (node_num char_state)) (d_list !! 4)
       w_grid' = ((-w - 1, u, v), (w_grid ! (-w - 1, u, v)) {obj = Just (o_target {u__ = fst (snd cpede_pos_), v__ = snd (snd cpede_pos_), texture__ = animate_cpede (game_t s0) 11 (d_list !! 4) char_rotation_ (node_num char_state) cpede_frames})})
       w_grid'' = [((-w - 1, u', v'), (w_grid ! (-w - 1, u, v)) {obj = Just (o_target {ident_ = char_rotation_})}), ((-w - 1, u, v), def_w_grid)]
       damage = det_damage (difficulty s1) s0
   in
-  if ticks_left0 char_state == 0 then
+  if direction char_state == 0 then error ("\nCentipede blocked exception...")
+  else if ticks_left0 char_state == 0 then
     if (w, u', v') == (truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)) && node_num char_state == 0 then
       if attack_mode char_state == True && binary_dice_ 1 s0 == True then
         if health s1 - damage <= 0 then (w_grid_upd, obj_grid_upd, s1 {health = 0, state_chg = 1, message = 0 : msg28})

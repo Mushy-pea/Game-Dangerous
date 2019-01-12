@@ -287,7 +287,7 @@ send_signal sig2 cr_w cr_u cr_v
 centipede head (19)
 ~
 w__ 0 u__ 0 v__ 0 array_index 0 base_id 164 climb_flag 0 fireball_flag 0 fb_w 0 fb_u 0 fb_v 0 fb_angle 0 npc_type 2 c_health 40 w 0 u 0 v 0 w_ 0 u_ 0 v_ 0
-fg_pos_w 0 fg_pos_u 0 fg_pos_v 0 dir_vector_u 0 dir_vector_v 0 direction 1 last_dir 0 speed 0 avoid_dist 2 attack_mode 1 fire_prob 0 dir0 1 dir1 1 dir2 1 dir3 1 dir4 1 dir5 1 node_num 0 end_node 5 head_index 0
+fg_pos_w 0 fg_pos_u 0 fg_pos_v 0 dir_vector_u 0 dir_vector_v 0 direction 1 last_dir 0 speed 0 avoid_dist 1 attack_mode 1 fire_prob 0 dir0 1 dir1 1 dir2 1 dir3 1 dir4 1 dir5 1 node_num 0 end_node 5 head_index 0
 sig129 129
 ~
 --signal 128
@@ -300,7 +300,7 @@ cpede_move 26
 centipede tail (20)
 ~
 w__ 0 u__ 0 v__ 0 array_index 0 base_id 164 climb_flag 0 fireball_flag 0 fb_w 0 fb_u 0 fb_v 0 fb_angle 0 npc_type 2 c_health 40 w 0 u 25 v 22 w_ 0 u_ 24 v_ 22
-fg_pos_w 0 fg_pos_u 0 fg_pos_v 0 dir_vector_u 0 dir_vector_v 0 direction 1 last_dir 0 speed 0 avoid_dist 2 attack_mode 0 fire_prob 0 dir0 1 dir1 1 dir2 1 dir3 1 dir4 1 dir5 1 node_num 0 end_node 5 head_index 0
+fg_pos_w 0 fg_pos_u 0 fg_pos_v 0 dir_vector_u 0 dir_vector_v 0 direction 1 last_dir 0 speed 0 avoid_dist 1 attack_mode 0 fire_prob 0 dir0 1 dir1 1 dir2 1 dir3 1 dir4 1 dir5 1 node_num 0 end_node 5 head_index 0
 sig129 129
 ~
 --signal 128
