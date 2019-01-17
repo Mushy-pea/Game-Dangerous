@@ -504,7 +504,7 @@ bind_texture (x:xs) p_bind w h offset = do
 show_frame :: HDC -> (UArray Int Word32, Int) -> UArray Int Int32 -> Ptr GLfloat -> (Ptr Int, Ptr Int) -> Float -> Float -> Float -> Int -> Int -> Int -> MVar (Play_state0, Array (Int, Int, Int) Wall_grid, Save_state) -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> UArray (Int, Int) Float -> Int -> Int -> Matrix Float -> DWORD -> [DWORD] -> IO ([Int], Save_state)
 show_frame hdc p_bind uniform p_mt_matrix filter_table u v w a a' game_t' state_ref w_grid f_grid obj_grid look_up w_limit msg_timer camera_to_clip min_frame_t ts =
   let survey0 = multi_survey (mod_angle a (-92)) 183 u v (truncate u) (truncate v) w_grid f_grid obj_grid look_up w_limit 0 [] []
-      survey1 = multi_survey (mod_angle (mod_angle a' a) (-92)) 183 (fst view_circle') (snd view_circle') (truncate (fst view_circle')) (truncate (snd view_circle')) w_grid f_grid obj_grid look_up w_limit 0 [] []
+      survey1 = multi_survey (mod_angle (mod_angle a' a) 222) 183 (fst view_circle') (snd view_circle') (truncate (fst view_circle')) (truncate (snd view_circle')) w_grid f_grid obj_grid look_up w_limit 0 [] []
       view_circle' = view_circle u v 2 (mod_angle a a') look_up
       world_to_clip0 = multStd camera_to_clip (world_to_camera (-u) (-v) (-w) a look_up)
       world_to_clip1 = multStd camera_to_clip (world_to_camera (- (fst view_circle')) (- (snd view_circle')) (-w) (mod_angle (mod_angle a' a) 314) look_up)

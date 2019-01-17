@@ -51,7 +51,7 @@ assm_gplc4 [] = []
 assm_gplc4 (x0:x1:xs) = (read x1) : assm_gplc4 xs
 
 assm_gplc3 :: Int -> [Char] -> [[Char]] -> [(Int, Int)] -> Int
-assm_gplc3 t symbol [] [] = error "Undeclared op - code reference argument used."
+assm_gplc3 t symbol [] [] = error ("Undeclared op - code reference argument used: " ++ symbol)
 assm_gplc3 t symbol (x:xs) (y:ys) =
   if symbol == x then
     if t == 0 then fst y

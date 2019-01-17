@@ -426,7 +426,9 @@ binary_dice_ prob s0 =
   if (prob_seq s0) ! (mod (game_t s0) 240) < prob then True
   else False  
 
--- These functions implement non - player character (NPC) logic, which is runnable but still in test as of build 8_08.
+-- The GPLC op - codes init_npc, npc_damage, npc_decision, npc_move and cpede_move form the entry point for scripts to drive non - player character (NPC) behaviour.
+-- As these op - codes are responsible for more complex state changes than the others, their entry point functions call a substantial number of supporting functions.
+-- There are two NPC behavioural models, namely type 1 and type 2 (also known as centipedes).
 init_npc :: Int -> Int -> Play_state1 -> [Int] -> Play_state1
 init_npc offset i s1 d_list =
   let char_state = (npc_states s1) ! i
@@ -463,9 +465,13 @@ chk_line_sight mode a w_block u_block v_block (fg_u, fg_v) target_u target_v w_g
   in
   third_ (ray_trace0 fg_u fg_v (fst__ proc_angle_) (snd__ proc_angle_) (third_ proc_angle_) u_block v_block w_grid f_grid obj_grid look_up w_block [] target_u target_v mode 1)
 
+-- Type 1 NPCs can move in 8 directions and type 2 in a subset of 4 of these.  This function maps these directions (encoded as 1 - 8) to centiradians, which is the
+-- angle representation used elsewhere in the engine.
 npc_dir_table :: Int -> Int
 npc_dir_table dir = truncate (78.625 * fromIntegral (dir - 1))
 
+-- When a type 1 NPC is ascending or descending a ramp its direction is encoded as a negative integer from -1 to -8.  This function maps these directions to the
+-- other encoding described above and is used when an NPC reaches the top or bottom of a ramp.
 npc_dir_remap (-1) = 5
 npc_dir_remap (-2) = 1
 npc_dir_remap (-3) = 7
@@ -484,7 +490,7 @@ another_dir poss_dirs c w_block u_block v_block (fg_u, fg_v) w_grid f_grid obj_g
   if chk_line_sight 1 (npc_dir_table choice) w_block u_block v_block (fg_u, fg_v) 0 0 w_grid f_grid obj_grid look_up == 0 then choice
   else another_dir (delete choice poss_dirs) (c - 1) w_block u_block v_block (fg_u, fg_v) w_grid f_grid obj_grid look_up s0
 
--- Non - player characters have 8 possible directions of movement (4 for centipedes).  This function is involved in implementing that restriction.
+-- This function is involved in implementing the restriction to the number of possible directions for an NPC.
 quantise_angle :: Int -> (Int, Int)
 quantise_angle a =
   if a < 79 then (0, 1)
@@ -496,12 +502,14 @@ quantise_angle a =
   else if a < 550 then (471, 7)
   else (550, 8)
 
+-- Type 2 (centipede) NPCs can't reverse so that they don't trample their own tails (but see the explanation of cpede_head_swap below as it relates to this issue).
+-- This function is involved in implementing that restriction.
 no_cpede_reverse 1 = 5
 no_cpede_reverse 3 = 7
 no_cpede_reverse 5 = 1
 no_cpede_reverse 7 = 3
 
--- There are two NPC behavioural models; standard creatures and centipedes.  This function contains the logic specific to the centipede model and is called from the more general npc_decision function.
+-- This function contains the decision logic specific to the type 2 (centipede) behavioural model and is called from the more general npc_decision function.
 cpede_decision :: Int -> Int -> Int -> Int -> Int -> Int -> Int -> Int -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> Play_state0 -> Play_state1 -> UArray (Int, Int) Float -> (Int, Bool)
 cpede_decision 0 choice i target_u target_v w u v w_grid f_grid obj_grid s0 s1 look_up =
   let char_state = (npc_states s1) ! i
@@ -546,9 +554,11 @@ cpede_decision 1 choice i target_u target_v w u v w_grid f_grid obj_grid s0 s1 l
   else if line_sight > avoid_dist char_state then (choice, False)
   else (another_dir (delete (no_cpede_reverse choice) (delete choice [1, 3, 5, 7])) 2 w u v ((fromIntegral u) + 0.5, (fromIntegral v) + 0.5) w_grid f_grid obj_grid look_up s0, False)
 
+-- Updates the list of centipede segment directions so that the tail follows the direction the head has taken.
 upd_dir_list :: Int -> [Int] -> [Int]
 upd_dir_list dir (x0:x1:x2:x3:x4:x5:xs) = [dir, x0, x1, x2, x3, x4]
 
+-- Used in the NPC path finding to compute an angle of approach to a target from the components of an approach vector.
 vector_to_angle :: Float -> Float -> Int
 vector_to_angle u_comp v_comp =
   let a = truncate ((atan (abs v_comp / abs u_comp)) * 100)
@@ -617,23 +627,6 @@ npc_decision 3 flag offset target_w target_u target_v d_list (x0:x1:x2:xs) w_gri
       (((x0, x1, x2), (fst prog, [(offset, 1), (offset + 1, fl_to_int (fst__ fg_pos)), (offset + 2, fl_to_int (snd__ fg_pos)), (offset + 3, fl_to_int (third_ fg_pos)), (offset + 4, npc_dir_table (fst choice))])) : obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {direction = fst choice})]})
     else (obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {direction = fst choice})]})
   else (obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {direction = fst choice})]})
-
-cpede_pos :: Int -> Int -> Int -> Int -> ((Int, Int), (Float, Float))
-cpede_pos u v dir t =
-  let fg_u_base = (fromIntegral u) + 0.5
-      fg_v_base = (fromIntegral v) + 0.5
-  in
-  if dir == 1 then ((truncate (fg_u_base + 1), truncate fg_v_base), (fg_u_base + (fromIntegral (40 - t)) * 0.025, fg_v_base))
-  else if dir == 3 then ((truncate fg_u_base, truncate (fg_v_base + 1)), (fg_u_base, fg_v_base + (fromIntegral (40 - t)) * 0.025))
-  else if dir == 5 then ((truncate (fg_u_base - 1), truncate fg_v_base), (fg_u_base - (fromIntegral (40 - t)) * 0.025, fg_v_base))
-  else if dir == 7 then ((truncate fg_u_base, truncate (fg_v_base - 1)), (fg_u_base, fg_v_base - (fromIntegral (40 - t)) * 0.025))
-  else ((u, v), (fg_u_base, fg_v_base))
-
-cpede_sig_check :: [Int] -> Int -> Int -> [Int]
-cpede_sig_check sig x y =
-  if x == 0 then sig
-  else if x == y then []
-  else drop 4 sig
 
 det_dir_vector :: Int -> Float -> UArray (Int, Int) Float -> (Float, Float)
 det_dir_vector dir speed look_up =
@@ -723,6 +716,26 @@ npc_move offset d_list (w:u:v:w1:u1:v1:blocks) w_grid w_grid_upd f_grid obj_grid
       else (w_grid_4 0 ++ w_grid_upd, take 4 (ramp_fill w u v (0, []) (surface (f_grid ! (w, div u 2, div v 2)))) ++ [((w, u, v), (-2, [])), ramp_fill' 0] ++ obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {node_locations = conv_ramp_fill1 ++ [0, 0, 0], fg_position = ramp_climb_, direction = npc_dir_remap (direction char_state), ticks_left0 = 1})], next_sig_q = [129] ++ conv_ramp_fill1 ++ next_sig_q s1})
   else if ticks_left0 char_state > 1 then (w_grid''' : w_grid_upd, obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {ticks_left0 = ticks_left0 char_state - 1})], next_sig_q = [129, w, u', v'] ++ next_sig_q s1})
   else throw NPC_feature_not_implemented
+
+-- The centipede NPCs have a modular design whereby a separate GPLC script drives each node, or centipede segment.  Only the head node calls npc_decision but all
+-- nodes call cpede_move.  A signal relay is formed in that signals sent by the head propagate along the tail and drive script runs and thereby movement.  The three
+-- functions below are to support cpede_move with segment movement, signal propagation and animation respectively.
+cpede_pos :: Int -> Int -> Int -> Int -> ((Int, Int), (Float, Float))
+cpede_pos u v dir t =
+  let fg_u_base = (fromIntegral u) + 0.5
+      fg_v_base = (fromIntegral v) + 0.5
+  in
+  if dir == 1 then ((truncate (fg_u_base + 1), truncate fg_v_base), (fg_u_base + (fromIntegral (40 - t)) * 0.025, fg_v_base))
+  else if dir == 3 then ((truncate fg_u_base, truncate (fg_v_base + 1)), (fg_u_base, fg_v_base + (fromIntegral (40 - t)) * 0.025))
+  else if dir == 5 then ((truncate (fg_u_base - 1), truncate fg_v_base), (fg_u_base - (fromIntegral (40 - t)) * 0.025, fg_v_base))
+  else if dir == 7 then ((truncate fg_u_base, truncate (fg_v_base - 1)), (fg_u_base, fg_v_base - (fromIntegral (40 - t)) * 0.025))
+  else ((u, v), (fg_u_base, fg_v_base))
+
+cpede_sig_check :: [Int] -> Int -> Int -> [Int]
+cpede_sig_check sig x y =
+  if x == 0 then sig
+  else if x == y then []
+  else drop 4 sig
 
 animate_cpede :: Int -> Int -> Int -> Int -> Int -> [Int] -> Int
 animate_cpede t n base_id model_id node_num frames =

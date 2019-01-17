@@ -1,0 +1,54 @@
+door switch (1)
+~
+w 0 u 11 v 8 w_ -1 sig2 2 sig128 128 door_u 12 door_v 8 cpede_u 17 cpede_v0 1 cpede_v1 2 cpede_v2 3 cpede_v3 4
+cpede_v4 5 cpede_v5 6 texture 9 upd_flag 1 tex 2 null 2 msg_length 3
+~
+--signal 1
+send_signal sig2 w door_u door_v
+send_signal sig128 w cpede_u cpede_v0
+send_signal sig128 w cpede_u cpede_v1
+send_signal sig128 w cpede_u cpede_v2
+send_signal sig128 w cpede_u cpede_v3
+send_signal sig128 w cpede_u cpede_v4
+send_signal sig128 w cpede_u cpede_v5
+chg_state texture upd_flag tex w_ u v w_ u v
+pass_msg 5 msg_length 2 4 18
+chg_obj_type null w u v
+~
+CAU door (2)
+~
+w 0 u 12 v 8 w_ -1 c 159 zero 0 u_ 11 u__ 12 v_0 4 v_1 5 v_2 6 v_3 7 pos_v 2 sub 2 mod_step 25000 c_step 1 sig2 2
+~
+--signal 2
+if 1 c zero 20 22
+chg_obj_type zero w u__ v_0
+chg_obj_type zero w u__ v_1
+chg_obj_type zero w u__ v_2
+chg_obj_type zero w u__ v_3
+chg_state pos_v sub mod_step w_ u_ v_1 w_ u_ v_1
+chg_value c sub c_step w u v
+send_signal sig2 w u v
+~
+centipede head (3)
+~
+w__ 0 u__ 0 v__ 0 array_index 0 base_id 164 climb_flag 0 fireball_flag 0 fb_w 0 fb_u 0 fb_v 0 fb_angle 0 npc_type 2 c_health 40 w 0 u 0 v 0 w_ 0 u_ 0 v_ 0
+fg_pos_w 0 fg_pos_u 0 fg_pos_v 0 dir_vector_u 0 dir_vector_v 0 direction 3 last_dir 0 speed 0 avoid_dist 1 attack_mode 1 fire_prob 0 dir0 3 dir1 3 dir2 3 dir3 3 dir4 3 dir5 3 node_num 0 end_node 5 head_index 0
+sig129 129
+~
+--signal 128
+init_npc npc_type array_index
+send_signal sig129 w u v
+--signal 129
+npc_decision 27
+cpede_move 26
+~
+centipede tail (4)
+~
+w__ 0 u__ 0 v__ 0 array_index 0 base_id 164 climb_flag 0 fireball_flag 0 fb_w 0 fb_u 0 fb_v 0 fb_angle 0 npc_type 2 c_health 40 w 0 u 25 v 22 w_ 0 u_ 24 v_ 22
+fg_pos_w 0 fg_pos_u 0 fg_pos_v 0 dir_vector_u 0 dir_vector_v 0 direction 3 last_dir 0 speed 0 avoid_dist 1 attack_mode 0 fire_prob 0 dir0 3 dir1 3 dir2 3 dir3 3 dir4 3 dir5 3 node_num 0 end_node 5 head_index 0
+sig129 129
+~
+--signal 128
+init_npc npc_type array_index
+--signal 129
+cpede_move 19

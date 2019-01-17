@@ -148,10 +148,10 @@ w 2 u 37 v 1 health 0 ammo 0 gems 0 torches 0 key0 0 key1 0 key2 0 key3 0 key4 0
 w' -3 texture 9 abs 1 tex1 1 msg_length0 31 msg_length1 48 sig4 4 sig2 2 w_ 0 u_ 17 v_0 0 v_1 1 v_2 2 v_3 3 v_4 4 v_5 5 v_6 6 v_7 7 v_8 8 u_door 16 v_door 8 sig2 2 blue_key 80 u__ 38
 ~
 --signal 1
-copy_ps1 174 w u v
+copy_ps1 177 w u v
 send_signal sig2 w u v
 --signal 2
-if 0 key2 blue_key 95 50
+if 0 key2 blue_key 98 50
 send_signal sig4 w_ u_ v_0
 send_signal sig4 w_ u_ v_1
 send_signal sig4 w_ u_ v_2
