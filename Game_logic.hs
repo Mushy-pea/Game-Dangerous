@@ -504,10 +504,10 @@ quantise_angle a =
 
 -- Type 2 (centipede) NPCs can't reverse so that they don't trample their own tails (but see the explanation of cpede_head_swap below as it relates to this issue).
 -- This function is involved in implementing that restriction.
-no_cpede_reverse 1 = 5
-no_cpede_reverse 3 = 7
-no_cpede_reverse 5 = 1
-no_cpede_reverse 7 = 3
+cpede_reverse 1 = 5
+cpede_reverse 3 = 7
+cpede_reverse 5 = 1
+cpede_reverse 7 = 3
 
 -- This function contains the decision logic specific to the type 2 (centipede) behavioural model and is called from the more general npc_decision function.
 cpede_decision :: Int -> Int -> Int -> Int -> Int -> Int -> Int -> Int -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> Play_state0 -> Play_state1 -> UArray (Int, Int) Float -> (Int, Bool)
@@ -552,7 +552,7 @@ cpede_decision 1 choice i target_u target_v w u v w_grid f_grid obj_grid s0 s1 l
   in
   if line_sight == 0 then (choice, True && attack_mode char_state)
   else if line_sight > avoid_dist char_state then (choice, False)
-  else (another_dir (delete (no_cpede_reverse choice) (delete choice [1, 3, 5, 7])) 2 w u v ((fromIntegral u) + 0.5, (fromIntegral v) + 0.5) w_grid f_grid obj_grid look_up s0, False)
+  else (another_dir (delete (cpede_reverse choice) (delete choice [1, 3, 5, 7])) 2 w u v ((fromIntegral u) + 0.5, (fromIntegral v) + 0.5) w_grid f_grid obj_grid look_up s0, False)
 
 -- Updates the list of centipede segment directions so that the tail follows the direction the head has taken.
 upd_dir_list :: Int -> [Int] -> [Int]
@@ -741,6 +741,24 @@ animate_cpede :: Int -> Int -> Int -> Int -> Int -> [Int] -> Int
 animate_cpede t n base_id model_id node_num frames =
   if node_num == 0 then (frames !! (mod (div t 4) n)) + (7 - (model_id - base_id))
   else 13 - (model_id - base_id)
+
+reverse_segment [] = []
+reverse_segment (x:xs) = cpede_reverse x : reverse_segment xs
+
+chs0 char_state_arr head_i = (char_state_arr // [(i, char_state_arr ! j) | i <- [head_i..head_i + end_node (char_state_arr ! head_i)], j <- [head_i + end_node (char_state_arr ! head_i)..head_i]], head_i)
+
+chs1 char_state_arr head_i = (char_state_arr // [(i, (char_state_arr ! i) {node_num = j}) | i <- [head_i..head_i + end_node (char_state_arr ! head_i)], j <- [0..end_node (char_state_arr ! head_i)]], head_i)
+
+chs2 char_state_arr head_i = (char_state_arr // [(i, (char_state_arr ! i) {node_locations = take 3 (node_locations (char_state_arr ! i)) ++ drop 3 (node_locations (char_state_arr ! (i + 1)))}) | i <- [head_i..head_i + end_node (char_state_arr ! head_i) - 1]], head_i)
+
+chs3 char_state_arr head_i = (char_state_arr // [(head_i, (char_state_arr ! head_i) {dir_list = reverse_segment (dir_list (char_state_arr ! head_i))})], head_i)
+
+chs4 char_state_arr head_i = char_state_arr // [(i, (char_state_arr ! i) {reversed = not (reversed (char_state_arr ! i))}) | i <- [head_i..head_i + end_node (char_state_arr ! head_i)]]
+
+cpede_head_swap :: Array Int NPC_state -> Int -> Array Int NPC_state
+cpede_head_swap char_state_arr head_i =
+  let chs = chs0 . chs1 . chs2 . chs3 . chs4
+  in chs $ char_state_arr head_i
 
 cpede_move :: Int -> [Int] -> [Int] -> Array (Int, Int, Int) Wall_grid -> [((Int, Int, Int), Wall_grid)] -> Array (Int, Int, Int) (Int, [Int]) -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> Play_state0 -> Play_state1 -> ([((Int, Int, Int), Wall_grid)], [((Int, Int, Int), (Int, [(Int, Int)]))], Play_state1)
 cpede_move offset d_list (w:u:v:blocks) w_grid w_grid_upd obj_grid obj_grid_upd s0 s1 =

@@ -50,6 +50,8 @@ init_al_context :: IO ()
 init_al_context = do
   def <- get defaultDeviceSpecifier
   audio_dev <- openDevice def
+  if isNothing audio_dev == True then error "\nFailed to initialise an OpenAL context..."
+  else return ()
   context <- createContext (fromJust audio_dev) []
   currentContext $= context
 
