@@ -117,7 +117,7 @@ def_wall_place = Wall_place {rotate = 0, translate_u = 0, translate_v = 0, trans
 def_prob_seq = array (0, 239) [(i, 0) | i <- [0..239]]
 
 def_npc_state = NPC_state {npc_type = 0, c_health = 0, ticks_left0 = 40, ticks_left1 = 0, node_locations = [], fg_position = (0, 0, 0), dir_vector = (0, 0), direction = 0, last_dir = 0,
-dir_list = [], node_num = 0, end_node = 0, head_index = 0, target_u' = 0, target_v' = 0, target_w' = 0, speed = 0, avoid_dist = 0, attack_mode = False, final_appr = False, fire_prob = 0}
+dir_list = [], node_num = 0, end_node = 0, head_index = 0, reversed = False, target_u' = 0, target_v' = 0, target_w' = 0, speed = 0, avoid_dist = 0, attack_mode = False, final_appr = False, fire_prob = 0}
 
 empty_npc_array = array (0, 127) [(i, def_npc_state) | i <- [0..127]]
 

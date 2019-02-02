@@ -80,7 +80,7 @@ assm_gplc2 18 (x0:x1:x2:x3:x4:xs) sym ind = (assm_gplc3 0 x0 sym ind) : (assm_gp
 assm_gplc2 19 (x0:x1:xs) sym ind = (assm_gplc3 0 x0 sym ind) : [assm_gplc3 0 x1 sym ind]
 assm_gplc2 20 (x0:xs) sym ind = [read x0]
 assm_gplc2 21 (x0:xs) sym ind = [read x0]
-assm_gplc2 23 (x0:xs) sym ind = [read x0]
+assm_gplc2 23 (x0:x1:xs) sym ind = (read x0) : [read x1]
 
 assm_gplc1 :: [[Char]] -> Int -> Int -> [[Char]] -> [(Int, Int)] -> [Char] -> [Char] -> Int -> ([[Char]], [(Int, Int)], [Char])
 assm_gplc1 [] offset i acc0 acc1 log prog_name mode = (acc0, acc1, log)
@@ -120,7 +120,7 @@ assm_gplc0 (x:xs) sym ind size_block sig_block code_block c =
   else if x == "npc_decision" then assm_gplc0 (tail xs) sym ind size_block sig_block (code_block ++ [20] ++ assm_gplc2 20 (take 1 xs) sym ind) (c + 2)
   else if x == "npc_move" then assm_gplc0 (tail xs) sym ind size_block sig_block (code_block ++ [21] ++ assm_gplc2 21 (take 1 xs) sym ind) (c + 2)
   else if x == "npc_damage" then assm_gplc0 xs sym ind size_block sig_block (code_block ++ [22, 0]) (c + 2)
-  else if x == "cpede_move" then assm_gplc0 (drop 1 xs) sym ind size_block sig_block (code_block ++ [23] ++ assm_gplc2 23 (take 1 xs) sym ind) (c + 2)
+  else if x == "cpede_move" then assm_gplc0 (drop 2 xs) sym ind size_block sig_block (code_block ++ [23] ++ assm_gplc2 23 (take 2 xs) sym ind) (c + 3)
   else if x == "--signal" then assm_gplc0 (drop 1 xs) sym ind (tail size_block) (sig_block ++ [read (xs !! 0), c, head size_block]) code_block c
   else error ("\nInvalid op_code: " ++ x)
 

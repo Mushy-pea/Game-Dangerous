@@ -745,23 +745,35 @@ animate_cpede t n base_id model_id node_num frames =
 reverse_segment [] = []
 reverse_segment (x:xs) = cpede_reverse x : reverse_segment xs
 
-chs0 char_state_arr head_i = (char_state_arr // [(i, char_state_arr ! j) | i <- [head_i..head_i + end_node (char_state_arr ! head_i)], j <- [head_i + end_node (char_state_arr ! head_i)..head_i]], head_i)
+chs0 :: Int -> Array Int NPC_state -> Array Int NPC_state
+chs0 head_i char_state_arr = char_state_arr // [(i, char_state_arr ! j) | i <- [head_i..head_i + end_node (char_state_arr ! head_i)], j <- [head_i + end_node (char_state_arr ! head_i)..head_i]]
 
-chs1 char_state_arr head_i = (char_state_arr // [(i, (char_state_arr ! i) {node_num = j}) | i <- [head_i..head_i + end_node (char_state_arr ! head_i)], j <- [0..end_node (char_state_arr ! head_i)]], head_i)
+chs1 :: Int -> Array Int NPC_state -> Array Int NPC_state
+chs1 head_i char_state_arr = char_state_arr // [(i, (char_state_arr ! i) {node_num = j}) | i <- [head_i..head_i + end_node (char_state_arr ! head_i)], j <- [0..end_node (char_state_arr ! head_i)]]
 
-chs2 char_state_arr head_i = (char_state_arr // [(i, (char_state_arr ! i) {node_locations = take 3 (node_locations (char_state_arr ! i)) ++ drop 3 (node_locations (char_state_arr ! (i + 1)))}) | i <- [head_i..head_i + end_node (char_state_arr ! head_i) - 1]], head_i)
+chs2 :: Int -> Array Int NPC_state -> Array Int NPC_state
+chs2 head_i char_state_arr = char_state_arr // [(i, (char_state_arr ! i) {node_locations = take 3 (node_locations (char_state_arr ! i)) ++ drop 3 (node_locations (char_state_arr ! (i + 1)))}) | i <- [head_i..head_i + end_node (char_state_arr ! head_i) - 1]]
 
-chs3 char_state_arr head_i = (char_state_arr // [(head_i, (char_state_arr ! head_i) {dir_list = reverse_segment (dir_list (char_state_arr ! head_i))})], head_i)
+chs3 :: Int -> Array Int NPC_state -> Array Int NPC_state
+chs3 head_i char_state_arr = char_state_arr // [(head_i, (char_state_arr ! head_i) {dir_list = reverse_segment (dir_list (char_state_arr ! head_i))})]
 
-chs4 char_state_arr head_i = char_state_arr // [(i, (char_state_arr ! i) {reversed = not (reversed (char_state_arr ! i))}) | i <- [head_i..head_i + end_node (char_state_arr ! head_i)]]
+chs4 :: Int -> Array Int NPC_state -> Array Int NPC_state
+chs4 head_i char_state_arr = char_state_arr // [(i, (char_state_arr ! i) {reversed = not (reversed (char_state_arr ! i))}) | i <- [head_i..head_i + end_node (char_state_arr ! head_i)]]
+
+chs5 False = 129
+chs5 True = 130
 
 cpede_head_swap :: Array Int NPC_state -> Int -> Array Int NPC_state
 cpede_head_swap char_state_arr head_i =
-  let chs = chs0 . chs1 . chs2 . chs3 . chs4
-  in chs $ char_state_arr head_i
+  let chs0' = chs0 head_i
+      chs1' = chs1 head_i
+      chs2' = chs2 head_i
+      chs3' = chs3 head_i
+      chs4' = chs4 head_i
+  in chs4' $ chs3' $ chs2' $ chs1' $ chs0' $ char_state_arr
 
-cpede_move :: Int -> [Int] -> [Int] -> Array (Int, Int, Int) Wall_grid -> [((Int, Int, Int), Wall_grid)] -> Array (Int, Int, Int) (Int, [Int]) -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> Play_state0 -> Play_state1 -> ([((Int, Int, Int), Wall_grid)], [((Int, Int, Int), (Int, [(Int, Int)]))], Play_state1)
-cpede_move offset d_list (w:u:v:blocks) w_grid w_grid_upd obj_grid obj_grid_upd s0 s1 =
+cpede_move :: Int -> Int -> [Int] -> [Int] -> Array (Int, Int, Int) Wall_grid -> [((Int, Int, Int), Wall_grid)] -> Array (Int, Int, Int) (Int, [Int]) -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> Play_state0 -> Play_state1 -> ([((Int, Int, Int), Wall_grid)], [((Int, Int, Int), (Int, [(Int, Int)]))], Play_state1)
+cpede_move offset mode d_list (w:u:v:blocks) w_grid w_grid_upd obj_grid obj_grid_upd s0 s1 =
   let char_state = (npc_states s1) ! (d_list !! 3)
       h_char_state = (npc_states s1) ! (head_index char_state)
       dir_list' = if node_num char_state == 0 then upd_dir_list (direction char_state) (dir_list char_state)
@@ -775,17 +787,19 @@ cpede_move offset d_list (w:u:v:blocks) w_grid w_grid_upd obj_grid obj_grid_upd 
       w_grid'' = [((-w - 1, u', v'), (w_grid ! (-w - 1, u, v)) {obj = Just (o_target {ident_ = char_rotation_})}), ((-w - 1, u, v), def_w_grid)]
       damage = det_damage (difficulty s1) s0
   in
-  if direction char_state == 0 then error ("\nCentipede blocked exception...")
+  if direction char_state == 0 then (w_grid_upd, obj_grid_upd, s1 {npc_states = cpede_head_swap (npc_states s1) (head_index char_state), next_sig_q = [chs5 (not (reversed char_state)), w, u, v] ++ next_sig_q s1})
+  else if reversed char_state == True && mode == 0 then (w_grid_upd, obj_grid_upd, s1)
+  else if reversed char_state == False && mode == 1 then (w_grid_upd, obj_grid_upd, s1)
   else if ticks_left0 char_state == 0 then
     if (w, u', v') == (truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)) && node_num char_state == 0 then
       if attack_mode char_state == True && binary_dice_ 1 s0 == True then
         if health s1 - damage <= 0 then (w_grid_upd, obj_grid_upd, s1 {health = 0, state_chg = 1, message = 0 : msg28})
-        else (w_grid_upd, obj_grid_upd, s1 {health = health s1 - damage, message = message s1 ++ msg29, next_sig_q = [129, w, u, v] ++ next_sig_q s1})
-      else (w_grid_upd, obj_grid_upd, s1 {next_sig_q = [129, w, u, v] ++ next_sig_q s1})
+        else (w_grid_upd, obj_grid_upd, s1 {health = health s1 - damage, message = message s1 ++ msg29, next_sig_q = [chs5 (reversed char_state), w, u, v] ++ next_sig_q s1})
+      else (w_grid_upd, obj_grid_upd, s1 {next_sig_q = [chs5 (reversed char_state), w, u, v] ++ next_sig_q s1})
     else if isNothing (obj (w_grid ! (-w - 1, u', v'))) == True then
-      (w_grid'' ++ w_grid_upd, ((w, u, v), (-2, [])) : ((w, u', v'), (-2, [])) : obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {dir_list = dir_list', node_locations = [w, u', v', w, u, v], ticks_left0 = 40})], next_sig_q = cpede_sig_check ([129, w, u', v', 129] ++ drop 3 (node_locations char_state)) (node_num char_state) (end_node char_state) ++ next_sig_q s1})
-    else (w_grid_upd, obj_grid_upd, s1 {next_sig_q = [129, w, u, v] ++ next_sig_q s1})
-  else (w_grid' : w_grid_upd, obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {fg_position = (0, fst (snd cpede_pos_), snd (snd cpede_pos_)), ticks_left0 = ticks_left0 char_state - 1})], next_sig_q = cpede_sig_check ([129, w, u, v, 129] ++ drop 3 (node_locations char_state)) (node_num char_state) (end_node char_state) ++ next_sig_q s1})
+      (w_grid'' ++ w_grid_upd, ((w, u, v), (-2, [])) : ((w, u', v'), (-2, [])) : obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {dir_list = dir_list', node_locations = [w, u', v', w, u, v], ticks_left0 = 40})], next_sig_q = cpede_sig_check ([chs5 (reversed char_state), w, u', v', chs5 (reversed char_state)] ++ drop 3 (node_locations char_state)) (node_num char_state) (end_node char_state) ++ next_sig_q s1})
+    else (w_grid_upd, obj_grid_upd, s1 {next_sig_q = [chs5 (reversed char_state), w, u, v] ++ next_sig_q s1})
+  else (w_grid' : w_grid_upd, obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {fg_position = (0, fst (snd cpede_pos_), snd (snd cpede_pos_)), ticks_left0 = ticks_left0 char_state - 1})], next_sig_q = cpede_sig_check ([chs5 (reversed char_state), w, u, v, chs5 (reversed char_state)] ++ drop 3 (node_locations char_state)) (node_num char_state) (end_node char_state) ++ next_sig_q s1})
 
 npc_damage :: [Int] -> Array (Int, Int, Int) Wall_grid -> [((Int, Int, Int), Wall_grid)] -> Array (Int, Int, Int) (Int, [Int]) -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> Play_state0 -> Play_state1 -> [Int] -> ([((Int, Int, Int), Wall_grid)], [((Int, Int, Int), (Int, [(Int, Int)]))], Play_state1)
 npc_damage (w:u:v:blocks) w_grid w_grid_upd obj_grid obj_grid_upd s0 s1 d_list =
@@ -891,8 +905,8 @@ run_gplc (x:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look
   in do
   report_state (verbose_mode s1) 2 [] [] ("\nnpc_damage run...")
   run_gplc (tail_ xs) d_list w_grid (fst__ npc_damage_) f_grid obj_grid (snd__ npc_damage_) s0 (third_ npc_damage_) look_up (head_ xs)
-run_gplc (x0:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up 23 =
-  let cpede_move_ = cpede_move x0 d_list (node_locations ((npc_states s1) ! (d_list !! 3))) w_grid w_grid_upd obj_grid obj_grid_upd s0 s1
+run_gplc (x0:x1:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up 23 =
+  let cpede_move_ = cpede_move x0 x1 d_list (node_locations ((npc_states s1) ! (d_list !! 3))) w_grid w_grid_upd obj_grid obj_grid_upd s0 s1
   in do
   report_state (verbose_mode s1) 2 [] [] ("\nnpc_move run with arguments " ++ "0: " ++ show x0)
   report_npc_state (verbose_mode s1) s1 (d_list !! 3)
