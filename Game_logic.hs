@@ -761,13 +761,17 @@ chs4 :: Int -> Array Int NPC_state -> Array Int NPC_state
 chs4 head_i char_state_arr = char_state_arr // [(i, (char_state_arr ! i) {reversed = not (reversed (char_state_arr ! i))}) | i <- [head_i..head_i + end_node (char_state_arr ! head_i)]]
 
 chs5 :: Int -> Array Int NPC_state -> Array Int NPC_state
-chs5 head_i char_state_arr = char_state_arr // [(i, (char_state_arr ! i) {ticks_left0 = upd_ticks_left (ticks_left0 (char_state_arr ! i)) (not (reversed (char_state_arr ! i)))}) | i <- [head_i + 1..head_i + end_node (char_state_arr ! head_i)]]
+chs5 head_i char_state_arr = char_state_arr // [(i, (char_state_arr ! i) {ticks_left0 = upd_ticks_left (ticks_left0 (char_state_arr ! i)) (reversed (char_state_arr ! i))}) | i <- [head_i..head_i + end_node (char_state_arr ! head_i) - 1]]
 
 chs6 False = 129
 chs6 True = 130
 
-chs7 :: Array Int NPC_state -> Int -> [Int]
-chs7 char_state_arr i = take 3 (node_locations (char_state_arr ! (i + end_node (char_state_arr ! i))))
+chs7 :: Array Int NPC_state -> Int -> Int -> Int -> [Int]
+chs7 char_state_arr sig i c =
+  let char_state = char_state_arr ! i
+  in
+  if c > end_node char_state then []
+  else sig : take 3 (node_locations char_state) ++ chs7 char_state_arr sig (i + 1) (c + 1)
 
 cpede_head_swap :: Array Int NPC_state -> Int -> Array Int NPC_state
 cpede_head_swap char_state_arr head_i =
@@ -777,7 +781,7 @@ cpede_head_swap char_state_arr head_i =
       chs3' = chs3 head_i
       chs4' = chs4 head_i
       chs5' = chs5 head_i
-  in chs5' $ chs4' $ chs3' $ chs2' $ chs1' $ chs0' $ char_state_arr
+  in chs0' $ chs5' $ chs4' $ chs3' $ chs2' $ chs1' $ chs0' $ char_state_arr
 
 upd_ticks_left :: Int -> Bool -> Int
 upd_ticks_left t reversed =
@@ -791,7 +795,8 @@ upd_ticks_left t reversed =
 cpede_move :: Int -> Int -> [Int] -> [Int] -> Array (Int, Int, Int) Wall_grid -> [((Int, Int, Int), Wall_grid)] -> Array (Int, Int, Int) (Int, [Int]) -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> Play_state0 -> Play_state1 -> ([((Int, Int, Int), Wall_grid)], [((Int, Int, Int), (Int, [(Int, Int)]))], Play_state1)
 cpede_move offset mode d_list (w:u:v:blocks) w_grid w_grid_upd obj_grid obj_grid_upd s0 s1 =
   let char_state = (npc_states s1) ! (d_list !! 3)
-      h_char_state = (npc_states s1) ! (head_index char_state)
+      h_char_state = if reversed char_state == False then (npc_states s1) ! (head_index char_state)
+                     else (npc_states s1) ! ((head_index char_state) + end_node char_state)
       dir_list' = if node_num char_state == 0 then upd_dir_list (direction char_state) (dir_list char_state)
                   else dir_list h_char_state
       cpede_pos_ = cpede_pos u v (dir_list' !! (node_num char_state)) (ticks_left0 char_state)
@@ -804,10 +809,10 @@ cpede_move offset mode d_list (w:u:v:blocks) w_grid w_grid_upd obj_grid obj_grid
       damage = det_damage (difficulty s1) s0
       npc_states' = cpede_head_swap (npc_states s1) (head_index char_state)
   in
-  if direction char_state == 0 && (ticks_left0 char_state == 0 || ticks_left0 char_state == 40) then (w_grid_upd, obj_grid_upd, s1 {npc_states = cpede_head_swap (npc_states s1) (head_index char_state), next_sig_q = [chs6 (not (reversed char_state))] ++ chs7 (npc_states s1) (head_index char_state) ++ next_sig_q s1})
+  if direction char_state == 0 && ticks_left0 char_state == 0 && node_num char_state == 0 then (w_grid_upd, obj_grid_upd, s1 {npc_states = cpede_head_swap (npc_states s1) (head_index char_state), next_sig_q = chs7 (npc_states s1) (chs6 (not (reversed char_state))) (head_index char_state) 0 ++ next_sig_q s1})
   else if reversed char_state == True && mode == 0 then (w_grid_upd, obj_grid_upd, s1)
   else if reversed char_state == False && mode == 1 then (w_grid_upd, obj_grid_upd, s1)
-  else if (reversed char_state == False && ticks_left0 char_state == 0) || (reversed char_state == True && ticks_left0 char_state == 40) then
+  else if ticks_left0 char_state == 0 then
     if (w, u', v') == (truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)) && node_num char_state == 0 then
       if attack_mode char_state == True && binary_dice_ 1 s0 == True then
         if health s1 - damage <= 0 then (w_grid_upd, obj_grid_upd, s1 {health = 0, state_chg = 1, message = 0 : msg28})
@@ -1016,29 +1021,28 @@ link_gplc0 True (x0:x1:xs) (z0:z1:z2:zs) w_grid w_grid_upd f_grid obj_grid obj_g
       report_state (verbose_mode s1) 2 [] [] ("\nPlayer starts GPLC program at Obj_grid " ++ show (z0, z1, z2 + 1))
       run_gplc' <- catch (run_gplc (snd ((fst obj_grid0') ! (z0, z1, z2 + 1))) [] w_grid w_grid_upd f_grid (fst obj_grid0') obj_grid_upd s0 s1 look_up 0) (\e -> gplc_error w_grid_upd f_grid obj_grid_upd s0 s1 e)
       upd <- force_update0 (fst_ run_gplc') [] 0
-      report_state ((verbose_mode s1) && next_sig_q s1 /= []) 2 [] [] ("\nw_grid_upd: " ++ show upd ++ "\nobj_grid_upd: " ++ show (third run_gplc'))
       return (w_grid // upd, (snd_ run_gplc'), obj_grid // (atomise_obj_grid_upd 0 (third run_gplc') [] obj_grid), (fourth run_gplc'), (fifth run_gplc'))
     else if (x1 == 1 || x1 == 3) && x0 == 1 && head (snd (obj_grid ! (z0, z1 + 1, z2))) == 0 then do
       report_state (verbose_mode s1) 2 [] [] ("\nPlayer starts GPLC program at Obj_grid " ++ show (z0, z1 + 1, z2))
       run_gplc' <- catch (run_gplc (snd ((fst obj_grid1') ! (z0, z1 + 1, z2))) [] w_grid w_grid_upd f_grid (fst obj_grid1') obj_grid_upd s0 s1 look_up 0) (\e -> gplc_error w_grid_upd f_grid obj_grid_upd s0 s1 e)
       upd <- force_update0 (fst_ run_gplc') [] 0
-      report_state ((verbose_mode s1) && next_sig_q s1 /= []) 2 [] [] ("\nw_grid_upd: " ++ show upd ++ "\nobj_grid_upd: " ++ show (third run_gplc'))
       return (w_grid // upd, (snd_ run_gplc'), obj_grid // (atomise_obj_grid_upd 0 (third run_gplc') [] obj_grid), (fourth run_gplc'), (fifth run_gplc'))
     else if (x1 == 1 || x1 == 3) && x0 == 2 && head (snd (obj_grid ! (z0, z1, z2 - 1))) == 0 then do
       report_state (verbose_mode s1) 2 [] [] ("\nPlayer starts GPLC program at Obj_grid " ++ show (z0, z1, z2 - 1))
       run_gplc' <- catch (run_gplc (snd ((fst obj_grid2') ! (z0, z1, z2 - 1))) [] w_grid w_grid_upd f_grid (fst obj_grid2') obj_grid_upd s0 s1 look_up 0) (\e -> gplc_error w_grid_upd f_grid obj_grid_upd s0 s1 e)
       upd <- force_update0 (fst_ run_gplc') [] 0
-      report_state ((verbose_mode s1) && next_sig_q s1 /= []) 2 [] [] ("\nw_grid_upd: " ++ show upd ++ "\nobj_grid_upd: " ++ show (third run_gplc'))
       return (w_grid // upd, (snd_ run_gplc'), obj_grid // (atomise_obj_grid_upd 0 (third run_gplc') [] obj_grid), (fourth run_gplc'), (fifth run_gplc'))
     else if (x1 == 1 || x1 == 3) && x0 == 3 && head (snd (obj_grid ! (z0, z1 - 1, z2))) == 0 then do
       report_state (verbose_mode s1) 2 [] [] ("\nPlayer starts GPLC program at Obj_grid " ++ show (z0, z1 - 1, z2))
       run_gplc' <- catch (run_gplc (snd ((fst obj_grid3') ! (z0, z1 - 1, z2))) [] w_grid w_grid_upd f_grid (fst obj_grid3') obj_grid_upd s0 s1 look_up 0) (\e -> gplc_error w_grid_upd f_grid obj_grid_upd s0 s1 e)
       upd <- force_update0 (fst_ run_gplc') [] 0
-      report_state ((verbose_mode s1) && next_sig_q s1 /= []) 2 [] [] ("\nw_grid_upd: " ++ show upd ++ "\nobj_grid_upd: " ++ show (third run_gplc'))
       return (w_grid // upd, (snd_ run_gplc'), obj_grid // (atomise_obj_grid_upd 0 (third run_gplc') [] obj_grid), (fourth run_gplc'), (fifth run_gplc'))
     else do
       upd <- force_update0 w_grid_upd [] 0
-      report_state ((verbose_mode s1) && next_sig_q s1 /= []) 2 [] [] ("\nw_grid_upd: " ++ show upd ++ "\nobj_grid_upd: " ++ show obj_grid_upd)
+--      if reversed ((npc_states s1) ! 0) == True then do
+--        x <- getLine
+--        putStr ("\n\nnpc_states (0): " ++ show ((npc_states s1) ! 0) ++ "\n\nnpc_states (1): " ++ show ((npc_states s1) ! 1) ++ "\n\nnpc_states (2): " ++ show ((npc_states s1) ! 2) ++ "\n\nnpc_states (3): " ++ show ((npc_states s1) ! 3) ++ "\n\nnpc_states (4): " ++ show ((npc_states s1) ! 4) ++ "\n\nnpc_states (5): " ++ show ((npc_states s1) ! 5))
+--      else return ()
       return (w_grid // upd, f_grid, obj_grid // (atomise_obj_grid_upd 0 obj_grid_upd [] obj_grid), s0, s1)
   else
     if fst (obj_grid ! dest) == 1 || fst (obj_grid ! dest) == 3 then do
