@@ -720,15 +720,17 @@ npc_move offset d_list (w:u:v:w1:u1:v1:blocks) w_grid w_grid_upd f_grid obj_grid
 -- The centipede NPCs have a modular design whereby a separate GPLC script drives each node, or centipede segment.  Only the head node calls npc_decision but all
 -- nodes call cpede_move.  A signal relay is formed in that signals sent by the head propagate along the tail and drive script runs and thereby movement.  The three
 -- functions below are to support cpede_move with segment movement, signal propagation and animation respectively.
-cpede_pos :: Int -> Int -> Int -> Int -> ((Int, Int), (Float, Float))
-cpede_pos u v dir t =
+cpede_pos :: Int -> Int -> Int -> Int -> Bool -> ((Int, Int), (Float, Float))
+cpede_pos u v dir t reversed =
   let fg_u_base = (fromIntegral u) + 0.5
       fg_v_base = (fromIntegral v) + 0.5
+      normalise = \x y -> if reversed == False then x + y
+                       else x - y
   in
-  if dir == 1 then ((truncate (fg_u_base + 1), truncate fg_v_base), (fg_u_base + (fromIntegral (40 - t)) * 0.025, fg_v_base))
-  else if dir == 3 then ((truncate fg_u_base, truncate (fg_v_base + 1)), (fg_u_base, fg_v_base + (fromIntegral (40 - t)) * 0.025))
-  else if dir == 5 then ((truncate (fg_u_base - 1), truncate fg_v_base), (fg_u_base - (fromIntegral (40 - t)) * 0.025, fg_v_base))
-  else if dir == 7 then ((truncate fg_u_base, truncate (fg_v_base - 1)), (fg_u_base, fg_v_base - (fromIntegral (40 - t)) * 0.025))
+  if dir == 1 then ((truncate (fg_u_base + 1), truncate fg_v_base), (normalise fg_u_base ((fromIntegral (40 - t)) * 0.025), fg_v_base))
+  else if dir == 3 then ((truncate fg_u_base, truncate (fg_v_base + 1)), (fg_u_base, normalise fg_v_base ((fromIntegral (40 - t)) * 0.025)))
+  else if dir == 5 then ((truncate (fg_u_base - 1), truncate fg_v_base), (normalise fg_u_base (- (fromIntegral (40 - t)) * 0.025), fg_v_base))
+  else if dir == 7 then ((truncate fg_u_base, truncate (fg_v_base - 1)), (fg_u_base, normalise fg_v_base (- (fromIntegral (40 - t)) * 0.025)))
   else ((u, v), (fg_u_base, fg_v_base))
 
 cpede_sig_check :: [Int] -> Int -> Int -> [Int]
@@ -745,23 +747,28 @@ animate_cpede t n base_id model_id node_num frames =
 reverse_segment [] = []
 reverse_segment (x:xs) = cpede_reverse x : reverse_segment xs
 
+reverse_node_locs char_state i =
+  if reversed char_state == False && i == 0 then 0
+  else if reversed char_state == False then i - 1
+  else if reversed char_state == True && i == 127 then 127
+  else i + 1
+
 chs0 :: Int -> Array Int NPC_state -> Array Int NPC_state
-chs0 head_i char_state_arr = char_state_arr // [(i, char_state_arr ! (head_i + end_node (char_state_arr ! head_i) - i)) | i <- [head_i..head_i + end_node (char_state_arr ! head_i)]]
+chs0 head_i char_state_arr = char_state_arr // [(i, (char_state_arr ! i) {node_num = end_node (char_state_arr ! i) - node_num (char_state_arr ! i)}) | i <- [head_i..head_i + end_node (char_state_arr ! head_i)]]
 
 chs1 :: Int -> Array Int NPC_state -> Array Int NPC_state
-chs1 head_i char_state_arr = char_state_arr // [(i, (char_state_arr ! i) {node_num = i - head_i}) | i <- [head_i..head_i + end_node (char_state_arr ! head_i)]]
+chs1 head_i char_state_arr = char_state_arr // [(i, (char_state_arr ! i) {node_locations = take 3 (node_locations (char_state_arr ! i)) ++ take 3 (node_locations (char_state_arr ! (reverse_node_locs (char_state_arr ! i) i)))}) | i <- [head_i..head_i + end_node (char_state_arr ! head_i) - 1]]
 
 chs2 :: Int -> Array Int NPC_state -> Array Int NPC_state
-chs2 head_i char_state_arr = char_state_arr // [(i, (char_state_arr ! i) {node_locations = take 3 (node_locations (char_state_arr ! i)) ++ take 3 (node_locations (char_state_arr ! (i + 1)))}) | i <- [head_i..head_i + end_node (char_state_arr ! head_i) - 1]]
+chs2 head_i char_state_arr = char_state_arr // [(head_i, (char_state_arr ! head_i) {dir_list = reverse_segment (dir_list (char_state_arr ! head_i))})]
 
 chs3 :: Int -> Array Int NPC_state -> Array Int NPC_state
-chs3 head_i char_state_arr = char_state_arr // [(head_i, (char_state_arr ! head_i) {dir_list = reverse_segment (dir_list (char_state_arr ! head_i))})]
+chs3 head_i char_state_arr = char_state_arr // [(i, (char_state_arr ! i) {reversed = not (reversed (char_state_arr ! i))}) | i <- [head_i..head_i + end_node (char_state_arr ! head_i)]]
 
 chs4 :: Int -> Array Int NPC_state -> Array Int NPC_state
-chs4 head_i char_state_arr = char_state_arr // [(i, (char_state_arr ! i) {reversed = not (reversed (char_state_arr ! i))}) | i <- [head_i..head_i + end_node (char_state_arr ! head_i)]]
-
-chs5 :: Int -> Array Int NPC_state -> Array Int NPC_state
-chs5 head_i char_state_arr = char_state_arr // [(i, (char_state_arr ! i) {ticks_left0 = upd_ticks_left (ticks_left0 (char_state_arr ! i)) (reversed (char_state_arr ! i))}) | i <- [head_i..head_i + end_node (char_state_arr ! head_i) - 1]]
+chs4 head_i char_state_arr = 
+  if reversed (char_state_arr ! head_i) == False then char_state_arr // [(i, (char_state_arr ! i) {ticks_left0 = upd_ticks_left (ticks_left0 (char_state_arr ! i)) (reversed (char_state_arr ! i))}) | i <- [head_i + 1..head_i + end_node (char_state_arr ! head_i)]]
+  else char_state_arr // [(i, (char_state_arr ! i) {ticks_left0 = upd_ticks_left (ticks_left0 (char_state_arr ! i)) (reversed (char_state_arr ! i))}) | i <- [head_i..head_i + end_node (char_state_arr ! head_i) - 1]]
 
 chs6 False = 129
 chs6 True = 130
@@ -780,8 +787,7 @@ cpede_head_swap char_state_arr head_i =
       chs2' = chs2 head_i
       chs3' = chs3 head_i
       chs4' = chs4 head_i
-      chs5' = chs5 head_i
-  in chs0' $ chs5' $ chs4' $ chs3' $ chs2' $ chs1' $ chs0' $ char_state_arr
+  in chs4' $ chs3' $ chs2' $ chs1' $ chs0' $ char_state_arr
 
 upd_ticks_left :: Int -> Bool -> Int
 upd_ticks_left t reversed =
@@ -799,7 +805,7 @@ cpede_move offset mode d_list (w:u:v:blocks) w_grid w_grid_upd obj_grid obj_grid
                      else (npc_states s1) ! ((head_index char_state) + end_node char_state)
       dir_list' = if node_num char_state == 0 then upd_dir_list (direction char_state) (dir_list char_state)
                   else dir_list h_char_state
-      cpede_pos_ = cpede_pos u v (dir_list' !! (node_num char_state)) (ticks_left0 char_state)
+      cpede_pos_ = cpede_pos u v (dir_list' !! (node_num char_state)) (ticks_left0 char_state) (reversed char_state)
       u' = fst (fst cpede_pos_)
       v' = snd (fst cpede_pos_)
       o_target = fromMaybe def_obj_place (obj (w_grid ! (-w - 1, u, v)))
@@ -823,12 +829,19 @@ cpede_move offset mode d_list (w:u:v:blocks) w_grid w_grid_upd obj_grid obj_grid
     else (w_grid_upd, obj_grid_upd, s1 {next_sig_q = [chs6 (reversed char_state), w, u, v] ++ next_sig_q s1})
   else (w_grid' : w_grid_upd, obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {fg_position = (0, fst (snd cpede_pos_), snd (snd cpede_pos_)), ticks_left0 = upd_ticks_left (ticks_left0 char_state) (reversed char_state)})], next_sig_q = cpede_sig_check ([chs6 (reversed char_state), w, u, v, chs6 (reversed char_state)] ++ drop 3 (node_locations char_state)) (node_num char_state) (end_node char_state) ++ next_sig_q s1})
 
-npc_damage :: [Int] -> Array (Int, Int, Int) Wall_grid -> [((Int, Int, Int), Wall_grid)] -> Array (Int, Int, Int) (Int, [Int]) -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> Play_state0 -> Play_state1 -> [Int] -> ([((Int, Int, Int), Wall_grid)], [((Int, Int, Int), (Int, [(Int, Int)]))], Play_state1)
-npc_damage (w:u:v:blocks) w_grid w_grid_upd obj_grid obj_grid_upd s0 s1 d_list =
+npc_damage :: Int -> [Int] -> Array (Int, Int, Int) Wall_grid -> [((Int, Int, Int), Wall_grid)] -> Array (Int, Int, Int) (Int, [Int]) -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> Play_state0 -> Play_state1 -> [Int] -> ([((Int, Int, Int), Wall_grid)], [((Int, Int, Int), (Int, [(Int, Int)]))], Play_state1)
+npc_damage mode (w:u:v:blocks) w_grid w_grid_upd obj_grid obj_grid_upd s0 s1 d_list =
   let damage = det_damage ("d", 6, 10, 14) s0
       char_state = (npc_states s1) ! (d_list !! 3)
+      h_char_state = (npc_states s1) ! (head_index char_state)
       o_target = fromJust (obj (w_grid ! (-w - 1, u, v)))
   in
+  if npc_type char_state == 2 then
+    if reversed char_state == False && mode == 1 then (w_grid_upd, obj_grid_upd, s1)
+    else if reversed char_state == True && mode == 0 then (w_grid_upd, obj_grid_upd, s1)
+    else if c_health h_char_state - damage <= 0 then (w_grid_upd, obj_grid_upd, s1 {npc_states = chs3 (head_index char_state) (npc_states s1), message = message s1 ++ [2, 4, 14], next_sig_q = 131 : take 3 (node_locations char_state) ++ next_sig_q s1})
+    else (w_grid_upd, obj_grid_upd, s1 {npc_states = (npc_states s1) // [(head_index char_state, h_char_state {c_health = (c_health h_char_state) - damage})], message = message s1 ++ [2, 4, 16]})
+  else
   if c_health char_state - damage <= 0 then (((-w - 1, u, v), def_w_grid) : w_grid_upd, ((w, u, v), (-1, [])) : obj_grid_upd, s1 {message = message s1 ++ [2, 4, 14]})
   else (w_grid_upd, obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {c_health = (c_health char_state) - damage})], message = message s1 ++ [2, 4, 16]})
 
@@ -922,8 +935,8 @@ run_gplc (x0:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 loo
   report_state (verbose_mode s1) 2 [] [] ("\nnpc_move run with arguments " ++ "0: " ++ show x0)
   report_npc_state (verbose_mode s1) s1 (d_list !! 3)
   run_gplc (tail_ xs) d_list w_grid (fst__ npc_move_) f_grid obj_grid (snd__ npc_move_) s0 (third_ npc_move_) look_up (head_ xs)
-run_gplc (x:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up 22 =
-  let npc_damage_ = npc_damage (node_locations ((npc_states s1) ! (d_list !! 3))) w_grid w_grid_upd obj_grid obj_grid_upd s0 s1 d_list
+run_gplc (x0:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up 22 =
+  let npc_damage_ = npc_damage x0 (node_locations ((npc_states s1) ! (d_list !! 3))) w_grid w_grid_upd obj_grid obj_grid_upd s0 s1 d_list
   in do
   report_state (verbose_mode s1) 2 [] [] ("\nnpc_damage run...")
   run_gplc (tail_ xs) d_list w_grid (fst__ npc_damage_) f_grid obj_grid (snd__ npc_damage_) s0 (third_ npc_damage_) look_up (head_ xs)
