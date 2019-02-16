@@ -757,7 +757,7 @@ chs0 :: Int -> Array Int NPC_state -> Array Int NPC_state
 chs0 head_i char_state_arr = char_state_arr // [(i, (char_state_arr ! i) {node_num = end_node (char_state_arr ! i) - node_num (char_state_arr ! i)}) | i <- [head_i..head_i + end_node (char_state_arr ! head_i)]]
 
 chs1 :: Int -> Array Int NPC_state -> Array Int NPC_state
-chs1 head_i char_state_arr = char_state_arr // [(i, (char_state_arr ! i) {node_locations = take 3 (node_locations (char_state_arr ! i)) ++ take 3 (node_locations (char_state_arr ! (reverse_node_locs (char_state_arr ! i) i)))}) | i <- [head_i..head_i + end_node (char_state_arr ! head_i) - 1]]
+chs1 head_i char_state_arr = char_state_arr // [(i, (char_state_arr ! i) {node_locations = take 3 (node_locations (char_state_arr ! i)) ++ take 3 (node_locations (char_state_arr ! (reverse_node_locs (char_state_arr ! i) i)))}) | i <- [head_i..head_i + end_node (char_state_arr ! head_i)]]
 
 chs2 :: Int -> Array Int NPC_state -> Array Int NPC_state
 chs2 head_i char_state_arr = char_state_arr // [(head_i, (char_state_arr ! head_i) {dir_list = reverse_segment (dir_list (char_state_arr ! head_i))})]
@@ -767,7 +767,7 @@ chs3 head_i char_state_arr = char_state_arr // [(i, (char_state_arr ! i) {revers
 
 chs4 :: Int -> Array Int NPC_state -> Array Int NPC_state
 chs4 head_i char_state_arr = 
-  if reversed (char_state_arr ! head_i) == False then char_state_arr // [(i, (char_state_arr ! i) {ticks_left0 = upd_ticks_left (ticks_left0 (char_state_arr ! i)) (reversed (char_state_arr ! i))}) | i <- [head_i + 1..head_i + end_node (char_state_arr ! head_i)]]
+  if reversed (char_state_arr ! head_i) == True then char_state_arr // [(i, (char_state_arr ! i) {ticks_left0 = upd_ticks_left (ticks_left0 (char_state_arr ! i)) (reversed (char_state_arr ! i))}) | i <- [head_i + 1..head_i + end_node (char_state_arr ! head_i)]]
   else char_state_arr // [(i, (char_state_arr ! i) {ticks_left0 = upd_ticks_left (ticks_left0 (char_state_arr ! i)) (reversed (char_state_arr ! i))}) | i <- [head_i..head_i + end_node (char_state_arr ! head_i) - 1]]
 
 chs6 False = 129
@@ -796,13 +796,10 @@ upd_ticks_left t reversed =
   else if reversed == False then t - 1
   else t + 1
 
---error ("\n\nnpc_states (0): " ++ show (npc_states' ! 0) ++ "\n\nnpc_states (1): " ++ show (npc_states' ! 1) ++ "\n\nnpc_states (2): " ++ show (npc_states' ! 2) ++ "\n\nnpc_states (3): " ++ show (npc_states' ! 3) ++ "\n\nnpc_states (4): " ++ show (npc_states' ! 4) ++ "\n\nnpc_states (5): " ++ show (npc_states' ! 5))
-
 cpede_move :: Int -> Int -> [Int] -> [Int] -> Array (Int, Int, Int) Wall_grid -> [((Int, Int, Int), Wall_grid)] -> Array (Int, Int, Int) (Int, [Int]) -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> Play_state0 -> Play_state1 -> ([((Int, Int, Int), Wall_grid)], [((Int, Int, Int), (Int, [(Int, Int)]))], Play_state1)
 cpede_move offset mode d_list (w:u:v:blocks) w_grid w_grid_upd obj_grid obj_grid_upd s0 s1 =
   let char_state = (npc_states s1) ! (d_list !! 3)
-      h_char_state = if reversed char_state == False then (npc_states s1) ! (head_index char_state)
-                     else (npc_states s1) ! ((head_index char_state) + end_node char_state)
+      h_char_state = (npc_states s1) ! (head_index char_state)
       dir_list' = if node_num char_state == 0 then upd_dir_list (direction char_state) (dir_list char_state)
                   else dir_list h_char_state
       cpede_pos_ = cpede_pos u v (dir_list' !! (node_num char_state)) (ticks_left0 char_state) (reversed char_state)
@@ -826,7 +823,9 @@ cpede_move offset mode d_list (w:u:v:blocks) w_grid w_grid_upd obj_grid obj_grid
       else (w_grid_upd, obj_grid_upd, s1 {next_sig_q = [chs6 (reversed char_state), w, u, v] ++ next_sig_q s1})
     else if isNothing (obj (w_grid ! (-w - 1, u', v'))) == True then
       (w_grid'' ++ w_grid_upd, ((w, u, v), (-2, [])) : ((w, u', v'), (-2, [])) : obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {dir_list = dir_list', node_locations = [w, u', v', w, u, v], ticks_left0 = upd_ticks_left (ticks_left0 char_state) (reversed char_state)})], next_sig_q = cpede_sig_check ([chs6 (reversed char_state), w, u', v', chs6 (reversed char_state)] ++ drop 3 (node_locations char_state)) (node_num char_state) (end_node char_state) ++ next_sig_q s1})
-    else (w_grid_upd, obj_grid_upd, s1 {next_sig_q = [chs6 (reversed char_state), w, u, v] ++ next_sig_q s1})
+    else
+      if node_num char_state == 0 then (w_grid_upd, obj_grid_upd, s1 {next_sig_q = [chs6 (reversed char_state), w, u, v] ++ next_sig_q s1})
+      else (w_grid_upd, obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {ticks_left0 = upd_ticks_left (ticks_left0 char_state) (reversed char_state)})]})
   else (w_grid' : w_grid_upd, obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {fg_position = (0, fst (snd cpede_pos_), snd (snd cpede_pos_)), ticks_left0 = upd_ticks_left (ticks_left0 char_state) (reversed char_state)})], next_sig_q = cpede_sig_check ([chs6 (reversed char_state), w, u, v, chs6 (reversed char_state)] ++ drop 3 (node_locations char_state)) (node_num char_state) (end_node char_state) ++ next_sig_q s1})
 
 npc_damage :: Int -> [Int] -> Array (Int, Int, Int) Wall_grid -> [((Int, Int, Int), Wall_grid)] -> Array (Int, Int, Int) (Int, [Int]) -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> Play_state0 -> Play_state1 -> [Int] -> ([((Int, Int, Int), Wall_grid)], [((Int, Int, Int), (Int, [(Int, Int)]))], Play_state1)
@@ -1052,10 +1051,6 @@ link_gplc0 True (x0:x1:xs) (z0:z1:z2:zs) w_grid w_grid_upd f_grid obj_grid obj_g
       return (w_grid // upd, (snd_ run_gplc'), obj_grid // (atomise_obj_grid_upd 0 (third run_gplc') [] obj_grid), (fourth run_gplc'), (fifth run_gplc'))
     else do
       upd <- force_update0 w_grid_upd [] 0
---      if reversed ((npc_states s1) ! 0) == True then do
---        x <- getLine
---        putStr ("\n\nnpc_states (0): " ++ show ((npc_states s1) ! 0) ++ "\n\nnpc_states (1): " ++ show ((npc_states s1) ! 1) ++ "\n\nnpc_states (2): " ++ show ((npc_states s1) ! 2) ++ "\n\nnpc_states (3): " ++ show ((npc_states s1) ! 3) ++ "\n\nnpc_states (4): " ++ show ((npc_states s1) ! 4) ++ "\n\nnpc_states (5): " ++ show ((npc_states s1) ! 5))
---      else return ()
       return (w_grid // upd, f_grid, obj_grid // (atomise_obj_grid_upd 0 obj_grid_upd [] obj_grid), s0, s1)
   else
     if fst (obj_grid ! dest) == 1 || fst (obj_grid ! dest) == 3 then do
