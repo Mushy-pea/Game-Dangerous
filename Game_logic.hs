@@ -798,7 +798,7 @@ upd_ticks_left t reversed =
 
 cpede_move :: Int -> Int -> [Int] -> [Int] -> Array (Int, Int, Int) Wall_grid -> [((Int, Int, Int), Wall_grid)] -> Array (Int, Int, Int) (Int, [Int]) -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> Play_state0 -> Play_state1 -> ([((Int, Int, Int), Wall_grid)], [((Int, Int, Int), (Int, [(Int, Int)]))], Play_state1)
 cpede_move offset mode d_list (w:u:v:blocks) w_grid w_grid_upd obj_grid obj_grid_upd s0 s1 =
-  let char_state = (npc_states s1) ! (d_list !! 3)
+  let char_state = (npc_states s1) ! (d_list !! 8)
       h_char_state = (npc_states s1) ! (head_index char_state)
       dir_list' = if node_num char_state == 0 then upd_dir_list (direction char_state) (dir_list char_state)
                   else dir_list h_char_state
@@ -806,12 +806,12 @@ cpede_move offset mode d_list (w:u:v:blocks) w_grid w_grid_upd obj_grid obj_grid
       u' = fst (fst cpede_pos_)
       v' = snd (fst cpede_pos_)
       o_target = fromMaybe def_obj_place (obj (w_grid ! (-w - 1, u, v)))
-      char_rotation_ = char_rotation 1 (dir_list' !! (node_num char_state)) (d_list !! 4)
-      w_grid' = ((-w - 1, u, v), (w_grid ! (-w - 1, u, v)) {obj = Just (o_target {u__ = fst (snd cpede_pos_), v__ = snd (snd cpede_pos_), texture__ = animate_cpede (game_t s0) 11 (d_list !! 4) char_rotation_ (node_num char_state) cpede_frames})})
+      char_rotation_ = char_rotation 1 (dir_list' !! (node_num char_state)) (d_list !! 9)
+      w_grid' = ((-w - 1, u, v), (w_grid ! (-w - 1, u, v)) {obj = Just (o_target {u__ = fst (snd cpede_pos_), v__ = snd (snd cpede_pos_), texture__ = animate_cpede (game_t s0) 11 (d_list !! 9) char_rotation_ (node_num char_state) cpede_frames})})
       w_grid'' = [((-w - 1, u', v'), (w_grid ! (-w - 1, u, v)) {obj = Just (o_target {ident_ = char_rotation_})}), ((-w - 1, u, v), def_w_grid)]
       damage = det_damage (difficulty s1) s0
       npc_states' = cpede_head_swap (npc_states s1) (head_index char_state)
-      d_list_node_locations = [(offset - 9, w), (offset - 8, u), (offset - 7, v), (offset - 6, w), (offset - 5, u'), (offset - 4, v')]
+      d_list_upd = [(offset - 11, w), (offset - 10, u), (offset - 9, v), (offset - 8, w), (offset - 7, u'), (offset - 6, v'), (offset - 5, 14 - (char_rotation_ - (d_list !! 9))), (offset - 4, 14 - (char_rotation_ - (d_list !! 9)) + 42)]
   in
   if direction char_state == 0 && ticks_left0 char_state == 0 && node_num char_state == 0 then (w_grid_upd, obj_grid_upd, s1 {npc_states = cpede_head_swap (npc_states s1) (head_index char_state), next_sig_q = chs7 (npc_states s1) (chs6 (not (reversed char_state))) (head_index char_state) 0 ++ next_sig_q s1})
   else if reversed char_state == True && mode == 0 then (w_grid_upd, obj_grid_upd, s1)
@@ -823,11 +823,11 @@ cpede_move offset mode d_list (w:u:v:blocks) w_grid w_grid_upd obj_grid obj_grid
         else (w_grid_upd, obj_grid_upd, s1 {health = health s1 - damage, message = message s1 ++ msg29, next_sig_q = [chs6 (reversed char_state), w, u, v] ++ next_sig_q s1})
       else (w_grid_upd, obj_grid_upd, s1 {next_sig_q = [chs6 (reversed char_state), w, u, v] ++ next_sig_q s1})
     else if isNothing (obj (w_grid ! (-w - 1, u', v'))) == True then
-      (w_grid'' ++ w_grid_upd, ((w, u, v), (-2, [])) : ((w, u', v'), (-2, d_list_node_locations)) : obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {dir_list = dir_list', node_locations = [w, u', v', w, u, v], ticks_left0 = upd_ticks_left (ticks_left0 char_state) (reversed char_state)})], next_sig_q = cpede_sig_check ([chs6 (reversed char_state), w, u', v', chs6 (reversed char_state)] ++ drop 3 (node_locations char_state)) (node_num char_state) (end_node char_state) ++ next_sig_q s1})
+      (w_grid'' ++ w_grid_upd, ((w, u, v), (-2, [])) : ((w, u', v'), (-2, d_list_upd)) : obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 8, char_state {dir_list = dir_list', node_locations = [w, u', v', w, u, v], ticks_left0 = upd_ticks_left (ticks_left0 char_state) (reversed char_state)})], next_sig_q = cpede_sig_check ([chs6 (reversed char_state), w, u', v', chs6 (reversed char_state)] ++ drop 3 (node_locations char_state)) (node_num char_state) (end_node char_state) ++ next_sig_q s1})
     else
       if node_num char_state == 0 then (w_grid_upd, obj_grid_upd, s1 {next_sig_q = [chs6 (reversed char_state), w, u, v] ++ next_sig_q s1})
-      else (w_grid_upd, obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {ticks_left0 = upd_ticks_left (ticks_left0 char_state) (reversed char_state)})]})
-  else (w_grid' : w_grid_upd, obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {fg_position = (0, fst (snd cpede_pos_), snd (snd cpede_pos_)), ticks_left0 = upd_ticks_left (ticks_left0 char_state) (reversed char_state)})], next_sig_q = cpede_sig_check ([chs6 (reversed char_state), w, u, v, chs6 (reversed char_state)] ++ drop 3 (node_locations char_state)) (node_num char_state) (end_node char_state) ++ next_sig_q s1})
+      else (w_grid_upd, obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 8, char_state {ticks_left0 = upd_ticks_left (ticks_left0 char_state) (reversed char_state)})]})
+  else (w_grid' : w_grid_upd, obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 8, char_state {fg_position = (0, fst (snd cpede_pos_), snd (snd cpede_pos_)), ticks_left0 = upd_ticks_left (ticks_left0 char_state) (reversed char_state)})], next_sig_q = cpede_sig_check ([chs6 (reversed char_state), w, u, v, chs6 (reversed char_state)] ++ drop 3 (node_locations char_state)) (node_num char_state) (end_node char_state) ++ next_sig_q s1})
 
 npc_damage :: Int -> [Int] -> Array (Int, Int, Int) Wall_grid -> [((Int, Int, Int), Wall_grid)] -> Array (Int, Int, Int) (Int, [Int]) -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> Play_state0 -> Play_state1 -> [Int] -> ([((Int, Int, Int), Wall_grid)], [((Int, Int, Int), (Int, [(Int, Int)]))], Play_state1)
 npc_damage mode (w:u:v:blocks) w_grid w_grid_upd obj_grid obj_grid_upd s0 s1 d_list =
@@ -1174,6 +1174,13 @@ sync_game_t conf_reg s0 =
   else if fps_limit == 60 && mod (game_t s0) 3 == 2 then False
   else True
 
+jump_allowed :: Array (Int, Int, Int) Floor_grid -> Play_state0 -> Bool
+jump_allowed f_grid s0 =
+  if truncate (pos_w s0) == 2 then True
+  else
+    if surface (f_grid ! (truncate (pos_w s0), div (truncate (pos_u s0)) 2, div (truncate (pos_v s0)) 2)) == Open then True
+    else False
+
 -- This function recurses once per game logic clock tick and is the central branching point of the game logic thread.
 update_play :: Io_box -> MVar (Play_state0, Array (Int, Int, Int) Wall_grid, Save_state) -> Play_state0 -> Play_state1 -> Bool -> Float -> (Float, Float, Float, Float) -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> UArray (Int, Int) Float -> Array Int [Char] -> Save_state -> Array Int Source -> IO ()
 update_play io_box state_ref s0 s1 in_flight f_rate (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up conf_reg save_state sound_array =
@@ -1223,7 +1230,7 @@ update_play io_box state_ref s0 s1 in_flight f_rate (g, f, mag_r, mag_j) w_grid 
       else if control == 8 then do
         putMVar state_ref (s0 {pos_u = det !! 0, pos_v = det !! 1, pos_w = floor, angle = mod_angle (angle s0) (- (angle_step s1))}, w_grid, save_state)
         update_play io_box state_ref ((fourth link0) {pos_u = det !! 0, pos_v = det !! 1, pos_w = floor, vel = vel_0, angle = mod_angle (angle s0) (- (angle_step s1)), game_t = game_t'}) (fifth link0) False f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up conf_reg save_state sound_array
-      else if control == 9 then do
+      else if control == 9 && jump_allowed f_grid s0 == True then do
         putMVar state_ref (s0 {pos_u = det !! 0, pos_v = det !! 1, pos_w = floor + mag_j / f_rate}, w_grid, save_state)
         update_play io_box state_ref ((fourth link0) {pos_u = det !! 0, pos_v = det !! 1, pos_w = floor + mag_j / f_rate, vel = (take 2 vel_0) ++ [mag_j], game_t = game_t'}) (fifth link0) False f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up conf_reg save_state sound_array
       else if control == 13 then do
