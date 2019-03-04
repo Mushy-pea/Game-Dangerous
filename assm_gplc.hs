@@ -93,37 +93,37 @@ assm_gplc1 (x0:x1:xs) offset i acc0 acc1 log prog_name mode =
 assm_gplc1 (x0:xs) offset i acc0 acc1 log prog_name mode = error ("\n\nassm_gplc1: " ++ x0 ++ "...")
 
 -- This function recognises the keywords that correspond to op - codes and is the beginning of the pipeline that transforms them and their arguments into bytecode.
-assm_gplc0 :: [[Char]] -> [[Char]] -> [(Int, Int)] -> [Int] -> [Int] -> [Int] -> Int -> [Int]
-assm_gplc0 [] sym ind size_block sig_block code_block c = sig_block ++ [536870911] ++ code_block ++ [536870911]
-assm_gplc0 (x:xs) sym ind size_block sig_block code_block c =
+assm_gplc0 :: [[Char]] -> [[Char]] -> [(Int, Int)] -> [Int] -> [Int] -> [Int] -> [Char] -> Int -> [Int]
+assm_gplc0 [] sym ind size_block sig_block code_block prog_name c = sig_block ++ [536870911] ++ code_block ++ [536870911]
+assm_gplc0 (x:xs) sym ind size_block sig_block code_block prog_name c =
   let msg_length = (read (xs !! 0))
   in
-  if x == "if" then assm_gplc0 (drop 5 xs) sym ind size_block sig_block (code_block ++ [1] ++ (assm_gplc2 1 (take 5 xs) sym ind)) (c + 6)
-  else if x == "chg_state" then assm_gplc0 (drop 9 xs) sym ind size_block sig_block (code_block ++ [2] ++ (assm_gplc2 2 (take 9 xs) sym ind)) (c + 10)
-  else if x == "chg_grid" then assm_gplc0 (drop 7 xs) sym ind size_block sig_block (code_block ++ [3] ++ (assm_gplc2 3 (take 7 xs) sym ind)) (c + 8)
-  else if x == "send_signal" then assm_gplc0 (drop 4 xs) sym ind size_block sig_block (code_block ++ [4] ++ (assm_gplc2 4 (take 4 xs) sym ind)) (c + 5)
-  else if x == "chg_value" then assm_gplc0 (drop 6 xs) sym ind size_block sig_block (code_block ++ [5] ++ (assm_gplc2 5 (take 6 xs) sym ind)) (c + 7)
-  else if x == "chg_floor" then assm_gplc0 (drop 6 xs) sym ind size_block sig_block (code_block ++ [6] ++ (assm_gplc2 6 (take 6 xs) sym ind)) (c + 7)
-  else if x == "chg_ps1" then assm_gplc0 (drop 3 xs) sym ind size_block sig_block (code_block ++ [7] ++ (assm_gplc2 7 (take 3 xs) sym ind)) (c + 4)
-  else if x == "chg_obj_type" then assm_gplc0 (drop 4 xs) sym ind size_block sig_block (code_block ++ [8] ++ (assm_gplc2 8 (take 4 xs) sym ind)) (c + 5)
-  else if x == "place_hold" then assm_gplc0 (drop 1 xs) sym ind size_block sig_block (code_block ++ [9] ++ (assm_gplc2 9 (take 1 xs) sym ind)) (c + 2)
-  else if x == "chg_grid_" then assm_gplc0 (drop 7 xs) sym ind size_block sig_block (code_block ++ [10] ++ (assm_gplc2 10 (take 7 xs) sym ind)) (c + 8)
-  else if x == "copy_ps1" then assm_gplc0 (drop 4 xs) sym ind size_block sig_block (code_block ++ [11] ++ (assm_gplc2 11 (take 4 xs) sym ind)) (c + 5)
-  else if x == "copy_lstate" then assm_gplc0 (drop 7 xs) sym ind size_block sig_block (code_block ++ [12] ++ (assm_gplc2 12 (take 7 xs) sym ind)) (c + 8)
-  else if x == "pass_msg" then assm_gplc0 (drop msg_length xs) sym ind size_block sig_block (code_block ++ [13] ++ (assm_gplc2 13 (take msg_length xs) sym ind)) (c + msg_length)
-  else if x == "chg_ps0" then assm_gplc0 (drop 3 xs) sym ind size_block sig_block (code_block ++ [14] ++ (assm_gplc2 14 (take 3 xs) sym ind)) (c + 4)
-  else if x == "copy_ps0" then assm_gplc0 (drop 4 xs) sym ind size_block sig_block (code_block ++ [15] ++ (assm_gplc2 15 (take 4 xs) sym ind)) (c + 5)
-  else if x == "block" then assm_gplc0 (drop 4 xs) sym ind size_block sig_block (code_block ++ [5, 536870910, 0, read (xs !! 0), assm_gplc3 0 (xs !! 1) sym ind, assm_gplc3 0 (xs !! 2) sym ind, assm_gplc3 0 (xs !! 3) sym ind]) (c + 7)
-  else if x == "binary_dice" then assm_gplc0 (drop 6 xs) sym ind size_block sig_block (code_block ++ [16] ++ (assm_gplc2 16 (take 6 xs) sym ind)) (c + 7)
-  else if x == "project_init" then assm_gplc0 (drop 13 xs) sym ind size_block sig_block (code_block ++ [17] ++ (assm_gplc2 17 (take 13 xs) sym ind)) (c + 14)
-  else if x == "project_update" then assm_gplc0 (drop 5 xs) sym ind size_block sig_block (code_block ++ [18] ++ (assm_gplc2 18 (take 5 xs) sym ind)) (c + 6)
-  else if x == "init_npc" then assm_gplc0 (drop 2 xs) sym ind size_block sig_block (code_block ++ [19] ++ assm_gplc2 19 (take 2 xs) sym ind) (c + 3)
-  else if x == "npc_decision" then assm_gplc0 (tail xs) sym ind size_block sig_block (code_block ++ [20] ++ assm_gplc2 20 (take 1 xs) sym ind) (c + 2)
-  else if x == "npc_move" then assm_gplc0 (tail xs) sym ind size_block sig_block (code_block ++ [21] ++ assm_gplc2 21 (take 1 xs) sym ind) (c + 2)
-  else if x == "npc_damage" then assm_gplc0 xs sym ind size_block sig_block (code_block ++ [22] ++ assm_gplc2 22 (take 1 xs) sym ind) (c + 2)
-  else if x == "cpede_move" then assm_gplc0 (drop 2 xs) sym ind size_block sig_block (code_block ++ [23] ++ assm_gplc2 23 (take 2 xs) sym ind) (c + 3)
-  else if x == "--signal" then assm_gplc0 (drop 1 xs) sym ind (tail size_block) (sig_block ++ [read (xs !! 0), c, head size_block]) code_block c
-  else error ("\nInvalid op_code: " ++ x)
+  if x == "if" then assm_gplc0 (drop 5 xs) sym ind size_block sig_block (code_block ++ [1] ++ (assm_gplc2 1 (take 5 xs) sym ind)) prog_name (c + 6)
+  else if x == "chg_state" then assm_gplc0 (drop 9 xs) sym ind size_block sig_block (code_block ++ [2] ++ (assm_gplc2 2 (take 9 xs) sym ind)) prog_name (c + 10)
+  else if x == "chg_grid" then assm_gplc0 (drop 7 xs) sym ind size_block sig_block (code_block ++ [3] ++ (assm_gplc2 3 (take 7 xs) sym ind)) prog_name (c + 8)
+  else if x == "send_signal" then assm_gplc0 (drop 4 xs) sym ind size_block sig_block (code_block ++ [4] ++ (assm_gplc2 4 (take 4 xs) sym ind)) prog_name (c + 5)
+  else if x == "chg_value" then assm_gplc0 (drop 6 xs) sym ind size_block sig_block (code_block ++ [5] ++ (assm_gplc2 5 (take 6 xs) sym ind)) prog_name (c + 7)
+  else if x == "chg_floor" then assm_gplc0 (drop 6 xs) sym ind size_block sig_block (code_block ++ [6] ++ (assm_gplc2 6 (take 6 xs) sym ind)) prog_name (c + 7)
+  else if x == "chg_ps1" then assm_gplc0 (drop 3 xs) sym ind size_block sig_block (code_block ++ [7] ++ (assm_gplc2 7 (take 3 xs) sym ind)) prog_name (c + 4)
+  else if x == "chg_obj_type" then assm_gplc0 (drop 4 xs) sym ind size_block sig_block (code_block ++ [8] ++ (assm_gplc2 8 (take 4 xs) sym ind)) prog_name (c + 5)
+  else if x == "place_hold" then assm_gplc0 (drop 1 xs) sym ind size_block sig_block (code_block ++ [9] ++ (assm_gplc2 9 (take 1 xs) sym ind)) prog_name (c + 2)
+  else if x == "chg_grid_" then assm_gplc0 (drop 7 xs) sym ind size_block sig_block (code_block ++ [10] ++ (assm_gplc2 10 (take 7 xs) sym ind)) prog_name (c + 8)
+  else if x == "copy_ps1" then assm_gplc0 (drop 4 xs) sym ind size_block sig_block (code_block ++ [11] ++ (assm_gplc2 11 (take 4 xs) sym ind)) prog_name (c + 5)
+  else if x == "copy_lstate" then assm_gplc0 (drop 7 xs) sym ind size_block sig_block (code_block ++ [12] ++ (assm_gplc2 12 (take 7 xs) sym ind)) prog_name (c + 8)
+  else if x == "pass_msg" then assm_gplc0 (drop msg_length xs) sym ind size_block sig_block (code_block ++ [13] ++ (assm_gplc2 13 (take msg_length xs) sym ind)) prog_name (c + msg_length)
+  else if x == "chg_ps0" then assm_gplc0 (drop 3 xs) sym ind size_block sig_block (code_block ++ [14] ++ (assm_gplc2 14 (take 3 xs) sym ind)) prog_name (c + 4)
+  else if x == "copy_ps0" then assm_gplc0 (drop 4 xs) sym ind size_block sig_block (code_block ++ [15] ++ (assm_gplc2 15 (take 4 xs) sym ind)) prog_name (c + 5)
+  else if x == "block" then assm_gplc0 (drop 4 xs) sym ind size_block sig_block (code_block ++ [5, 536870910, 0, read (xs !! 0), assm_gplc3 0 (xs !! 1) sym ind, assm_gplc3 0 (xs !! 2) sym ind, assm_gplc3 0 (xs !! 3) sym ind]) prog_name (c + 7)
+  else if x == "binary_dice" then assm_gplc0 (drop 6 xs) sym ind size_block sig_block (code_block ++ [16] ++ (assm_gplc2 16 (take 6 xs) sym ind)) prog_name (c + 7)
+  else if x == "project_init" then assm_gplc0 (drop 13 xs) sym ind size_block sig_block (code_block ++ [17] ++ (assm_gplc2 17 (take 13 xs) sym ind)) prog_name (c + 14)
+  else if x == "project_update" then assm_gplc0 (drop 5 xs) sym ind size_block sig_block (code_block ++ [18] ++ (assm_gplc2 18 (take 5 xs) sym ind)) prog_name (c + 6)
+  else if x == "init_npc" then assm_gplc0 (drop 2 xs) sym ind size_block sig_block (code_block ++ [19] ++ assm_gplc2 19 (take 2 xs) sym ind) prog_name (c + 3)
+  else if x == "npc_decision" then assm_gplc0 (tail xs) sym ind size_block sig_block (code_block ++ [20] ++ assm_gplc2 20 (take 1 xs) sym ind) prog_name (c + 2)
+  else if x == "npc_move" then assm_gplc0 (tail xs) sym ind size_block sig_block (code_block ++ [21] ++ assm_gplc2 21 (take 1 xs) sym ind) prog_name (c + 2)
+  else if x == "npc_damage" then assm_gplc0 (drop 1 xs) sym ind size_block sig_block (code_block ++ [22] ++ assm_gplc2 22 (take 1 xs) sym ind) prog_name (c + 2)
+  else if x == "cpede_move" then assm_gplc0 (drop 2 xs) sym ind size_block sig_block (code_block ++ [23] ++ assm_gplc2 23 (take 2 xs) sym ind) prog_name (c + 3)
+  else if x == "--signal" then assm_gplc0 (drop 1 xs) sym ind (tail size_block) (sig_block ++ [read (xs !! 0), c, head size_block]) code_block prog_name c
+  else error ("\nprog_name: " ++ prog_name ++ "\nc: " ++ show c ++ "\nInvalid op_code: " ++ x)
 
 -- This function is used for program instancing.  The map structure data is used to specify where each GPLC program is placed in the map.  A single program can be placed in multiple
 -- locations with its value block patched to different states in each case.
@@ -147,8 +147,8 @@ build_gplc prog_name source0 source1 fst_pass c =
       bindings = assm_gplc1 (splitOneOf "\n " source0) ((length fst_pass) + 2) 0 [] [] [] prog_name 1
       bindings' = assm_gplc1 (splitOneOf "\n " source0) 0 0 [] [] [] prog_name 0
       d_list_len = length (fst__ bindings)
-      out = (assm_gplc0 (splitOneOf "\n " source1) (fst__ bindings) (snd__ bindings) block_sizes [] [] 0)
-      out' = (assm_gplc0 (splitOneOf "\n " source1) (fst__ bindings') (snd__ bindings') block_sizes [] [] 0)
+      out = (assm_gplc0 (splitOneOf "\n " source1) (fst__ bindings) (snd__ bindings) block_sizes [] [] prog_name 0)
+      out' = (assm_gplc0 (splitOneOf "\n " source1) (fst__ bindings') (snd__ bindings') block_sizes [] [] prog_name 0)
   in
   if c == 0 then build_gplc prog_name source0 source1 out' 1
   else (((length out) + 2 + d_list_len) : 0 : 0 : out, fst__ bindings, snd__ bindings, third_ bindings)

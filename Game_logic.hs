@@ -1178,7 +1178,7 @@ jump_allowed :: Array (Int, Int, Int) Floor_grid -> Play_state0 -> Bool
 jump_allowed f_grid s0 =
   if truncate (pos_w s0) == 2 then True
   else
-    if surface (f_grid ! (truncate (pos_w s0), div (truncate (pos_u s0)) 2, div (truncate (pos_v s0)) 2)) == Open then True
+    if surface (f_grid ! (truncate (pos_w s0) + 1, div (truncate (pos_u s0)) 2, div (truncate (pos_v s0)) 2)) == Open then True
     else False
 
 -- This function recurses once per game logic clock tick and is the central branching point of the game logic thread.
