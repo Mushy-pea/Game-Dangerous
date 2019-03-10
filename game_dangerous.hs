@@ -679,4 +679,3 @@ show_player uniform p_bind p_mt_matrix u v w a look_up game_t mode = do
   glBindVertexArray (unsafeCoerce ((fst p_bind) ! 1024))
   glBindTexture GL_TEXTURE_2D (unsafeCoerce ((fst p_bind) ! 1025))
   glDrawElements GL_TRIANGLES 36 GL_UNSIGNED_SHORT zero_ptr
-

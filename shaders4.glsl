@@ -427,4 +427,3 @@ uniform sampler2D tex_unit0;
 void main() {
 outputColour = texture(tex_unit0, tex_coord);
 }
-

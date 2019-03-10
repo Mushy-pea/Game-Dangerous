@@ -588,4 +588,3 @@ check_map_layer w u v u_limit v_limit grid flag =
   else
     if grid ! (w, u, v) == flag then throw Invalid_map_element
     else check_map_layer w u (v + 1) u_limit v_limit grid flag
-

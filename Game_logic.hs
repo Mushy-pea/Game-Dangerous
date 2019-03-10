@@ -796,8 +796,6 @@ upd_ticks_left t reversed =
   else if reversed == False then t - 1
   else t + 1
 
-
-
 cpede_move :: Int -> Int -> [Int] -> [Int] -> Array (Int, Int, Int) Wall_grid -> [((Int, Int, Int), Wall_grid)] -> Array (Int, Int, Int) (Int, [Int]) -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> Play_state0 -> Play_state1 -> ([((Int, Int, Int), Wall_grid)], [((Int, Int, Int), (Int, [(Int, Int)]))], Play_state1)
 cpede_move offset mode d_list (w:u:v:blocks) w_grid w_grid_upd obj_grid obj_grid_upd s0 s1 =
   let char_state = (npc_states s1) ! (d_list !! 8)
@@ -813,7 +811,7 @@ cpede_move offset mode d_list (w:u:v:blocks) w_grid w_grid_upd obj_grid obj_grid
       w_grid'' = [((-w - 1, u', v'), (w_grid ! (-w - 1, u, v)) {obj = Just (o_target {ident_ = char_rotation_})}), ((-w - 1, u, v), def_w_grid)]
       damage = det_damage (difficulty s1) s0
       npc_states' = cpede_head_swap (npc_states s1) (head_index char_state)
-      d_list_upd = [(offset - 11, w), (offset - 10, u), (offset - 9, v), (offset - 8, w), (offset - 7, u'), (offset - 6, v'), (offset - 5, 14 - (char_rotation_ - (d_list !! 9))), (offset - 4, 14 - (char_rotation_ - (d_list !! 9)) + 42)]
+      d_list_upd = [(offset - 11, w), (offset - 10, u'), (offset - 9, v'), (offset - 8, w), (offset - 7, u), (offset - 6, v), (offset - 5, 15 - (char_rotation_ - (d_list !! 9))), (offset - 4, 15 - (char_rotation_ - (d_list !! 9)) + 42), (offset + 38, -w - 1)]
   in
   if direction char_state == 0 && ticks_left0 char_state == 0 && node_num char_state == 0 then (w_grid_upd, obj_grid_upd, s1 {npc_states = cpede_head_swap (npc_states s1) (head_index char_state), next_sig_q = chs7 (npc_states s1) (chs6 (not (reversed char_state))) (head_index char_state) 0 ++ next_sig_q s1})
   else if reversed char_state == True && mode == 0 then (w_grid_upd, obj_grid_upd, s1)

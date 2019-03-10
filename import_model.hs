@@ -163,4 +163,3 @@ unroll_data (x0:x1:xs) mat h2 load_acc vert_acc ind_acc e_count i_count mat_coun
   in do
   if mode == 0 then unroll_data xs mat h2 l_data0 (vert_acc ++ fst pl_vert0 ++ ", ") (ind_acc ++ fst indices) (e_count + num_elem 0 (snd pl_vert0)) (i_count + snd indices) (mat_count + 1)
   else unroll_data xs mat h2 l_data1 (vert_acc ++ fst pl_vert1 ++ ", ") (ind_acc ++ fst indices) (e_count + num_elem 1 (snd pl_vert1)) (i_count + snd indices) mat_count
-
