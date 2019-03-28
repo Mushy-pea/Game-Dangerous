@@ -161,7 +161,7 @@ main = do
   source <- hGetContents h0
   structure <- hGetContents h1
   code <- prep_gplc (splitOn "\n~\n" source) [] [] []
-  hPutStr h2 (place_gplc (splitOn ", " (concat (splitOn "\n\n" structure))) (fst__ code) (snd__ code) (third_ code))
+  hPutStr h2 (place_gplc (filter (/= "~") (splitOneOf " \n" structure)) (fst__ code) (snd__ code) (third_ code))
   hClose h0
   hClose h1
   hClose h2
