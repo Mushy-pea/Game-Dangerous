@@ -43,7 +43,7 @@ assm_gplc5 (x:xs) size_block size =
   if x == "--signal" then assm_gplc5 (drop 1 xs) (size_block ++ [size]) 0
   else if x == "pass_msg" then assm_gplc5 (drop 1 xs) size_block (size + 1)
   else if x == "block" then assm_gplc5 xs size_block (size + 3)
-  else if x == "npc_damage" then assm_gplc5 xs size_block (size + 2)
+  else if x == "npc_damage" then assm_gplc5 xs size_block (size + 1)
   else assm_gplc5 xs size_block (size + 1)
 
 assm_gplc4 :: [[Char]] -> [Int]
@@ -160,19 +160,19 @@ main = do
   h2 <- openFile (args !! 2) WriteMode
   source <- hGetContents h0
   structure <- hGetContents h1
-  code <- prep_gplc (splitOn "\n~\n" source) [] [] []
+  code <- prep_gplc (splitOn "\n~\n" source) [] [] [] 0
   hPutStr h2 (place_gplc (filter (/= "~") (splitOneOf " \n" structure)) (fst__ code) (snd__ code) (third_ code))
   hClose h0
   hClose h1
   hClose h2
 
-prep_gplc :: [[Char]] -> [[Int]] -> [[[Char]]] -> [[(Int, Int)]] -> IO ([[Int]], [[[Char]]], [[(Int, Int)]])
-prep_gplc [] code_acc sym_acc ind_acc = return (code_acc, sym_acc, ind_acc)
-prep_gplc (x0:x1:x2:xs) code_acc sym_acc ind_acc =
+prep_gplc :: [[Char]] -> [[Int]] -> [[[Char]]] -> [[(Int, Int)]] -> Int -> IO ([[Int]], [[[Char]]], [[(Int, Int)]])
+prep_gplc [] code_acc sym_acc ind_acc c = return (code_acc, sym_acc, ind_acc)
+prep_gplc (x0:x1:x2:xs) code_acc sym_acc ind_acc c =
   let build_gplc' = build_gplc x0 x1 x2 [] 0
       code = fst' build_gplc' ++ assm_gplc4 (splitOneOf " \n" x1)
       sym = snd' build_gplc'
       ind = third' build_gplc'
   in do
-  putStr ("\n\nAssembling GPLC program " ++ ((splitOn ", " x0) !! 0) ++ "\n\nlog: " ++ fourth build_gplc')
-  prep_gplc xs (code_acc ++ [code]) (sym_acc ++ [sym]) (ind_acc ++ [ind])
+  putStr ("\n\nGPLC program " ++ x0 ++ " starts at index " ++ show c)
+  prep_gplc xs (code_acc ++ [code]) (sym_acc ++ [sym]) (ind_acc ++ [ind]) (c + ((head (fst' build_gplc')) + 5))
