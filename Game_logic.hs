@@ -21,6 +21,7 @@ import Control.Exception
 import qualified Data.Matrix as MAT
 import Unsafe.Coerce
 import Data.Coerce
+import System.Clock
 import Build_model
 import Game_sound
 
@@ -1342,19 +1343,27 @@ run_menu (n:ns) acc io_box x y c c_max d = do
   run_menu ns (acc ++ [n]) io_box x (y - 0.04) c c_max 1
 
 -- This function handles the drawing of message tiles (letters and numbers etc) that are used for in game messages and in menus.
-show_text :: [Int] -> Int -> Int -> UArray Int Int32 -> (UArray Int Word32, Int) -> Ptr GLfloat -> Float -> Float -> Int -> IO ()
-show_text [] mode base uniform p_bind p_tt_matrix x y offset = return ()
-show_text (m:ms) mode base uniform p_bind p_tt_matrix x y offset = do
-  load_array (MAT.toList (translation x y 0)) (castPtr p_tt_matrix) offset
+show_text :: [Int] -> Int -> Int -> UArray Int Int32 -> (UArray Int Word32, Int) -> Float -> Float -> Ptr GLFloat -> IO ()
+show_text [] mode base uniform p_bind x y p_tt_matrix = do
+  glEnable GL_DEPTH_TEST
+  free p_tt_matrix
+show_text (m:ms) mode base uniform p_bind x y 0 = do
+  p_tt_matrix_ <- mallocBytes (16 * glfloat)
+  glBindVertexArray (unsafeCoerce ((fst p_bind) ! 933))
+  glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 3)))
+  glDisable GL_DEPTH_TEST
+  show_text (m:ms) mode base uniform p_bind x y p_tt_matrix_
+show_text (m:ms) mode base uniform p_bind x y p_tt_matrix = do
+  load_array (MAT.toList (translation x y 0)) (castPtr p_tt_matrix) 0
   if mode == 0 && x < 83 then do
-    glUniformMatrix4fv (unsafeCoerce (uniform ! 36)) 1 1 (plusPtr p_tt_matrix (offset * glfloat))
+    glUniformMatrix4fv (unsafeCoerce (uniform ! 36)) 1 1 p_tt_matrix
     glUniform1i (unsafeCoerce (uniform ! 38)) 0
   else if mode == 1 && x < 83 then do
-    glUniformMatrix4fv (unsafeCoerce (uniform ! 36)) 1 1 (plusPtr p_tt_matrix (offset * glfloat))
+    glUniformMatrix4fv (unsafeCoerce (uniform ! 36)) 1 1 p_tt_matrix
     glUniform1i (unsafeCoerce (uniform ! 38)) 1
   else do
     putStr "show_text: Invalid mode or character reference in text line..."
-    show_text ms mode base uniform p_bind p_tt_matrix (x + 0.05) y (offset + 16)
+    show_text ms mode base uniform p_bind (x + 0.04) y p_tt_matrix
   glBindTexture GL_TEXTURE_2D (unsafeCoerce ((fst p_bind) ! (base + m)))
   glDrawElements GL_TRIANGLES 6 GL_UNSIGNED_SHORT zero_ptr
-  show_text ms mode base uniform p_bind p_tt_matrix (x + 0.04) y (offset + 16)
+  show_text ms mode base uniform p_bind (x + 0.04) y p_tt_matrix

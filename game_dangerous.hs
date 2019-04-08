@@ -501,15 +501,14 @@ bind_texture (x:xs) p_bind w h offset = do
   bind_texture xs p_bind w h (offset + 1)
 
 -- This function manages the rendering of all environmental models and in game messages.  It recurses once per frame rendered and is the central branching point of the rendering thread.
-show_frame :: HDC -> (UArray Int Word32, Int) -> UArray Int Int32 -> Ptr GLfloat -> (Ptr Int, Ptr Int) -> Float -> Float -> Float -> Int -> Int -> Int -> MVar (Play_state0, Array (Int, Int, Int) Wall_grid, Save_state) -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> UArray (Int, Int) Float -> Int -> Int -> Matrix Float -> DWORD -> [DWORD] -> IO ([Int], Save_state)
-show_frame hdc p_bind uniform p_mt_matrix filter_table u v w a a' game_t' state_ref w_grid f_grid obj_grid look_up w_limit msg_timer camera_to_clip min_frame_t ts =
-  let survey0 = multi_survey (mod_angle a (-92)) 183 u v (truncate u) (truncate v) w_grid f_grid obj_grid look_up w_limit 0 [] []
-      survey1 = multi_survey (mod_angle (mod_angle a' a) 222) 183 (fst view_circle') (snd view_circle') (truncate (fst view_circle')) (truncate (snd view_circle')) w_grid f_grid obj_grid look_up w_limit 0 [] []
+show_frame :: HDC -> (UArray Int Word32, Int) -> UArray Int Int32 -> Ptr GLfloat -> (Ptr Int, Ptr Int) -> Float -> Float -> Float -> Int -> Int -> Int -> MVar (Play_state0, Array (Int, Int, Int) Wall_grid, Save_state) -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> UArray (Int, Int) Float -> Matrix Float -> [(Int, [Int])] -> IO ([Int], Save_state)
+show_frame hdc p_bind uniform p_mt_matrix filter_table u v w a a' game_t' state_ref w_grid f_grid obj_grid look_up camera_to_clip msg_queue =
+  let survey0 = multi_survey (mod_angle a (-92)) 183 u v (truncate u) (truncate v) w_grid f_grid obj_grid look_up 2 0 [] []
+      survey1 = multi_survey (mod_angle (mod_angle a' a) 222) 183 (fst view_circle') (snd view_circle') (truncate (fst view_circle')) (truncate (snd view_circle')) w_grid f_grid obj_grid look_up 2 0 [] []
       view_circle' = view_circle u v 2 (mod_angle a a') look_up
       world_to_clip0 = multStd camera_to_clip (world_to_camera (-u) (-v) (-w) a look_up)
       world_to_clip1 = multStd camera_to_clip (world_to_camera (- (fst view_circle')) (- (snd view_circle')) (-w) (mod_angle (mod_angle a' a) 314) look_up)
   in do
-  tick0 <- getTickCount
   p_state <- takeMVar state_ref
   glClear (GL_COLOR_BUFFER_BIT .|. GL_DEPTH_BUFFER_BIT)
   if view_mode (fst__ p_state) == 0 then load_array (toList world_to_clip0) (castPtr p_mt_matrix) 0
@@ -548,57 +547,32 @@ show_frame hdc p_bind uniform p_mt_matrix filter_table u v w a a' game_t' state_
     filtered_surv1 <- filter_surv (snd survey1) [] (snd filter_table) game_t'
     show_walls filtered_surv0 uniform p_bind (plusPtr p_mt_matrix (glfloat * 16)) u v w a look_up (rend_mode (fst__ p_state))
     show_object filtered_surv1 uniform p_bind (plusPtr p_mt_matrix (glfloat * 48)) u v w a look_up (rend_mode (fst__ p_state))
-  tick1 <- getTickCount
-  if (tick1 - tick0) < min_frame_t then sleep (min_frame_t - (tick1 - tick0))
-  else return ()
-  ts' <- show_fps (fst__ p_state) (tick1 - tick0) ts
-  if msg_count (fst__ p_state) == -1 then do
-    putStr "\nshow_frame: case -1"
-    return ([1], third_ p_state)
-  else if msg_count (fst__ p_state) == -2 then do
-    putStr "\nshow_frame: case -2"
-    p_mt_matrix1 <- mallocBytes ((length (snd (head (message_ (fst__ p_state))))) * glfloat * 16)
-    glBindVertexArray (unsafeCoerce ((fst p_bind) ! 933))
-    glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 3)))
-    glDisable GL_DEPTH_TEST
-    show_text (snd (head (message_ (fst__ p_state)))) 0 933 uniform p_bind p_mt_matrix1 (-0.9) 0.9 0
-    glEnable GL_DEPTH_TEST
-    free p_mt_matrix1
+  msg_residue <- handle_message msg_queue (message_ (fst__ p_state)) [] uniform p_bind (fst__ p_state)
+  if fst msg_residue == 1 then return ([1], third_ p_state)
+  else if fst msg_residue == 2 then do
+    show_text (snd (snd msg_residue)) 0 933 uniform p_bind 0 0 0
     Main.swapBuffers hdc
-    sleep 5000
+    threadDelay 5000000
     return ([2], third_ p_state)
-  else if msg_count (fst__ p_state) == -3 then do
-    putStr "\nshow_frame: case -3"
-    return ([3], third_ p_state)
-  else if msg_count (fst__ p_state) < -3 then do
-    putStr "\nshow_frame: case < -3"
-    return (([(abs (msg_count (fst__ p_state)))] ++ (snd (head (message_ (fst__ p_state))))), third_ p_state)
-  else if msg_count (fst__ p_state) > 0 then do
-    Main.swapBuffers hdc
-    show_frame hdc p_bind uniform p_mt_matrix filter_table (pos_u (fst__ p_state)) (pos_v (fst__ p_state)) (pos_w (fst__ p_state)) (angle (fst__ p_state)) (view_angle (fst__ p_state)) (game_t (fst__ p_state)) state_ref (snd__ p_state) f_grid obj_grid look_up w_limit (msg_count (fst__ p_state)) camera_to_clip min_frame_t ts'
-  else if msg_timer > 0 then do
-    p_mt_matrix1 <- mallocBytes ((length (snd (head (message_ (fst__ p_state))))) * glfloat * 16)
-    glBindVertexArray (unsafeCoerce ((fst p_bind) ! 933))
-    glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 3)))
-    glDisable GL_DEPTH_TEST
-    show_text (snd (head (message_ (fst__ p_state)))) 0 933 uniform p_bind p_mt_matrix1 (-0.96) 0.9 0
-    glEnable GL_DEPTH_TEST
-    free p_mt_matrix1
-    Main.swapBuffers hdc
-    show_frame hdc p_bind uniform p_mt_matrix filter_table (pos_u (fst__ p_state)) (pos_v (fst__ p_state)) (pos_w (fst__ p_state)) (angle (fst__ p_state)) (view_angle (fst__ p_state)) (game_t (fst__ p_state)) state_ref (snd__ p_state) f_grid obj_grid look_up w_limit (msg_timer - 1) camera_to_clip min_frame_t ts'
+  else if fst msg_residue == 3 then return ([3], third_ p_state)
+  else if fst msg_residue > 3 then return (([(abs (msg_count (fst__ p_state)))] ++ (snd (head (message_ (fst__ p_state))))), third_ p_state)
   else do
     Main.swapBuffers hdc
-    show_frame hdc p_bind uniform p_mt_matrix filter_table (pos_u (fst__ p_state)) (pos_v (fst__ p_state)) (pos_w (fst__ p_state)) (angle (fst__ p_state)) (view_angle (fst__ p_state)) (game_t (fst__ p_state)) state_ref (snd__ p_state) f_grid obj_grid look_up w_limit 0 camera_to_clip min_frame_t ts'
+    show_frame hdc p_bind uniform p_mt_matrix filter_table (pos_u (fst__ p_state)) (pos_v (fst__ p_state)) (pos_w (fst__ p_state)) (angle (fst__ p_state)) (view_angle (fst__ p_state)) (game_t (fst__ p_state)) state_ref (snd__ p_state) f_grid obj_grid look_up camera_to_clip (snd msg_residue)
 
--- Optionally report the frame rate in the console during game play.
-show_fps :: Play_state0 -> DWORD -> [DWORD] -> IO [DWORD]
-show_fps s0 t ts = do
-  if show_fps_ s0 == True then
-    if (mod (game_t s0) 40) == 0 then do
-      putStr ("\n\nFPS: " ++ show (div 1000 (div (foldl (+) 0 ts) 40)))
-      return []
-    else return (t : ts)
-  else return []
+--This function iterates through the message queue received from the game logic thread.  It manages the appearance and expiry of on screen messages and detects special event messages,
+--such as are received when the user opts to return to the main menu.
+handle_message :: [(Int, [Int])] -> [(Int, [Int])] -> [(Int, [Int])] -> UArray Int Int32 -> (UArray Int Word32, Int) -> Play_state0 -> IO (Int, [(Int, [Int])])
+handle_message [] [] acc uniform p_bind s0 = return (0, acc)
+handle_message _ new_messages acc uniform p_bind s0 = return (0, new_messages)
+handle_message (x:xs) [] acc uniform p_bind s0 = do
+  if fst x < 0 then return (abs (fst x), [x])
+  else if fst x > 0 then do
+    if head (snd x) == -1 && show_fps_ s0 == False then handle_message xs [] acc uniform p_bind s0
+    else do
+      show_text (snd x) 0 933 uniform p_bind 0 0 0
+      handle_message xs [] (acc ++ [(fst x - 1, snd x)]) uniform p_bind s0
+  else handle_message xs [] acc uniform p_bind s0
 
 -- These three functions pass transformation matrices to the shaders and make the GL draw calls that render models.
 show_walls :: [Wall_place] -> UArray Int Int32 -> (UArray Int Word32, Int) -> Ptr GLfloat -> Float -> Float -> Float -> Int -> UArray (Int, Int) Float -> Int -> IO ()
