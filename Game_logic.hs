@@ -1165,16 +1165,7 @@ prioritise_npcs (x0:x1:x2:x3:xs) acc0 acc1 =
   if x0 > 127 then prioritise_npcs xs (x0 : x1 : x2 : x3 : acc0) acc1
   else prioritise_npcs xs acc0 (x0 : x1 : x2 : x3 : acc1)
 
--- This function causes the GPLC interpreter to skip an appropriate number of ticks (relative to frames rendered) when the frame rate limit is set to 50 or 60.  This means scripted game events run at
--- the correct speed whether the frame rate limit is 40, 50 or 60.
-sync_game_t :: Array Int [Char] -> Play_state0 -> Bool
-sync_game_t conf_reg s0 =
-  let fps_limit = read (cfg conf_reg 0 "fps_limit")
-  in
-  if fps_limit == 50 && mod (game_t s0) 5 == 4 then False
-  else if fps_limit == 60 && mod (game_t s0) 3 == 2 then False
-  else True
-
+-- This function handles preemptive ceiling collision detection (i.e. stops the player jumping if there is a ceiling directly above).
 jump_allowed :: Array (Int, Int, Int) Floor_grid -> Play_state0 -> Bool
 jump_allowed f_grid s0 =
   if truncate (pos_w s0) == 2 then True
@@ -1182,80 +1173,88 @@ jump_allowed f_grid s0 =
     if surface (f_grid ! (truncate (pos_w s0) + 1, div (truncate (pos_u s0)) 2, div (truncate (pos_v s0)) 2)) == Open then True
     else False
 
+report_fps :: Integer -> Integer -> [Int]
+report_fps t0 t1 = [6, 16, 19, 69, 63] ++ conv_msg (truncate (1000000000 / (fromIntegral (t1 - t0) / 40)))
+
 -- This function recurses once per game logic clock tick and is the central branching point of the game logic thread.
-update_play :: Io_box -> MVar (Play_state0, Array (Int, Int, Int) Wall_grid, Save_state) -> Play_state0 -> Play_state1 -> Bool -> Float -> (Float, Float, Float, Float) -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> UArray (Int, Int) Float -> Array Int [Char] -> Save_state -> Array Int Source -> IO ()
-update_play io_box state_ref s0 s1 in_flight f_rate (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up conf_reg save_state sound_array =
+update_play :: Io_box -> MVar (Play_state0, Array (Int, Int, Int) Wall_grid, Save_state) -> Play_state0 -> Play_state1 -> Bool -> Float -> (Float, Float, Float, Float) -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> UArray (Int, Int) Float -> Array Int [Char] -> Save_state -> Array Int Source -> (Integer, Integer, Integer) -> IO ()
+update_play io_box state_ref s0 s1 in_flight f_rate (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up conf_reg save_state sound_array (t0, t1, t2) =
   let det = detect_coll (truncate (pos_w s0)) (pos_u s0, pos_v s0) ((vel s0) !! 0 / f_rate, (vel s0) !! 1 / f_rate) obj_grid w_grid
       floor = floor_surf (det !! 0) (det !! 1) (pos_w s0) f_grid
       vel_0 = update_vel (vel s0) [0, 0, 0] ((drop 2 det) ++ [0]) f_rate f
       vel_2 = update_vel (vel s0) [0, 0, g] ((drop 2 det) ++ [0]) f_rate 0
       game_t' = game_t s0 + 1
+      s0_ = \x -> x {message_ = []}
   in do
   control <- messagePump (hwnd_ io_box)
-  link0 <- link_gplc0 (sync_game_t conf_reg s0) (drop 4 det) [truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)] w_grid [] f_grid obj_grid [] s0 (s1 {sig_q = prioritise_npcs (sig_q s1) [] []}) look_up False
+  link0 <- link_gplc0 True (drop 4 det) [truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)] w_grid [] f_grid obj_grid [] s0 (s1 {sig_q = prioritise_npcs (sig_q s1) [] []}) look_up False
   link1 <- link_gplc1 s0 s1 obj_grid 0
   link1_ <- link_gplc1 s0 s1 obj_grid 1
-  report_state ((verbose_mode s1) && (sig_q s1 /= [])) 2 [] [] ("\n\ngame_t = " ++ show (game_t s0) ++ "\n----------------\n\nsignal queue: " ++ show (sig_q s1) ++ "\n")
-  if control == 2 then do
+  t <- getTime Monotonic
+  report_state ((verbose_mode s1) && sig_q s1 /= []) 2 [] [] ("\n\ngame_t = " ++ show (game_t s0) ++ "\n----------------\n\nsignal queue: " ++ show (sig_q s1) ++ "\n")
+  if t0 == 0 then update_play io_box state_ref s0 s1 in_flight f_rate (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up conf_reg save_state sound_array (toNanoSecs t, t1, t2)
+  else if mod (game_t s0) 40 == 0 then do
+    update_play io_box state_ref (s0 {message_ = [(40, report_fps t1 (toNanoSecs t))], game_t = game_t'}) s1 in_flight f_rate (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up conf_reg save_state sound_array (t0, toNanoSecs t, t2)
+  else if control == 2 then do
     choice <- run_menu (pause_text s1 (difficulty s1)) [] io_box (-0.75) (-0.75) 1 0 0
-    if choice == 1 then update_play io_box state_ref s0 s1 in_flight f_rate (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up conf_reg save_state sound_array
+    if choice == 1 then update_play io_box state_ref (s0_ s0) s1 in_flight f_rate (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up conf_reg save_state sound_array (t0, t1, t2)
     else if choice == 2 then do
-      update_play io_box state_ref s0 s1 in_flight f_rate (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up conf_reg (Save_state {is_set = True, w_grid_ = w_grid, f_grid_ = f_grid, obj_grid_ = obj_grid, s0_ = s0, s1_ = s1}) sound_array
+      update_play io_box state_ref (s0_ s0) s1 in_flight f_rate (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up conf_reg (Save_state {is_set = True, w_grid_ = w_grid, f_grid_ = f_grid, obj_grid_ = obj_grid, s0_ = s0, s1_ = s1}) sound_array (t0, t1, t2)
     else if choice == 3 then do
-      putMVar state_ref (s0 {msg_count = -1}, w_grid, save_state)
-      update_play io_box state_ref s0 s1 in_flight f_rate (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up conf_reg save_state sound_array
+      putMVar state_ref (s0 {message_ = [(-1, [])]}, w_grid, save_state)
+      update_play io_box state_ref (s0_ s0) s1 in_flight f_rate (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up conf_reg save_state sound_array (t0, t1, t2)
     else do
-      putMVar state_ref (s0 {msg_count = -3}, w_grid, save_state)
-      update_play io_box state_ref s0 s1 in_flight f_rate (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up conf_reg save_state sound_array
-  else if control == 10 then update_play io_box state_ref (fourth link0) ((fifth link0) {sig_q = sig_q s1 ++ [2, 0, 0, 0]}) in_flight f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up conf_reg save_state sound_array
+      putMVar state_ref (s0 {message_ = [(-3, [])]}, w_grid, save_state)
+      update_play io_box state_ref (s0_ s0) s1 in_flight f_rate (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up conf_reg save_state sound_array (t0, t1, t2)
+  else if control == 10 then update_play io_box state_ref (s0_ (fourth link0)) ((fifth link0) {sig_q = sig_q s1 ++ [2, 0, 0, 0]}) in_flight f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up conf_reg save_state sound_array (t0, t1, t2)
   else if control == 11 then do
-    if view_mode s0 == 0 then update_play io_box state_ref ((fourth link0) {view_mode = 1}) (fifth link0) in_flight f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up conf_reg save_state sound_array
-    else update_play io_box state_ref ((fourth link0) {view_mode = 0}) (fifth link0) in_flight f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up conf_reg save_state sound_array
-  else if control == 12 then update_play io_box state_ref ((fourth link0) {view_angle = mod_angle (view_angle s0) 5}) (fifth link0) in_flight f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up conf_reg save_state sound_array
-  else if control == 13 then update_play io_box state_ref (fourth link0) ((fifth link0) {sig_q = sig_q s1 ++ [2, 0, 0, 1]}) in_flight f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up conf_reg save_state sound_array
+    if view_mode s0 == 0 then update_play io_box state_ref (s0_ ((fourth link0) {view_mode = 1})) (fifth link0) in_flight f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up conf_reg save_state sound_array (t0, t1, t2)
+    else update_play io_box state_ref (s0_ ((fourth link0) {view_mode = 0})) (fifth link0) in_flight f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up conf_reg save_state sound_array (t0, t1, t2)
+  else if control == 12 then update_play io_box state_ref (s0_ ((fourth link0) {view_angle = mod_angle (view_angle s0) 5})) (fifth link0) in_flight f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up conf_reg save_state sound_array (t0, t1, t2)
+  else if control == 13 then update_play io_box state_ref (s0_ (fourth link0)) ((fifth link0) {sig_q = sig_q s1 ++ [2, 0, 0, 1]}) in_flight f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up conf_reg save_state sound_array (t0, t1, t2)
   else if message s1 /= [] then do
     event <- proc_msg0 (message s1) s0 s1 io_box sound_array
     putMVar state_ref (fst event, w_grid, save_state)
-    update_play io_box state_ref ((fst event) {msg_count = 0}) (snd event) in_flight f_rate (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up conf_reg save_state sound_array
+    update_play io_box state_ref (s0_ s0) (snd event) in_flight f_rate (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up conf_reg save_state sound_array (t0, t1, t2)
   else
     if in_flight == False then
       if (pos_w s0) - floor > 0.02 then do
         putMVar state_ref (s0 {pos_u = det !! 0, pos_v = det !! 1}, w_grid, save_state)
-        update_play io_box state_ref ((fourth link0) {pos_u = det !! 0, pos_v = det !! 1, vel = vel_0, game_t = game_t'}) (fifth link0) True f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up conf_reg save_state sound_array
+        update_play io_box state_ref (s0_ ((fourth link0) {pos_u = det !! 0, pos_v = det !! 1, vel = vel_0, game_t = game_t'})) (fifth link0) True f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up conf_reg save_state sound_array (t0, t1, t2)
       else if control > 2 && control < 7 then do
         putMVar state_ref (s0 {pos_u = det !! 0, pos_v = det !! 1, pos_w = floor}, w_grid, save_state)
-        update_play io_box state_ref ((fourth link0) {pos_u = det !! 0, pos_v = det !! 1, pos_w = floor, vel = update_vel (vel s0) (take 3 (thrust (fromIntegral control) (angle s0) mag_r f_rate look_up)) ((drop 2 det) ++ [0]) f_rate f, game_t = game_t'}) (fifth link0) False f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up conf_reg save_state sound_array
+        update_play io_box state_ref (s0_ ((fourth link0) {pos_u = det !! 0, pos_v = det !! 1, pos_w = floor, vel = update_vel (vel s0) (take 3 (thrust (fromIntegral control) (angle s0) mag_r f_rate look_up)) ((drop 2 det) ++ [0]) f_rate f, game_t = game_t'})) (fifth link0) False f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up conf_reg save_state sound_array (t0, t1, t2)
       else if control == 7 then do
         putMVar state_ref (s0 {pos_u = det !! 0, pos_v = det !! 1, pos_w = floor, angle = mod_angle (angle s0) (angle_step s1)}, w_grid, save_state)
-        update_play io_box state_ref ((fourth link0) {pos_u = det !! 0, pos_v = det !! 1, pos_w = floor, vel = vel_0, angle = mod_angle (angle s0) (angle_step s1), game_t = game_t'}) (fifth link0) False f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up conf_reg save_state sound_array
+        update_play io_box state_ref (s0_ ((fourth link0) {pos_u = det !! 0, pos_v = det !! 1, pos_w = floor, vel = vel_0, angle = mod_angle (angle s0) (angle_step s1), game_t = game_t'})) (fifth link0) False f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up conf_reg save_state sound_array (t0, t1, t2)
       else if control == 8 then do
         putMVar state_ref (s0 {pos_u = det !! 0, pos_v = det !! 1, pos_w = floor, angle = mod_angle (angle s0) (- (angle_step s1))}, w_grid, save_state)
-        update_play io_box state_ref ((fourth link0) {pos_u = det !! 0, pos_v = det !! 1, pos_w = floor, vel = vel_0, angle = mod_angle (angle s0) (- (angle_step s1)), game_t = game_t'}) (fifth link0) False f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up conf_reg save_state sound_array
+        update_play io_box state_ref (s0_ ((fourth link0) {pos_u = det !! 0, pos_v = det !! 1, pos_w = floor, vel = vel_0, angle = mod_angle (angle s0) (- (angle_step s1)), game_t = game_t'})) (fifth link0) False f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up conf_reg save_state sound_array (t0, t1, t2)
       else if control == 9 && jump_allowed f_grid s0 == True then do
         putMVar state_ref (s0 {pos_u = det !! 0, pos_v = det !! 1, pos_w = floor + mag_j / f_rate}, w_grid, save_state)
-        update_play io_box state_ref ((fourth link0) {pos_u = det !! 0, pos_v = det !! 1, pos_w = floor + mag_j / f_rate, vel = (take 2 vel_0) ++ [mag_j], game_t = game_t'}) (fifth link0) False f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up conf_reg save_state sound_array
+        update_play io_box state_ref (s0_ ((fourth link0) {pos_u = det !! 0, pos_v = det !! 1, pos_w = floor + mag_j / f_rate, vel = (take 2 vel_0) ++ [mag_j], game_t = game_t'})) (fifth link0) False f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up conf_reg save_state sound_array (t0, t1, t2)
       else if control == 13 then do
         putMVar state_ref (s0 {pos_u = det !! 0, pos_v = det !! 1, pos_w = floor}, w_grid, save_state)
-        update_play io_box state_ref ((fourth link0) {pos_u = det !! 0, pos_v = det !! 1, pos_w = floor, vel = vel_0, game_t = game_t'}) ((fifth link0) {sig_q = sig_q s1 ++ [0, 0, 1]}) False f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (fst (send_signal 1 1 (0, 0, 1) (third link0) s1 [])) look_up conf_reg save_state sound_array
+        update_play io_box state_ref (s0_ ((fourth link0) {pos_u = det !! 0, pos_v = det !! 1, pos_w = floor, vel = vel_0, game_t = game_t'})) ((fifth link0) {sig_q = sig_q s1 ++ [0, 0, 1]}) False f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (fst (send_signal 1 1 (0, 0, 1) (third link0) s1 [])) look_up conf_reg save_state sound_array (t0, t1, t2)
       else do
         putMVar state_ref (s0 {pos_u = det !! 0, pos_v = det !! 1, pos_w = floor}, w_grid, save_state)
-        update_play io_box state_ref ((fourth link0) {pos_u = det !! 0, pos_v = det !! 1, pos_w = floor, vel = vel_0, game_t = game_t'}) (fifth link0) False f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up conf_reg save_state sound_array
+        update_play io_box state_ref (s0_ ((fourth link0) {pos_u = det !! 0, pos_v = det !! 1, pos_w = floor, vel = vel_0, game_t = game_t'})) (fifth link0) False f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up conf_reg save_state sound_array (t0, t1, t2)
     else if in_flight == True && (pos_w s0) > floor then
       if control == 7 then do
         putMVar state_ref (s0 {pos_u = det !! 0, pos_v = det !! 1, pos_w = (pos_w s0) + ((vel s0) !! 2) / f_rate, angle = mod_angle (angle s0) (angle_step s1)}, w_grid, save_state)
-        update_play io_box state_ref ((fourth link0) {pos_u = det !! 0, pos_v = det !! 1, pos_w = (pos_w s0) + ((vel s0) !! 2) / f_rate, vel = vel_2, angle = mod_angle (angle s0) (angle_step s1), game_t = game_t'}) (fifth link0) True f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up conf_reg save_state sound_array
+        update_play io_box state_ref (s0_ ((fourth link0) {pos_u = det !! 0, pos_v = det !! 1, pos_w = (pos_w s0) + ((vel s0) !! 2) / f_rate, vel = vel_2, angle = mod_angle (angle s0) (angle_step s1), game_t = game_t'})) (fifth link0) True f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up conf_reg save_state sound_array (t0, t1, t2)
       else if control == 8 then do
         putMVar state_ref (s0 {pos_u = det !! 0, pos_v = det !! 1, pos_w = (pos_w s0) + ((vel s0) !! 2) / f_rate, angle = mod_angle (angle s0) (- (angle_step s1))}, w_grid, save_state)
-        update_play io_box state_ref ((fourth link0) {pos_u = det !! 0, pos_v = det !! 1, pos_w = (pos_w s0) + ((vel s0) !! 2) / f_rate, vel = vel_2, angle = mod_angle (angle s0) (- (angle_step s1)), game_t = game_t'}) (fifth link0) True f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up conf_reg save_state sound_array
+        update_play io_box state_ref (s0_ ((fourth link0) {pos_u = det !! 0, pos_v = det !! 1, pos_w = (pos_w s0) + ((vel s0) !! 2) / f_rate, vel = vel_2, angle = mod_angle (angle s0) (- (angle_step s1)), game_t = game_t'})) (fifth link0) True f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up conf_reg save_state sound_array (t0, t1, t2)
       else do
         putMVar state_ref (s0 {pos_u = det !! 0, pos_v = det !! 1, pos_w = (pos_w s0) + ((vel s0) !! 2) / f_rate}, w_grid, save_state)
-        update_play io_box state_ref ((fourth link0) {pos_u = det !! 0, pos_v = det !! 1, pos_w = (pos_w s0) + ((vel s0) !! 2) / f_rate, vel = vel_2, game_t = game_t'}) (fifth link0) True f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up conf_reg save_state sound_array
+        update_play io_box state_ref (s0_ ((fourth link0) {pos_u = det !! 0, pos_v = det !! 1, pos_w = (pos_w s0) + ((vel s0) !! 2) / f_rate, vel = vel_2, game_t = game_t'})) (fifth link0) True f_rate (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up conf_reg save_state sound_array (t0, t1, t2)
     else do
       putMVar state_ref (s0 {pos_u = det !! 0, pos_v = det !! 1, pos_w = floor}, w_grid, save_state)
       if (vel s0) !! 2 < -4 then do
-        update_play io_box state_ref (s0 {pos_u = det !! 0, pos_v = det !! 1, pos_w = floor, vel = vel_0, game_t = game_t'}) link1_ False f_rate (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up conf_reg save_state sound_array
+        update_play io_box state_ref (s0_ (s0 {pos_u = det !! 0, pos_v = det !! 1, pos_w = floor, vel = vel_0, game_t = game_t'})) link1_ False f_rate (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up conf_reg save_state sound_array (t0, t1, t2)
       else do
-        update_play io_box state_ref (s0 {pos_u = det !! 0, pos_v = det !! 1, pos_w = floor, vel = vel_0, game_t = game_t'}) link1 False f_rate (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up conf_reg save_state sound_array
+        update_play io_box state_ref (s0_ (s0 {pos_u = det !! 0, pos_v = det !! 1, pos_w = floor, vel = vel_0, game_t = game_t'})) link1 False f_rate (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up conf_reg save_state sound_array (t0, t1, t2)
 
 -- These five functions handle events triggered by a call to pass_msg within a GPLC program.  These include on screen messages, object interaction menus and sound effects.
 conv_msg :: Int -> [Int]
@@ -1287,12 +1286,12 @@ proc_msg0 (x0:x1:xs) s0 s1 io_box sound_array =
   in do
   if x0 == 0 && state_chg s1 == 1 && health s1 <= 0 then do
     play_ (sound_array ! 20)
-    return (s0 {message_ = [(0, take (x1 - 3) xs)], msg_count = -2}, s1)
-  else if x0 == 0 && state_chg s1 == 1 then proc_msg0 (drop (x1 - 3) xs) (s0 {message_ = [(0, (take (x1 - 3) xs) ++ msg1 ++ conv_msg (health s1))], msg_count = 400}) s1 io_box sound_array
-  else if x0 == 0 && state_chg s1 == 2 then proc_msg0 (drop (x1 - 3) xs) (s0 {message_ = [(0, (take (x1 - 3) xs) ++ msg2 ++ conv_msg (ammo s1))], msg_count = 400}) s1 io_box sound_array
-  else if x0 == 0 && state_chg s1 == 3 then proc_msg0 (drop (x1 - 3) xs) (s0 {message_ = [(0, (take (x1 - 3) xs) ++ msg3 ++ conv_msg (gems s1))], msg_count = 400}) s1 io_box sound_array
-  else if x0 == 0 && state_chg s1 == 4 then proc_msg0 (drop (x1 - 3) xs) (s0 {message_ = [(0, (take (x1 - 3) xs) ++ msg4 ++ conv_msg (torches s1))], msg_count = 400}) s1 io_box sound_array
-  else if x0 < 0 then return (s0 {message_ = [(0, take x1 xs)], msg_count = x0}, s1)
+    return (s0 {message_ = [(-2, take (x1 - 3) xs)]}, s1)
+  else if x0 == 0 && state_chg s1 == 1 then proc_msg0 (drop (x1 - 3) xs) (s0 {message_ = message_ s0 ++ [(600, x0 : (take (x1 - 3) xs) ++ msg1 ++ conv_msg (health s1))]}) s1 io_box sound_array
+  else if x0 == 0 && state_chg s1 == 2 then proc_msg0 (drop (x1 - 3) xs) (s0 {message_ = message_ s0 ++ [(600, x0 : (take (x1 - 3) xs) ++ msg2 ++ conv_msg (ammo s1))]}) s1 io_box sound_array
+  else if x0 == 0 && state_chg s1 == 3 then proc_msg0 (drop (x1 - 3) xs) (s0 {message_ = message_ s0 ++ [(600, x0 : (take (x1 - 3) xs) ++ msg3 ++ conv_msg (gems s1))]}) s1 io_box sound_array
+  else if x0 == 0 && state_chg s1 == 4 then proc_msg0 (drop (x1 - 3) xs) (s0 {message_ = message_ s0 ++ [(600, x0 : (take (x1 - 3) xs) ++ msg4 ++ conv_msg (torches s1))]}) s1 io_box sound_array
+  else if x0 < 0 then return (s0 {message_ = message_ s0 ++ [(x0, take x1 xs)]}, s1)
   else if x0 == 1 then do
     choice <- run_menu (proc_msg1 (tail (splitOn [-1] (take (x1 - 3) xs)))) [] io_box (-0.96) (-0.2) 1 0 0
     proc_msg0 (drop (x1 - 3) xs) s0 (s1 {sig_q = sig_q s1 ++ [choice + 1, signal_ !! 0, signal_ !! 1, signal_ !! 2]}) io_box sound_array
@@ -1301,7 +1300,7 @@ proc_msg0 (x0:x1:xs) s0 s1 io_box sound_array =
     else play_ (sound_array ! ((xs !! 0) - 1))
     proc_msg0 (drop (x1 - 3) xs) s0 s1 io_box sound_array
   else if x0 == 3 then proc_msg0 [] (s0 {pos_u = int_to_float (xs !! 0), pos_v = int_to_float (xs !! 1), pos_w = int_to_float (xs !! 2)}) s1 io_box sound_array
-  else proc_msg0 (drop (x1 - 3) xs) (s0 {message_ = [(0, take (x1 - 3) xs)], msg_count = 400}) s1 io_box sound_array
+  else proc_msg0 (drop (x1 - 3) xs) (s0 {message_ = message_ s0 ++ [(600, take (x1 - 3) xs)]}) s1 io_box sound_array
 
 -- Used by the game logic thread for in game menus and by the main thread for the main menu.
 run_menu :: [(Int, [Int])] -> [(Int, [Int])] -> Io_box -> Float -> Float -> Int -> Int -> Int -> IO Int
@@ -1337,33 +1336,34 @@ run_menu (n:ns) acc io_box x y c c_max d = do
   else return ()
   glBindVertexArray (unsafeCoerce ((fst (p_bind_ io_box)) ! 933))
   p_tt_matrix <- mallocBytes ((length (snd n)) * glfloat * 16)
-  if fst n == c then show_text (snd n) 1 933 (uniform_ io_box) (p_bind_ io_box) p_tt_matrix x y 0
-  else show_text (snd n) 0 933 (uniform_ io_box) (p_bind_ io_box) p_tt_matrix x y 0
+  if fst n == c then show_text (snd n) 1 933 (uniform_ io_box) (p_bind_ io_box) x y zero_ptr
+  else show_text (snd n) 0 933 (uniform_ io_box) (p_bind_ io_box) x y zero_ptr
   free p_tt_matrix
   run_menu ns (acc ++ [n]) io_box x (y - 0.04) c c_max 1
 
 -- This function handles the drawing of message tiles (letters and numbers etc) that are used for in game messages and in menus.
-show_text :: [Int] -> Int -> Int -> UArray Int Int32 -> (UArray Int Word32, Int) -> Float -> Float -> Ptr GLFloat -> IO ()
+show_text :: [Int] -> Int -> Int -> UArray Int Int32 -> (UArray Int Word32, Int) -> Float -> Float -> Ptr GLfloat -> IO ()
 show_text [] mode base uniform p_bind x y p_tt_matrix = do
   glEnable GL_DEPTH_TEST
   free p_tt_matrix
-show_text (m:ms) mode base uniform p_bind x y 0 = do
-  p_tt_matrix_ <- mallocBytes (16 * glfloat)
-  glBindVertexArray (unsafeCoerce ((fst p_bind) ! 933))
-  glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 3)))
-  glDisable GL_DEPTH_TEST
-  show_text (m:ms) mode base uniform p_bind x y p_tt_matrix_
 show_text (m:ms) mode base uniform p_bind x y p_tt_matrix = do
-  load_array (MAT.toList (translation x y 0)) (castPtr p_tt_matrix) 0
-  if mode == 0 && x < 83 then do
-    glUniformMatrix4fv (unsafeCoerce (uniform ! 36)) 1 1 p_tt_matrix
-    glUniform1i (unsafeCoerce (uniform ! 38)) 0
-  else if mode == 1 && x < 83 then do
-    glUniformMatrix4fv (unsafeCoerce (uniform ! 36)) 1 1 p_tt_matrix
-    glUniform1i (unsafeCoerce (uniform ! 38)) 1
+  if minusPtr p_tt_matrix zero_ptr == 0 then do
+    p_tt_matrix_ <- mallocBytes (16 * glfloat)
+    glBindVertexArray (unsafeCoerce ((fst p_bind) ! 933))
+    glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 3)))
+    glDisable GL_DEPTH_TEST
+    show_text (m:ms) mode base uniform p_bind x y p_tt_matrix_
   else do
-    putStr "show_text: Invalid mode or character reference in text line..."
+    load_array (MAT.toList (translation x y 0)) (castPtr p_tt_matrix) 0
+    if mode == 0 && x < 83 then do
+      glUniformMatrix4fv (unsafeCoerce (uniform ! 36)) 1 1 p_tt_matrix
+      glUniform1i (unsafeCoerce (uniform ! 38)) 0
+    else if mode == 1 && x < 83 then do
+      glUniformMatrix4fv (unsafeCoerce (uniform ! 36)) 1 1 p_tt_matrix
+      glUniform1i (unsafeCoerce (uniform ! 38)) 1
+    else do
+      putStr "show_text: Invalid mode or character reference in text line..."
+      show_text ms mode base uniform p_bind (x + 0.04) y p_tt_matrix
+    glBindTexture GL_TEXTURE_2D (unsafeCoerce ((fst p_bind) ! (base + m)))
+    glDrawElements GL_TRIANGLES 6 GL_UNSIGNED_SHORT zero_ptr
     show_text ms mode base uniform p_bind (x + 0.04) y p_tt_matrix
-  glBindTexture GL_TEXTURE_2D (unsafeCoerce ((fst p_bind) ! (base + m)))
-  glDrawElements GL_TRIANGLES 6 GL_UNSIGNED_SHORT zero_ptr
-  show_text ms mode base uniform p_bind (x + 0.04) y p_tt_matrix

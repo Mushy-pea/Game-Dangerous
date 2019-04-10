@@ -311,16 +311,16 @@ start_game hwnd hdc uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag_j)
     state_ref <- newEmptyMVar
     r_gen <- getStdGen
     if mode == 0 then do
-      tid <- forkIO (update_play (Io_box {hwnd_ = hwnd, hdc_ = hdc, uniform_ = uniform, p_bind_ = p_bind}) state_ref (ps0_init {pos_u = u, pos_v = v, pos_w = w, show_fps_ = select_mode (cfg' "show_fps"), prob_seq = gen_prob_seq 0 239 (read (cfg' "prob_c")) r_gen}) (ps1_init {verbose_mode = select_mode (cfg' "verbose_mode"), angle_step = set_angle_step (cfg' "fps_limit")}) False ((read (cfg' "fps_limit")) / 1.25) (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up_ conf_reg save_state sound_array)
-      result <- show_frame hdc p_bind uniform p_mt_matrix (p_f_table0, p_f_table1) 0 0 0 0 0 1 state_ref w_grid f_grid obj_grid look_up_ (read ((splitOn "~" c) !! 10)) 0 camera_to_clip' (div 1000 (read (cfg' "fps_limit"))) []
+      tid <- forkIO (update_play (Io_box {hwnd_ = hwnd, hdc_ = hdc, uniform_ = uniform, p_bind_ = p_bind}) state_ref (ps0_init {pos_u = u, pos_v = v, pos_w = w, show_fps_ = select_mode (cfg' "show_fps"), prob_seq = gen_prob_seq 0 239 (read (cfg' "prob_c")) r_gen}) (ps1_init {verbose_mode = select_mode (cfg' "verbose_mode"), angle_step = set_angle_step (cfg' "fps_limit")}) False ((read (cfg' "fps_limit")) / 1.25) (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up_ conf_reg save_state sound_array (0, 0, 0))
+      result <- show_frame hdc p_bind uniform p_mt_matrix (p_f_table0, p_f_table1) 0 0 0 0 0 1 state_ref w_grid f_grid obj_grid look_up_ camera_to_clip' []
       free p_mt_matrix
       free p_f_table0
       free p_f_table1
       killThread tid
       start_game hwnd hdc uniform p_bind c conf_reg ((head (fst result)) + 1) (u, v, w, g, f, mag_r, mag_j) (snd result) sound_array
     else do
-      tid <- forkIO (update_play (Io_box {hwnd_ = hwnd, hdc_ = hdc, uniform_ = uniform, p_bind_ = p_bind}) state_ref (s0_ save_state) (s1_ save_state) False ((read (cfg' "fps_limit")) / 1.25) (g, f, mag_r, mag_j) (w_grid_ save_state) (f_grid_ save_state) (obj_grid_ save_state) look_up_ conf_reg save_state sound_array)
-      result <- show_frame hdc p_bind uniform p_mt_matrix (p_f_table0, p_f_table1) 0 0 0 0 0 1 state_ref w_grid f_grid obj_grid look_up_ (read ((splitOn "~" c) !! 10)) 0 camera_to_clip' (div 1000 (read (cfg' "fps_limit"))) []
+      tid <- forkIO (update_play (Io_box {hwnd_ = hwnd, hdc_ = hdc, uniform_ = uniform, p_bind_ = p_bind}) state_ref (s0_ save_state) (s1_ save_state) False ((read (cfg' "fps_limit")) / 1.25) (g, f, mag_r, mag_j) (w_grid_ save_state) (f_grid_ save_state) (obj_grid_ save_state) look_up_ conf_reg save_state sound_array (0, 0, 0))
+      result <- show_frame hdc p_bind uniform p_mt_matrix (p_f_table0, p_f_table1) 0 0 0 0 0 1 state_ref w_grid f_grid obj_grid look_up_ camera_to_clip' []
       free p_mt_matrix
       free p_f_table0
       free p_f_table1
@@ -494,8 +494,6 @@ bind_texture (x:xs) p_bind w h offset = do
   glBindTexture GL_TEXTURE_2D tex
   BS.useAsCString (BS.take (fromIntegral (w * h * 3)) (BS.reverse x)) (load_bitmap2 w h)
   glGenerateMipmap GL_TEXTURE_2D
---  glTexParameteri gl_TEXTURE_2D gl_TEXTURE_WRAP_S (fromIntegral gl_REPEAT)
---  glTexParameteri gl_TEXTURE_2D gl_TEXTURE_WRAP_T (fromIntegral gl_REPEAT)
   glTexParameteri GL_TEXTURE_2D GL_TEXTURE_MIN_FILTER (fromIntegral GL_NEAREST)
   glTexParameteri GL_TEXTURE_2D GL_TEXTURE_MAG_FILTER (fromIntegral GL_NEAREST)
   bind_texture xs p_bind w h (offset + 1)
@@ -550,12 +548,12 @@ show_frame hdc p_bind uniform p_mt_matrix filter_table u v w a a' game_t' state_
   msg_residue <- handle_message msg_queue (message_ (fst__ p_state)) [] uniform p_bind (fst__ p_state)
   if fst msg_residue == 1 then return ([1], third_ p_state)
   else if fst msg_residue == 2 then do
-    show_text (snd (snd msg_residue)) 0 933 uniform p_bind 0 0 0
+    show_text (snd (head (snd msg_residue))) 0 933 uniform p_bind (-0.95) 0.9 zero_ptr
     Main.swapBuffers hdc
     threadDelay 5000000
     return ([2], third_ p_state)
   else if fst msg_residue == 3 then return ([3], third_ p_state)
-  else if fst msg_residue > 3 then return (([(abs (msg_count (fst__ p_state)))] ++ (snd (head (message_ (fst__ p_state))))), third_ p_state)
+  else if fst msg_residue > 3 then return (([0] ++ (snd (head (message_ (fst__ p_state))))), third_ p_state)
   else do
     Main.swapBuffers hdc
     show_frame hdc p_bind uniform p_mt_matrix filter_table (pos_u (fst__ p_state)) (pos_v (fst__ p_state)) (pos_w (fst__ p_state)) (angle (fst__ p_state)) (view_angle (fst__ p_state)) (game_t (fst__ p_state)) state_ref (snd__ p_state) f_grid obj_grid look_up camera_to_clip (snd msg_residue)
@@ -570,7 +568,8 @@ handle_message (x:xs) [] acc uniform p_bind s0 = do
   else if fst x > 0 then do
     if head (snd x) == -1 && show_fps_ s0 == False then handle_message xs [] acc uniform p_bind s0
     else do
-      show_text (snd x) 0 933 uniform p_bind 0 0 0
+      if head (snd x) == -1 then show_text (tail (snd x)) 0 933 uniform p_bind 0.64 0.9 zero_ptr
+      else show_text (tail (snd x)) 0 933 uniform p_bind (-0.96) 0.9 zero_ptr
       handle_message xs [] (acc ++ [(fst x - 1, snd x)]) uniform p_bind s0
   else handle_message xs [] acc uniform p_bind s0
 
