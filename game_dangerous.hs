@@ -311,7 +311,7 @@ start_game hwnd hdc uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag_j)
     state_ref <- newEmptyMVar
     r_gen <- getStdGen
     if mode == 0 then do
-      tid <- forkIO (update_play (Io_box {hwnd_ = hwnd, hdc_ = hdc, uniform_ = uniform, p_bind_ = p_bind}) state_ref (ps0_init {pos_u = u, pos_v = v, pos_w = w, show_fps_ = select_mode (cfg' "show_fps"), prob_seq = gen_prob_seq 0 239 (read (cfg' "prob_c")) r_gen}) (ps1_init {verbose_mode = select_mode (cfg' "verbose_mode"), angle_step = set_angle_step (cfg' "fps_limit")}) False ((read (cfg' "fps_limit")) / 1.25) (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up_ conf_reg save_state sound_array (0, 0, 0))
+      tid <- forkIO (update_play (Io_box {hwnd_ = hwnd, hdc_ = hdc, uniform_ = uniform, p_bind_ = p_bind}) state_ref (ps0_init {pos_u = u, pos_v = v, pos_w = w, show_fps_ = select_mode (cfg' "show_fps"), prob_seq = gen_prob_seq 0 239 (read (cfg' "prob_c")) r_gen}) (ps1_init {verbose_mode = select_mode (cfg' "verbose_mode"), angle_step = set_angle_step (cfg' "fps_limit")}) False (read (cfg' "min_frame_t")) (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up_ save_state sound_array (0, 0, 0) 60)
       result <- show_frame hdc p_bind uniform p_mt_matrix (p_f_table0, p_f_table1) 0 0 0 0 0 1 state_ref w_grid f_grid obj_grid look_up_ camera_to_clip' []
       free p_mt_matrix
       free p_f_table0
@@ -319,7 +319,7 @@ start_game hwnd hdc uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag_j)
       killThread tid
       start_game hwnd hdc uniform p_bind c conf_reg ((head (fst result)) + 1) (u, v, w, g, f, mag_r, mag_j) (snd result) sound_array
     else do
-      tid <- forkIO (update_play (Io_box {hwnd_ = hwnd, hdc_ = hdc, uniform_ = uniform, p_bind_ = p_bind}) state_ref (s0_ save_state) (s1_ save_state) False ((read (cfg' "fps_limit")) / 1.25) (g, f, mag_r, mag_j) (w_grid_ save_state) (f_grid_ save_state) (obj_grid_ save_state) look_up_ conf_reg save_state sound_array (0, 0, 0))
+      tid <- forkIO (update_play (Io_box {hwnd_ = hwnd, hdc_ = hdc, uniform_ = uniform, p_bind_ = p_bind}) state_ref (s0_ save_state) (s1_ save_state) False (read (cfg' "min_frame_t")) (g, f, mag_r, mag_j) (w_grid_ save_state) (f_grid_ save_state) (obj_grid_ save_state) look_up_ save_state sound_array (0, 0, 0) 60)
       result <- show_frame hdc p_bind uniform p_mt_matrix (p_f_table0, p_f_table1) 0 0 0 0 0 1 state_ref w_grid f_grid obj_grid look_up_ camera_to_clip' []
       free p_mt_matrix
       free p_f_table0
@@ -562,7 +562,8 @@ show_frame hdc p_bind uniform p_mt_matrix filter_table u v w a a' game_t' state_
 --such as are received when the user opts to return to the main menu.
 handle_message :: [(Int, [Int])] -> [(Int, [Int])] -> [(Int, [Int])] -> UArray Int Int32 -> (UArray Int Word32, Int) -> Play_state0 -> IO (Int, [(Int, [Int])])
 handle_message [] [] acc uniform p_bind s0 = return (0, acc)
-handle_message _ new_messages acc uniform p_bind s0 = return (0, new_messages)
+handle_message [] (y:ys) acc uniform p_bind s0 = return (0, (y:ys))
+handle_message (x:xs) (y:ys) acc uniform p_bind s0 = return (0, (y:ys))
 handle_message (x:xs) [] acc uniform p_bind s0 = do
   if fst x < 0 then return (abs (fst x), [x])
   else if fst x > 0 then do
