@@ -72,11 +72,11 @@ data Terrain = Flat | Positive_u | Negative_u | Positive_v | Negative_v | Open d
 
 data Floor_grid = Floor_grid {w_ :: Float, surface :: Terrain, local_up_ramp :: (Int, Int), local_down_ramp :: (Int, Int)} deriving (Eq, Show)
 
-data Play_state0 = Play_state0 {pos_u :: Float, pos_v :: Float, pos_w :: Float, vel :: [Float], angle :: Int, message_ :: [(Int, [Int])], rend_mode :: Int, view_mode :: Int, view_angle :: Int,
+data Play_state0 = Play_state0 {pos_u :: Float, pos_v :: Float, pos_w :: Float, vel :: [Float], angle :: Int, angle_ :: Float, message_ :: [(Int, [Int])], rend_mode :: Int, view_mode :: Int, view_angle :: Int,
 game_t :: Int, torch_t0 :: Int, torch_t_limit :: Int, show_fps_ :: Bool, prob_seq :: UArray Int Int} deriving (Eq, Show)
 
 data Play_state1 = Play_state1 {health :: Int, ammo :: Int, gems :: Int, torches :: Int, keys :: [Int], region :: [Int], difficulty :: ([Char], Int, Int, Int), sig_q :: [Int], next_sig_q :: [Int],
-message :: [Int], state_chg :: Int, verbose_mode :: Bool, angle_step :: Int, npc_states :: Array Int NPC_state} deriving (Eq)
+message :: [Int], state_chg :: Int, verbose_mode :: Bool, npc_states :: Array Int NPC_state} deriving (Eq)
 
 data NPC_state = NPC_state {npc_type :: Int, c_health :: Int, ticks_left0 :: Int, ticks_left1 :: Int, node_locations :: [Int], fg_position :: (Float, Float, Float), dir_vector :: (Float, Float), direction :: Int,
 last_dir :: Int, dir_list :: [Int], node_num :: Int, end_node :: Int, head_index :: Int, reversed :: Bool, target_u' :: Int, target_v' :: Int, target_w' :: Int, speed :: Float, avoid_dist :: Int, attack_mode :: Bool,
@@ -92,8 +92,8 @@ instance Exception EngineError
 
 cpede_frames = [0, 1, 2, 3, 4, 5, 4, 3, 2, 1, 0] :: [Int]
 
-ps0_init = Play_state0 {pos_u = 0, pos_v = 0, pos_w = 0, vel = [0, 0, 0], angle = 0, message_ = [], rend_mode = 0, view_mode = 0, view_angle = 0, game_t = 1, torch_t0 = 1, torch_t_limit = 0, show_fps_ = False, prob_seq = def_prob_seq}
-ps1_init = Play_state1 {health = 100, ammo = 0, gems = 0, torches = 0, keys = [63,63,63,63,63,63], region = [19,46,41,44,27,33,31,63,28,27,51,63,4], difficulty = ("Plenty of danger please", 6, 10, 14), sig_q = [], next_sig_q = [], message = [], state_chg = 0, verbose_mode = False, angle_step = 0, npc_states = empty_npc_array}
+ps0_init = Play_state0 {pos_u = 0, pos_v = 0, pos_w = 0, vel = [0, 0, 0], angle = 0, angle_ = 0, message_ = [], rend_mode = 0, view_mode = 0, view_angle = 0, game_t = 1, torch_t0 = 1, torch_t_limit = 0, show_fps_ = False, prob_seq = def_prob_seq}
+ps1_init = Play_state1 {health = 100, ammo = 0, gems = 0, torches = 0, keys = [63,63,63,63,63,63], region = [19,46,41,44,27,33,31,63,28,27,51,63,4], difficulty = ("Plenty of danger please", 6, 10, 14), sig_q = [], next_sig_q = [], message = [], state_chg = 0, verbose_mode = False, npc_states = empty_npc_array}
 
 def_w_grid = Wall_grid {u1 = False, u2 = False, v1 = False, v2 = False, u1_bound = 0, u2_bound = 0, v1_bound = 0, v2_bound = 0, w_level = 0,  wall_flag = [], texture = [], obj = Nothing}
 
@@ -202,6 +202,19 @@ mod_angle a b =
   else a + b
 
 mod_angle' a b = b
+
+-- This function was introduced as the transition to variable frame rate management was made.  It handles updates to a floating point representation of angle, which allows
+-- for fine grain frame rate dependent changes to the player angle to be made.
+mod_angle_ :: Float -> Float -> Bool -> Float
+mod_angle_ a f_rate clockwise =
+  let angle_step = 6 / (f_rate / 40)
+  in
+  if clockwise == True then
+    if a - angle_step < 0 then 200 * pi + (a - angle_step)
+    else a - angle_step
+  else
+    if a + angle_step > 200 * pi then angle_step - (200 * pi - a)
+    else a + angle_step
 
 -- These functions implement a ray tracing algorhythm, which is part of the visible surface determination (VSD) system and is used for line of sight checks by the non - player character logic.
 -- The Ray_test class exists so that the ray tracer can conveniently provide differing functionality when called from the VSD system or game logic.
