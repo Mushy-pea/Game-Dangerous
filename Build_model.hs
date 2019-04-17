@@ -73,7 +73,7 @@ data Terrain = Flat | Positive_u | Negative_u | Positive_v | Negative_v | Open d
 data Floor_grid = Floor_grid {w_ :: Float, surface :: Terrain, local_up_ramp :: (Int, Int), local_down_ramp :: (Int, Int)} deriving (Eq, Show)
 
 data Play_state0 = Play_state0 {pos_u :: Float, pos_v :: Float, pos_w :: Float, vel :: [Float], angle :: Int, angle_ :: Float, message_ :: [(Int, [Int])], rend_mode :: Int, view_mode :: Int, view_angle :: Int,
-game_t :: Int, torch_t0 :: Int, torch_t_limit :: Int, show_fps_ :: Bool, prob_seq :: UArray Int Int} deriving (Eq, Show)
+game_clock :: (Int, Float, Int), torch_t0 :: Int, torch_t_limit :: Int, show_fps_ :: Bool, prob_seq :: UArray Int Int} deriving (Eq, Show)
 
 data Play_state1 = Play_state1 {health :: Int, ammo :: Int, gems :: Int, torches :: Int, keys :: [Int], region :: [Int], difficulty :: ([Char], Int, Int, Int), sig_q :: [Int], next_sig_q :: [Int],
 message :: [Int], state_chg :: Int, verbose_mode :: Bool, npc_states :: Array Int NPC_state} deriving (Eq)
@@ -92,7 +92,7 @@ instance Exception EngineError
 
 cpede_frames = [0, 1, 2, 3, 4, 5, 4, 3, 2, 1, 0] :: [Int]
 
-ps0_init = Play_state0 {pos_u = 0, pos_v = 0, pos_w = 0, vel = [0, 0, 0], angle = 0, angle_ = 0, message_ = [], rend_mode = 0, view_mode = 0, view_angle = 0, game_t = 1, torch_t0 = 1, torch_t_limit = 0, show_fps_ = False, prob_seq = def_prob_seq}
+ps0_init = Play_state0 {pos_u = 0, pos_v = 0, pos_w = 0, vel = [0, 0, 0], angle = 0, angle_ = 0, message_ = [], rend_mode = 0, view_mode = 0, view_angle = 0, game_clock = (1, 1, 1), torch_t0 = 1, torch_t_limit = 0, show_fps_ = False, prob_seq = def_prob_seq}
 ps1_init = Play_state1 {health = 100, ammo = 0, gems = 0, torches = 0, keys = [63,63,63,63,63,63], region = [19,46,41,44,27,33,31,63,28,27,51,63,4], difficulty = ("Plenty of danger please", 6, 10, 14), sig_q = [], next_sig_q = [], message = [], state_chg = 0, verbose_mode = False, npc_states = empty_npc_array}
 
 def_w_grid = Wall_grid {u1 = False, u2 = False, v1 = False, v2 = False, u1_bound = 0, u2_bound = 0, v1_bound = 0, v2_bound = 0, w_level = 0,  wall_flag = [], texture = [], obj = Nothing}
@@ -570,7 +570,7 @@ patch_obj_grid (x0:x1:x2:x3:x4:xs) obj_grid =
   patch_obj_grid (drop (read x4) xs) (obj_grid // [(dest, (read x3, proc_ints (take (read x4) xs)))])
 
 set_play_state0 :: [[Char]] -> Play_state0
-set_play_state0 (x0:x1:x2:x3:x4:x5:x6:x7:x8:x9:x10:x11:x12:xs) = Play_state0 {pos_u = read x0, pos_v = read x1, pos_w = read x2, vel = [read x3, read x4, read x5], angle = read x6, message_ = [], rend_mode = read x7, view_mode = read x8, view_angle = read x9, game_t = read x10, torch_t0 = read x11, torch_t_limit = read x12, show_fps_ = False}
+set_play_state0 (x0:x1:x2:x3:x4:x5:x6:x7:x8:x9:x10:x11:x12:xs) = Play_state0 {pos_u = read x0, pos_v = read x1, pos_w = read x2, vel = [read x3, read x4, read x5], angle = read x6, message_ = [], rend_mode = read x7, view_mode = read x8, view_angle = read x9, game_clock = (1, 1, 1), torch_t0 = read x11, torch_t_limit = read x12, show_fps_ = False}
 
 set_play_state1 :: Int -> [[Char]] -> Play_state1 -> Play_state1
 set_play_state1 0 (x0:x1:x2:x3:x4:x5:x6:x7:x8:x9:x10:xs) s1 = set_play_state1 1 (drop (read x10) xs) (s1 {health = read x0, ammo = read x1, gems = read x2, torches = read x3, keys = [read x4, read x5, read x6, read x7, read x8, read x9], region = proc_ints (take (read x10) xs)})

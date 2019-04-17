@@ -15,6 +15,7 @@ import Data.Bits
 import Data.Word
 import Data.List.Split
 import Data.Matrix hiding ((!))
+import qualified Data.Sequence as SEQ
 import System.Environment
 import Data.Coerce
 import Unsafe.Coerce
@@ -307,16 +308,16 @@ start_game hwnd hdc uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag_j)
     t_log <- newEmptyMVar
     r_gen <- getStdGen
     if mode == 0 then do
-      tid <- forkIO (update_play (Io_box {hwnd_ = hwnd, hdc_ = hdc, uniform_ = uniform, p_bind_ = p_bind}) state_ref (ps0_init {pos_u = u, pos_v = v, pos_w = w, show_fps_ = select_mode (cfg' "show_fps"), prob_seq = gen_prob_seq 0 239 (read (cfg' "prob_c")) r_gen}) (ps1_init {verbose_mode = select_mode (cfg' "verbose_mode")}) False (read (cfg' "min_frame_t")) (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up_ save_state sound_array (0, 0, 0) 60 t_log)
-      result <- show_frame hdc p_bind uniform p_mt_matrix (p_f_table0, p_f_table1) 0 0 0 0 0 1 state_ref w_grid f_grid obj_grid look_up_ camera_to_clip' []
+      tid <- forkIO (update_play (Io_box {hwnd_ = hwnd, hdc_ = hdc, uniform_ = uniform, p_bind_ = p_bind}) state_ref (ps0_init {pos_u = u, pos_v = v, pos_w = w, show_fps_ = select_mode (cfg' "show_fps"), prob_seq = gen_prob_seq 0 239 (read (cfg' "prob_c")) r_gen}) (ps1_init {verbose_mode = select_mode (cfg' "verbose_mode")}) False (read (cfg' "min_frame_t")) (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up_ save_state sound_array 0 t_log (SEQ.empty) 60)
+      result <- show_frame hdc p_bind uniform p_mt_matrix (p_f_table0, p_f_table1) 0 0 0 0 0 state_ref w_grid f_grid obj_grid look_up_ camera_to_clip' []
       free p_mt_matrix
       free p_f_table0
       free p_f_table1
       killThread tid
       start_game hwnd hdc uniform p_bind c conf_reg ((head (fst result)) + 1) (u, v, w, g, f, mag_r, mag_j) (snd result) sound_array
     else do
-      tid <- forkIO (update_play (Io_box {hwnd_ = hwnd, hdc_ = hdc, uniform_ = uniform, p_bind_ = p_bind}) state_ref (s0_ save_state) (s1_ save_state) False (read (cfg' "min_frame_t")) (g, f, mag_r, mag_j) (w_grid_ save_state) (f_grid_ save_state) (obj_grid_ save_state) look_up_ save_state sound_array (0, 0, 0) 60 t_log)
-      result <- show_frame hdc p_bind uniform p_mt_matrix (p_f_table0, p_f_table1) 0 0 0 0 0 1 state_ref w_grid f_grid obj_grid look_up_ camera_to_clip' []
+      tid <- forkIO (update_play (Io_box {hwnd_ = hwnd, hdc_ = hdc, uniform_ = uniform, p_bind_ = p_bind}) state_ref (s0_ save_state) (s1_ save_state) False (read (cfg' "min_frame_t")) (g, f, mag_r, mag_j) (w_grid_ save_state) (f_grid_ save_state) (obj_grid_ save_state) look_up_ save_state sound_array 0 t_log (SEQ.empty) 60)
+      result <- show_frame hdc p_bind uniform p_mt_matrix (p_f_table0, p_f_table1) 0 0 0 0 0 state_ref w_grid f_grid obj_grid look_up_ camera_to_clip' []
       free p_mt_matrix
       free p_f_table0
       free p_f_table1
@@ -495,8 +496,8 @@ bind_texture (x:xs) p_bind w h offset = do
   bind_texture xs p_bind w h (offset + 1)
 
 -- This function manages the rendering of all environmental models and in game messages.  It recurses once per frame rendered and is the central branching point of the rendering thread.
-show_frame :: HDC -> (UArray Int Word32, Int) -> UArray Int Int32 -> Ptr GLfloat -> (Ptr Int, Ptr Int) -> Float -> Float -> Float -> Int -> Int -> Int -> MVar (Play_state0, Array (Int, Int, Int) Wall_grid, Save_state) -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> UArray (Int, Int) Float -> Matrix Float -> [(Int, [Int])] -> IO ([Int], Save_state)
-show_frame hdc p_bind uniform p_mt_matrix filter_table u v w a a' game_t' state_ref w_grid f_grid obj_grid look_up camera_to_clip msg_queue =
+show_frame :: HDC -> (UArray Int Word32, Int) -> UArray Int Int32 -> Ptr GLfloat -> (Ptr Int, Ptr Int) -> Float -> Float -> Float -> Int -> Int -> MVar (Play_state0, Array (Int, Int, Int) Wall_grid, Save_state) -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> UArray (Int, Int) Float -> Matrix Float -> [(Int, [Int])] -> IO ([Int], Save_state)
+show_frame hdc p_bind uniform p_mt_matrix filter_table u v w a a' state_ref w_grid f_grid obj_grid look_up camera_to_clip msg_queue =
   let survey0 = multi_survey (mod_angle a (-92)) 183 u v (truncate u) (truncate v) w_grid f_grid obj_grid look_up 2 0 [] []
       survey1 = multi_survey (mod_angle (mod_angle a' a) 222) 183 (fst view_circle') (snd view_circle') (truncate (fst view_circle')) (truncate (snd view_circle')) w_grid f_grid obj_grid look_up 2 0 [] []
       view_circle' = view_circle u v 2 (mod_angle a a') look_up
@@ -510,35 +511,35 @@ show_frame hdc p_bind uniform p_mt_matrix filter_table u v w a a' game_t' state_
     load_array (toList world_to_clip1) (castPtr p_mt_matrix) 0
     glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 2)))
     glUniformMatrix4fv (coerce (uniform ! 40)) 1 1 (castPtr p_mt_matrix)
-    glUniform1i (coerce (uniform ! 50)) (fromIntegral (mod (game_t (fst__ p_state)) 240))
+    glUniform1i (coerce (uniform ! 50)) (fromIntegral (mod (fst__ (game_clock (fst__ p_state))) 240))
     glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 1)))
     glUniformMatrix4fv (coerce (uniform ! 52)) 1 1 (castPtr p_mt_matrix)
-    show_player uniform p_bind (plusPtr p_mt_matrix (glfloat * 80)) u v w a look_up (game_t (fst__ p_state)) (rend_mode (fst__ p_state))
+    show_player uniform p_bind (plusPtr p_mt_matrix (glfloat * 80)) u v w a look_up (rend_mode (fst__ p_state))
   if rend_mode (fst__ p_state) == 0 then do
     glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 7)))
-    glUniform1i (coerce (uniform ! 9)) (fromIntegral (mod (game_t (fst__ p_state)) 240))
+    glUniform1i (coerce (uniform ! 9)) (fromIntegral (mod (fst__ (game_clock (fst__ p_state))) 240))
     glUniformMatrix4fv (coerce (uniform ! 1)) 1 1 (castPtr p_mt_matrix)
     glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 6)))
-    glUniform1i (coerce (uniform ! 20)) (fromIntegral (mod (game_t (fst__ p_state)) 240))
+    glUniform1i (coerce (uniform ! 20)) (fromIntegral (mod (fst__ (game_clock (fst__ p_state))) 240))
     glUniformMatrix4fv (coerce (uniform ! 12)) 1 1 (castPtr p_mt_matrix)
   else do
     glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 5)))
     glUniformMatrix4fv (coerce (uniform ! 24)) 1 1 (castPtr p_mt_matrix)
     glUniform4f (coerce (uniform ! 26)) (coerce u) (coerce v) (coerce w) 1
-    glUniform1i (coerce (uniform ! 27)) (fromIntegral (torch_t_limit (fst__ p_state) - (game_t (fst__ p_state) - torch_t0 (fst__ p_state))))
+    glUniform1i (coerce (uniform ! 27)) (fromIntegral (torch_t_limit (fst__ p_state) - (fst__ (game_clock (fst__ p_state)) - torch_t0 (fst__ p_state))))
     glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 4)))
     glUniformMatrix4fv (coerce (uniform ! 30)) 1 1 (castPtr p_mt_matrix)
     glUniform4f (coerce (uniform ! 32)) (coerce u) (coerce v) (coerce w) 1
-    glUniform1i (coerce (uniform ! 33)) (fromIntegral (torch_t_limit (fst__ p_state) - (game_t (fst__ p_state) - torch_t0 (fst__ p_state))))
+    glUniform1i (coerce (uniform ! 33)) (fromIntegral (torch_t_limit (fst__ p_state) - (fst__ (game_clock (fst__ p_state)) - torch_t0 (fst__ p_state))))
   glBindVertexArray (unsafeCoerce ((fst p_bind) ! 0))
   if view_mode (fst__ p_state) == 0 then do
-    filtered_surv0 <- filter_surv (fst survey0) [] (fst filter_table) game_t'
-    filtered_surv1 <- filter_surv (snd survey0) [] (snd filter_table) game_t'
+    filtered_surv0 <- filter_surv (fst survey0) [] (fst filter_table) (third_ (game_clock (fst__ p_state)))
+    filtered_surv1 <- filter_surv (snd survey0) [] (snd filter_table) (third_ (game_clock (fst__ p_state)))
     show_walls filtered_surv0 uniform p_bind (plusPtr p_mt_matrix (glfloat * 16)) u v w a look_up (rend_mode (fst__ p_state))
     show_object filtered_surv1 uniform p_bind (plusPtr p_mt_matrix (glfloat * 48)) u v w a look_up (rend_mode (fst__ p_state))
   else do
-    filtered_surv0 <- filter_surv (fst survey1) [] (fst filter_table) game_t'
-    filtered_surv1 <- filter_surv (snd survey1) [] (snd filter_table) game_t'
+    filtered_surv0 <- filter_surv (fst survey1) [] (fst filter_table) (third_ (game_clock (fst__ p_state)))
+    filtered_surv1 <- filter_surv (snd survey1) [] (snd filter_table) (third_ (game_clock (fst__ p_state)))
     show_walls filtered_surv0 uniform p_bind (plusPtr p_mt_matrix (glfloat * 16)) u v w a look_up (rend_mode (fst__ p_state))
     show_object filtered_surv1 uniform p_bind (plusPtr p_mt_matrix (glfloat * 48)) u v w a look_up (rend_mode (fst__ p_state))
   msg_residue <- handle_message msg_queue (message_ (fst__ p_state)) [] uniform p_bind (fst__ p_state)
@@ -552,7 +553,7 @@ show_frame hdc p_bind uniform p_mt_matrix filter_table u v w a a' game_t' state_
   else if fst msg_residue > 3 then return (([0] ++ (snd (head (message_ (fst__ p_state))))), third_ p_state)
   else do
     Main.swapBuffers hdc
-    show_frame hdc p_bind uniform p_mt_matrix filter_table (pos_u (fst__ p_state)) (pos_v (fst__ p_state)) (pos_w (fst__ p_state)) (angle (fst__ p_state)) (view_angle (fst__ p_state)) (game_t (fst__ p_state)) state_ref (snd__ p_state) f_grid obj_grid look_up camera_to_clip (snd msg_residue)
+    show_frame hdc p_bind uniform p_mt_matrix filter_table (pos_u (fst__ p_state)) (pos_v (fst__ p_state)) (pos_w (fst__ p_state)) (angle (fst__ p_state)) (view_angle (fst__ p_state)) state_ref (snd__ p_state) f_grid obj_grid look_up camera_to_clip (snd msg_residue)
 
 --This function iterates through the message queue received from the game logic thread.  It manages the appearance and expiry of on screen messages and detects special event messages,
 --such as are received when the user opts to return to the main menu.
@@ -633,8 +634,8 @@ show_object (x:xs) uniform p_bind p_mt_matrix u v w a look_up mode = do
   glDrawElements GL_TRIANGLES (coerce (num_elem x)) GL_UNSIGNED_SHORT zero_ptr
   show_object xs uniform p_bind p_mt_matrix u v w a look_up mode
 
-show_player :: UArray Int Int32 -> (UArray Int Word32, Int) -> Ptr GLfloat -> Float -> Float -> Float -> Int -> UArray (Int, Int) Float -> Int -> Int -> IO ()
-show_player uniform p_bind p_mt_matrix u v w a look_up game_t mode = do
+show_player :: UArray Int Int32 -> (UArray Int Word32, Int) -> Ptr GLfloat -> Float -> Float -> Float -> Int -> UArray (Int, Int) Float -> Int -> IO ()
+show_player uniform p_bind p_mt_matrix u v w a look_up mode = do
   load_array (toList (model_to_world u v w a True look_up)) (castPtr p_mt_matrix) 0
   load_array (toList (world_to_model u v w a True look_up)) (castPtr p_mt_matrix) 16
   load_array (toList (rotation_w a look_up)) (castPtr p_mt_matrix) 32
