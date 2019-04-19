@@ -1017,52 +1017,36 @@ atomise_obj_grid_upd m (x:xs) acc obj_grid =
     else if fst x == fst (xs !! 0) then atomise_obj_grid_upd 1 xs (acc ++ snd (snd x)) obj_grid
     else (fst x, (fst source, new_prog1)) : atomise_obj_grid_upd 0 xs [] obj_grid
 
--- These two functions (together with send_signal) implement the signalling system that drives GPLC program runs.  This involves signalling programs in response to player object collisions and handling
--- the signal queue, which allows programs to signal each other.
+-- These three functions (together with send_signal) implement the signalling system that drives GPLC program runs.  This involves signalling programs in response to player object collisions and handling
+-- the signal queue, which allows programs to signal each other.  The phase_flag argument of link_gplc0 is used by update_play to limit the speed of the GPLC interpreter to 40 ticks per second,
+-- independent of the variable frame rate.  The exception to this limit is if a player object collision needs to be handled.
 link_gplc0 :: Bool -> [Float] -> [Int] -> Array (Int, Int, Int) Wall_grid -> [((Int, Int, Int), Wall_grid)] -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> Play_state0 -> Play_state1 -> UArray (Int, Int) Float -> Bool -> IO (Array (Int, Int, Int) Wall_grid, Array (Int, Int, Int) Floor_grid, Array (Int, Int, Int) (Int, [Int]), Play_state0, Play_state1)
-link_gplc0 False (x0:x1:xs) (z0:z1:z2:zs) w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up swap_flag = return (w_grid, f_grid, obj_grid, s0, s1)
-link_gplc0 True (x0:x1:xs) (z0:z1:z2:zs) w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up swap_flag =
-  let dest = ((sig_q s1) !! 1, (sig_q s1) !! 2, (sig_q s1) !! 3)
-      prog = (snd (obj_grid ! dest))
-      obj_grid0' = (send_signal 1 1 (z0, z1, z2 + 1) obj_grid s1 [])
-      obj_grid1' = (send_signal 1 1 (z0, z1 + 1, z2) obj_grid s1 [])
-      obj_grid2' = (send_signal 1 1 (z0, z1, z2 - 1) obj_grid s1 [])
-      obj_grid3' = (send_signal 1 1 (z0, z1 - 1, z2) obj_grid s1 [])
-      obj_grid4' = obj_grid // [(dest, (fst (obj_grid ! dest), (head__ prog) : ((sig_q s1) !! 0) : drop 2 prog))]
+link_gplc0 phase_flag (x0:x1:xs) (z0:z1:z2:zs) w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up init_flag =
+  let target0 = link_gplc2 x0 (z0, z1, z2)
+      target1 = ((sig_q s1) !! 1, (sig_q s1) !! 2, (sig_q s1) !! 3)
+      prog = (snd (obj_grid ! target1))
+      obj_grid' = (send_signal 1 1 target0 obj_grid s1 [])
+      obj_grid'' = obj_grid // [(target1, (fst (obj_grid ! target1), (head__ prog) : ((sig_q s1) !! 0) : drop 2 prog))]
   in do
-  if sig_q s1 == [] && swap_flag == False then link_gplc0 True (x0:x1:xs) (z0:z1:z2:zs) w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 (s1 {sig_q = next_sig_q s1, next_sig_q = []}) look_up True
-  else if swap_flag == True then
-    if (x1 == 1 || x1 == 3) && x0 == 0 && head (snd (obj_grid ! (z0, z1, z2 + 1))) == 0 then do
-      report_state (verbose_mode s1) 2 [] [] ("\nPlayer starts GPLC program at Obj_grid " ++ show (z0, z1, z2 + 1))
-      run_gplc' <- catch (run_gplc (snd ((fst obj_grid0') ! (z0, z1, z2 + 1))) [] w_grid w_grid_upd f_grid (fst obj_grid0') obj_grid_upd s0 s1 look_up 0) (\e -> gplc_error w_grid_upd f_grid obj_grid_upd s0 s1 e)
-      upd <- force_update0 (fst_ run_gplc') [] 0
-      return (w_grid // upd, (snd_ run_gplc'), obj_grid // (atomise_obj_grid_upd 0 (third run_gplc') [] obj_grid), (fourth run_gplc'), (fifth run_gplc'))
-    else if (x1 == 1 || x1 == 3) && x0 == 1 && head (snd (obj_grid ! (z0, z1 + 1, z2))) == 0 then do
-      report_state (verbose_mode s1) 2 [] [] ("\nPlayer starts GPLC program at Obj_grid " ++ show (z0, z1 + 1, z2))
-      run_gplc' <- catch (run_gplc (snd ((fst obj_grid1') ! (z0, z1 + 1, z2))) [] w_grid w_grid_upd f_grid (fst obj_grid1') obj_grid_upd s0 s1 look_up 0) (\e -> gplc_error w_grid_upd f_grid obj_grid_upd s0 s1 e)
-      upd <- force_update0 (fst_ run_gplc') [] 0
-      return (w_grid // upd, (snd_ run_gplc'), obj_grid // (atomise_obj_grid_upd 0 (third run_gplc') [] obj_grid), (fourth run_gplc'), (fifth run_gplc'))
-    else if (x1 == 1 || x1 == 3) && x0 == 2 && head (snd (obj_grid ! (z0, z1, z2 - 1))) == 0 then do
-      report_state (verbose_mode s1) 2 [] [] ("\nPlayer starts GPLC program at Obj_grid " ++ show (z0, z1, z2 - 1))
-      run_gplc' <- catch (run_gplc (snd ((fst obj_grid2') ! (z0, z1, z2 - 1))) [] w_grid w_grid_upd f_grid (fst obj_grid2') obj_grid_upd s0 s1 look_up 0) (\e -> gplc_error w_grid_upd f_grid obj_grid_upd s0 s1 e)
-      upd <- force_update0 (fst_ run_gplc') [] 0
-      return (w_grid // upd, (snd_ run_gplc'), obj_grid // (atomise_obj_grid_upd 0 (third run_gplc') [] obj_grid), (fourth run_gplc'), (fifth run_gplc'))
-    else if (x1 == 1 || x1 == 3) && x0 == 3 && head (snd (obj_grid ! (z0, z1 - 1, z2))) == 0 then do
-      report_state (verbose_mode s1) 2 [] [] ("\nPlayer starts GPLC program at Obj_grid " ++ show (z0, z1 - 1, z2))
-      run_gplc' <- catch (run_gplc (snd ((fst obj_grid3') ! (z0, z1 - 1, z2))) [] w_grid w_grid_upd f_grid (fst obj_grid3') obj_grid_upd s0 s1 look_up 0) (\e -> gplc_error w_grid_upd f_grid obj_grid_upd s0 s1 e)
-      upd <- force_update0 (fst_ run_gplc') [] 0
-      return (w_grid // upd, (snd_ run_gplc'), obj_grid // (atomise_obj_grid_upd 0 (third run_gplc') [] obj_grid), (fourth run_gplc'), (fifth run_gplc'))
+  if init_flag == True then do
+    if (x1 == 1 || x1 == 3) && head (snd (obj_grid ! target0)) == 0 then do
+      report_state (verbose_mode s1) 2 [] [] ("\nPlayer starts GPLC program at Obj_grid " ++ show target0)
+      run_gplc' <- catch (run_gplc (snd ((fst obj_grid') ! target0)) [] w_grid w_grid_upd f_grid (fst obj_grid') obj_grid_upd s0 s1 look_up 0) (\e -> gplc_error w_grid_upd f_grid obj_grid_upd s0 s1 e)
+      link_gplc0 phase_flag (x0:x1:xs) (z0:z1:z2:zs) w_grid (fst_ run_gplc') (snd_ run_gplc') obj_grid (third run_gplc') (fourth run_gplc') (fifth run_gplc') look_up False
+    else link_gplc0 phase_flag (x0:x1:xs) (z0:z1:z2:zs) w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up False
+  else if phase_flag == True then do
+    if sig_q s1 == [] then do
+      update <- force_update0 w_grid_upd [] 0
+      return (w_grid // update, f_grid, obj_grid // (atomise_obj_grid_upd 0 obj_grid_upd [] obj_grid), s0, s1 {sig_q = next_sig_q s1, next_sig_q = []})
     else do
-      upd <- force_update0 w_grid_upd [] 0
-      return (w_grid // upd, f_grid, obj_grid // (atomise_obj_grid_upd 0 obj_grid_upd [] obj_grid), s0, s1)
-  else
-    if fst (obj_grid ! dest) == 1 || fst (obj_grid ! dest) == 3 then do
-      report_state (verbose_mode s1) 2 [] [] ("\nGPLC program run at Obj_grid " ++ show ((sig_q s1) !! 1, (sig_q s1) !! 2, (sig_q s1) !! 3))
-      run_gplc' <- catch (run_gplc (snd (obj_grid4' ! dest)) [] w_grid w_grid_upd f_grid obj_grid4' obj_grid_upd s0 (s1 {sig_q = drop 4 (sig_q s1)}) look_up 0) (\e -> gplc_error w_grid_upd f_grid obj_grid_upd s0 s1 e)
-      link_gplc0 True (x0:x1:xs) (z0:z1:z2:zs) w_grid (fst_ run_gplc') (snd_ run_gplc') obj_grid (third run_gplc') (fourth run_gplc') (fifth run_gplc') look_up False
-    else do
-      putStr ("\n\nSignal addressed to Obj_grid " ++ show ((sig_q s1) !! 1, (sig_q s1) !! 2, (sig_q s1) !! 3) ++ " but this element is not set to run programs from.")
-      link_gplc0 True (x0:x1:xs) (z0:z1:z2:zs) w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 (s1 {sig_q = drop 4 (sig_q s1)}) look_up False
+      if fst (obj_grid ! target1) == 1 || fst (obj_grid ! target1) == 3 then do
+        report_state (verbose_mode s1) 2 [] [] ("\nGPLC program run at Obj_grid " ++ show ((sig_q s1) !! 1, (sig_q s1) !! 2, (sig_q s1) !! 3))
+        run_gplc' <- catch (run_gplc (snd (obj_grid'' ! target1)) [] w_grid w_grid_upd f_grid obj_grid'' obj_grid_upd s0 (s1 {sig_q = drop 4 (sig_q s1)}) look_up 0) (\e -> gplc_error w_grid_upd f_grid obj_grid_upd s0 s1 e)
+        link_gplc0 True (x0:x1:xs) (z0:z1:z2:zs) w_grid (fst_ run_gplc') (snd_ run_gplc') obj_grid (third run_gplc') (fourth run_gplc') (fifth run_gplc') look_up False
+      else do
+        putStr ("\nSignal addressed to Obj_grid " ++ show ((sig_q s1) !! 1, (sig_q s1) !! 2, (sig_q s1) !! 3) ++ " but this element is not set to run programs from.")
+        link_gplc0 True (x0:x1:xs) (z0:z1:z2:zs) w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 (s1 {sig_q = drop 4 (sig_q s1)}) look_up False
+  else return (w_grid, f_grid, obj_grid, s0, s1)
 
 link_gplc1 :: Play_state0 -> Play_state1 -> Array (Int, Int, Int) (Int, [Int]) -> Int -> IO Play_state1
 link_gplc1 s0 s1 obj_grid mode =
@@ -1079,6 +1063,11 @@ link_gplc1 s0 s1 obj_grid mode =
     else do
       if health s1 <= det_damage (difficulty s1) s0 then return s1 {health = 0, state_chg = 1, message = 0 : msg26}
       else return s1 {health = health s1 - det_damage (difficulty s1) s0, state_chg = 1, message = 0 : msg13}
+
+link_gplc2 0 (z0, z1, z2) = (z0, z1, z2 + 1)
+link_gplc2 1 (z0, z1, z2) = (z0, z1 + 1, z2)
+link_gplc2 2 (z0, z1, z2) = (z0, z1, z2 - 1)
+link_gplc2 3 (z0, z1, z2) = (z0, z1 - 1, z2)
 
 -- These four functions perform game physics and geometry computations.  These include player collision detection, thrust, friction, gravity and floor surface modelling.
 detect_coll :: Int -> (Float, Float) -> (Float, Float) -> Array (Int, Int, Int) (Int, [Int]) -> Array (Int, Int, Int) Wall_grid -> [Float]
@@ -1200,13 +1189,13 @@ update_play io_box state_ref s0 s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_
       floor = floor_surf (det !! 0) (det !! 1) (pos_w s0) f_grid
       vel_0 = update_vel (vel s0) [0, 0, 0] ((drop 2 det) ++ [0]) f_rate f
       vel_2 = update_vel (vel s0) [0, 0, g] ((drop 2 det) ++ [0]) f_rate 0
-      game_clock' = update_game_clock (game_clock s0) f_rate
+      game_clock' = update_game_clock (game_clock s0) (f_rate * 1.25)
       s0_ = \x -> x {message_ = []}
       angle' = \x -> mod_angle_ (angle_ s0) f_rate x
       det_fps = \t_current -> determine_fps t_seq t_current
   in do
   control <- messagePump (hwnd_ io_box)
-  link0 <- link_gplc0 (fst game_clock') (drop 4 det) [truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)] w_grid [] f_grid obj_grid [] s0 (s1 {sig_q = prioritise_npcs (sig_q s1) [] []}) look_up False
+  link0 <- link_gplc0 (fst game_clock') (drop 4 det) [truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)] w_grid [] f_grid obj_grid [] s0 (s1 {sig_q = prioritise_npcs (sig_q s1) [] []}) look_up True
   link1 <- link_gplc1 s0 s1 obj_grid 0
   link1_ <- link_gplc1 s0 s1 obj_grid 1
   t <- getTime Monotonic
