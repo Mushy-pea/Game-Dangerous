@@ -309,7 +309,7 @@ start_game hwnd hdc uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag_j)
     r_gen <- getStdGen
     if mode == 0 then do
       tid <- forkIO (update_play (Io_box {hwnd_ = hwnd, hdc_ = hdc, uniform_ = uniform, p_bind_ = p_bind}) state_ref (ps0_init {pos_u = u, pos_v = v, pos_w = w, show_fps_ = select_mode (cfg' "show_fps"), prob_seq = gen_prob_seq 0 239 (read (cfg' "prob_c")) r_gen}) (ps1_init {verbose_mode = select_mode (cfg' "verbose_mode")}) False (read (cfg' "min_frame_t")) (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up_ save_state sound_array 0 t_log (SEQ.empty) 60)
-      result <- show_frame hdc p_bind uniform p_mt_matrix (p_f_table0, p_f_table1) 0 0 0 0 0 state_ref w_grid f_grid obj_grid look_up_ camera_to_clip' []
+      result <- show_frame hdc p_bind uniform p_mt_matrix (p_f_table0, p_f_table1) 0 0 0 0 0 state_ref w_grid f_grid obj_grid look_up_ camera_to_clip' (array (0, 5) [(i, (0, [])) | i <- [0..5]])
       free p_mt_matrix
       free p_f_table0
       free p_f_table1
@@ -317,7 +317,7 @@ start_game hwnd hdc uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag_j)
       start_game hwnd hdc uniform p_bind c conf_reg ((head (fst result)) + 1) (u, v, w, g, f, mag_r, mag_j) (snd result) sound_array
     else do
       tid <- forkIO (update_play (Io_box {hwnd_ = hwnd, hdc_ = hdc, uniform_ = uniform, p_bind_ = p_bind}) state_ref (s0_ save_state) (s1_ save_state) False (read (cfg' "min_frame_t")) (g, f, mag_r, mag_j) (w_grid_ save_state) (f_grid_ save_state) (obj_grid_ save_state) look_up_ save_state sound_array 0 t_log (SEQ.empty) 60)
-      result <- show_frame hdc p_bind uniform p_mt_matrix (p_f_table0, p_f_table1) 0 0 0 0 0 state_ref w_grid f_grid obj_grid look_up_ camera_to_clip' []
+      result <- show_frame hdc p_bind uniform p_mt_matrix (p_f_table0, p_f_table1) 0 0 0 0 0 state_ref w_grid f_grid obj_grid look_up_ camera_to_clip' (array (0, 5) [(i, (0, [])) | i <- [0..5]])
       free p_mt_matrix
       free p_f_table0
       free p_f_table1
@@ -496,7 +496,7 @@ bind_texture (x:xs) p_bind w h offset = do
   bind_texture xs p_bind w h (offset + 1)
 
 -- This function manages the rendering of all environmental models and in game messages.  It recurses once per frame rendered and is the central branching point of the rendering thread.
-show_frame :: HDC -> (UArray Int Word32, Int) -> UArray Int Int32 -> Ptr GLfloat -> (Ptr Int, Ptr Int) -> Float -> Float -> Float -> Int -> Int -> MVar (Play_state0, Array (Int, Int, Int) Wall_grid, Save_state) -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> UArray (Int, Int) Float -> Matrix Float -> [(Int, [Int])] -> IO ([Int], Save_state)
+show_frame :: HDC -> (UArray Int Word32, Int) -> UArray Int Int32 -> Ptr GLfloat -> (Ptr Int, Ptr Int) -> Float -> Float -> Float -> Int -> Int -> MVar (Play_state0, Array (Int, Int, Int) Wall_grid, Save_state) -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> UArray (Int, Int) Float -> Matrix Float -> Array Int (Int, [Int]) -> IO ([Int], Save_state)
 show_frame hdc p_bind uniform p_mt_matrix filter_table u v w a a' state_ref w_grid f_grid obj_grid look_up camera_to_clip msg_queue =
   let survey0 = multi_survey (mod_angle a (-92)) 183 u v (truncate u) (truncate v) w_grid f_grid obj_grid look_up 2 0 [] []
       survey1 = multi_survey (mod_angle (mod_angle a' a) 222) 183 (fst view_circle') (snd view_circle') (truncate (fst view_circle')) (truncate (snd view_circle')) w_grid f_grid obj_grid look_up 2 0 [] []
@@ -542,11 +542,9 @@ show_frame hdc p_bind uniform p_mt_matrix filter_table u v w a a' state_ref w_gr
     filtered_surv1 <- filter_surv (snd survey1) [] (snd filter_table) (third_ (game_clock (fst__ p_state)))
     show_walls filtered_surv0 uniform p_bind (plusPtr p_mt_matrix (glfloat * 16)) u v w a look_up (rend_mode (fst__ p_state))
     show_object filtered_surv1 uniform p_bind (plusPtr p_mt_matrix (glfloat * 48)) u v w a look_up (rend_mode (fst__ p_state))
-  msg_residue <- handle_message msg_queue (message_ (fst__ p_state)) [] uniform p_bind (fst__ p_state)
+  msg_residue <- handle_message0 (handle_message1 (message_ (fst__ p_state)) msg_queue 0 3) uniform p_bind 0
   if fst msg_residue == 1 then return ([1], third_ p_state)
   else if fst msg_residue == 2 then do
-    show_text (snd (head (snd msg_residue))) 0 933 uniform p_bind (-0.95) 0.9 zero_ptr
-    Main.swapBuffers hdc
     threadDelay 5000000
     return ([2], third_ p_state)
   else if fst msg_residue == 3 then return ([3], third_ p_state)
@@ -555,21 +553,35 @@ show_frame hdc p_bind uniform p_mt_matrix filter_table u v w a a' state_ref w_gr
     Main.swapBuffers hdc
     show_frame hdc p_bind uniform p_mt_matrix filter_table (pos_u (fst__ p_state)) (pos_v (fst__ p_state)) (pos_w (fst__ p_state)) (angle (fst__ p_state)) (view_angle (fst__ p_state)) state_ref (snd__ p_state) f_grid obj_grid look_up camera_to_clip (snd msg_residue)
 
---This function iterates through the message queue received from the game logic thread.  It manages the appearance and expiry of on screen messages and detects special event messages,
+--These two functions iterate through the message queue received from the game logic thread.  They manage the appearance and expiry of on screen messages and detect special event messages,
 --such as are received when the user opts to return to the main menu.
-handle_message :: [(Int, [Int])] -> [(Int, [Int])] -> [(Int, [Int])] -> UArray Int Int32 -> (UArray Int Word32, Int) -> Play_state0 -> IO (Int, [(Int, [Int])])
-handle_message [] [] acc uniform p_bind s0 = return (0, acc)
-handle_message [] (y:ys) acc uniform p_bind s0 = return (0, (y:ys))
-handle_message (x:xs) (y:ys) acc uniform p_bind s0 = return (0, (y:ys))
-handle_message (x:xs) [] acc uniform p_bind s0 = do
-  if fst x < 0 then return (abs (fst x), [x])
-  else if fst x > 0 then do
-    if head (snd x) == -1 && show_fps_ s0 == False then handle_message xs [] acc uniform p_bind s0
-    else do
-      if head (snd x) == -1 then show_text (tail (snd x)) 0 933 uniform p_bind 0.64 0.9 zero_ptr
-      else show_text (tail (snd x)) 0 933 uniform p_bind (-0.96) 0.9 zero_ptr
-      handle_message xs [] (acc ++ [(fst x - 1, snd x)]) uniform p_bind s0
-  else handle_message xs [] acc uniform p_bind s0
+handle_message1 :: [(Int, [Int])] -> Array Int (Int, [Int]) -> Int -> Int -> (Int, Array Int (Int, [Int]))
+handle_message1 [] msg_queue i0 i1 = (0, msg_queue)
+handle_message1 (x:xs) msg_queue i0 i1 =
+  if fst x < 0 then (abs (fst x), msg_queue)
+  else if head (snd x) == -1 then
+    if fst (msg_queue ! i1) == 0 && i1 < 5 then handle_message1 xs (msg_queue // [(i1, x)]) i0 (i1 + 1)
+    else if fst (msg_queue ! i1) == 0 && i1 == 5 then handle_message1 xs (msg_queue // [(i1, x)]) i0 3
+    else if fst (msg_queue ! i1) > 0 && i1 < 5 then handle_message1 (x:xs) msg_queue i0 (i1 + 1)
+    else handle_message1 xs (msg_queue // [(3, x)]) i0 4
+  else
+    if fst (msg_queue ! i0) == 0 && i0 < 2 then handle_message1 xs (msg_queue // [(i0, x)]) (i0 + 1) i1
+    else if fst (msg_queue ! i0) == 0 && i0 == 2 then handle_message1 xs (msg_queue // [(i0, x)]) 0 i1
+    else if fst (msg_queue ! i0) > 0 && i0 < 2 then handle_message1 (x:xs) msg_queue (i0 + 1) i1
+    else handle_message1 xs (msg_queue // [(0, x)]) 1 i1
+
+handle_message0 :: (Int, Array Int (Int, [Int])) -> UArray Int Int32 -> (UArray Int Word32, Int) -> Int -> IO (Int, Array Int (Int, [Int]))
+handle_message0 msg_queue uniform p_bind i =
+  let h_pos = \x -> if x < 3 then -0.96
+                    else 0.64
+      msg_queue_ = (snd msg_queue) ! i
+  in do
+  if fst msg_queue > 0 then return msg_queue
+  else if i > 5 then return msg_queue
+  else if fst ((snd msg_queue) ! i) > 0 then do
+    show_text (tail (snd ((snd msg_queue) ! i))) 0 933 uniform p_bind (h_pos i) (0.9 - 0.05 * fromIntegral (mod i 3)) zero_ptr
+    handle_message0 (0, (snd msg_queue) // [(i, ((fst msg_queue_) - 1, snd msg_queue_))]) uniform p_bind (i + 1)
+  else handle_message0 msg_queue uniform p_bind (i + 1)
 
 -- These three functions pass transformation matrices to the shaders and make the GL draw calls that render models.
 show_walls :: [Wall_place] -> UArray Int Int32 -> (UArray Int Word32, Int) -> Ptr GLfloat -> Float -> Float -> Float -> Int -> UArray (Int, Int) Float -> Int -> IO ()

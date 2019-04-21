@@ -746,6 +746,8 @@ animate_cpede t n base_id model_id node_num frames =
   if node_num == 0 then (frames !! (mod (div t 4) n)) + (7 - (model_id - base_id))
   else 13 - (model_id - base_id)
 
+-- cpede_head_swap (and the nine functions above it) are intended to allow centipede NPCs to swap their head and tail end nodes, as a way to escape getting stuck if they crawl into a dead end.
+-- This imitates the functionality of centipedes in the original ZZT.  However, as of build 8_10 this mechanic is still a work in progress.
 reverse_segment [] = []
 reverse_segment (x:xs) = cpede_reverse x : reverse_segment xs
 
@@ -1019,7 +1021,7 @@ atomise_obj_grid_upd m (x:xs) acc obj_grid =
 
 -- These three functions (together with send_signal) implement the signalling system that drives GPLC program runs.  This involves signalling programs in response to player object collisions and handling
 -- the signal queue, which allows programs to signal each other.  The phase_flag argument of link_gplc0 is used by update_play to limit the speed of the GPLC interpreter to 40 ticks per second,
--- independent of the variable frame rate.  The exception to this limit is if a player object collision needs to be handled.
+-- independent of the variable frame rate.  The exception to this limit is if a player object collision needs to be handled, in which case an additional interpreter tick is allowed as a special case.
 link_gplc0 :: Bool -> [Float] -> [Int] -> Array (Int, Int, Int) Wall_grid -> [((Int, Int, Int), Wall_grid)] -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> Play_state0 -> Play_state1 -> UArray (Int, Int) Float -> Bool -> IO (Array (Int, Int, Int) Wall_grid, Array (Int, Int, Int) Floor_grid, Array (Int, Int, Int) (Int, [Int]), Play_state0, Play_state1)
 link_gplc0 phase_flag (x0:x1:xs) (z0:z1:z2:zs) w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up init_flag =
   let target0 = link_gplc2 x0 (z0, z1, z2)
@@ -1175,6 +1177,7 @@ determine_fps t_seq t_current =
   if SEQ.length t_seq < 40 then (48, [-1, 6, 16, 19, 69, 63] ++ conv_msg 0, t_seq SEQ.|> t_current)
   else (frame_rate1 / 1.25, [-1, 6, 16, 19, 69, 63] ++ conv_msg (truncate frame_rate0), (SEQ.drop 1 (t_seq SEQ.|> t_current)))
 
+-- Game time is now composed of game_t (GPLC interpreter ticks) and frame_num (number of the next frame to be rendered).  This function updates both of these per frame.
 update_game_clock :: (Int, Float, Int) -> Float -> (Bool, (Int, Float, Int))
 update_game_clock (game_t, fl_game_t, frame_num) f_rate =
   let fl_game_t' = fl_game_t + (1 / f_rate) / (1 / 40)
@@ -1208,7 +1211,7 @@ update_play io_box state_ref s0 s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_
       putMVar t_log (toNanoSecs t')
     else putMVar t_log (toNanoSecs t)
   t'' <- takeMVar t_log
-  if mod (fst__ (game_clock s0)) 40 == 0 then do
+  if mod (fst__ (game_clock s0)) 40 == 0 && show_fps_ s0 == True then do
     update_play io_box state_ref (s0 {message_ = [(40, snd__ (det_fps (toNanoSecs t)))], game_clock = snd game_clock'}) s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up save_state sound_array t_last t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
   else if control == 2 then do
     choice <- run_menu (pause_text s1 (difficulty s1)) [] io_box (-0.75) (-0.75) 1 0 0
