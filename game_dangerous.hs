@@ -9,8 +9,7 @@ import Foreign.C.String
 import Foreign.C.Types
 import Foreign.Marshal.Utils
 import Graphics.GL.Core33
-import Graphics.Win32
-import System.Win32
+import Graphics.UI.GLUT
 import Data.Bits
 import Data.Word
 import Data.List.Split
@@ -31,135 +30,33 @@ import Game_logic
 import Decompress_map
 import Game_sound
 
--- A wrapper for the WinAPI C struct PIXELFORMATDESCRIPTOR and a helper function to set it are included here, as these weren't included in Graphics.Win32 at time of writing.
-type PIXELFORMATDESCRIPTOR =
-  (WORD,  -- nSize
-   WORD,  -- nVersion
-   DWORD, -- dwFlags
-   BYTE,  -- iPixelType
-   BYTE,  -- cColourBits
-   BYTE,  -- cRedBits
-   BYTE,  -- cRedShift
-   BYTE,  -- cGreenBits
-   BYTE,  -- cGreenShift
-   BYTE,  -- cBlueBits
-   BYTE,  -- cBlueShift
-   BYTE,  -- cAlphaBits
-   BYTE,  -- cAlphaShift
-   BYTE,  -- cAccumBits
-   BYTE,  -- cAccumRedBits
-   BYTE,  -- cAccumGreenBits
-   BYTE,  -- cAccumBlueBits
-   BYTE,  -- cAccumAlphaBits
-   BYTE,  -- cDepthBits
-   BYTE,  -- cStencilBits
-   BYTE,  -- cAuxBuffers
-   BYTE,  -- iLayerType
-   BYTE,  -- bReserved
-   DWORD, -- dwLayerMask
-   DWORD, -- dwVisibleMask
-   DWORD) -- dwDamageMask
-
-setPFD :: PIXELFORMATDESCRIPTOR -> IO (Ptr a)
-setPFD (nSize, nVersion, dwFlags, iPixelType, cColourBits, cRedBits, cRedShift, cGreenBits, cGreenShift, cBlueBits, cBlueShift, cAlphaBits, cAlphaShift, cAccumBits, cAccumRedBits, cAccumGreenBits, cAccumBlueBits, cAccumAlphaBits, cDepthBits, cStencilBits, cAuxBuffers, iLayerType, bReserved, dwLayerMask, dwVisibleMask, dwDamageMask) = do
-  x <- callocBytes 40
-  pokeByteOff x 0 (nSize :: WORD)
-  pokeByteOff x 2 (nVersion :: WORD)
-  pokeByteOff x 4 (dwFlags :: DWORD)
-  pokeByteOff x 8 (iPixelType :: BYTE)
-  pokeByteOff x 9 (cColourBits :: BYTE)
-  pokeByteOff x 10 (cRedBits :: BYTE)
-  pokeByteOff x 11 (cRedShift :: BYTE)
-  pokeByteOff x 12 (cGreenBits :: BYTE)
-  pokeByteOff x 13 (cGreenShift :: BYTE)
-  pokeByteOff x 14 (cBlueBits :: BYTE)
-  pokeByteOff x 15 (cBlueShift :: BYTE)
-  pokeByteOff x 16 (cAlphaBits :: BYTE)
-  pokeByteOff x 17 (cAlphaShift :: BYTE)
-  pokeByteOff x 18 (cAccumBits :: BYTE)
-  pokeByteOff x 19 (cAccumRedBits :: BYTE)
-  pokeByteOff x 20 (cAccumGreenBits :: BYTE)
-  pokeByteOff x 21 (cAccumBlueBits :: BYTE)
-  pokeByteOff x 22 (cAccumAlphaBits :: BYTE)
-  pokeByteOff x 23 (cDepthBits :: BYTE)
-  pokeByteOff x 24 (cStencilBits :: BYTE)
-  pokeByteOff x 25 (cAuxBuffers :: BYTE)
-  pokeByteOff x 26 (iLayerType :: BYTE)
-  pokeByteOff x 27 (bReserved :: BYTE)
-  pokeByteOff x 28 (dwLayerMask :: DWORD)
-  pokeByteOff x 32 (dwVisibleMask :: DWORD)
-  pokeByteOff x 36 (dwDamageMask :: DWORD)
-  return x
-
-pfd_TYPE_RGBA = 0 :: BYTE
-pfd_TYPE_COLORINDEX = 1 :: BYTE
-
-pfd_MAIN_PLANE = 0 :: BYTE
-pfd_OVERLAY_PLANE = 1 :: BYTE
-pfd_UNDERLAY_PLANE = (-1) :: BYTE
-
-pfd_DOUBLEBUFFER = 0x00000001 :: DWORD
-pfd_STEREO = 0x00000002 :: DWORD
-pfd_DRAW_TO_WINDOW = 0x00000004 :: DWORD
-pfd_DRAW_TO_BITMAP = 0x00000008 :: DWORD
-pfd_SUPPORT_GDI = 0x00000010 :: DWORD
-pfd_SUPPORT_OPENGL = 0x00000020 :: DWORD
-pfd_GENERIC_FORMAT = 0x00000040 :: DWORD
-pfd_NEED_PALETTE = 0x00000080 :: DWORD
-pfd_NEED_SYSTEM_PALETTE = 0x00000100 :: DWORD
-pfd_SWAP_EXCHANGE = 0x00000200 :: DWORD
-pfd_SWAP_COPY = 0x00000400 :: DWORD
-pfd_SWAP_LAYER_BUFFERS = 0x00000800 :: DWORD
-pfd_GENERIC_ACCELERATED = 0x00001000 :: DWORD
-pfd_SUPPORT_DIRECTDRAW = 0x00002000 :: DWORD
-
-pfd_DEPTH_DONTCARE = 0x20000000 :: DWORD
-pfd_DOUBLEBUFFER_DONTCARE = 0x40000000 :: DWORD
-pfd_STEREO_DONTCARE = 0x80000000 :: DWORD
-
--- These are bindings to WinAPI functions also missing from Graphics.Win32 at time of writing.
-foreign import ccall "wingdi.h ChoosePixelFormat"
-  choosePixelFormat :: HDC -> Ptr a -> IO Int
-
-foreign import ccall "wingdi.h SetPixelFormat"
-  setPixelFormat :: HDC -> Int -> Ptr a -> IO Bool
-
-foreign import ccall "wingdi.h wglCreateContext"
-  wglCreateContext :: HDC -> IO HANDLE
-
-foreign import ccall "wingdi.h wglDeleteContext"
-  wglDeleteContext :: HANDLE -> IO Bool
-
-foreign import ccall "wingdi.h wglMakeCurrent"
-  wglMakeCurrent :: HDC -> HANDLE -> IO Bool
-
-foreign import ccall "wingdi.h SwapBuffers"
-  swapBuffers :: HDC -> IO Bool
-
 main = do
   args <- getArgs
   contents <- bracket (openFile (args !! 0) ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nconfig file size: " ++ show (length contents)); return contents)
-  putStr ("\nGame :: Dangerous engine version 0.8 (for Windows x64)\nLoading content: " ++ ((splitOneOf "=\n" contents) !! 3))
-  putStr "\nOpening window..."
   if length args > 3 then open_window ((listArray (0, 51) (splitOneOf "=\n" contents)) // [(1, args !! 1), (9, args !! 2), (11, args !! 3), (13, args !! 4), (15, args !! 5), (17, args !! 6), (19, args !! 7), (21, args !! 8), (23, args !! 9), (25, args !! 10), (27, args !! 11), (29, args !! 12), (31, args !! 13), (33, args !! 14), (35, args !! 15), (39, "n")])
   else open_window ((listArray (0, 51) (splitOneOf "=\n" contents)) // [(31, args !! 1), (33, args !! 2)])
 
--- This function initialises the window and loads the map file.
+-- This function initialises the GLUT runtime system, which in turn is used to initialise a window and OpenGL context.
 open_window :: Array Int [Char] -> IO ()
 open_window conf_reg =
   let cfg' = cfg conf_reg 0
   in do
-  mainInstance <- getModuleHandle Nothing
-  icon <- loadIcon Nothing iDI_APPLICATION
-  cursor <- loadCursor Nothing iDC_ARROW
-  bgBrush <- createSolidBrush (rgb 255 255 255)
-  registerClass (cS_VREDRAW + cS_HREDRAW, mainInstance, Just icon, Just cursor, Just bgBrush, Nothing, mkClassName "Window of Expression")
-  hwnd <- createWindow (mkClassName "Window of Expression") "Game :: Dangerous" wS_OVERLAPPEDWINDOW Nothing Nothing (Just (read (cfg' "resolution_x"))) (Just (read (cfg' "resolution_y"))) Nothing Nothing mainInstance wndProc
-  showWindow hwnd sW_SHOWNORMAL
-  updateWindow hwnd
-  hdc <- getDC (Just hwnd)
+  putStr ("\nGame :: Dangerous engine " ++ cfg' "version_and_platform_string")
+  putStr "\nInitialising GLUT and OpenGL runtime environment."
+  initialize "game_dangerous.exe" []
+  initialWindowSize $= (Size (cfg' "resolution_x") (cfg' "resolution_y"))
+  initialDisplayMode $= [RGBAMode, WithAlphaComponent, WithDepthBuffer, DoubleBuffered]
+  window_id <- createWindow "Game :: Dangerous"
+  actionOnWindowClose $= Exit
+  displayCallback $= repaint_window
+  
   contents <- bracket (openFile (cfg' "map_file") ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nmap file size: " ++ show (length contents)); return contents)
   setup_game hwnd hdc contents conf_reg
+
+repaint_window :: IO ()
+repaint_window = do
+  glClear (GL_COLOR_BUFFER_BIT .|. GL_DEPTH_BUFFER_BIT)
+  swapBuffers
 
 -- This function initialises the OpenGL and OpenAL contexts.  It also decompresses the map file, manages the compilation of GLSL shaders, loading of 3D models, loading of the light map
 -- and loading of sound effects.
