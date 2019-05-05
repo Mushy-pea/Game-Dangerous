@@ -14,12 +14,13 @@ import Data.List.Split
 import Data.Matrix hiding ((!))
 import Data.Array.IArray
 import Data.Array.Unboxed
+import Data.Maybe
+import Data.IORef
 import Foreign hiding (rotate)
 import Foreign.C.String
 import Foreign.C.Types
 import Unsafe.Coerce
 import System.IO.Unsafe
-import Data.Maybe
 import Control.Exception
 import Graphics.GL.Core33
 
@@ -84,11 +85,14 @@ final_appr :: Bool, fire_prob :: Int} deriving (Eq, Show)
 
 data Save_state = Save_state {is_set :: Bool, w_grid_ :: Array (Int, Int, Int) Wall_grid, f_grid_ :: Array (Int, Int, Int) Floor_grid, obj_grid_ :: Array (Int, Int, Int) (Int, [Int]), s0_ :: Play_state0, s1_ :: Play_state1}
 
-data Io_box = Io_box {hwnd_ :: HWND, hdc_ :: HDC, uniform_ :: UArray Int Int32, p_bind_ :: (UArray Int Word32, Int)}
+data Io_box = Io_box {uniform_ :: UArray Int Int32, p_bind_ :: (UArray Int Word32, Int), control_ :: IORef Int}
 
 data EngineError = Invalid_wall_flag | Invalid_obj_flag | Invalid_GPLC_opcode | Invalid_conf_reg_field | Invalid_GPLC_op_argument | Invalid_map_element | NPC_feature_not_implemented deriving (Show)
 
 instance Exception EngineError
+
+-- This data type is used in the control structure that determines how the application responds to user selections in the Main Menu and In Game Menu.
+data User_menu = User_menu {menu_text :: [Int], action :: IO (), inner_nodes :: [User_menu]}
 
 cpede_frames = [0, 1, 2, 3, 4, 5, 4, 3, 2, 1, 0] :: [Int]
 

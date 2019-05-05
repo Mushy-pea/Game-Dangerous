@@ -15,6 +15,7 @@ import Data.Word
 import Data.List.Split
 import Data.Matrix hiding ((!))
 import qualified Data.Sequence as SEQ
+import Data.IORef
 import System.Environment
 import Data.Coerce
 import Unsafe.Coerce
@@ -46,17 +47,35 @@ open_window conf_reg =
   initialize "game_dangerous.exe" []
   initialWindowSize $= (Size (cfg' "resolution_x") (cfg' "resolution_y"))
   initialDisplayMode $= [RGBAMode, WithAlphaComponent, WithDepthBuffer, DoubleBuffered]
-  window_id <- createWindow "Game :: Dangerous"
+  createWindow "Game :: Dangerous"
   actionOnWindowClose $= Exit
   displayCallback $= repaint_window
-  
+  keyboardCallback $= get_input
   contents <- bracket (openFile (cfg' "map_file") ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nmap file size: " ++ show (length contents)); return contents)
   setup_game hwnd hdc contents conf_reg
 
+-- This is the callback that GLUT calls when it detects a window repaint is necessary.  This should only happen when the window is first opened, the user moves or resizes the window, or it is
+-- overlapped by another window.  For standard frame rendering, show_frame and run_menu repaint the rendered area of the window.
 repaint_window :: IO ()
 repaint_window = do
-  glClear (GL_COLOR_BUFFER_BIT .|. GL_DEPTH_BUFFER_BIT)
   swapBuffers
+
+-- This is the callback that GLUT calls each time mainLoopEvent has been called and there is keyboard input in the window message queue.
+get_input :: IORef Int -> Array Int Char -> Char -> Position -> IO ()
+get_input ref key_set key pos = do
+  if key == key_set ! 0 then writeIORef ref 2
+  else if key == key_set ! 1 then writeIORef ref 3
+  else if key == key_set ! 2 then writeIORef ref 4
+  else if key == key_set ! 3 then writeIORef ref 5
+  else if key == key_set ! 4 then writeIORef ref 6
+  else if key == key_set ! 5 then writeIORef ref 7
+  else if key == key_set ! 6 then writeIORef ref 8
+  else if key == key_set ! 7 then writeIORef ref 9
+  else if key == key_set ! 8 then writeIORef ref 10
+  else if key == key_set ! 9 then writeIORef ref 11
+  else if key == key_set ! 10 then writeIORef ref 12
+  else if key == key_set ! 11 then writeIORef ref 13
+  else writeIORef ref 0
 
 -- This function initialises the OpenGL and OpenAL contexts.  It also decompresses the map file, manages the compilation of GLSL shaders, loading of 3D models, loading of the light map
 -- and loading of sound effects.

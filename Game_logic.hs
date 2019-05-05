@@ -7,15 +7,15 @@ import System.IO
 import System.IO.Unsafe
 import System.Exit
 import Graphics.GL.Core33
+import Graphics.UI.GLUT
 import Foreign
-import System.Win32
-import Graphics.Win32
 import Data.Array.IArray
 import Data.Array.Unboxed
 import Data.Maybe
 import Data.List
 import Data.List.Split
 import Data.Fixed
+import Data.IORef
 import qualified Data.Sequence as SEQ
 import Control.Concurrent
 import Control.Exception
@@ -1199,7 +1199,9 @@ update_play io_box state_ref s0 s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_
       angle' = \x -> mod_angle_ (angle_ s0) f_rate x
       det_fps = \t_current -> determine_fps t_seq t_current
   in do
-  control <- messagePump (hwnd_ io_box)
+  mainLoopEvent
+  control <- readIORef (control_ io_box)
+  writeIORef (control_ io_box) 0
   link0 <- link_gplc0 (fst game_clock') (drop 4 det) [truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)] w_grid [] f_grid obj_grid [] s0 (s1 {sig_q = prioritise_npcs (sig_q s1) [] []}) look_up True
   link1 <- link_gplc1 s0 s1 obj_grid 0
   link1_ <- link_gplc1 s0 s1 obj_grid 1
@@ -1216,7 +1218,7 @@ update_play io_box state_ref s0 s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_
   if mod (fst__ (game_clock s0)) 40 == 0 && show_fps_ s0 == True then do
     update_play io_box state_ref (s0 {message_ = [(40, snd__ (det_fps (toNanoSecs t)))], game_clock = snd game_clock'}) s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up save_state sound_array t_last t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
   else if control == 2 then do
-    choice <- run_menu (pause_text s1 (difficulty s1)) [] io_box (-0.75) (-0.75) 1 0 0
+    choice <- run_menu (pause_text s1 (difficulty s1)) [] (control_ io_box) (p_bind_ io_box) (uniform_ io_box) (-0.75) (-0.75) 1 0 0
     if choice == 1 then update_play io_box state_ref (s0_ s0) s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
     else if choice == 2 then do
       update_play io_box state_ref (s0_ s0) s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up (Save_state {is_set = True, w_grid_ = w_grid, f_grid_ = f_grid, obj_grid_ = obj_grid, s0_ = s0, s1_ = s1}) sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
@@ -1323,15 +1325,17 @@ proc_msg0 (x0:x1:xs) s0 s1 io_box sound_array =
   else proc_msg0 (drop (x1 - 3) xs) (s0 {message_ = message_ s0 ++ [(600, x0 : take (x1 - 3) xs)]}) s1 io_box sound_array
 
 -- Used by the game logic thread for in game menus and by the main thread for the main menu.
-run_menu :: [(Int, [Int])] -> [(Int, [Int])] -> Io_box -> Float -> Float -> Int -> Int -> Int -> IO Int
+run_menu :: [(Int, [Int])] -> [(Int, [Int])] -> Float -> Float -> Int -> Int -> Int -> IO Int
 run_menu [] acc io_box x y c c_max 0 = run_menu acc [] io_box x y c c_max 2
 run_menu (n:ns) acc io_box x y c c_max 0 = do
   if fst n == 0 then run_menu ns (acc ++ [n]) io_box x y c c_max 0
   else run_menu ns (acc ++ [n]) io_box x y c (c_max + 1) 0
 run_menu [] acc io_box x y c c_max d = do
-  swapBuffers (hdc_ io_box)
-  sleep 33
-  control <- messagePump (hwnd_ io_box)
+  swapBuffers
+  threadDelay 16667
+  mainLoopEvent
+  control <- readIORef (control_ io_box)
+  writeIORef (control_ io_box) 0
   if control == 3 && c > 1 then do
     glClear (GL_COLOR_BUFFER_BIT .|. GL_DEPTH_BUFFER_BIT)
     run_menu acc [] io_box x 0.1 (c - 1) c_max 2
@@ -1375,15 +1379,13 @@ show_text (m:ms) mode base uniform p_bind x y p_tt_matrix = do
     show_text (m:ms) mode base uniform p_bind x y p_tt_matrix_
   else do
     load_array (MAT.toList (translation x y 0)) (castPtr p_tt_matrix) 0
-    if mode == 0 && x < 83 then do
+    if mode == 0 && m < 83 then do
       glUniformMatrix4fv (unsafeCoerce (uniform ! 36)) 1 1 p_tt_matrix
       glUniform1i (unsafeCoerce (uniform ! 38)) 0
-    else if mode == 1 && x < 83 then do
+    else if mode == 1 && m < 83 then do
       glUniformMatrix4fv (unsafeCoerce (uniform ! 36)) 1 1 p_tt_matrix
       glUniform1i (unsafeCoerce (uniform ! 38)) 1
-    else do
-      putStr "show_text: Invalid mode or character reference in text line..."
-      show_text ms mode base uniform p_bind (x + 0.04) y p_tt_matrix
+    else show_text ms mode base uniform p_bind x y p_tt_matrix
     glBindTexture GL_TEXTURE_2D (unsafeCoerce ((fst p_bind) ! (base + m)))
     glDrawElements GL_TRIANGLES 6 GL_UNSIGNED_SHORT zero_ptr
     show_text ms mode base uniform p_bind (x + 0.04) y p_tt_matrix
