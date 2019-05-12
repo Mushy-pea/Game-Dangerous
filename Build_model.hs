@@ -59,6 +59,7 @@ int__ = 0 :: Int; int_ = sizeOf int__
 ptr_size = 8 :: Int -- Corresponds to the 8 byte pointers used on the Windows x86_64 platform.  This value should be changed to 4 if compiling for systems with 4 byte pointers
 
 -- Data types that store information about the environment and game state, as well as an exception type.
+-- There are also a number of default and initial values for these types.
 data Wall_grid = Wall_grid {u1 :: Bool, u2 :: Bool, v1 :: Bool, v2 :: Bool, u1_bound :: Float, u2_bound :: Float, v1_bound :: Float, v2_bound :: Float, w_level :: Float,  wall_flag :: [Int], texture :: [Int], obj :: Maybe Obj_place} deriving (Eq, Show)
 
 data Object = Object {ident :: Int, att_offset :: Int, num_tex :: Int, tex_w :: GLsizei, tex_h :: GLsizei, behaviours :: [Int]} deriving (Show)
@@ -91,11 +92,6 @@ data EngineError = Invalid_wall_flag | Invalid_obj_flag | Invalid_GPLC_opcode | 
 
 instance Exception EngineError
 
--- This data type is used in the control structure that determines how the application responds to user selections in the Main Menu and In Game Menu.
-data User_menu = User_menu {menu_text :: [Int], action :: IO (), inner_nodes :: [User_menu]}
-
-cpede_frames = [0, 1, 2, 3, 4, 5, 4, 3, 2, 1, 0] :: [Int]
-
 ps0_init = Play_state0 {pos_u = 0, pos_v = 0, pos_w = 0, vel = [0, 0, 0], angle = 0, angle_ = 0, message_ = [], rend_mode = 0, view_mode = 0, view_angle = 0, game_clock = (1, 1, 1), torch_t0 = 1, torch_t_limit = 0, show_fps_ = False, prob_seq = def_prob_seq}
 ps1_init = Play_state1 {health = 100, ammo = 0, gems = 0, torches = 0, keys = [63,63,63,63,63,63], region = [19,46,41,44,27,33,31,63,28,27,51,63,4], difficulty = ("Plenty of danger please", 6, 10, 14), sig_q = [], next_sig_q = [], message = [], state_chg = 0, verbose_mode = False, npc_states = empty_npc_array}
 
@@ -124,6 +120,12 @@ def_npc_state = NPC_state {npc_type = 0, c_health = 0, ticks_left0 = 40, ticks_l
 dir_list = [], node_num = 0, end_node = 0, head_index = 0, reversed = False, target_u' = 0, target_v' = 0, target_w' = 0, speed = 0, avoid_dist = 0, attack_mode = False, final_appr = False, fire_prob = 0}
 
 empty_npc_array = array (0, 127) [(i, def_npc_state) | i <- [0..127]]
+
+-- This data type is used in the control structure that manages the Main Menu.
+data User_menu = User_menu {menu_text :: [Char], action :: IO (), inner_nodes :: [User_menu]}
+
+-- This list is used to sequence centipede NPC animation.
+cpede_frames = [0, 1, 2, 3, 4, 5, 4, 3, 2, 1, 0] :: [Int]
 
 -- This class is used in functions that filter the result of the ray tracer to avoid multiple rendering.
 class Flag a where
