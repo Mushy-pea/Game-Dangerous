@@ -33,9 +33,15 @@ import Game_sound
 
 main = do
   args <- getArgs
-  contents <- bracket (openFile (args !! 0) ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nconfig file size: " ++ show (length contents)); return contents)
-  if length args > 3 then open_window ((listArray (0, 51) (splitOneOf "=\n" contents)) // [(1, args !! 1), (9, args !! 2), (11, args !! 3), (13, args !! 4), (15, args !! 5), (17, args !! 6), (19, args !! 7), (21, args !! 8), (23, args !! 9), (25, args !! 10), (27, args !! 11), (29, args !! 12), (31, args !! 13), (33, args !! 14), (35, args !! 15), (39, "n")])
-  else open_window ((listArray (0, 51) (splitOneOf "=\n" contents)) // [(31, args !! 1), (33, args !! 2)])
+  if length args == 0 then do
+    contents <- bracket (openFile "config.txt" ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nconfig file size: " ++ show (length contents)); return contents)
+    open_window ((listArray (0, 79) (splitOneOf "=\n" contents)) // [(3, "null")])
+  else if length args == 1 then do
+    contents <- bracket (openFile "config.txt" ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nconfig file size: " ++ show (length contents)); return contents)
+    open_window ((listArray (0, 79) (splitOneOf "=\n" contents)) // [(3, (args !! 0))])
+  else do
+    contents <- bracket (openFile (args !! 1) ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nconfig file size: " ++ show (length contents)); return contents)
+    open_window ((listArray (0, 79) (splitOneOf "=\n" contents)) // [(3, (args !! 0))])
 
 -- This function initialises the GLUT runtime system, which in turn is used to initialise a window and OpenGL context.
 open_window :: Array Int [Char] -> IO ()
@@ -44,10 +50,18 @@ open_window conf_reg =
       cb = \x -> head (cfg' x)
       key_set = listArray (0, 14) [cb "cb_PAUSE", cb "cb_FORWARD", cb "cb_STRAFE_RIGHT", cb "cb_BACK", cb "cb_STRAFE_LEFT", cb "cb_TURN_LEFT", cb "cb_TURN_RIGHT", cb "cb_JUMP", cb "cb_LIGHT_TORCH", cb "cb_SWITCH_VIEW", cb "cb_ROTATE_VIEW", cb "cb_FIRE", cb "cb_MENU_SELECT", cb "cb_MENU_BACK", cb "cb_MENU_HOME"]
   in do
-  putStr ("\nGame :: Dangerous engine " ++ cfg' "version_and_platform_string")
-  putStr "\nInitialising GLUT and OpenGL runtime environment."
+  putStr ("\n\nGame :: Dangerous engine " ++ cfg' "version_and_platform_string")
+  putStr "\nInitialising GLUT and OpenGL runtime environment..."
   initialize "game_dangerous.exe" []
-  initialWindowSize $= (Size (cfg' "resolution_x") (cfg' "resolution_y"))
+  initialContextVersion $= (3, 3)
+  screenRes <- newIORef (Size 0 0)
+  if cfg' "resolution_x" == "auto" then do
+    screen_res <- get screenSize
+    initialWindowSize $= screen_res
+    writeIORef screenRes screen_res
+  else do
+    initialWindowSize $= (Size (resd (cfg' "resolution_x")) (resd (cfg' "resolution_y")))
+    writeIORef screenRes (Size (resd (cfg' "resolution_x")) (resd (cfg' "resolution_y")))
   initialDisplayMode $= [RGBAMode, WithAlphaComponent, WithDepthBuffer, DoubleBuffered]
   createWindow "Game :: Dangerous"
   actionOnWindowClose $= Exit
@@ -55,7 +69,8 @@ open_window conf_reg =
   control_ref <- newIORef 0
   keyboardCallback $= (Just (get_input control_ref key_set))
   contents <- bracket (openFile (cfg' "map_file") ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nmap file size: " ++ show (length contents)); return contents)
-  setup_game hwnd hdc contents conf_reg
+  screen_res <- readIORef screenRes
+  setup_game contents conf_reg screen_res control_ref
 
 -- This is the callback that GLUT calls when it detects a window repaint is necessary.  This should only happen when the window is first opened, the user moves or resizes the window, or it is
 -- overlapped by another window.  For standard frame rendering, show_frame and run_menu repaint the rendered area of the window.
@@ -85,8 +100,8 @@ get_input ref key_set key pos = do
 
 -- This function initialises the OpenGL and OpenAL contexts.  It also decompresses the map file, manages the compilation of GLSL shaders, loading of 3D models, loading of the light map
 -- and loading of sound effects.
-setup_game :: HWND -> HDC -> [Char] -> Array Int [Char] -> IO ()
-setup_game hwnd hdc comp_env_map conf_reg =
+setup_game :: [Char] -> Array Int [Char] -> Size -> IORef Int -> IO ()
+setup_game comp_env_map conf_reg (Size w h) control_ref =
   let m0 = "mod_to_world"
       m1 = "world_to_clip"
       m2 = "world_to_mod"
@@ -101,12 +116,6 @@ setup_game hwnd hdc comp_env_map conf_reg =
       cfg' = cfg conf_reg 0
       p_bind_limit = (read ((splitOn "\n~\n" comp_env_map) !! 7)) - 1
   in do
-  pfd <- setPFD (40, 1, pfd_DRAW_TO_WINDOW .|. pfd_SUPPORT_OPENGL .|. pfd_DOUBLEBUFFER, pfd_TYPE_RGBA, 24, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 16, 0, 0, pfd_MAIN_PLANE, 0, 0, 0, 0)
-  f_index <- choosePixelFormat hdc pfd
-  setPixelFormat hdc f_index pfd
-  putStr "\nInitialising OpenGL context..."
-  hrc <- wglCreateContext hdc
-  wglMakeCurrent hdc hrc
   glEnable GL_DEPTH_TEST
   glDepthFunc GL_LEQUAL
   glDepthRange 0 1
@@ -199,68 +208,62 @@ select_mode "n" = False
 gen_prob_seq :: RandomGen g => Int -> Int -> Int -> g -> UArray Int Int
 gen_prob_seq i0 i1 i2 g = listArray (i0, i1) (drop i2 (randomRs (0, 99) g))
 
-init_main_menu :: [[Char]] -> [IO ()] -> User_menu
-init_main_menu (menu0:menu1:menu2:menu3:menu4:menu5:menu6:menu7:menu8:menu9:menus) (ac0:ac1:ac2:ac3:ac4:ac5:ac6:ac7:ac8:ac9:ac10:ac11:ac12:ac13:ac14:ac15:ac16:ac17:ac18:ac19:ac20:ac21:ac22:ac23:ac24:ac25:ac26:ac27:ac28:ac29:ac30:ac31:ac32:ac33:ac34:ac35:ac36:ac37:ac38:ac39:ac40:ac41:ac42:actions) =
-  User_menu {menu_text = menu0, action = IO (), inner_nodes = [User_menu 
-
-
-
--- This function initialises the game logic and rendering threads each time a new game is started and handles user input from the main menu.
---start_game :: HWND -> HDC -> UArray Int Int32 -> (UArray Int Word32, Int) -> [Char] -> Array Int [Char] -> Int -> (Float, Float, Float, Float, Float, Float, Float) -> Save_state -> Array Int Source -> IO ()
---start_game hwnd hdc uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag_j) save_state sound_array =
---  let u_limit = (read ((splitOn "~" c) !! 8))
---      v_limit = (read ((splitOn "~" c) !! 9))
---      w_limit = (read ((splitOn "~" c) !! 10))
---      w_grid = check_map_layer (-3) 0 0 u_limit v_limit (make_array0 ((build_table0 (elems (build_table1 (splitOn ", " ((splitOn "~" c) !! 7)) (empty_w_grid u_limit v_limit w_limit) 7500)) u_limit v_limit w_limit) ++ (sort_grid0 (splitOn "&" ((splitOn "~" c) !! 4)))) u_limit v_limit w_limit) w_grid_flag
---      f_grid = check_map_layer 0 0 0 ((div (u_limit + 1) 2) - 1) ((div (v_limit + 1) 2) - 1) (make_array1 (load_floor0 (splitOn "&" ((splitOn "~" c) !! 5))) ((div (u_limit + 1) 2) - 1) ((div (v_limit + 1) 2) - 1) w_limit) f_grid_flag
---      obj_grid = check_map_layer 0 0 0 u_limit v_limit (empty_obj_grid u_limit v_limit w_limit // load_obj_grid (splitOn ", " ((splitOn "~" c) !! 6))) obj_grid_flag
---      look_up_ = look_up [make_table 0 0, make_table 1 0, make_table 2 0, make_table 3 0]
---      camera_to_clip' = fromList 4 4 [read (cfg' "frustumScale"), 0, 0, 0, 0, read (cfg' "frustumScale"), 0, 0, 0, 0, ((zFar + zNear) / (zNear - zFar)), ((2 * zFar * zNear) / (zNear - zFar)), 0, 0, -1, 0]
---      cfg' = cfg conf_reg 0
---  in do
---  if mode == -1 then do
---    if cfg' "splash" == "y" then do
---      run_menu (proc_splash (cfg' "splash_msg") 0) [] (Io_box {hwnd_ = hwnd, hdc_ = hdc, uniform_ = uniform, p_bind_ = p_bind}) (-0.96) (-0.2) 0 0 0
---      start_game hwnd hdc uniform p_bind c conf_reg 2 (u, v, w, g, f, mag_r, mag_j) save_state sound_array
---    else start_game hwnd hdc uniform p_bind c conf_reg 0 (u, v, w, g, f, mag_r, mag_j) save_state sound_array
---  else if mode == 0 || mode == 1 then do
---    p_mt_matrix <- mallocBytes (glfloat * 128)
---    p_f_table0 <- callocBytes (int_ * 120000)
---    p_f_table1 <- callocBytes (int_ * 37500)
---    state_ref <- newEmptyMVar
---    t_log <- newEmptyMVar
---    r_gen <- getStdGen
---    if mode == 0 then do
---      tid <- forkIO (update_play (Io_box {hwnd_ = hwnd, hdc_ = hdc, uniform_ = uniform, p_bind_ = p_bind}) state_ref (ps0_init {pos_u = u, pos_v = v, pos_w = w, show_fps_ = select_mode (cfg' "show_fps"), prob_seq = gen_prob_seq 0 239 (read (cfg' "prob_c")) r_gen}) (ps1_init {verbose_mode = select_mode (cfg' "verbose_mode")}) False (read (cfg' "min_frame_t")) (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up_ save_state sound_array 0 t_log (SEQ.empty) 60)
---      result <- show_frame hdc p_bind uniform p_mt_matrix (p_f_table0, p_f_table1) 0 0 0 0 0 state_ref w_grid f_grid obj_grid look_up_ camera_to_clip' (array (0, 5) [(i, (0, [])) | i <- [0..5]])
---      free p_mt_matrix
---      free p_f_table0
---      free p_f_table1
---      killThread tid
---      start_game hwnd hdc uniform p_bind c conf_reg ((head (fst result)) + 1) (u, v, w, g, f, mag_r, mag_j) (snd result) sound_array
---    else do
---      tid <- forkIO (update_play (Io_box {hwnd_ = hwnd, hdc_ = hdc, uniform_ = uniform, p_bind_ = p_bind}) state_ref (s0_ save_state) (s1_ save_state) False (read (cfg' "min_frame_t")) (g, f, mag_r, mag_j) (w_grid_ save_state) (f_grid_ save_state) (obj_grid_ save_state) look_up_ save_state sound_array 0 t_log (SEQ.empty) 60)
---      result <- show_frame hdc p_bind uniform p_mt_matrix (p_f_table0, p_f_table1) 0 0 0 0 0 state_ref w_grid f_grid obj_grid look_up_ camera_to_clip' (array (0, 5) [(i, (0, [])) | i <- [0..5]])
---      free p_mt_matrix
---      free p_f_table0
---      free p_f_table1
---      killThread tid
---      start_game hwnd hdc uniform p_bind c conf_reg ((head (fst result)) + 1) (u, v, w, g, f, mag_r, mag_j) (snd result) sound_array
---  else if mode == 2 then do
---    choice <- run_menu main_menu_text [] (Io_box {hwnd_ = hwnd, hdc_ = hdc, uniform_ = uniform, p_bind_ = p_bind}) (-0.75) (-0.75) 1 0 0
---    if choice == 1 then start_game hwnd hdc uniform p_bind c conf_reg 0 (u, v, w, g, f, mag_r, mag_j) save_state sound_array
---    else if choice == 2 then do
---      if is_set save_state == True then start_game hwnd hdc uniform p_bind c conf_reg 1 (u, v, w, g, f, mag_r, mag_j) save_state sound_array
---      else start_game hwnd hdc uniform p_bind c conf_reg 0 (u, v, w, g, f, mag_r, mag_j) save_state sound_array
---    else exitSuccess
---  else if mode == 3 then do
---    if is_set save_state == True then start_game hwnd hdc uniform p_bind c conf_reg 1 (u, v, w, g, f, mag_r, mag_j) save_state sound_array
---    else start_game hwnd hdc uniform p_bind c conf_reg 0 (u, v, w, g, f, mag_r, mag_j) save_state sound_array
---  else if mode == 4 then exitSuccess
---  else if mode == 6 then do
---    putStr "\nYou have completed the demo.  Nice one.  Check the project website later for details of further releases."
---    exitSuccess
---  else return ()
+-- This function initialises the game logic thread each time a new game is started and handles user input from the main menu.
+start_game :: IORef Int -> UArray Int Int32 -> (UArray Int Word32, Int) -> [Char] -> Array Int [Char] -> Int -> (Float, Float, Float, Float, Float, Float, Float) -> Save_state -> Array Int Source -> IO ()
+start_game control_ref uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag_j) save_state sound_array =
+  let u_limit = (read ((splitOn "~" c) !! 8))
+      v_limit = (read ((splitOn "~" c) !! 9))
+      w_limit = (read ((splitOn "~" c) !! 10))
+      w_grid = check_map_layer (-3) 0 0 u_limit v_limit (make_array0 ((build_table0 (elems (build_table1 (splitOn ", " ((splitOn "~" c) !! 7)) (empty_w_grid u_limit v_limit w_limit) 7500)) u_limit v_limit w_limit) ++ (sort_grid0 (splitOn "&" ((splitOn "~" c) !! 4)))) u_limit v_limit w_limit) w_grid_flag
+      f_grid = check_map_layer 0 0 0 ((div (u_limit + 1) 2) - 1) ((div (v_limit + 1) 2) - 1) (make_array1 (load_floor0 (splitOn "&" ((splitOn "~" c) !! 5))) ((div (u_limit + 1) 2) - 1) ((div (v_limit + 1) 2) - 1) w_limit) f_grid_flag
+      obj_grid = check_map_layer 0 0 0 u_limit v_limit (empty_obj_grid u_limit v_limit w_limit // load_obj_grid (splitOn ", " ((splitOn "~" c) !! 6))) obj_grid_flag
+      look_up_ = look_up [make_table 0 0, make_table 1 0, make_table 2 0, make_table 3 0]
+      camera_to_clip = fromList 4 4 [read (cfg' "frustumScale0"), 0, 0, 0, 0, read (cfg' "frustumScale1"), 0, 0, 0, 0, ((zFar + zNear) / (zNear - zFar)), ((2 * zFar * zNear) / (zNear - zFar)), 0, 0, -1, 0]
+      cfg' = cfg conf_reg 0
+  in do
+  if mode == -1 then do
+    if cfg' "splash" == "y" then do
+      run_menu (proc_splash (cfg' "splash_msg") 0) [] (Io_box {hwnd_ = hwnd, hdc_ = hdc, uniform_ = uniform, p_bind_ = p_bind}) (-0.96) (-0.2) 0 0 0
+      start_game hwnd hdc uniform p_bind c conf_reg 2 (u, v, w, g, f, mag_r, mag_j) save_state sound_array
+    else start_game hwnd hdc uniform p_bind c conf_reg 0 (u, v, w, g, f, mag_r, mag_j) save_state sound_array
+  else if mode == 0 || mode == 1 then do
+    p_mt_matrix <- mallocBytes (glfloat * 128)
+    p_f_table0 <- callocBytes (int_ * 120000)
+    p_f_table1 <- callocBytes (int_ * 37500)
+    state_ref <- newEmptyMVar
+    t_log <- newEmptyMVar
+    r_gen <- getStdGen
+    if mode == 0 then do
+      tid <- forkIO (update_play (Io_box {hwnd_ = hwnd, hdc_ = hdc, uniform_ = uniform, p_bind_ = p_bind}) state_ref (ps0_init {pos_u = u, pos_v = v, pos_w = w, show_fps_ = select_mode (cfg' "show_fps"), prob_seq = gen_prob_seq 0 239 (read (cfg' "prob_c")) r_gen}) (ps1_init {verbose_mode = select_mode (cfg' "verbose_mode")}) False (read (cfg' "min_frame_t")) (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up_ save_state sound_array 0 t_log (SEQ.empty) 60)
+      result <- show_frame hdc p_bind uniform p_mt_matrix (p_f_table0, p_f_table1) 0 0 0 0 0 state_ref w_grid f_grid obj_grid look_up_ camera_to_clip (array (0, 5) [(i, (0, [])) | i <- [0..5]])
+      free p_mt_matrix
+      free p_f_table0
+      free p_f_table1
+      killThread tid
+      start_game hwnd hdc uniform p_bind c conf_reg ((head (fst result)) + 1) (u, v, w, g, f, mag_r, mag_j) (snd result) sound_array
+    else do
+      tid <- forkIO (update_play (Io_box {hwnd_ = hwnd, hdc_ = hdc, uniform_ = uniform, p_bind_ = p_bind}) state_ref (s0_ save_state) (s1_ save_state) False (read (cfg' "min_frame_t")) (g, f, mag_r, mag_j) (w_grid_ save_state) (f_grid_ save_state) (obj_grid_ save_state) look_up_ save_state sound_array 0 t_log (SEQ.empty) 60)
+      result <- show_frame hdc p_bind uniform p_mt_matrix (p_f_table0, p_f_table1) 0 0 0 0 0 state_ref w_grid f_grid obj_grid look_up_ camera_to_clip (array (0, 5) [(i, (0, [])) | i <- [0..5]])
+      free p_mt_matrix
+      free p_f_table0
+      free p_f_table1
+      killThread tid
+      start_game hwnd hdc uniform p_bind c conf_reg ((head (fst result)) + 1) (u, v, w, g, f, mag_r, mag_j) (snd result) sound_array
+  else if mode == 2 then do
+    choice <- run_menu main_menu_text [] (Io_box {hwnd_ = hwnd, hdc_ = hdc, uniform_ = uniform, p_bind_ = p_bind}) (-0.75) (-0.75) 1 0 0
+    if choice == 1 then start_game hwnd hdc uniform p_bind c conf_reg 0 (u, v, w, g, f, mag_r, mag_j) save_state sound_array
+    else if choice == 2 then do
+      if is_set save_state == True then start_game hwnd hdc uniform p_bind c conf_reg 1 (u, v, w, g, f, mag_r, mag_j) save_state sound_array
+      else start_game hwnd hdc uniform p_bind c conf_reg 0 (u, v, w, g, f, mag_r, mag_j) save_state sound_array
+    else exitSuccess
+  else if mode == 3 then do
+    if is_set save_state == True then start_game hwnd hdc uniform p_bind c conf_reg 1 (u, v, w, g, f, mag_r, mag_j) save_state sound_array
+    else start_game hwnd hdc uniform p_bind c conf_reg 0 (u, v, w, g, f, mag_r, mag_j) save_state sound_array
+  else if mode == 4 then exitSuccess
+  else if mode == 6 then do
+    putStr "\nYou have completed the demo.  Nice one.  Check the project website later for details of further releases."
+    exitSuccess
+  else return ()
 
 -- Find the uniform locations of GLSL uniform variables.
 find_gl_uniform :: [[Char]] -> [Int] -> Ptr GLuint -> [Int32] -> IO [Int32]

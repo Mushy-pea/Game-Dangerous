@@ -138,7 +138,7 @@ instance Flag Obj_place where
   theFlag a = obj_flag a
 
 -- Deafult values used in the perspective transformation.
-frustumScale = 1 :: Float; zNear = 0.5 :: Float; zFar = 100 :: Float
+zNear = 0.5 :: Float; zFar = 100 :: Float
 
 -- Used in preference to nullPtr as this value is explicitly defined as zero.  The type of 0 must be changed to Word32 if compiling for systems with 32 bit pointers.
 zero_ptr = (unsafeCoerce (0 :: Word64) :: Ptr a)
