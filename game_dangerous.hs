@@ -224,6 +224,7 @@ start_game control_ref uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag
   in do
   if mode == -1 then do
     if cfg' "splash_image" /= "null" then do
+      glDisable GL_DEPTH_TEST
       glBindVertexArray (unsafeCoerce ((fst p_bind) ! 1017))
       glBindTexture GL_TEXTURE_2D (unsafeCoerce ((fst p_bind) ! 1019))
       glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 3)))
@@ -232,8 +233,10 @@ start_game control_ref uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag
       load_array [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1] p_tt_matrix 0
       glUniformMatrix4fv (fromIntegral (uniform ! 36)) 1 1 p_tt_matrix
       glDrawElements GL_TRIANGLES 6 GL_UNSIGNED_SHORT zero_ptr
+      swapBuffers
       free p_tt_matrix
       threadDelay 5000000
+      glEnable GL_DEPTH_TEST
       start_game control_ref uniform p_bind c conf_reg 2 (u, v, w, g, f, mag_r, mag_j) save_state sound_array frustumScale0
     else start_game control_ref uniform p_bind c conf_reg 0 (u, v, w, g, f, mag_r, mag_j) save_state sound_array frustumScale0
   else if mode == 0 || mode == 1 then do

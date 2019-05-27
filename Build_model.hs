@@ -8,7 +8,6 @@
 
 module Build_model where
 
-import Graphics.Win32
 import Data.Word
 import Data.List.Split
 import Data.Matrix hiding ((!))
