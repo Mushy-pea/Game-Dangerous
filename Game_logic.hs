@@ -7,7 +7,7 @@ import System.IO
 import System.IO.Unsafe
 import System.Exit
 import Graphics.GL.Core33
-import Graphics.UI.GLUT
+import Graphics.UI.GLUT hiding (Flat, texture)
 import Foreign
 import Data.Array.IArray
 import Data.Array.Unboxed
@@ -25,9 +25,6 @@ import Data.Coerce
 import System.Clock
 import Build_model
 import Game_sound
-
-foreign import ccall "wingdi.h SwapBuffers"
-  swapBuffers :: HDC -> IO Bool
 
 -- Used to load C style arrays, which are used with certain OpenGL functions.
 load_array :: Storable a => [a] -> Ptr a -> Int -> IO ()
@@ -58,37 +55,6 @@ msg29 = [15, 47, 29, 34, 66, 66, 66, 3, 31, 40, 46, 35, 42, 31, 30, 31, 63, 28, 
 
 main_menu_text :: [(Int, [Int])]
 main_menu_text = [(0, msg16), (0, []), (1, msg14), (2, msg18), (3, msg12)]
-
--- These two functions are where the program interacts with the Windows message system and captures keyboard input.
-wndProc :: HWND -> WindowMessage -> WPARAM -> LPARAM -> IO LRESULT
-wndProc hwnd wmsg wParam lParam
-    | wmsg == 258 = if wParam == 120 then do return 2 -- pause and select menu option (X)
-                    else if wParam == 97 then return 6  -- left (A)
-                    else if wParam == 100 then return 4 -- right (D)
-                    else if wParam == 115 then return 5 -- back (S)
-                    else if wParam == 119 then return 3 -- forward (W)
-                    else if wParam == 107 then return 7 -- turn left (K)
-                    else if wParam == 108 then return 8 -- turn right (L)
-                    else if wParam == 117 then return 9 -- jump (U)
-                    else if wParam == 116 then return 10 -- light torch (T)
-                    else if wParam == 99 then return 11 -- switch view mode (C)
-                    else if wParam == 118 then return 12 -- rotate 3rd person view (V)
-                    else if wParam == 32 then return 13 -- Fire (SPACE)
-                    else do return 1
-    | otherwise = do
-        defWindowProc (Just hwnd) wmsg wParam lParam
-        return 1
-
-messagePump :: HWND -> IO Int32
-messagePump hwnd = allocaMessage $ \ msg ->
-  let pump = do x <- peekMessage msg (Just hwnd) 0 0 1
-                if x /= () then do
-                  return 0
-                else do
-                  translateMessage msg
-                  r <- dispatchMessage msg
-                  return r
-  in pump
 
 -- The following functions implement a bytecode interpreter of the Game Programmable Logic Controller (GPLC) language, used for game logic scripting.
 upd' x y = x + y
@@ -1218,7 +1184,7 @@ update_play io_box state_ref s0 s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_
   if mod (fst__ (game_clock s0)) 40 == 0 && show_fps_ s0 == True then do
     update_play io_box state_ref (s0 {message_ = [(40, snd__ (det_fps (toNanoSecs t)))], game_clock = snd game_clock'}) s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up save_state sound_array t_last t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
   else if control == 2 then do
-    choice <- run_menu (pause_text s1 (difficulty s1)) [] (control_ io_box) (p_bind_ io_box) (uniform_ io_box) (-0.75) (-0.75) 1 0 0
+    choice <- run_menu (pause_text s1 (difficulty s1)) [] io_box (-0.75) (-0.75) 1 0 0
     if choice == 1 then update_play io_box state_ref (s0_ s0) s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
     else if choice == 2 then do
       update_play io_box state_ref (s0_ s0) s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up (Save_state {is_set = True, w_grid_ = w_grid, f_grid_ = f_grid, obj_grid_ = obj_grid, s0_ = s0, s1_ = s1}) sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
@@ -1325,7 +1291,7 @@ proc_msg0 (x0:x1:xs) s0 s1 io_box sound_array =
   else proc_msg0 (drop (x1 - 3) xs) (s0 {message_ = message_ s0 ++ [(600, x0 : take (x1 - 3) xs)]}) s1 io_box sound_array
 
 -- Used by the game logic thread for in game menus and by the main thread for the main menu.
-run_menu :: [(Int, [Int])] -> [(Int, [Int])] -> Float -> Float -> Int -> Int -> Int -> IO Int
+run_menu :: [(Int, [Int])] -> [(Int, [Int])] -> Io_box -> Float -> Float -> Int -> Int -> Int -> IO Int
 run_menu [] acc io_box x y c c_max 0 = run_menu acc [] io_box x y c c_max 2
 run_menu (n:ns) acc io_box x y c c_max 0 = do
   if fst n == 0 then run_menu ns (acc ++ [n]) io_box x y c c_max 0
