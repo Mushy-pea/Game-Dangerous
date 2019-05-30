@@ -7,7 +7,7 @@ import System.IO
 import System.IO.Unsafe
 import System.Exit
 import Graphics.GL.Core33
-import Graphics.UI.GLUT hiding (Flat, texture)
+import Graphics.UI.GLUT hiding (Flat, texture, GLfloat)
 import Foreign
 import Data.Array.IArray
 import Data.Array.Unboxed

@@ -9,7 +9,7 @@ import Foreign.C.String
 import Foreign.C.Types
 import Foreign.Marshal.Utils
 import Graphics.GL.Core33
-import Graphics.UI.GLUT hiding (Object, Matrix)
+import Graphics.UI.GLUT hiding (Object, Matrix, GLuint, GLchar, GLenum, GLsizei, GLushort, GLsizeiptr, GLfloat)
 import Data.Bits
 import Data.Word
 import Data.List.Split
