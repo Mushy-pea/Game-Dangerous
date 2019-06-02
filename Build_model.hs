@@ -1,4 +1,4 @@
--- Game :: Dangerous code by Steven Tinsley.  You are free to use this software and view its source code.
+﻿-- Game :: Dangerous code by Steven Tinsley.  You are free to use this software and view its source code.
 -- If you wish to redistribute it or use it as part of your own work, this is permitted as long as you acknowledge the work is by the abovementioned author.
 
 -- The purpose of the functions in this module mostly fall into one of the following three catagories.
@@ -586,7 +586,7 @@ set_play_state1 3 (x0:xs) s1 = s1 {state_chg = read x0}
 -- Used to query the conf_reg array, which holds startup parameters passed at the command line or from the engine's configuration file.
 cfg :: Array Int [Char] -> Int -> [Char] -> [Char]
 cfg conf_reg i query =
-  if i > 78 then throw Invalid_conf_reg_field
+  if i > 78 then error ("Invalid conf_reg field: " ++ query ++ "!")
   else if conf_reg ! i == query then conf_reg ! (i + 1)
   else cfg conf_reg (i + 2) query
 
