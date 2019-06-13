@@ -103,6 +103,12 @@ show_ints :: [Int] -> [Char]
 show_ints [] = []
 show_ints (x:xs) = (show x) ++ ", " ++ show_ints xs
 
+bound_check :: Int -> Int -> ((Int, Int, Int), (Int, Int, Int)) -> Bool
+bound_check block axis ((a, b, c), (w_max, u_max, v_max)) =
+  if axis == 0 && block > u_max then False
+  else if axis == 1 && block > v_max then False
+  else True
+
 -- These three functions perform GPLC conditional expression folding, evaluating conditional op - codes at the start of a GPLC program run to yield unconditional code.
 on_signal :: [Int] -> [Int] -> Int -> [Int]
 on_signal [] code sig = []
@@ -653,7 +659,7 @@ npc_move offset d_list (w:u:v:w1:u1:v1:blocks) w_grid w_grid_upd f_grid obj_grid
       conv_ramp_fill0 = conv_ramp_fill w u v 1 (surface (f_grid ! (w, div u 2, div v 2)))
       conv_ramp_fill1 = conv_ramp_fill w u v 0 (surface (f_grid ! (w, div u 2, div v 2)))
       w_grid' = ((-w - 1, u, v), (w_grid ! (-w - 1, u, v)) {obj = Just (o_target {u__ = snd__ (fg_position char_state), v__ = third_ (fg_position char_state)})})
-      w_grid'' = [((-w - 1, u', v'), (w_grid ! (-w - 1, u, v)) {obj = Just (o_target {ident_ = char_rotation 0 (direction char_state) (d_list !! 4)})}), ((-w - 1, u, v), def_w_grid)]
+      w_grid'' = [((-w - 1, u', v'), (w_grid ! (-w - 1, u, v)) {obj = Just (o_target {ident_ = char_rotation 0 (direction char_state) (d_list !! 9)})}), ((-w - 1, u, v), def_w_grid)]
       w_grid''' = ((-w - 1, u, v), (w_grid ! (-w - 1, u, v)) {obj = Just (o_target {w__ = fst__ ramp_climb_, u__ = snd__ ramp_climb_, v__ = third_ ramp_climb_})})
       w_grid_4 = \dw -> ([((-w - 1, u, v), def_w_grid)] ++ drop 4 (ramp_fill (-w - 1 + dw) u v ((w_grid ! (-w - 1, u, v)) {obj = Just (o_target {w__ = fst__ ramp_climb_, u__ = snd__ ramp_climb_, v__ = third_ ramp_climb_})}) (surface (f_grid ! (w, div u 2, div v 2)))))
       damage = det_damage (difficulty s1) s0
@@ -802,7 +808,7 @@ cpede_move offset mode d_list (w:u:v:blocks) w_grid w_grid_upd obj_grid obj_grid
 npc_damage :: Int -> [Int] -> Array (Int, Int, Int) Wall_grid -> [((Int, Int, Int), Wall_grid)] -> Array (Int, Int, Int) (Int, [Int]) -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> Play_state0 -> Play_state1 -> [Int] -> ([((Int, Int, Int), Wall_grid)], [((Int, Int, Int), (Int, [(Int, Int)]))], Play_state1)
 npc_damage mode (w:u:v:blocks) w_grid w_grid_upd obj_grid obj_grid_upd s0 s1 d_list =
   let damage = det_damage ("d", 6, 10, 14) s0
-      char_state = (npc_states s1) ! (d_list !! 3)
+      char_state = (npc_states s1) ! (d_list !! 8)
       h_char_state = (npc_states s1) ! (head_index char_state)
       o_target = fromJust (obj (w_grid ! (-w - 1, u, v)))
   in
@@ -813,7 +819,7 @@ npc_damage mode (w:u:v:blocks) w_grid w_grid_upd obj_grid obj_grid_upd s0 s1 d_l
     else (w_grid_upd, obj_grid_upd, s1 {npc_states = (npc_states s1) // [(head_index char_state, h_char_state {c_health = (c_health h_char_state) - damage})], message = message s1 ++ [2, 4, 16]})
   else
   if c_health char_state - damage <= 0 then (((-w - 1, u, v), def_w_grid) : w_grid_upd, ((w, u, v), (-1, [])) : obj_grid_upd, s1 {message = message s1 ++ [2, 4, 14]})
-  else (w_grid_upd, obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 3, char_state {c_health = (c_health char_state) - damage})], message = message s1 ++ [2, 4, 16]})
+  else (w_grid_upd, obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 8, char_state {c_health = (c_health char_state) - damage})], message = message s1 ++ [2, 4, 16]})
 
 -- Branch on each GPLC op - code to call the corresponding function, with optional per op - code status reports for debugging.
 run_gplc :: [Int] -> [Int] -> Array (Int, Int, Int) Wall_grid -> [((Int, Int, Int), Wall_grid)] -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> Play_state0 -> Play_state1 -> UArray (Int, Int) Float -> Int -> IO ([((Int, Int, Int), Wall_grid)], Array (Int, Int, Int) Floor_grid, [((Int, Int, Int), (Int, [(Int, Int)]))], Play_state0, Play_state1)
@@ -891,7 +897,7 @@ run_gplc (x0:x1:x2:x3:x4:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_u
   run_gplc (tail_ xs) d_list w_grid (fst__ project_update') f_grid obj_grid (snd__ project_update') s0 (third_ project_update') look_up (head_ xs)
 run_gplc (x0:x1:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up 19 = do
   report_state (verbose_mode s1) 2 [] [] ("\ninit_npc run with arguments " ++ "0: " ++ show (d_list !! x0) ++ " 1: " ++ show x1)
-  report_npc_state (verbose_mode s1) s1 (d_list !! 3)
+  report_npc_state (verbose_mode s1) s1 (d_list !! 8)
   run_gplc (tail_ xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 (init_npc x0 x1 s1 d_list) look_up (head_ xs)
 run_gplc (x0:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up 20 =
   let npc_decision_ = npc_decision 0 0 x0 0 0 0 d_list (node_locations ((npc_states s1) ! (d_list !! 8))) w_grid f_grid obj_grid obj_grid_upd s0 s1 look_up
@@ -903,10 +909,10 @@ run_gplc (x0:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 loo
   let npc_move_ = npc_move x0 d_list (node_locations ((npc_states s1) ! (d_list !! 8))) w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up
   in do
   report_state (verbose_mode s1) 2 [] [] ("\nnpc_move run with arguments " ++ "0: " ++ show x0)
-  report_npc_state (verbose_mode s1) s1 (d_list !! 3)
+  report_npc_state (verbose_mode s1) s1 (d_list !! 8)
   run_gplc (tail_ xs) d_list w_grid (fst__ npc_move_) f_grid obj_grid (snd__ npc_move_) s0 (third_ npc_move_) look_up (head_ xs)
 run_gplc (x0:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up 22 =
-  let npc_damage_ = npc_damage x0 (node_locations ((npc_states s1) ! (d_list !! 3))) w_grid w_grid_upd obj_grid obj_grid_upd s0 s1 d_list
+  let npc_damage_ = npc_damage x0 (node_locations ((npc_states s1) ! (d_list !! 8))) w_grid w_grid_upd obj_grid obj_grid_upd s0 s1 d_list
   in do
   report_state (verbose_mode s1) 2 [] [] ("\nnpc_damage run...")
   run_gplc (tail_ xs) d_list w_grid (fst__ npc_damage_) f_grid obj_grid (snd__ npc_damage_) s0 (third_ npc_damage_) look_up (head_ xs)

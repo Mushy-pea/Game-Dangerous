@@ -100,6 +100,7 @@ def_w_grid_arr :: Array (Int, Int, Int) Wall_grid
 def_w_grid_arr = array ((-1, 0, 0), (-3, 99, 99)) [((w, u, v), def_w_grid) | w <- [(-1)..(-3)], u <- [0..99], v <- [0..99]]
 
 def_f_grid = Floor_grid {w_ = 0, surface = Flat, local_up_ramp = (0, 0), local_down_ramp = (0, 0)}
+def_f_grid1 = Floor_grid {w_ = 0, surface = Open, local_up_ramp = (0, 0), local_down_ramp = (0, 0)}
 def_f_grid_arr = array ((0, 0, 0), (2, 9, 9)) [((w, u, v), def_f_grid) | w <- [0..2], u <- [0..9], v <- [0..9]] :: Array (Int, Int, Int) Floor_grid
 def_obj_grid = (0, [])
 
@@ -223,11 +224,12 @@ mod_angle_ a f_rate clockwise =
 
 -- These functions implement a ray tracing algorhythm, which is part of the visible surface determination (VSD) system and is used for line of sight checks by the non - player character logic.
 -- The Ray_test class exists so that the ray tracer can conveniently provide differing functionality when called from the VSD system or game logic.
-bound_check :: Int -> Int -> ((Int, Int, Int), (Int, Int, Int)) -> Bool
-bound_check block axis ((a, b, c), (w_max, u_max, v_max)) =
-  if axis == 0 && block > u_max then False
-  else if axis == 1 && block > v_max then False
-  else True
+bounded_index :: Array (Int, Int, Int) e -> (Int, Int, Int) -> e -> e
+bounded_index arr (i0, i1, i2) def =
+  let bd = bounds arr
+  in
+  if i0 < fst__ (fst bd) || i0 > fst__ (snd bd) || i1 < snd__ (fst bd) || i1 > snd__ (snd bd) || i2 < third_ (fst bd) || i2 > third_ (snd bd) then def
+  else arr ! (i0, i1, i2)
 
 f_block :: Int -> Int -> Int -> Terrain -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> Int
 f_block w u v f_target0 f_grid obj_grid =
@@ -250,116 +252,116 @@ class Ray_test a where
 
 instance Ray_test (Int, [Int]) where
   intersect U1 obj_grid f_grid w_block u_block v_block seek_mode c =
-    let f_target0 = surface (f_grid ! (w_block, div (u_block - 1) 2, div v_block 2))
+    let f_target0 = surface (bounded_index f_grid (w_block, div (u_block - 1) 2, div v_block 2) def_f_grid)
         f_block_ = f_block w_block (u_block - 1) v_block f_target0 f_grid obj_grid
     in
     if seek_mode < 3 then
-      if fst (obj_grid ! (w_block, u_block - 1, v_block)) > 0 then (Object_hit, 0)
-      else if surface (f_grid ! (w_block, div (u_block - 1) 2, div v_block 2)) /= Flat then (Object_hit, 0)
+      if fst (bounded_index obj_grid (w_block, u_block - 1, v_block) (1, [])) > 0 then (Object_hit, 0)
+      else if surface (bounded_index f_grid (w_block, div (u_block - 1) 2, div v_block 2) def_f_grid1) /= Flat then (Object_hit, 0)
       else (U1, 0)
     else
       if c == 1 && f_target0 /= Flat then
         if f_block_ == 0 then (Object_hit, 0)
         else (Ramp_found, f_block_)
-      else if fst (obj_grid ! (w_block, u_block - 1, v_block)) > 0 then (Object_hit, 0)
+      else if fst (bounded_index obj_grid (w_block, u_block - 1, v_block) (1, [])) > 0 then (Object_hit, 0)
       else (U1, 0)
   intersect U2 obj_grid f_grid w_block u_block v_block seek_mode c =
-    let f_target0 = surface (f_grid ! (w_block, div (u_block + 1) 2, div v_block 2))
+    let f_target0 = surface (bounded_index f_grid (w_block, div (u_block + 1) 2, div v_block 2) def_f_grid)
         f_block_ = f_block w_block (u_block + 1) v_block f_target0 f_grid obj_grid
     in
     if seek_mode < 3 then
-      if fst (obj_grid ! (w_block, u_block + 1, v_block)) > 0 then (Object_hit, 0)
-      else if surface (f_grid ! (w_block, div (u_block + 1) 2, div v_block 2)) /= Flat then (Object_hit, 0)
+      if fst (bounded_index obj_grid (w_block, u_block + 1, v_block) (1, [])) > 0 then (Object_hit, 0)
+      else if surface (bounded_index f_grid (w_block, div (u_block + 1) 2, div v_block 2) def_f_grid1) /= Flat then (Object_hit, 0)
       else (U2, 0)
     else
       if c == 1 && f_target0 /= Flat then
         if f_block_ == 0 then (Object_hit, 0)
         else (Ramp_found, f_block_)
-      else if fst (obj_grid ! (w_block, u_block + 1, v_block)) > 0 then (Object_hit, 0)
+      else if fst (bounded_index obj_grid (w_block, u_block + 1, v_block) (1, [])) > 0 then (Object_hit, 0)
       else (U2, 0)
   intersect V1 obj_grid f_grid w_block u_block v_block seek_mode c =
-    let f_target0 = surface (f_grid ! (w_block, div u_block 2, div (v_block - 1) 2))
+    let f_target0 = surface (bounded_index f_grid (w_block, div u_block 2, div (v_block - 1) 2) def_f_grid)
         f_block_ = f_block w_block u_block (v_block - 1) f_target0 f_grid obj_grid
     in
     if seek_mode < 3 then
-      if fst (obj_grid ! (w_block, u_block, v_block - 1)) > 0 then (Object_hit, 0)
-      else if surface (f_grid ! (w_block, div u_block 2, div (v_block - 1) 2)) /= Flat then (Object_hit, 0)
+      if fst (bounded_index obj_grid (w_block, u_block, v_block - 1) (1, [])) > 0 then (Object_hit, 0)
+      else if surface (bounded_index f_grid (w_block, div u_block 2, div (v_block - 1) 2) def_f_grid1) /= Flat then (Object_hit, 0)
       else (V1, 0)
     else
       if c == 1 && f_target0 /= Flat then
         if f_block_ == 0 then (Object_hit, 0)
         else (Ramp_found, f_block_)
-      else if fst (obj_grid ! (w_block, u_block, v_block - 1)) > 0 then (Object_hit, 0)
+      else if fst (bounded_index obj_grid (w_block, u_block, v_block - 1) (1, [])) > 0 then (Object_hit, 0)
       else (V1, 0)
   intersect V2 obj_grid f_grid w_block u_block v_block seek_mode c =
-    let f_target0 = surface (f_grid ! (w_block, div u_block 2, div (v_block + 1) 2))
+    let f_target0 = surface (bounded_index f_grid (w_block, div u_block 2, div (v_block + 1) 2) def_f_grid)
         f_block_ = f_block w_block u_block (v_block + 1) f_target0 f_grid obj_grid
     in
     if seek_mode < 3 then
-      if fst (obj_grid ! (w_block, u_block, v_block + 1)) > 0 then (Object_hit, 0)
-      else if surface (f_grid ! (w_block, div u_block 2, div (v_block + 1) 2)) /= Flat then (Object_hit, 0)
+      if fst (bounded_index obj_grid (w_block, u_block, v_block + 1) (1, [])) > 0 then (Object_hit, 0)
+      else if surface (bounded_index f_grid (w_block, div u_block 2, div (v_block + 1) 2) def_f_grid1) /= Flat then (Object_hit, 0)
       else (V2, 0)
     else
       if c == 1 && f_target0 /= Flat then
         if f_block_ == 0 then (Object_hit, 0)
         else (Ramp_found, f_block_)
-      else if fst (obj_grid ! (w_block, u_block, v_block + 1)) > 0 then (Object_hit, 0)
+      else if fst (bounded_index obj_grid (w_block, u_block, v_block + 1) (1, [])) > 0 then (Object_hit, 0)
       else (V2, 0)
   intersect Corner0 obj_grid f_grid w_block u_block v_block seek_mode c =
-    let f_target0 = surface (f_grid ! (w_block, div (u_block - 1) 2, div (v_block + 1) 2))
+    let f_target0 = surface (bounded_index f_grid (w_block, div (u_block - 1) 2, div (v_block + 1) 2) def_f_grid)
         f_block_ = f_block w_block (u_block - 1) (v_block + 1) f_target0 f_grid obj_grid
     in
     if seek_mode < 3 then
-      if fst (obj_grid ! (w_block, u_block - 1, v_block + 1)) > 0 then (Object_hit, 0)
-      else if surface (f_grid ! (w_block, div (u_block - 1) 2, div (v_block + 1) 2)) /= Flat then (Object_hit, 0)
+      if fst (bounded_index obj_grid (w_block, u_block - 1, v_block + 1) (1, [])) > 0 then (Object_hit, 0)
+      else if surface (bounded_index f_grid (w_block, div (u_block - 1) 2, div (v_block + 1) 2) def_f_grid1) /= Flat then (Object_hit, 0)
       else (Corner0, 0)
     else
       if c == 1 && f_target0 /= Flat then
         if f_block_ == 0 then (Object_hit, 0)
         else (Ramp_found, f_block_)
-      else if fst (obj_grid ! (w_block, u_block - 1, v_block + 1)) > 0 then (Object_hit, 0)
+      else if fst (bounded_index obj_grid (w_block, u_block - 1, v_block + 1) (1, [])) > 0 then (Object_hit, 0)
       else (Corner0, 0)
   intersect Corner1 obj_grid f_grid w_block u_block v_block seek_mode c =
-    let f_target0 = surface (f_grid ! (w_block, div (u_block + 1) 2, div (v_block + 1) 2))
+    let f_target0 = surface (bounded_index f_grid (w_block, div (u_block + 1) 2, div (v_block + 1) 2) def_f_grid)
         f_block_ = f_block w_block (u_block + 1) (v_block + 1) f_target0 f_grid obj_grid
     in
     if seek_mode < 3 then
-      if fst (obj_grid ! (w_block, u_block + 1, v_block + 1)) > 0 then (Object_hit, 0)
-      else if surface (f_grid ! (w_block, div (u_block + 1) 2, div (v_block + 1) 2)) /= Flat then (Object_hit, 0)
+      if fst (bounded_index obj_grid (w_block, u_block + 1, v_block + 1) (1, [])) > 0 then (Object_hit, 0)
+      else if surface (bounded_index f_grid (w_block, div (u_block + 1) 2, div (v_block + 1) 2) def_f_grid1) /= Flat then (Object_hit, 0)
       else (Corner1, 0)
     else
       if c == 1 && f_target0 /= Flat then
         if f_block_ == 0 then (Object_hit, 0)
         else (Ramp_found, f_block_)
-      else if fst (obj_grid ! (w_block, u_block + 1, v_block + 1)) > 0 then (Object_hit, 0)
+      else if fst (bounded_index obj_grid (w_block, u_block + 1, v_block + 1) (1, [])) > 0 then (Object_hit, 0)
       else (Corner1, 0)
   intersect Corner2 obj_grid f_grid w_block u_block v_block seek_mode c =
-    let f_target0 = surface (f_grid ! (w_block, div (u_block + 1) 2, div (v_block - 1) 2))
+    let f_target0 = surface (bounded_index f_grid (w_block, div (u_block + 1) 2, div (v_block - 1) 2) def_f_grid)
         f_block_ = f_block w_block (u_block + 1) (v_block - 1) f_target0 f_grid obj_grid
     in
     if seek_mode < 3 then
-      if fst (obj_grid ! (w_block, u_block + 1, v_block - 1)) > 0 then (Object_hit, 0)
-      else if surface (f_grid ! (w_block, div (u_block + 1) 2, div (v_block - 1) 2)) /= Flat then (Object_hit, 0)
+      if fst (bounded_index obj_grid (w_block, u_block + 1, v_block - 1) (1, [])) > 0 then (Object_hit, 0)
+      else if surface (bounded_index f_grid (w_block, div (u_block + 1) 2, div (v_block - 1) 2) def_f_grid1) /= Flat then (Object_hit, 0)
       else (Corner2, 0)
     else
       if c == 1 && f_target0 /= Flat then
         if f_block_ == 0 then (Object_hit, 0)
         else (Ramp_found, f_block_)
-      else if fst (obj_grid ! (w_block, u_block + 1, v_block - 1)) > 0 then (Object_hit, 0)
+      else if fst (bounded_index obj_grid (w_block, u_block + 1, v_block - 1) (1, [])) > 0 then (Object_hit, 0)
       else (Corner2, 0)
   intersect Corner3 obj_grid f_grid w_block u_block v_block seek_mode c =
-    let f_target0 = surface (f_grid ! (w_block, div (u_block - 1) 2, div (v_block - 1) 2))
+    let f_target0 = surface (bounded_index f_grid (w_block, div (u_block - 1) 2, div (v_block - 1) 2) def_f_grid)
         f_block_ = f_block w_block (u_block - 1) (v_block - 1) f_target0 f_grid obj_grid
     in
     if seek_mode < 3 then
-      if fst (obj_grid ! (w_block, u_block - 1, v_block - 1)) > 0 then (Object_hit, 0)
-      else if surface (f_grid ! (w_block, div (u_block - 1) 2, div (v_block - 1) 2)) /= Flat then (Object_hit, 0)
+      if fst (bounded_index obj_grid (w_block, u_block - 1, v_block - 1) (1, [])) > 0 then (Object_hit, 0)
+      else if surface (bounded_index f_grid (w_block, div (u_block - 1) 2, div (v_block - 1) 2) def_f_grid1) /= Flat then (Object_hit, 0)
       else (Corner3, 0)
     else
       if c == 1 && f_target0 /= Flat then
         if f_block_ == 0 then (Object_hit, 0)
         else (Ramp_found, f_block_)
-      else if fst (obj_grid ! (w_block, u_block - 1, v_block - 1)) > 0 then (Object_hit, 0)
+      else if fst (bounded_index obj_grid (w_block, u_block - 1, v_block - 1) (1, [])) > 0 then (Object_hit, 0)
       else (Corner3, 0)
 
   scan_cube obj_grid w u v = []
