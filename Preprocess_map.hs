@@ -9,16 +9,23 @@
 module Main where
 
 import System.IO
+import System.Environment
 import Data.Array.IArray
-import Decompress_map
+import Data.List.Split
+import Decompress_map hiding (pad_walls)
 
 -- This is a simplified analogue of the Wall_grid type defined in Build_model, as less information is needed in this context.
 data Wall_grid = Wall_grid {u1 :: Bool, u2 :: Bool, v1 :: Bool, v2 :: Bool}
+
+def_w_grid = Wall_grid {u1 = False, u2 = False, v1 = False, v2 = False}
 
 single_fill [] (x:xs) = (x:xs)
 single_fill (x:xs) [] = (x:xs)
 single_fill (x:xs) (y:ys) = (x:xs)
 single_fill [] [] = []
+
+head_ [] = (0, 0)
+head_ ls = head ls
 
 -- Initialise the simplified Wall_grid array from map file input.
 init_w_grid :: [[Char]] -> Array (Int, Int, Int) Wall_grid -> Int -> Int -> Int -> Int -> Int -> Array (Int, Int, Int) Wall_grid
@@ -28,8 +35,8 @@ init_w_grid (x:xs) w_grid w u v u_limit v_limit =
       w_grid' = w_grid // [((w, u, v), Wall_grid {u1 = wall_setup_ !! 0, u2 = wall_setup_ !! 1, v1 = wall_setup_ !! 2, v2 = wall_setup_ !! 3})]
   in
   if u == u_limit && v == v_limit then init_w_grid xs w_grid' (w + 1) 0 0 u_limit v_limit
-  else if u == u_limit then init_w_grid xs w_grid' w 0 (v + 1) u_limit v_limit
-  else init_w_grid xs w_grid' w (u + 1) v u_limit v_limit
+  else if v == v_limit then init_w_grid xs w_grid' w (u + 1) 0 u_limit v_limit
+  else init_w_grid xs w_grid' w u (v + 1) u_limit v_limit
 
 -- These two functions initialise a simplified analogue of Obj_grid by applying pad_walls to each element of the Wall_grid and Obj_grid arrays.
 pad_walls :: Wall_grid -> Int
@@ -61,7 +68,7 @@ load_floor0 (x0:x1:x2:x3:x4:xs) w u v u_limit v_limit =
       ramp_position = if floor_type == 0 then []
                       else [(floor_type, u, v)]
   in
-  if u == u_limit && v == v_limit then ramp_position ++ load_floor0 xs (w + 1) 0 0 u_limit v_limit
+  if u == u_limit && v == v_limit then ramp_position ++ [(3, 0, 0)] ++ load_floor0 xs (w + 1) 0 0 u_limit v_limit
   else if u == u_limit then ramp_position ++ load_floor0 xs w 0 (v + 1) u_limit v_limit
   else ramp_position ++ load_floor0 xs w (u + 1) v u_limit v_limit
 
@@ -72,9 +79,9 @@ obj_grid_upd ((w, u, v):xs) = ((w, u, v), 4) : obj_grid_upd xs
 check_voxel1 :: [(Int, Int, Int)] -> (Int, Int) -> ([(Int, Int)], [(Int, Int)])
 check_voxel1 [] (u, v) = ([], [])
 check_voxel1 ((t, a, b):xs) (u, v) =
-  if (a, b) == (u, v) then
-    if t == 2 then ([(u, v)], [])
-    else ([], [(u, v)])
+  if (a, b) == (div u 2, div v 2) then
+    if t == 2 then ([(a, b)], [])
+    else ([], [(a, b)])
   else check_voxel1 xs (u, v)
 
 check_voxel0 :: [(Int, Int, Int)] -> [(Int, Int, Int)] -> [(Int, Int)] -> [(Int, Int)] -> ([(Int, Int)], [(Int, Int)])
@@ -100,7 +107,7 @@ sim_flood1 obj_grid ((w, u, v):xs) u_limit v_limit =
                     else [(w, u - 1, v + 1)]
       neg_uv = if obj_grid ! (w, u - 1, v - 1) > 0 then []
                     else [(w, u - 1, v - 1)]
-      pos_u_neg_v = if obj_grid ! (w, u + 1, v - 1) then []
+      pos_u_neg_v = if obj_grid ! (w, u + 1, v - 1) > 0 then []
                     else [(w, u + 1, v - 1)]
   in
   if u == u_limit || v == v_limit then error ("\nEdge of map reached at (" ++ show w ++ ", " ++ show u ++ ", " ++ show v ++ ").")
@@ -111,8 +118,48 @@ sim_flood0 obj_grid current_set ramp_set up_ramp down_ramp u_limit v_limit =
   let sim_flood1_ = sim_flood1 obj_grid current_set u_limit v_limit
       ramps_found = check_voxel0 sim_flood1_ ramp_set [] []
   in
-  if sim_flood1_ == [] then (head up_ramp, head down_ramp)
+  if sim_flood1_ == [] then (head_ up_ramp, head_ down_ramp)
   else sim_flood0 (obj_grid // obj_grid_upd sim_flood1_) sim_flood1_ ramp_set (single_fill up_ramp (fst ramps_found)) (single_fill down_ramp (snd ramps_found)) u_limit v_limit
 
+augment_map :: Array (Int, Int, Int) Int -> Array (Int, Int, Int) ((Int, Int), (Int, Int)) -> [[(Int, Int, Int)]] -> Int -> Int -> Int -> Int -> Int -> Bool -> Array (Int, Int, Int) ((Int, Int), (Int, Int))
+augment_map obj_grid ramp_map ramp_set w u v u_limit v_limit stop_flag =
+  let ramp_map' = if obj_grid ! (w, u, v) == 0 then ramp_map // [((w, u, v), sim_flood0 obj_grid [(w, u, v)] (ramp_set !! w) [] [] u_limit v_limit)]
+                  else ramp_map
+  in
+  if stop_flag == True then ramp_map
+  else if w == 2 && u == u_limit && v == v_limit then ramp_map'
+  else if u == u_limit && v == v_limit then augment_map obj_grid ramp_map' ramp_set (w + 1) 0 0 u_limit v_limit True
+  else if u == u_limit then augment_map obj_grid ramp_map' ramp_set w 0 (v + 1) u_limit v_limit True
+  else augment_map obj_grid ramp_map' ramp_set w (u + 1) v u_limit v_limit True
+
+array_to_text :: [[Char]] -> Array (Int, Int, Int) ((Int, Int), (Int, Int)) -> Int -> Int -> Int -> Int -> Int -> [Char]
+array_to_text (x0:x1:x2:x3:x4:xs) ramp_map w u v u_limit v_limit =
+  let this_voxel = (ramp_map ! (w, u, v))
+      text_out = x0 ++ " " ++ show (fst (fst this_voxel)) ++ " " ++ show (snd (fst this_voxel)) ++ " " ++ show (fst (snd this_voxel)) ++ " " ++ show (snd (snd this_voxel))
+  in
+  if w == 2 && v > v_limit && u == u_limit - 1 then []
+  else if v > v_limit && u == u_limit - 1 then "\n~\n" ++ array_to_text (x0:x1:x2:x3:x4:xs) ramp_map (w + 1) 0 0 u_limit v_limit
+  else if v > v_limit then "\n" ++ array_to_text (x0:x1:x2:x3:x4:xs) ramp_map w (u + 2) 0 u_limit v_limit
+  else " " ++ text_out ++ array_to_text xs ramp_map w u (v + 2) u_limit v_limit
+
 main = do
-  
+  args <- getArgs
+  h0 <- openFile (args !! 0) ReadMode  
+  contents <- hGetContents h0
+  run_augmentation contents (args !! 1)
+  hClose h0
+
+run_augmentation :: [Char] -> [Char] -> IO ()
+run_augmentation input_map file_path =
+  let w_grid_text = splitOneOf " \n" (concat (take 3 (splitOn "\n~\n" input_map)))
+      f_grid_text = splitOneOf " \n" (concat (take 3 (drop 3 (splitOn "\n~\n" input_map))))
+      w_grid = init_w_grid w_grid_text (array ((0, 0, 0), (2, u_limit, v_limit)) [((w, u, v), def_w_grid) | w <- [0..2], u <- [0..u_limit], v <- [0..v_limit]]) 0 0 0 u_limit v_limit
+      obj_grid = init_obj_grid w_grid (array ((0, 0, 0), (2, u_limit, v_limit)) [((w, u, v), 0) | w <- [0..2], u <- [0..u_limit], v <- [0..v_limit]]) 0 0 0 u_limit v_limit
+      ramp_set = splitOn [(3, 0, 0)] (load_floor0 f_grid_text 0 0 0 ((div (u_limit + 1) 2) - 1) ((div (v_limit + 1) 2) - 1))
+      u_limit = read ((splitOn "\n~\n" input_map) !! 6)
+      v_limit = read ((splitOn "\n~\n" input_map) !! 7)
+      new_ramp_map = array ((0, 0, 0), (2, u_limit, v_limit)) [((w, u, v), ((0, 0), (0, 0))) | w <- [0..2], u <- [0..u_limit], v <- [0..v_limit]]
+  in do
+  h1 <- openFile file_path WriteMode
+  hPutStr h1 (array_to_text f_grid_text (augment_map obj_grid new_ramp_map ramp_set 0 0 0 u_limit v_limit False) 0 0 0 u_limit v_limit)
+  hClose h1
