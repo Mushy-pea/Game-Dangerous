@@ -9,6 +9,7 @@
 module Main where
 
 import System.IO
+import System.IO.Unsafe
 import System.Environment
 import Data.Array.IArray
 import Data.List.Split
@@ -90,9 +91,9 @@ check_voxel0 ((w, u, v):xs) ramp_set up_ramp down_ramp =
   let check_voxel1_ = check_voxel1 ramp_set (u, v)
   in check_voxel0 xs ramp_set (single_fill up_ramp (fst check_voxel1_)) (single_fill down_ramp (snd check_voxel1_))
 
-sim_flood1 :: Array (Int, Int, Int) Int -> [(Int, Int, Int)] -> Int -> Int -> [(Int, Int, Int)]
-sim_flood1 obj_grid [] u_limit v_limit = []
-sim_flood1 obj_grid ((w, u, v):xs) u_limit v_limit =
+sim_flood1 :: Array (Int, Int, Int) Int -> [(Int, Int, Int)] -> [(Int, Int, Int)] -> Int -> Int -> [(Int, Int, Int)]
+sim_flood1 obj_grid [] acc u_limit v_limit = acc
+sim_flood1 obj_grid ((w, u, v):xs) acc u_limit v_limit =
   let pos_u = if obj_grid ! (w, u + 1, v) > 0 then []
               else [(w, u + 1, v)]
       pos_v = if obj_grid ! (w, u, v + 1) > 0 then []
@@ -109,28 +110,29 @@ sim_flood1 obj_grid ((w, u, v):xs) u_limit v_limit =
                     else [(w, u - 1, v - 1)]
       pos_u_neg_v = if obj_grid ! (w, u + 1, v - 1) > 0 then []
                     else [(w, u + 1, v - 1)]
+      unique_add = \new set -> if new == [] then set
+                                else new ++ filter (/= head new) set
   in
   if u == u_limit || v == v_limit then error ("\nEdge of map reached at (" ++ show w ++ ", " ++ show u ++ ", " ++ show v ++ ").")
-  else pos_u ++ pos_v ++ neg_u ++ neg_v ++ pos_uv ++ pos_v_neg_u ++ neg_uv ++ pos_u_neg_v ++ sim_flood1 obj_grid xs u_limit v_limit
+  else sim_flood1 obj_grid xs ((unique_add pos_u) $ (unique_add pos_v) $ (unique_add neg_u) $ (unique_add neg_v) $ (unique_add pos_uv) $ (unique_add pos_v_neg_u) $ (unique_add neg_uv) $ (unique_add pos_u_neg_v acc)) u_limit v_limit
 
-sim_flood0 :: Array (Int, Int, Int) Int -> [(Int, Int, Int)] -> [(Int, Int, Int)] -> [(Int, Int)] -> [(Int, Int)] -> Int -> Int -> ((Int, Int), (Int, Int))
-sim_flood0 obj_grid current_set ramp_set up_ramp down_ramp u_limit v_limit =
-  let sim_flood1_ = sim_flood1 obj_grid current_set u_limit v_limit
+sim_flood0 :: Array (Int, Int, Int) Int -> [(Int, Int, Int)] -> [(Int, Int, Int)] -> [(Int, Int)] -> [(Int, Int)] -> Int -> Int -> (Int, Int, Int) -> Int -> ((Int, Int), (Int, Int))
+sim_flood0 obj_grid current_set ramp_set up_ramp down_ramp u_limit v_limit start_pos c =
+  let sim_flood1_ = sim_flood1 obj_grid current_set [] u_limit v_limit
       ramps_found = check_voxel0 sim_flood1_ ramp_set [] []
   in
   if sim_flood1_ == [] then (head_ up_ramp, head_ down_ramp)
-  else sim_flood0 (obj_grid // obj_grid_upd sim_flood1_) sim_flood1_ ramp_set (single_fill up_ramp (fst ramps_found)) (single_fill down_ramp (snd ramps_found)) u_limit v_limit
+  else (unsafePerformIO (putStr ("\nstart voxel: " ++ show start_pos ++ " iteration: " ++ show c) >> return (sim_flood0 (obj_grid // obj_grid_upd sim_flood1_) sim_flood1_ ramp_set (single_fill up_ramp (fst ramps_found)) (single_fill down_ramp (snd ramps_found)) u_limit v_limit start_pos (c + 1))))
 
-augment_map :: Array (Int, Int, Int) Int -> Array (Int, Int, Int) ((Int, Int), (Int, Int)) -> [[(Int, Int, Int)]] -> Int -> Int -> Int -> Int -> Int -> Bool -> Array (Int, Int, Int) ((Int, Int), (Int, Int))
-augment_map obj_grid ramp_map ramp_set w u v u_limit v_limit stop_flag =
-  let ramp_map' = if obj_grid ! (w, u, v) == 0 then ramp_map // [((w, u, v), sim_flood0 obj_grid [(w, u, v)] (ramp_set !! w) [] [] u_limit v_limit)]
+augment_map :: Array (Int, Int, Int) Int -> Array (Int, Int, Int) ((Int, Int), (Int, Int)) -> [[(Int, Int, Int)]] -> Int -> Int -> Int -> Int -> Int -> Array (Int, Int, Int) ((Int, Int), (Int, Int))
+augment_map obj_grid ramp_map ramp_set w u v u_limit v_limit =
+  let ramp_map' = if obj_grid ! (w, u, v) == 0 then ramp_map // [((w, u, v), sim_flood0 obj_grid [(w, u, v)] (ramp_set !! w) [] [] u_limit v_limit (w, u, v) 0)]
                   else ramp_map
   in
-  if stop_flag == True then ramp_map
-  else if w == 2 && u == u_limit && v == v_limit then ramp_map'
-  else if u == u_limit && v == v_limit then augment_map obj_grid ramp_map' ramp_set (w + 1) 0 0 u_limit v_limit True
-  else if u == u_limit then augment_map obj_grid ramp_map' ramp_set w 0 (v + 1) u_limit v_limit True
-  else augment_map obj_grid ramp_map' ramp_set w (u + 1) v u_limit v_limit True
+  if w == 2 && u == u_limit && v == v_limit then ramp_map'
+  else if u == u_limit && v == v_limit then augment_map obj_grid ramp_map' ramp_set (w + 1) 0 0 u_limit v_limit
+  else if u == u_limit then augment_map obj_grid ramp_map' ramp_set w 0 (v + 1) u_limit v_limit
+  else augment_map obj_grid ramp_map' ramp_set w (u + 1) v u_limit v_limit
 
 array_to_text :: [[Char]] -> Array (Int, Int, Int) ((Int, Int), (Int, Int)) -> Int -> Int -> Int -> Int -> Int -> [Char]
 array_to_text (x0:x1:x2:x3:x4:xs) ramp_map w u v u_limit v_limit =
@@ -141,6 +143,7 @@ array_to_text (x0:x1:x2:x3:x4:xs) ramp_map w u v u_limit v_limit =
   else if v > v_limit && u == u_limit - 1 then "\n~\n" ++ array_to_text (x0:x1:x2:x3:x4:xs) ramp_map (w + 1) 0 0 u_limit v_limit
   else if v > v_limit then "\n" ++ array_to_text (x0:x1:x2:x3:x4:xs) ramp_map w (u + 2) 0 u_limit v_limit
   else " " ++ text_out ++ array_to_text xs ramp_map w u (v + 2) u_limit v_limit
+array_to_text _ ramp_map w u v u_limit v_limit = []
 
 main = do
   args <- getArgs
@@ -161,5 +164,6 @@ run_augmentation input_map file_path =
       new_ramp_map = array ((0, 0, 0), (2, u_limit, v_limit)) [((w, u, v), ((0, 0), (0, 0))) | w <- [0..2], u <- [0..u_limit], v <- [0..v_limit]]
   in do
   h1 <- openFile file_path WriteMode
-  hPutStr h1 (array_to_text f_grid_text (augment_map obj_grid new_ramp_map ramp_set 0 0 0 u_limit v_limit False) 0 0 0 u_limit v_limit)
+  putStr ("\nf_grid_text: " ++ show f_grid_text)
+  hPutStr h1 (array_to_text f_grid_text (augment_map obj_grid new_ramp_map ramp_set 0 0 0 u_limit v_limit) 0 0 0 u_limit v_limit)
   hClose h1
