@@ -30,6 +30,10 @@ single_fill [] [] = []
 head_ [] = (0, 0)
 head_ ls = head ls
 
+fst__ (a, b, c) = a
+snd__ (a, b, c) = b
+third_ (a, b, c) = c
+
 -- Initialise the simplified Wall_grid array from map file input.
 init_w_grid :: [[Char]] -> Array (Int, Int, Int) Wall_grid -> Int -> Int -> Int -> Int -> Int -> Array (Int, Int, Int) Wall_grid
 init_w_grid [] w_grid w u v u_limit v_limit = w_grid
@@ -58,26 +62,26 @@ init_obj_grid w_grid f_grid obj_grid w u v u_limit v_limit =
   else init_obj_grid w_grid f_grid obj_grid' w (u + 1) v u_limit v_limit
 
 -- These two functions construct a list of the positions of ramps within the map.
-load_floor1 :: Char -> Int
-load_floor1 'b' = 2
-load_floor1 'd' = 2
-load_floor1 'c' = 1
-load_floor1 'e' = 1
-load_floor1 _ = 0
+load_floor1 :: Char -> Bool
+load_floor1 'b' = True
+load_floor1 'd' = True
+load_floor1 'c' = True
+load_floor1 'e' = True
+load_floor1 _ = False
 
-load_floor0 :: [[Char]] -> [(Int, Int, Int)] -> Array (Int, Int, Int) Bool -> Int -> Int -> Int -> Int -> Int -> ([(Int, Int, Int)], Array (Int, Int, Int) Bool)
-load_floor0 [] acc f_grid w u v u_limit v_limit = (acc, f_grid)
+load_floor0 :: [[Char]] -> ([(Int, Int, Int)], [(Int, Int, Int)], [(Int, Int, Int)]) -> Array (Int, Int, Int) Bool -> Int -> Int -> Int -> Int -> Int -> ([(Int, Int, Int)], Array (Int, Int, Int) Bool)
 load_floor0 (x0:x1:x2:x3:x4:xs) acc f_grid w u v u_limit v_limit =
-  let floor_type = load_floor1 (head x0)
-      ramp_position = if floor_type == 0 then []
-                      else [(floor_type, u, v)]
-      is_ramp = if floor_type > 0 then True
-                else False
+  let is_ramp = load_floor1 (head x0)
+      ramp_update = \level0 level1 level2 -> if is_ramp == False then (level0, level1, level2)
+                                             else
+                                               if w == 0 then ((2, u, v) : level0, (1, u, v) : level1, level2)
+                                               else (level0, (2, u, v) : level1, (1, u, v) : level2)
       f_grid' = f_grid // [((w, u, v), is_ramp)]
   in
-  if u == u_limit && v == v_limit then load_floor0 xs (ramp_position ++ [(3, 0, 0)] ++ acc) f_grid' (w + 1) 0 0 u_limit v_limit
-  else if u == u_limit then load_floor0 xs (ramp_position ++ acc) f_grid' w 0 (v + 1) u_limit v_limit
-  else load_floor0 xs (ramp_position ++ acc) f_grid' w (u + 1) v u_limit v_limit
+  if w == 1 && u == u_limit && v == v_limit then (fst__ acc ++ [(3, 0, 0)] ++ snd__ acc ++ [(3, 0, 0)] ++ third_ acc, f_grid)
+  else if u == u_limit && v == v_limit then load_floor0 xs (ramp_update (fst__ acc) (snd__ acc) (third_ acc)) f_grid' (w + 1) 0 0 u_limit v_limit
+  else if v == v_limit then load_floor0 xs (ramp_update (fst__ acc) (snd__ acc) (third_ acc)) f_grid' w (u + 1) 0 u_limit v_limit
+  else load_floor0 xs (ramp_update (fst__ acc) (snd__ acc) (third_ acc)) f_grid' w u (v + 1) u_limit v_limit
 
 obj_grid_upd :: [(Int, Int, Int)] -> [((Int, Int, Int), Int)]
 obj_grid_upd [] = []
@@ -177,7 +181,7 @@ run_augmentation input_map file_path =
   let w_grid_text = splitOneOf " \n" (concat (take 3 (splitOn "\n~\n" input_map)))
       f_grid_text = splitOneOf " \n" (concat (take 3 (drop 3 (splitOn "\n~\n" input_map))))
       w_grid = init_w_grid w_grid_text (array ((0, 0, 0), (2, u_limit, v_limit)) [((w, u, v), def_w_grid) | w <- [0..2], u <- [0..u_limit], v <- [0..v_limit]]) 0 0 0 u_limit v_limit
-      f_grid_plus = load_floor0 f_grid_text [] (array ((0, 0, 0), (2, (div (u_limit + 1) 2) - 1, (div (v_limit + 1) 2) - 1)) [((w, u, v), False) | w <- [0..2], u <- [0..(div (u_limit + 1) 2) - 1], v <- [0..(div (v_limit + 1) 2) - 1]]) 0 0 0 ((div (u_limit + 1) 2) - 1) ((div (v_limit + 1) 2) - 1)
+      f_grid_plus = load_floor0 f_grid_text ([], [], []) (array ((0, 0, 0), (2, (div (u_limit + 1) 2) - 1, (div (v_limit + 1) 2) - 1)) [((w, u, v), False) | w <- [0..2], u <- [0..(div (u_limit + 1) 2) - 1], v <- [0..(div (v_limit + 1) 2) - 1]]) 0 0 0 ((div (u_limit + 1) 2) - 1) ((div (v_limit + 1) 2) - 1)
       obj_grid = init_obj_grid w_grid (snd f_grid_plus) (array ((0, 0, 0), (2, u_limit, v_limit)) [((w, u, v), 0) | w <- [0..2], u <- [0..u_limit], v <- [0..v_limit]]) 0 0 0 u_limit v_limit
       ramp_set = splitOn [(3, 0, 0)] (reverse (fst f_grid_plus))
       u_limit = read ((splitOn "\n~\n" input_map) !! 6)

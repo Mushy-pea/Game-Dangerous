@@ -83,8 +83,8 @@ wall_setup 'n' = [True, True, False, True]
 wall_setup 'o' = [True, True, True, False]
 wall_setup 'p' = [True, True, True, True]
 
--- This function is used to add a layer of padding to the walls, which is visible to the player collision detection but has no visual presence.  This is to prevent the player model from intersecting with
--- the walls in third person view mode.
+-- This function was used to add a layer of padding to the walls, which was visible to the player collision detection but has no visual presence.  This is to prevent the player model from intersecting with
+-- the walls in third person view mode.  This feature has since been disabled in the engine as it is now implemented in the development tool Preprocess_map.hs.
 pad_walls :: Wall_grid -> Int -> Int -> Int -> [Char]
 pad_walls x u v w =
   if u1 x == True || u2 x == True || v1 x == True || v2 x == True then show w ++ ", " ++ show u ++ ", " ++ show v ++ ", " ++ "4, 0, "
@@ -146,4 +146,4 @@ proc_map pre_map u_max v_max w_max =
       c_max = 4 * (u_max + 1) * (v_max + 1) - 1
       floor = make_floor0 (splitOn " " (map filter0 (concat [pre_map !! w | w <- [(w_max + 2)..(w_max + 2 + w_max)]]))) 0 0 0 ((div (u_max + 1) 2) - 1) ((div (v_max + 1) 2) - 1) w_max
       w_grid = grid_setup0 (concat [grid_setup1 (pre_map !! (w + 1)) (grid_setup2 (next_c * w) (next_c * w) 0 0 0 u_max v_max) (load_object (splitOn ", " (filter1 (pre_map !! 0)))) 0 0 w v_max ((u_max + 1) * (v_max + 1) * w * 4) | w <- [0..w_max]]) 0 0 0 u_max v_max w_max empty empty
-  in (toList (fst w_grid) ++ floor, toList (snd w_grid))
+  in (toList (fst w_grid) ++ floor, [])
