@@ -1,17 +1,19 @@
 # Game :: Dangerous (a tribute to ZZT)
 
-## A project update as of 21/04/2019
+## A project update as of 26/08/2019
 
-40 months and 100 commits into developing the Game :: Dangerous engine and there are now two stages left to complete
-before the next release (code name: Episode 1).  I'm also 13 commits into the map editor development and the first
-component (the C# implementation of the GPLC compiler) is now working.
+While only being a snap shot of progress, the second release of this project in June this year was successful in
+generating some interest in the project from other developers.  So, thanks to anyone who's shown an interest on
+Github or Youtube.  I am currently focussed on dubugging the non - player characters (NPCs), which have turned out to
+be one of the hardest features to get working satisfactorily.  The new Preprocess_map development tool is part
+of this work.
 
-## Engine development (to do list)
+Once the creases in the existing NPC code have been ironed out the last (and coolest) feature
+will be added.  Namely the throwing of fireballs that interact with the dynamic lighting, as well as roasting
+the player like a Sunday lunch of course.  After that it will be on to the last two major engine features, 
+in game music and file based game state saving.
 
-1.  Perform a multi platform and controls update.  This will involve replacing all WinAPI specific code with the GLUT framework, thereby hopefully making it possible to build
-    the engine for at least Windows, Linux and Mac OS X.  Make the control keys reassignable.  Also, add a settings menu for changing
-    controls and graphics settings.
-
-2.  Implement file based game state saving.
+The next step will be to attempt to build a decent size campaign mode map set, using a combination of Blender, MS Paint,
+a text editor and a few prototype tools such as the model importer and GPLC compiler.  Wish me luck.
 
 [![Preview unavailable](https://img.youtube.com/vi/8HuMVTjA138/default.jpg)](https://youtu.be/8HuMVTjA138)
