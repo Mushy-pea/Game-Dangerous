@@ -41,7 +41,8 @@ init_w_grid (x:xs) w_grid w u v u_limit v_limit =
   let wall_setup_ = wall_setup (head x)
       w_grid' = w_grid // [((w, u, v), Wall_grid {u1 = wall_setup_ !! 0, u2 = wall_setup_ !! 1, v1 = wall_setup_ !! 2, v2 = wall_setup_ !! 3})]
   in
-  if u == u_limit && v == v_limit then init_w_grid xs w_grid' (w + 1) 0 0 u_limit v_limit
+  if w == 3 then w_grid
+  else if u == u_limit && v == v_limit then init_w_grid xs w_grid' (w + 1) 0 0 u_limit v_limit
   else if v == v_limit then init_w_grid xs w_grid' w (u + 1) 0 u_limit v_limit
   else init_w_grid xs w_grid' w u (v + 1) u_limit v_limit
 
@@ -147,16 +148,23 @@ augment_map obj_grid ramp_map ramp_set w u v u_limit v_limit =
   else if u == u_limit then augment_map obj_grid ramp_map' ramp_set w 0 (v + 1) u_limit v_limit
   else augment_map obj_grid ramp_map' ramp_set w (u + 1) v u_limit v_limit
 
--- These two functions respectively transform the augmented versions of Floor_grid and Obj_grid to text output, which the engine uses to initialise these arrays at map load time.
+-- These three functions transform the augmented versions of Floor_grid and Obj_grid to text output, which the engine uses to initialise these arrays at map load time.
+sample_voxel :: [((Int, Int), (Int, Int))] -> ((Int, Int), (Int, Int))
+sample_voxel [] = ((0, 0), (0, 0))
+sample_voxel (x:xs) =
+  if x /= ((0, 0), (0, 0)) then x
+  else sample_voxel xs
+
 f_grid_to_text :: [[Char]] -> Array (Int, Int, Int) ((Int, Int), (Int, Int)) -> Int -> Int -> Int -> Int -> Int -> [Char]
 f_grid_to_text (x0:x1:x2:x3:x4:xs) ramp_map w u v u_limit v_limit =
-  let this_voxel = (ramp_map ! (w, u, v))
+  let this_voxel = sample_voxel [ramp_map ! (w, u, v), ramp_map ! (w, u, v + 1), ramp_map ! (w, u + 1, v), ramp_map ! (w, u + 1, v + 1)]
       text_out = x0 ++ " " ++ show (fst (fst this_voxel)) ++ " " ++ show (snd (fst this_voxel)) ++ " " ++ show (fst (snd this_voxel)) ++ " " ++ show (snd (snd this_voxel))
   in
   if w == 2 && v > v_limit && u == u_limit - 1 then []
   else if v > v_limit && u == u_limit - 1 then "\n~\n" ++ f_grid_to_text (x0:x1:x2:x3:x4:xs) ramp_map (w + 1) 0 0 u_limit v_limit
   else if v > v_limit then "\n" ++ f_grid_to_text (x0:x1:x2:x3:x4:xs) ramp_map w (u + 2) 0 u_limit v_limit
-  else " " ++ text_out ++ f_grid_to_text xs ramp_map w u (v + 2) u_limit v_limit
+  else if v == v_limit - 1 then text_out ++ f_grid_to_text xs ramp_map w u (v + 2) u_limit v_limit
+  else text_out ++ " " ++ f_grid_to_text xs ramp_map w u (v + 2) u_limit v_limit
 f_grid_to_text _ ramp_map w u v u_limit v_limit = []
 
 obj_grid_to_text :: Array (Int, Int, Int) Int -> Int -> Int -> Int -> Int -> Int -> [Char]
@@ -183,7 +191,7 @@ run_augmentation input_map file_path =
       w_grid = init_w_grid w_grid_text (array ((0, 0, 0), (2, u_limit, v_limit)) [((w, u, v), def_w_grid) | w <- [0..2], u <- [0..u_limit], v <- [0..v_limit]]) 0 0 0 u_limit v_limit
       f_grid_plus = load_floor0 f_grid_text ([], [], []) (array ((0, 0, 0), (2, (div (u_limit + 1) 2) - 1, (div (v_limit + 1) 2) - 1)) [((w, u, v), False) | w <- [0..2], u <- [0..(div (u_limit + 1) 2) - 1], v <- [0..(div (v_limit + 1) 2) - 1]]) 0 0 0 ((div (u_limit + 1) 2) - 1) ((div (v_limit + 1) 2) - 1)
       obj_grid = init_obj_grid w_grid (snd f_grid_plus) (array ((0, 0, 0), (2, u_limit, v_limit)) [((w, u, v), 0) | w <- [0..2], u <- [0..u_limit], v <- [0..v_limit]]) 0 0 0 u_limit v_limit
-      ramp_set = splitOn [(3, 0, 0)] (reverse (fst f_grid_plus))
+      ramp_set = splitOn [(3, 0, 0)] (fst f_grid_plus)
       u_limit = read ((splitOn "\n~\n" input_map) !! 6)
       v_limit = read ((splitOn "\n~\n" input_map) !! 7)
       new_ramp_map = array ((0, 0, 0), (2, u_limit, v_limit)) [((w, u, v), ((0, 0), (0, 0))) | w <- [0..2], u <- [0..u_limit], v <- [0..v_limit]]
