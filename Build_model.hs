@@ -239,13 +239,13 @@ f_block w u v f_target0 f_grid obj_grid =
   else 0
 
 class Ray_test a where
-  intersect :: Ray_hit -> Array (Int, Int, Int) a -> Array (Int, Int, Int) Floor_grid -> Int -> Int -> Int -> Int -> Int -> (Ray_hit, Int)
+  intersect :: Ray_hit -> Array (Int, Int, Int) a -> Array (Int, Int, Int) Floor_grid -> Float -> Float -> Int -> Int -> Int -> Int -> Int -> (Ray_hit, Int)
 
   scan_cube :: Array (Int, Int, Int) a -> Int -> Int -> Int -> [Obj_place]
 
 instance Ray_test (Int, [Int]) where
-  intersect U1 obj_grid f_grid w_block u_block v_block seek_mode c =
-    let f_target0 = surface (f_grid ! (w_block, div (u_block - 1) 2, div v_block 2))
+  intersect U1 obj_grid f_grid u v w_block u_block v_block seek_mode c =
+    let f_target0 = surface (f_grid ! (w_block, div (truncate (u - 0.025)) 2, div v_block 2))
         f_block_ = f_block w_block (u_block - 1) v_block f_target0 f_grid obj_grid
     in
     if seek_mode < 3 then
@@ -258,8 +258,8 @@ instance Ray_test (Int, [Int]) where
         else (Ramp_found, f_block_)
       else if fst (obj_grid ! (w_block, u_block - 1, v_block)) > 0 then (Object_hit, 0)
       else (U1, 0)
-  intersect U2 obj_grid f_grid w_block u_block v_block seek_mode c =
-    let f_target0 = surface (f_grid ! (w_block, div (u_block + 1) 2, div v_block 2))
+  intersect U2 obj_grid f_grid u v w_block u_block v_block seek_mode c =
+    let f_target0 = surface (f_grid ! (w_block, div (truncate (u + 0.025)) 2, div v_block 2))
         f_block_ = f_block w_block (u_block + 1) v_block f_target0 f_grid obj_grid
     in
     if seek_mode < 3 then
@@ -272,8 +272,8 @@ instance Ray_test (Int, [Int]) where
         else (Ramp_found, f_block_)
       else if fst (obj_grid ! (w_block, u_block + 1, v_block)) > 0 then (Object_hit, 0)
       else (U2, 0)
-  intersect V1 obj_grid f_grid w_block u_block v_block seek_mode c =
-    let f_target0 = surface (f_grid ! (w_block, div u_block 2, div (v_block - 1) 2))
+  intersect V1 obj_grid f_grid u v w_block u_block v_block seek_mode c =
+    let f_target0 = surface (f_grid ! (w_block, div u_block 2, div (truncate (v - 0.025)) 2))
         f_block_ = f_block w_block u_block (v_block - 1) f_target0 f_grid obj_grid
     in
     if seek_mode < 3 then
@@ -286,8 +286,8 @@ instance Ray_test (Int, [Int]) where
         else (Ramp_found, f_block_)
       else if fst (obj_grid ! (w_block, u_block, v_block - 1)) > 0 then (Object_hit, 0)
       else (V1, 0)
-  intersect V2 obj_grid f_grid w_block u_block v_block seek_mode c =
-    let f_target0 = surface (f_grid ! (w_block, div u_block 2, div (v_block + 1) 2))
+  intersect V2 obj_grid f_grid u v w_block u_block v_block seek_mode c =
+    let f_target0 = surface (f_grid ! (w_block, div u_block 2, div (truncate (v + 0.025)) 2))
         f_block_ = f_block w_block u_block (v_block + 1) f_target0 f_grid obj_grid
     in
     if seek_mode < 3 then
@@ -300,8 +300,8 @@ instance Ray_test (Int, [Int]) where
         else (Ramp_found, f_block_)
       else if fst (obj_grid ! (w_block, u_block, v_block + 1)) > 0 then (Object_hit, 0)
       else (V2, 0)
-  intersect Corner0 obj_grid f_grid w_block u_block v_block seek_mode c =
-    let f_target0 = surface (f_grid ! (w_block, div (u_block - 1) 2, div (v_block + 1) 2))
+  intersect Corner0 obj_grid f_grid u v w_block u_block v_block seek_mode c =
+    let f_target0 = surface (f_grid ! (w_block, div (truncate (u - 0.025)) 2, div (truncate (v + 0.025)) 2))
         f_block_ = f_block w_block (u_block - 1) (v_block + 1) f_target0 f_grid obj_grid
     in
     if seek_mode < 3 then
@@ -314,8 +314,8 @@ instance Ray_test (Int, [Int]) where
         else (Ramp_found, f_block_)
       else if fst (obj_grid ! (w_block, u_block - 1, v_block + 1)) > 0 then (Object_hit, 0)
       else (Corner0, 0)
-  intersect Corner1 obj_grid f_grid w_block u_block v_block seek_mode c =
-    let f_target0 = surface (f_grid ! (w_block, div (u_block + 1) 2, div (v_block + 1) 2))
+  intersect Corner1 obj_grid f_grid u v w_block u_block v_block seek_mode c =
+    let f_target0 = surface (f_grid ! (w_block, div (truncate (u + 0.025)) 2, div (truncate (v + 0.025)) 2))
         f_block_ = f_block w_block (u_block + 1) (v_block + 1) f_target0 f_grid obj_grid
     in
     if seek_mode < 3 then
@@ -328,8 +328,8 @@ instance Ray_test (Int, [Int]) where
         else (Ramp_found, f_block_)
       else if fst (obj_grid ! (w_block, u_block + 1, v_block + 1)) > 0 then (Object_hit, 0)
       else (Corner1, 0)
-  intersect Corner2 obj_grid f_grid w_block u_block v_block seek_mode c =
-    let f_target0 = surface (f_grid ! (w_block, div (u_block + 1) 2, div (v_block - 1) 2))
+  intersect Corner2 obj_grid f_grid u v w_block u_block v_block seek_mode c =
+    let f_target0 = surface (f_grid ! (w_block, div (truncate (u + 0.025)) 2, div (truncate (v - 0.025)) 2))
         f_block_ = f_block w_block (u_block + 1) (v_block - 1) f_target0 f_grid obj_grid
     in
     if seek_mode < 3 then
@@ -342,8 +342,8 @@ instance Ray_test (Int, [Int]) where
         else (Ramp_found, f_block_)
       else if fst (obj_grid ! (w_block, u_block + 1, v_block - 1)) > 0 then (Object_hit, 0)
       else (Corner2, 0)
-  intersect Corner3 obj_grid f_grid w_block u_block v_block seek_mode c =
-    let f_target0 = surface (f_grid ! (w_block, div (u_block - 1) 2, div (v_block - 1) 2))
+  intersect Corner3 obj_grid f_grid u v w_block u_block v_block seek_mode c =
+    let f_target0 = surface (f_grid ! (w_block, div (truncate (u - 0.025)) 2, div (truncate (v - 0.025)) 2))
         f_block_ = f_block w_block (u_block - 1) (v_block - 1) f_target0 f_grid obj_grid
     in
     if seek_mode < 3 then
@@ -360,28 +360,28 @@ instance Ray_test (Int, [Int]) where
   scan_cube obj_grid w u v = []
 
 instance Ray_test Wall_grid where
-  intersect U1 w_grid f_grid w_block u_block v_block seek_mode c =
+  intersect U1 w_grid f_grid u v w_block u_block v_block seek_mode c =
     if u1 (w_grid ! (w_block, u_block, v_block)) == True then (U1_hit, 0)
     else (U1, 0)
-  intersect U2 w_grid f_grid w_block u_block v_block seek_mode c =
+  intersect U2 w_grid f_grid u v w_block u_block v_block seek_mode c =
     if u2 (w_grid ! (w_block, u_block, v_block)) == True then (U2_hit, 0)
     else (U2, 0)
-  intersect V1 w_grid f_grid w_block u_block v_block seek_mode c =
+  intersect V1 w_grid f_grid u v w_block u_block v_block seek_mode c =
     if v1 (w_grid ! (w_block, u_block, v_block)) == True then (V1_hit, 0)
     else (V1, 0)
-  intersect V2 w_grid f_grid w_block u_block v_block seek_mode c =
+  intersect V2 w_grid f_grid u v w_block u_block v_block seek_mode c =
     if v2 (w_grid ! (w_block, u_block, v_block)) == True then (V2_hit, 0)
     else (V2, 0)
-  intersect Corner0 w_grid f_grid w_block u_block v_block seek_mode c =
+  intersect Corner0 w_grid f_grid u v w_block u_block v_block seek_mode c =
     if v2 (w_grid ! (w_block, u_block, v_block)) == True || u1 (w_grid ! (w_block, u_block, v_block)) == True then (Corner0_hit, 0)
     else (Corner0, 0)
-  intersect Corner1 w_grid f_grid w_block u_block v_block seek_mode c =
+  intersect Corner1 w_grid f_grid u v w_block u_block v_block seek_mode c =
     if u2 (w_grid ! (w_block, u_block, v_block)) == True || v2 (w_grid ! (w_block, u_block, v_block)) == True then (Corner1_hit, 0)
     else (Corner1, 0)
-  intersect Corner2 w_grid f_grid w_block u_block v_block seek_mode c =
+  intersect Corner2 w_grid f_grid u v w_block u_block v_block seek_mode c =
     if v1 (w_grid ! (w_block, u_block, v_block)) == True || u2 (w_grid ! (w_block, u_block, v_block)) == True then (Corner2_hit, 0)
     else (Corner2, 0)
-  intersect Corner3 w_grid f_grid w_block u_block v_block seek_mode c =
+  intersect Corner3 w_grid f_grid u v w_block u_block v_block seek_mode c =
     if u1 (w_grid ! (w_block, u_block, v_block)) == True || v1 (w_grid ! (w_block, u_block, v_block)) == True then (Corner3_hit, 0)
     else (Corner3, 0)
 
@@ -409,7 +409,7 @@ ray_trace0 :: Ray_test a => Float -> Float -> Int -> Bool -> Bool -> Int -> Int 
 {-# SPECIALISE ray_trace0 :: Float -> Float -> Int -> Bool -> Bool -> Int -> Int -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) Wall_grid -> UArray (Int, Int) Float -> Int -> [Obj_place] -> Int -> Int -> Int -> Int -> (Wall_place, [Obj_place], Int) #-}
 ray_trace0 u v a u_positive v_positive u_block v_block w_grid f_grid grid look_up w_block acc target_u target_v seek_mode c =
   let grid_i = w_grid ! (w_block, u_block, v_block)
-      result = intersect (ray_trace1 u v (u1_bound grid_i) (u2_bound grid_i) (v1_bound grid_i) (v2_bound grid_i) a u_positive v_positive look_up) grid f_grid w_block u_block v_block seek_mode c
+      result = intersect (ray_trace1 u v (u1_bound grid_i) (u2_bound grid_i) (v1_bound grid_i) (v2_bound grid_i) a u_positive v_positive look_up) grid f_grid u v w_block u_block v_block seek_mode c
       found = scan_cube grid w_block u_block v_block ++ acc
   in
   if seek_mode == 1 && c == 2 then (def_wall_place, [], 0)
