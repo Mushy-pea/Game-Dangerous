@@ -657,10 +657,10 @@ npc_move offset d_list (w:u:v:w1:u1:v1:blocks) w_grid w_grid_upd f_grid obj_grid
   let char_state = (npc_states s1) ! (d_list !! 8)
       u' = truncate ((snd__ (fg_position char_state)) + fst dir_vector')
       v' = truncate ((third_ (fg_position char_state)) + snd dir_vector')
-      u'' = \x -> if x == 0 then fst (local_up_ramp (f_grid ! (w, u, v))) * 2
-                  else fst (local_down_ramp (f_grid ! (w, u, v))) * 2
-      v'' = \x -> if x == 0 then snd (local_up_ramp (f_grid ! (w, u, v))) * 2
-                  else snd (local_down_ramp (f_grid ! (w, u, v))) * 2
+      u'' = \x -> if x == 0 then fst (local_up_ramp (f_grid ! (w, div u 2, div v 2))) * 2
+                  else fst (local_down_ramp (f_grid ! (w, div u 2, div v 2))) * 2
+      v'' = \x -> if x == 0 then snd (local_up_ramp (f_grid ! (w, div u 2, div v 2))) * 2
+                  else snd (local_down_ramp (f_grid ! (w, div u 2, div v 2))) * 2
       o_target = fromMaybe def_obj_place (obj (w_grid ! (-w - 1, u, v)))
       prog = obj_grid ! (w, u, v)
       prog' = \x y -> (fst prog, take offset (snd prog) ++ [x, y] ++ drop (offset + 2) (snd prog))
@@ -685,10 +685,10 @@ npc_move offset d_list (w:u:v:w1:u1:v1:blocks) w_grid w_grid_upd f_grid obj_grid
       if isNothing (obj (w_grid ! (-w - 1, u', v'))) == True || (u, v) == (u', v') then
         (w_grid'' ++ w_grid_upd, ((w, u, v), (-2, [])) : ((w, u', v'), (-2, [(offset - 4, u'), (offset - 3, v')])) : obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 8, char_state {dir_vector = dir_vector', fg_position = add_vel_pos (fg_position char_state) dir_vector', node_locations = [w, u', v', 0, 0, 0], ticks_left0 = 1})], next_sig_q = [129, w, u', v'] ++ next_sig_q s1})
       else (w_grid_upd, obj_grid_upd, s1 {next_sig_q = [129, w, u, v] ++ next_sig_q s1})
-    else if direction char_state < -4 then ([((-w - 1, u, v), def_w_grid), ((-w - 1, u'' 0, v'' 0), (w_grid ! (-w - 1, u, v)) {obj = Just (o_target {ident_ = char_rotation 0 (npc_dir_remap (direction char_state)) (d_list !! 9)})})] ++ w_grid_upd, (take 4 (ramp_fill w (u'' 0) (v'' 0) (2, []) (surface (f_grid ! (w, div (u'' 0) 2, div (v'' 0) 2))))) ++ [((w, u, v), (-2, [])), ((w, u'' 0, v'' 0), (-2, [(offset, 1)]))] ++ obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 8, char_state {node_locations = [w, u'' 0, v'' 0, 0, 0, 0], fg_position = adjust_fg_position w (u'' 0) (v'' 0) (direction char_state), ticks_left0 = 41})], next_sig_q = [129, w, u', v'] ++ next_sig_q s1})
+    else if direction char_state < -4 then ([((-w - 1, u, v), def_w_grid), ((-w - 1, u'' 0, v'' 0), (w_grid ! (-w - 1, u, v)) {obj = Just (o_target {ident_ = char_rotation 0 (npc_dir_remap (direction char_state)) (d_list !! 9)})})] ++ w_grid_upd, (take 4 (ramp_fill w (u'' 0) (v'' 0) (2, []) (surface (f_grid ! (w, div (u'' 0) 2, div (v'' 0) 2))))) ++ [((w, u, v), (-2, [])), ((w, u'' 0, v'' 0), (-2, [(offset, 1)]))] ++ obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 8, char_state {node_locations = [w, u'' 0, v'' 0, 0, 0, 0], fg_position = adjust_fg_position w (u'' 0) (v'' 0) (direction char_state), ticks_left0 = 41})], next_sig_q = [129, w, u'' 0, v'' 0] ++ next_sig_q s1})
     else
       if (w - 1, u', v') == (truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)) then (w_grid_upd, obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 8, char_state {direction = (last_dir char_state)})], next_sig_q = [129, w, u, v] ++ next_sig_q s1})
-      else ([((-w - 1, u, v), def_w_grid), ((-w, (u'' 1), (v'' 1)), (w_grid ! (-w - 1, u, v)) {obj = Just (o_target {ident_ = char_rotation 0 (npc_dir_remap (direction char_state)) (d_list !! 9)})})] ++ w_grid_upd, (take 4 (ramp_fill (w - 1) (u'' 1) (v'' 1) (2, []) (surface (f_grid ! (w - 1, div (u'' 1) 2, div (v'' 1) 2))))) ++ [((w, u, v), (-2, [])), ((w - 1, u'' 1, v'' 1), (-2, [(offset, 1)]))] ++ obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 8, char_state {node_locations = [w - 1, u'' 1, v'' 1, 0, 0, 0], fg_position = adjust_fg_position w (u'' 1) (v'' 1) (direction char_state), ticks_left0 = 41})], next_sig_q = [129, w - 1, u', v'] ++ next_sig_q s1})
+      else ([((-w - 1, u, v), def_w_grid), ((-w, (u'' 1), (v'' 1)), (w_grid ! (-w - 1, u, v)) {obj = Just (o_target {ident_ = char_rotation 0 (npc_dir_remap (direction char_state)) (d_list !! 9)})})] ++ w_grid_upd, (take 4 (ramp_fill (w - 1) (u'' 1) (v'' 1) (2, []) (surface (f_grid ! (w - 1, div (u'' 1) 2, div (v'' 1) 2))))) ++ [((w, u, v), (-2, [])), ((w - 1, u'' 1, v'' 1), (-2, [(offset, 1)]))] ++ obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 8, char_state {node_locations = [w - 1, u'' 1, v'' 1, 0, 0, 0], fg_position = adjust_fg_position w (u'' 1) (v'' 1) (direction char_state), ticks_left0 = 41})], next_sig_q = [129, w - 1, u'' 1, v'' 1] ++ next_sig_q s1})
   else if ticks_left0 char_state == 1 then
     if direction char_state >= 0 then (w_grid' : w_grid_upd, obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 8, char_state {fg_position = add_vel_pos (fg_position char_state) (dir_vector char_state)})], next_sig_q = [129, w, u, v] ++ next_sig_q s1})
     else if direction char_state < -4 then
@@ -699,7 +699,7 @@ npc_move offset d_list (w:u:v:w1:u1:v1:blocks) w_grid w_grid_upd f_grid obj_grid
       if (w, conv_ramp_fill1 !! 1, conv_ramp_fill1 !! 2) == (truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)) then (w_grid_upd, obj_grid_upd, s1 {next_sig_q = [129, w, u', v'] ++ next_sig_q s1})
       else if fst (obj_grid ! (w, conv_ramp_fill1 !! 1, conv_ramp_fill1 !! 2)) > 0 then (w_grid_upd, obj_grid_upd, s1 {next_sig_q = [129, w, u', v'] ++ next_sig_q s1})
       else (w_grid_4 0 ++ w_grid_upd, take 4 (ramp_fill w u v (0, []) (surface (f_grid ! (w, div u 2, div v 2)))) ++ [((w, u, v), (-2, [])), ramp_fill' 0] ++ obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 8, char_state {node_locations = conv_ramp_fill1 ++ [0, 0, 0], fg_position = ramp_climb_, direction = npc_dir_remap (direction char_state), ticks_left0 = 1})], next_sig_q = [129] ++ conv_ramp_fill1 ++ next_sig_q s1})
-  else if ticks_left0 char_state > 1 then (w_grid''' : w_grid_upd, obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 8, char_state {ticks_left0 = ticks_left0 char_state - 1})], next_sig_q = [129, w, u', v'] ++ next_sig_q s1})
+  else if ticks_left0 char_state > 1 then (w_grid''' : w_grid_upd, obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 8, char_state {ticks_left0 = ticks_left0 char_state - 1})], next_sig_q = [129, w, u, v] ++ next_sig_q s1})
   else throw NPC_feature_not_implemented
 
 -- The centipede NPCs have a modular design whereby a separate GPLC script drives each node, or centipede segment.  Only the head node calls npc_decision but all
