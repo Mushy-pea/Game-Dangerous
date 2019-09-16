@@ -694,12 +694,12 @@ npc_move offset d_list (w:u:v:w1:u1:v1:blocks) w_grid w_grid_upd f_grid obj_grid
   else if ticks_left0 char_state == 1 then
     if direction char_state >= 0 then (w_grid' : w_grid_upd, obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 8, char_state {fg_position = add_vel_pos (fg_position char_state) (dir_vector char_state)})], next_sig_q = [129, w, u, v] ++ next_sig_q s1})
     else if direction char_state < -4 then
-      if (w + 1, conv_ramp_fill0 !! 1, conv_ramp_fill0 !! 2) == (truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)) then (w_grid_upd, obj_grid_upd, s1 {next_sig_q = [129, w, u', v'] ++ next_sig_q s1})
-      else if fst (obj_grid ! (w + 1, conv_ramp_fill0 !! 1, conv_ramp_fill0 !! 2)) > 0 then (w_grid_upd, obj_grid_upd, s1 {next_sig_q = [129, w, u', v'] ++ next_sig_q s1})
+      if (w + 1, conv_ramp_fill0 !! 1, conv_ramp_fill0 !! 2) == (truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)) then (w_grid_upd, obj_grid_upd, s1 {next_sig_q = [129, w, u, v] ++ next_sig_q s1})
+      else if fst (obj_grid ! (w + 1, conv_ramp_fill0 !! 1, conv_ramp_fill0 !! 2)) > 0 then (w_grid_upd, obj_grid_upd, s1 {next_sig_q = [129, w, u, v] ++ next_sig_q s1})
       else (w_grid_4 (-1) ++ w_grid_upd, take 4 (ramp_fill w u v (direction char_state) (0, []) (surface (f_grid ! (w, div u 2, div v 2)))) ++ [((w, u, v), (-2, [])), ramp_fill' 1] ++ obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 8, char_state {node_locations = conv_ramp_fill0 ++ [0, 0, 0], fg_position = ramp_climb_, direction = npc_dir_remap (direction char_state), ticks_left0 = 1})], next_sig_q = [129] ++ conv_ramp_fill0 ++ next_sig_q s1})
     else
-      if (w, conv_ramp_fill1 !! 1, conv_ramp_fill1 !! 2) == (truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)) then (w_grid_upd, obj_grid_upd, s1 {next_sig_q = [129, w, u', v'] ++ next_sig_q s1})
-      else if fst (obj_grid ! (w, conv_ramp_fill1 !! 1, conv_ramp_fill1 !! 2)) > 0 then (w_grid_upd, obj_grid_upd, s1 {next_sig_q = [129, w, u', v'] ++ next_sig_q s1})
+      if (w, conv_ramp_fill1 !! 1, conv_ramp_fill1 !! 2) == (truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)) then (w_grid_upd, obj_grid_upd, s1 {next_sig_q = [129, w, u, v] ++ next_sig_q s1})
+      else if fst (obj_grid ! (w, conv_ramp_fill1 !! 1, conv_ramp_fill1 !! 2)) > 0 then (w_grid_upd, obj_grid_upd, s1 {next_sig_q = [129, w, u, v] ++ next_sig_q s1})
       else (w_grid_4 0 ++ w_grid_upd, take 4 (ramp_fill w u v (direction char_state) (0, []) (surface (f_grid ! (w, div u 2, div v 2)))) ++ [((w, u, v), (-2, [])), ramp_fill' 0] ++ obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 8, char_state {node_locations = conv_ramp_fill1 ++ [0, 0, 0], fg_position = ramp_climb_, direction = npc_dir_remap (direction char_state), ticks_left0 = 1})], next_sig_q = [129] ++ conv_ramp_fill1 ++ next_sig_q s1})
   else if ticks_left0 char_state > 1 then (w_grid''' : w_grid_upd, obj_grid_upd, s1 {npc_states = (npc_states s1) // [(d_list !! 8, char_state {ticks_left0 = ticks_left0 char_state - 1})], next_sig_q = [129, w, u, v] ++ next_sig_q s1})
   else throw NPC_feature_not_implemented
