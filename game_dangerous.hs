@@ -278,6 +278,23 @@ start_game control_ref uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag
     exitSuccess
   else return ()
 
+show_ints :: [Int] -> [Char]
+show_ints [] = []
+show_ints (x:xs) = (show x) ++ ", " ++ show_ints xs
+
+record_input :: Bool -> IORef Int -> MVar Int -> [Char] -> SEQ.Seq Int -> Int -> IO ()
+record_input record_on control_ref control_var filepath input_log c = do
+  mainLoopEvent
+  control <- readIORef control_ref
+  if record_on == True then do
+    if mod 7200 c == 0 then do
+      h <- openFile filepath AppendMode
+      hPutStr h (show_ints (toList input_log))
+      hClose h
+      putMVar control_var control
+      record_input record_on control_ref control_var filepath (SEQ.singleton control) 0
+
+
 -- Find the uniform locations of GLSL uniform variables.
 find_gl_uniform :: [[Char]] -> [Int] -> Ptr GLuint -> [Int32] -> IO [Int32]
 find_gl_uniform [] [] p_gl_program acc = return acc
