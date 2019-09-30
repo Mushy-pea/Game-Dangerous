@@ -21,6 +21,7 @@ import Foreign.C.Types
 import Unsafe.Coerce
 import System.IO.Unsafe
 import Control.Exception
+import Control.Concurrent
 import Graphics.GL.Core33
 
 fst_ (a, b, c, d, e) = a
@@ -85,7 +86,7 @@ final_appr :: Bool, fire_prob :: Int} deriving (Eq, Show)
 
 data Save_state = Save_state {is_set :: Bool, w_grid_ :: Array (Int, Int, Int) Wall_grid, f_grid_ :: Array (Int, Int, Int) Floor_grid, obj_grid_ :: Array (Int, Int, Int) (Int, [Int]), s0_ :: Play_state0, s1_ :: Play_state1}
 
-data Io_box = Io_box {uniform_ :: UArray Int Int32, p_bind_ :: (UArray Int Word32, Int), control_ :: IORef Int}
+data Io_box = Io_box {uniform_ :: UArray Int Int32, p_bind_ :: (UArray Int Word32, Int), control_var :: MVar Int, control_ref :: IORef Int}
 
 data EngineError = Invalid_wall_flag | Invalid_obj_flag | Invalid_GPLC_opcode | Invalid_conf_reg_field | Invalid_GPLC_op_argument | Invalid_map_element | NPC_feature_not_implemented deriving (Show)
 
@@ -581,7 +582,7 @@ set_play_state1 3 (x0:xs) s1 = s1 {state_chg = read x0}
 -- Used to query the conf_reg array, which holds startup parameters passed at the command line or from the engine's configuration file.
 cfg :: Array Int [Char] -> Int -> [Char] -> [Char]
 cfg conf_reg i query =
-  if i > 78 then error ("Invalid conf_reg field: " ++ query ++ "!")
+  if i > 82 then error ("Invalid conf_reg field: " ++ query ++ "!")
   else if conf_reg ! i == query then conf_reg ! (i + 1)
   else cfg conf_reg (i + 2) query
 

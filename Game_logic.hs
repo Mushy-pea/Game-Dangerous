@@ -1184,9 +1184,7 @@ update_play io_box state_ref s0 s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_
       angle' = \x -> mod_angle_ (angle_ s0) f_rate x
       det_fps = \t_current -> determine_fps t_seq t_current
   in do
-  mainLoopEvent
-  control <- readIORef (control_ io_box)
-  writeIORef (control_ io_box) 0
+  control <- takeMVar (control_var io_box)
   link0 <- link_gplc0 (fst game_clock') (drop 4 det) [truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)] w_grid [] f_grid obj_grid [] s0 (s1 {sig_q = prioritise_npcs (sig_q s1) [] []}) look_up True
   link1 <- link_gplc1 s0 s1 obj_grid 0
   link1_ <- link_gplc1 s0 s1 obj_grid 1
@@ -1319,8 +1317,8 @@ run_menu [] acc io_box x y c c_max d = do
   swapBuffers
   threadDelay 16667
   mainLoopEvent
-  control <- readIORef (control_ io_box)
-  writeIORef (control_ io_box) 0
+  control <- readIORef (control_ref io_box)
+  writeIORef (control_ref io_box) 0
   if control == 3 && c > 1 then do
     glClear (GL_COLOR_BUFFER_BIT .|. GL_DEPTH_BUFFER_BIT)
     run_menu acc [] io_box x 0.1 (c - 1) c_max 2
