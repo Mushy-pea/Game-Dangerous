@@ -35,13 +35,13 @@ main = do
   args <- getArgs
   if length args == 0 then do
     contents <- bracket (openFile "config.txt" ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nconfig file size: " ++ show (length contents)); return contents)
-    open_window ((listArray (0, 79) (splitOneOf "=\n" contents)) // [(3, "null")])
+    open_window ((listArray (0, 85) (splitOneOf "=\n" contents)) // [(3, "null")])
   else if length args == 1 then do
     contents <- bracket (openFile "config.txt" ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nconfig file size: " ++ show (length contents)); return contents)
-    open_window ((listArray (0, 79) (splitOneOf "=\n" contents)) // [(3, (args !! 0))])
+    open_window ((listArray (0, 85) (splitOneOf "=\n" contents)) // [(3, (args !! 0))])
   else do
     contents <- bracket (openFile (args !! 1) ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nconfig file size: " ++ show (length contents)); return contents)
-    open_window ((listArray (0, 79) (splitOneOf "=\n" contents)) // [(3, (args !! 0))])
+    open_window ((listArray (0, 85) (splitOneOf "=\n" contents)) // [(3, (args !! 0))])
 
 -- This function initialises the GLUT runtime system, which in turn is used to initialise a window and OpenGL context.
 open_window :: Array Int [Char] -> IO ()
@@ -249,7 +249,7 @@ start_game control_ref_ uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, ma
     p_f_table0 <- callocBytes (int_ * 120000)
     p_f_table1 <- callocBytes (int_ * 37500)
     if mode == 0 then do
-      forkIO (record_input True control_ref_ control_var_ stop_flag (cfg' "input_log_file") SEQ.Empty 0)
+      forkIO (det_input_function (cfg' "input_log_mode") control_ref_ control_var_ stop_flag (cfg' "input_log_file"))
       tid <- forkIO (update_play (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_var = control_var_, control_ref = control_ref_}) state_ref (ps0_init {pos_u = u, pos_v = v, pos_w = w, show_fps_ = select_mode (cfg' "show_fps"), prob_seq = gen_prob_seq 0 239 (read (cfg' "prob_c")) r_gen}) (ps1_init {verbose_mode = select_mode (cfg' "verbose_mode")}) False (read (cfg' "min_frame_t")) (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up_ save_state sound_array 0 t_log (SEQ.empty) 60)
       result <- show_frame p_bind uniform p_mt_matrix (p_f_table0, p_f_table1) 0 0 0 0 0 state_ref w_grid f_grid obj_grid look_up_ camera_to_clip (array (0, 5) [(i, (0, [])) | i <- [0..5]])
       free p_mt_matrix
@@ -259,7 +259,7 @@ start_game control_ref_ uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, ma
       writeIORef stop_flag True
       start_game control_ref_ uniform p_bind c conf_reg ((head (fst result)) + 1) (u, v, w, g, f, mag_r, mag_j) (snd result) sound_array frustumScale0
     else do
-      forkIO (record_input True control_ref_ control_var_ stop_flag (cfg' "input_log_file") SEQ.Empty 0)
+      forkIO (det_input_function (cfg' "input_log_mode") control_ref_ control_var_ stop_flag (cfg' "input_log_file"))
       tid <- forkIO (update_play (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_var = control_var_, control_ref = control_ref_}) state_ref (s0_ save_state) (s1_ save_state) False (read (cfg' "min_frame_t")) (g, f, mag_r, mag_j) (w_grid_ save_state) (f_grid_ save_state) (obj_grid_ save_state) look_up_ save_state sound_array 0 t_log (SEQ.empty) 60)
       result <- show_frame p_bind uniform p_mt_matrix (p_f_table0, p_f_table1) 0 0 0 0 0 state_ref w_grid f_grid obj_grid look_up_ camera_to_clip (array (0, 5) [(i, (0, [])) | i <- [0..5]])
       free p_mt_matrix
@@ -284,11 +284,22 @@ start_game control_ref_ uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, ma
     exitSuccess
   else return ()
 
--- These three functions are part of the engine's demo system, which allows user inputs to be recorded and played back.
+-- These functions are part of the engine's demo system, which allows user inputs to be recorded and played back.
 show_ints :: SEQ.Seq Int -> Int -> Int -> [Char]
 show_ints input_log i len =
   if i == len then []
   else (show (SEQ.index input_log i)) ++ ", " ++ Main.show_ints input_log (i + 1) len
+
+read_ints :: [[Char]] -> SEQ.Seq Int
+read_ints [] = SEQ.Empty
+read_ints (x:xs) = (read x) SEQ.<| read_ints xs
+
+det_input_function :: [Char] -> IORef Int -> MVar Int -> IORef Bool -> [Char] -> IO ()
+det_input_function mode control_ref control_var stop_flag filepath =
+  if mode == "record" then record_input True control_ref control_var stop_flag filepath SEQ.Empty 0
+  else if mode == "none" then record_input False control_ref control_var stop_flag filepath SEQ.Empty 0
+  else if mode == "playback" then playback_input SEQ.Empty filepath control_var (-1) 0
+  else error "Invalid input_log_mode field in configuration file."
 
 record_input :: Bool -> IORef Int -> MVar Int -> IORef Bool -> [Char] -> SEQ.Seq Int -> Int -> IO ()
 record_input record_on control_ref control_var stop_flag filepath input_log c = do
@@ -303,7 +314,7 @@ record_input record_on control_ref control_var stop_flag filepath input_log c = 
     writeIORef control_ref 0
     putMVar control_var control
     if record_on == True then do
-      if mod 7200 c == 0 then do
+      if mod c 7200 == 0 then do
         h <- openFile filepath AppendMode
         hPutStr h (Main.show_ints input_log 0 (SEQ.length input_log))
         hClose h
@@ -311,12 +322,15 @@ record_input record_on control_ref control_var stop_flag filepath input_log c = 
       else record_input record_on control_ref control_var stop_flag filepath (input_log SEQ.|> control) (c + 1)
     else record_input record_on control_ref control_var stop_flag filepath input_log c
 
-playback_input :: SEQ.Seq Int -> MVar Int -> Int -> Int -> IO ()
-playback_input input_log control_var i len = do
-  if i == len then putMVar control_var 2
+playback_input :: SEQ.Seq Int -> [Char] -> MVar Int -> Int -> Int -> IO ()
+playback_input input_log filepath control_var i len = do
+  if i < 0 then do
+    contents <- bracket (openFile filepath ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\ninput log file size: " ++ show (length contents)); return contents)
+    playback_input (read_ints (splitOn ", " (take ((length contents) - 2) contents))) filepath control_var 0 (SEQ.length (read_ints (splitOn ", " (take ((length contents) - 2) contents))))
+  else if i == len then putMVar control_var 2
   else do
     putMVar control_var (SEQ.index input_log i)
-    playback_input input_log control_var (i + 1) len
+    playback_input input_log filepath control_var (i + 1) len
 
 -- Find the uniform locations of GLSL uniform variables.
 find_gl_uniform :: [[Char]] -> [Int] -> Ptr GLuint -> [Int32] -> IO [Int32]

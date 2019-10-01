@@ -582,7 +582,7 @@ set_play_state1 3 (x0:xs) s1 = s1 {state_chg = read x0}
 -- Used to query the conf_reg array, which holds startup parameters passed at the command line or from the engine's configuration file.
 cfg :: Array Int [Char] -> Int -> [Char] -> [Char]
 cfg conf_reg i query =
-  if i > 82 then error ("Invalid conf_reg field: " ++ query ++ "!")
+  if i > 84 then error ("Invalid conf_reg field: " ++ query ++ "!")
   else if conf_reg ! i == query then conf_reg ! (i + 1)
   else cfg conf_reg (i + 2) query
 
