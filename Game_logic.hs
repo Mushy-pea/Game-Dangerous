@@ -1101,10 +1101,10 @@ detect_coll w_block (u, v) (step_u, step_v) obj_grid w_grid =
 
 thrust :: Int -> Int -> Float -> Float -> UArray (Int, Int) Float -> [Float]
 thrust dir a force f_rate look_up =
-  if dir == 3 then transform [force / f_rate, 0, 0, 1] (rotation_w a look_up)
-  else if dir == 4 then transform [force / f_rate, 0, 0, 1] (rotation_w (mod_angle a 471) look_up)
-  else if dir == 5 then transform [force / f_rate, 0, 0, 1] (rotation_w (mod_angle a 314) look_up)
-  else transform [force / f_rate, 0, 0, 1] (rotation_w (mod_angle a 157) look_up)
+  if dir == 3 then transform [force / 40, 0, 0, 1] (rotation_w a look_up)
+  else if dir == 4 then transform [force / 40, 0, 0, 1] (rotation_w (mod_angle a 471) look_up)
+  else if dir == 5 then transform [force / 40, 0, 0, 1] (rotation_w (mod_angle a 314) look_up)
+  else transform [force / 40, 0, 0, 1] (rotation_w (mod_angle a 157) look_up)
 
 floor_surf :: Float -> Float -> Float -> Array (Int, Int, Int) Floor_grid -> Float
 floor_surf u v w f_grid =
@@ -1155,21 +1155,23 @@ jump_allowed f_grid s0 =
 -- The frames per second (FPS) measurements made here are used to drive the optional on screen FPS report and to scale player movement rates in real time, to allow for a variable frame rate
 -- with consistent game play speed.  It is intended that the engine will be limited to ~60 FPS (set via the "min_frame_t" field of the conf_reg array) with movement scaling applied
 -- between 40 - 60 FPS.  Below 40 FPS game play slow down will be seen.
-determine_fps :: SEQ.Seq Integer -> Integer -> (Float, [Int], SEQ.Seq Integer)
-determine_fps t_seq t_current =
+determine_fps :: SEQ.Seq Integer -> Integer -> Bool -> (Float, [Int], SEQ.Seq Integer)
+determine_fps t_seq t_current demo_mode =
   let frame_rate0 = 1000000000 / (fromIntegral (t_current - SEQ.index t_seq 0) / 40)
       frame_rate1 = if frame_rate0 >= 40 then frame_rate0
                     else 40
   in
-  if SEQ.length t_seq < 40 then (48, [-1, 6, 16, 19, 69, 63] ++ conv_msg 0, t_seq SEQ.|> t_current)
+  if demo_mode == True then (32, [-1, 6, 16, 19, 69, 63] ++ conv_msg 40, SEQ.Empty)
+  else if SEQ.length t_seq < 40 then (48, [-1, 6, 16, 19, 69, 63] ++ conv_msg 0, t_seq SEQ.|> t_current)
   else (frame_rate1 / 1.25, [-1, 6, 16, 19, 69, 63] ++ conv_msg (truncate frame_rate0), (SEQ.drop 1 (t_seq SEQ.|> t_current)))
 
 -- Game time is now composed of game_t (GPLC interpreter ticks) and frame_num (number of the next frame to be rendered).  This function updates both of these per frame.
-update_game_clock :: (Int, Float, Int) -> Float -> (Bool, (Int, Float, Int))
-update_game_clock (game_t, fl_game_t, frame_num) f_rate =
+update_game_clock :: (Int, Float, Int) -> Float -> Bool -> (Bool, (Int, Float, Int))
+update_game_clock (game_t, fl_game_t, frame_num) f_rate demo_mode =
   let fl_game_t' = fl_game_t + (1 / f_rate) / (1 / 40)
   in
-  if truncate fl_game_t == truncate fl_game_t' then (False, (game_t, fl_game_t', frame_num + 1))
+  if demo_mode == True then (True, (game_t + 1, fl_game_t', frame_num + 1))
+  else if truncate fl_game_t == truncate fl_game_t' then (False, (game_t, fl_game_t', frame_num + 1))
   else (True, (truncate fl_game_t', fl_game_t', frame_num + 1))
 
 -- This function recurses once per game logic clock tick and is the central branching point of the game logic thread.
@@ -1179,10 +1181,10 @@ update_play io_box state_ref s0 s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_
       floor = floor_surf (det !! 0) (det !! 1) (pos_w s0) f_grid
       vel_0 = update_vel (vel s0) [0, 0, 0] ((drop 2 det) ++ [0]) f_rate f
       vel_2 = update_vel (vel s0) [0, 0, g] ((drop 2 det) ++ [0]) f_rate 0
-      game_clock' = update_game_clock (game_clock s0) (f_rate * 1.25)
+      game_clock' = update_game_clock (game_clock s0) f_rate (demo_mode s0)
       s0_ = \x -> x {message_ = []}
       angle' = \x -> mod_angle_ (angle_ s0) f_rate x
-      det_fps = \t_current -> determine_fps t_seq t_current
+      det_fps = \t_current -> determine_fps t_seq t_current (demo_mode s0)
   in do
   control <- takeMVar (control_var io_box)
   link0 <- link_gplc0 (fst game_clock') (drop 4 det) [truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)] w_grid [] f_grid obj_grid [] s0 (s1 {sig_q = prioritise_npcs (sig_q s1) [] []}) look_up True

@@ -75,7 +75,7 @@ data Terrain = Flat | Positive_u | Negative_u | Positive_v | Negative_v | Open d
 data Floor_grid = Floor_grid {w_ :: Float, surface :: Terrain, local_up_ramp :: (Int, Int), local_down_ramp :: (Int, Int)} deriving (Eq, Show)
 
 data Play_state0 = Play_state0 {pos_u :: Float, pos_v :: Float, pos_w :: Float, vel :: [Float], angle :: Int, angle_ :: Float, message_ :: [(Int, [Int])], rend_mode :: Int, view_mode :: Int, view_angle :: Int,
-game_clock :: (Int, Float, Int), torch_t0 :: Int, torch_t_limit :: Int, show_fps_ :: Bool, prob_seq :: UArray Int Int} deriving (Eq, Show)
+game_clock :: (Int, Float, Int), torch_t0 :: Int, torch_t_limit :: Int, show_fps_ :: Bool, prob_seq :: UArray Int Int, demo_mode :: Bool} deriving (Eq, Show)
 
 data Play_state1 = Play_state1 {health :: Int, ammo :: Int, gems :: Int, torches :: Int, keys :: [Int], region :: [Int], difficulty :: ([Char], Int, Int, Int), sig_q :: [Int], next_sig_q :: [Int],
 message :: [Int], state_chg :: Int, verbose_mode :: Bool, npc_states :: Array Int NPC_state} deriving (Eq)
@@ -92,7 +92,7 @@ data EngineError = Invalid_wall_flag | Invalid_obj_flag | Invalid_GPLC_opcode | 
 
 instance Exception EngineError
 
-ps0_init = Play_state0 {pos_u = 0, pos_v = 0, pos_w = 0, vel = [0, 0, 0], angle = 0, angle_ = 0, message_ = [], rend_mode = 0, view_mode = 0, view_angle = 0, game_clock = (1, 1, 1), torch_t0 = 1, torch_t_limit = 0, show_fps_ = False, prob_seq = def_prob_seq}
+ps0_init = Play_state0 {pos_u = 0, pos_v = 0, pos_w = 0, vel = [0, 0, 0], angle = 0, angle_ = 0, message_ = [], rend_mode = 0, view_mode = 0, view_angle = 0, game_clock = (1, 1, 1), torch_t0 = 1, torch_t_limit = 0, show_fps_ = False, prob_seq = def_prob_seq, demo_mode = False}
 ps1_init = Play_state1 {health = 100, ammo = 0, gems = 0, torches = 0, keys = [63,63,63,63,63,63], region = [19,46,41,44,27,33,31,63,28,27,51,63,4], difficulty = ("Plenty of danger please", 6, 10, 14), sig_q = [], next_sig_q = [], message = [], state_chg = 0, verbose_mode = False, npc_states = empty_npc_array}
 
 def_w_grid = Wall_grid {u1 = False, u2 = False, v1 = False, v2 = False, u1_bound = 0, u2_bound = 0, v1_bound = 0, v2_bound = 0, w_level = 0,  wall_flag = [], texture = [], obj = Nothing}

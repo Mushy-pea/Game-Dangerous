@@ -250,8 +250,8 @@ start_game control_ref_ uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, ma
     p_f_table1 <- callocBytes (int_ * 37500)
     if mode == 0 then do
       forkIO (det_input_function (cfg' "input_log_mode") control_ref_ control_var_ stop_flag (cfg' "input_log_file"))
-      tid <- forkIO (update_play (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_var = control_var_, control_ref = control_ref_}) state_ref (ps0_init {pos_u = u, pos_v = v, pos_w = w, show_fps_ = select_mode (cfg' "show_fps"), prob_seq = gen_prob_seq 0 239 (read (cfg' "prob_c")) r_gen}) (ps1_init {verbose_mode = select_mode (cfg' "verbose_mode")}) False (read (cfg' "min_frame_t")) (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up_ save_state sound_array 0 t_log (SEQ.empty) 60)
-      result <- show_frame p_bind uniform p_mt_matrix (p_f_table0, p_f_table1) 0 0 0 0 0 state_ref w_grid f_grid obj_grid look_up_ camera_to_clip (array (0, 5) [(i, (0, [])) | i <- [0..5]])
+      tid <- forkIO (catch (update_play (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_var = control_var_, control_ref = control_ref_}) state_ref (ps0_init {pos_u = u, pos_v = v, pos_w = w, show_fps_ = select_mode (cfg' "show_fps"), prob_seq = gen_prob_seq 0 239 (read (cfg' "prob_c")) r_gen, demo_mode = det_demo_mode (cfg' "input_log_mode")}) (ps1_init {verbose_mode = select_mode (cfg' "verbose_mode")}) False (read (cfg' "min_frame_t")) (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up_ save_state sound_array 0 t_log (SEQ.empty) 60) (\e -> handle_game_logic_fail e))
+      result <- catch (show_frame p_bind uniform p_mt_matrix (p_f_table0, p_f_table1) 0 0 0 0 0 state_ref w_grid f_grid obj_grid look_up_ camera_to_clip (array (0, 5) [(i, (0, [])) | i <- [0..5]])) (\e -> handle_rendering_thread_fail e)
       free p_mt_matrix
       free p_f_table0
       free p_f_table1
@@ -260,8 +260,8 @@ start_game control_ref_ uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, ma
       start_game control_ref_ uniform p_bind c conf_reg ((head (fst result)) + 1) (u, v, w, g, f, mag_r, mag_j) (snd result) sound_array frustumScale0
     else do
       forkIO (det_input_function (cfg' "input_log_mode") control_ref_ control_var_ stop_flag (cfg' "input_log_file"))
-      tid <- forkIO (update_play (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_var = control_var_, control_ref = control_ref_}) state_ref (s0_ save_state) (s1_ save_state) False (read (cfg' "min_frame_t")) (g, f, mag_r, mag_j) (w_grid_ save_state) (f_grid_ save_state) (obj_grid_ save_state) look_up_ save_state sound_array 0 t_log (SEQ.empty) 60)
-      result <- show_frame p_bind uniform p_mt_matrix (p_f_table0, p_f_table1) 0 0 0 0 0 state_ref w_grid f_grid obj_grid look_up_ camera_to_clip (array (0, 5) [(i, (0, [])) | i <- [0..5]])
+      tid <- forkIO (catch (update_play (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_var = control_var_, control_ref = control_ref_}) state_ref (s0_ save_state) (s1_ save_state) False (read (cfg' "min_frame_t")) (g, f, mag_r, mag_j) (w_grid_ save_state) (f_grid_ save_state) (obj_grid_ save_state) look_up_ save_state sound_array 0 t_log (SEQ.empty) 60) (\e -> handle_game_logic_fail e))
+      result <- catch (show_frame p_bind uniform p_mt_matrix (p_f_table0, p_f_table1) 0 0 0 0 0 state_ref w_grid f_grid obj_grid look_up_ camera_to_clip (array (0, 5) [(i, (0, [])) | i <- [0..5]])) (\e -> handle_rendering_thread_fail e)
       free p_mt_matrix
       free p_f_table0
       free p_f_table1
@@ -331,6 +331,19 @@ playback_input input_log filepath control_var i len = do
   else do
     putMVar control_var (SEQ.index input_log i)
     playback_input input_log filepath control_var (i + 1) len
+
+det_demo_mode "none" = False
+det_demo_mode "record" = True
+det_demo_mode "playback" = True
+
+-- Handle exceptions thrown in the game logic and rendering threads so that a managed shut down is possible.  This allows the re - playable game state progression to be saved for debugging purposes (see demo system section above).
+handle_game_logic_fail :: SomeException -> IO ()
+handle_game_logic_fail e = putStr ("\n\nFailure in game logic thread.  Exception thrown: " ++ show e)
+
+handle_rendering_thread_fail :: SomeException -> IO ([Int], Save_state)
+handle_rendering_thread_fail e = do
+  putStr ("\n\nFailure in rendering thread.  Exception thrown: " ++ show e)
+  return ([], def_save_state)
 
 -- Find the uniform locations of GLSL uniform variables.
 find_gl_uniform :: [[Char]] -> [Int] -> Ptr GLuint -> [Int32] -> IO [Int32]
