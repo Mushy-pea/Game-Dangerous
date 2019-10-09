@@ -88,6 +88,8 @@ data Save_state = Save_state {is_set :: Bool, w_grid_ :: Array (Int, Int, Int) W
 
 data Io_box = Io_box {uniform_ :: UArray Int Int32, p_bind_ :: (UArray Int Word32, Int), control_var :: MVar Int, control_ref :: IORef Int}
 
+data Demo_log = Demo_log {player_pos :: (Float, Float, Float), player_angle :: Int, torch_key_down :: Int, fire_key_down :: Int, gplc_step :: Int}
+
 data EngineError = Invalid_wall_flag | Invalid_obj_flag | Invalid_GPLC_opcode | Invalid_conf_reg_field | Invalid_GPLC_op_argument | Invalid_map_element | NPC_feature_not_implemented deriving (Show)
 
 instance Exception EngineError

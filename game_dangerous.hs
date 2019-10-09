@@ -285,52 +285,56 @@ start_game control_ref_ uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, ma
   else return ()
 
 -- These functions are part of the engine's demo system, which allows user inputs to be recorded and played back.
-show_ints :: SEQ.Seq Int -> Int -> Int -> [Char]
-show_ints input_log i len =
+show_demo_logs :: SEQ.Seq Demo_log -> Int -> Int -> [Char]
+show_demo_logs demo_seq i len =
+  let log = SEQ.index demo_seq i
+  in
   if i == len then []
-  else (show (SEQ.index input_log i)) ++ ", " ++ Main.show_ints input_log (i + 1) len
+  else show (fst__ (player_pos log)) ++ ", " ++ show (snd__ (player_pos log)) ++ ", " ++ show (third_ (player_pos log)) ++ ", " ++ show (player_angle log) ++ ", " ++ show (torch_key_down log) ++ ", " ++ show (fire_key_down log) ++ ", " ++ show (gplc_step log) ++ ", " ++ show_demo_logs demo_seq (i + 1) len
 
-read_ints :: [[Char]] -> SEQ.Seq Int
-read_ints [] = SEQ.Empty
-read_ints (x:xs) = (read x) SEQ.<| read_ints xs
+read_demo_logs :: [[Char]] -> SEQ.Seq Demo_log
+read_demo_logs [] = SEQ.Empty
+read_demo_logs (x0:x1:x2:x3:x4:x5:x6:xs) = SEQ.singleton (Demo_log {player_pos = (read x0, read x1, read x2), player_angle = read x3, torch_key_down = read x4, fire_key_down = read x5, gplc_step = read x6}) SEQ.<| read_demo_logs xs
 
-det_input_function :: [Char] -> IORef Int -> MVar Int -> IORef Bool -> [Char] -> IO ()
-det_input_function mode control_ref control_var stop_flag filepath =
-  if mode == "record" then record_input True control_ref control_var stop_flag filepath SEQ.Empty 0
-  else if mode == "none" then record_input False control_ref control_var stop_flag filepath SEQ.Empty 0
-  else if mode == "playback" then playback_input SEQ.Empty filepath control_var (-1) 0
+det_input_function :: [Char] -> IORef Int -> MVar Int -> IORef Bool -> IORef Demo_log -> [Char] -> IO ()
+det_input_function mode control_ref control_var stop_flag demo_ref filepath =
+  if mode == "record" then record_input True control_ref control_var stop_flag demo_ref filepath SEQ.Empty 0
+  else if mode == "none" then record_input False control_ref control_var stop_flag demo_ref filepath SEQ.Empty 0
+  else if mode == "playback" then playback_input SEQ.Empty filepath control_var demo_ref (-1) 0
   else error "Invalid input_log_mode field in configuration file."
 
-record_input :: Bool -> IORef Int -> MVar Int -> IORef Bool -> [Char] -> SEQ.Seq Int -> Int -> IO ()
-record_input record_on control_ref control_var stop_flag filepath input_log c = do
+record_input :: Bool -> IORef Int -> MVar Int -> IORef Bool -> IORef Demo_log -> [Char] -> SEQ.Seq Demo_log -> Int -> IO ()
+record_input record_on control_ref control_var stop_flag demo_ref filepath demo_seq c = do
   stop <- readIORef stop_flag
   if stop == True then do
     h <- openFile filepath AppendMode
-    hPutStr h (Main.show_ints input_log 0 (SEQ.length input_log))
+    hPutStr h (show_demo_logs demo_seq 0 (SEQ.length demo_log))
     hClose h
   else do
     mainLoopEvent
     control <- readIORef control_ref
     writeIORef control_ref 0
     putMVar control_var control
+    next_log <- readIORef demo_ref
     if record_on == True then do
       if mod c 7200 == 0 then do
         h <- openFile filepath AppendMode
-        hPutStr h (Main.show_ints input_log 0 (SEQ.length input_log))
+        hPutStr h (show_demo_logs demo_seq 0 (SEQ.length demo_log))
         hClose h
-        record_input record_on control_ref control_var stop_flag filepath (SEQ.singleton control) 0
-      else record_input record_on control_ref control_var stop_flag filepath (input_log SEQ.|> control) (c + 1)
-    else record_input record_on control_ref control_var stop_flag filepath input_log c
+        record_input record_on control_ref control_var stop_flag demo_ref filepath (SEQ.singleton next_log) (c + 1)
+      else record_input record_on control_ref control_var stop_flag demo_ref filepath (demo_seq SEQ.|> next_log) (c + 1)
+    else record_input record_on control_ref control_var stop_flag demo_ref filepath demo_seq c
 
-playback_input :: SEQ.Seq Int -> [Char] -> MVar Int -> Int -> Int -> IO ()
-playback_input input_log filepath control_var i len = do
+playback_input :: SEQ.Seq Demo_log -> [Char] -> MVar Int -> IORef Demo_log -> Int -> Int -> IO ()
+playback_input demo_seq filepath control_var demo_ref i len = do
   if i < 0 then do
     contents <- bracket (openFile filepath ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\ninput log file size: " ++ show (length contents)); return contents)
-    playback_input (read_ints (splitOn ", " (take ((length contents) - 2) contents))) filepath control_var 0 (SEQ.length (read_ints (splitOn ", " (take ((length contents) - 2) contents))))
-  else if i == len then putMVar control_var 2
+    playback_input (read_demo_logs (splitOn ", " (take ((length contents) - 2) contents))) filepath control_var demo_ref 0 (SEQ.length (read_demo_logs (splitOn ", " (take ((length contents) - 2) contents))))
+  else if i == len then putMVar control_var 1
   else do
-    putMVar control_var (SEQ.index input_log i)
-    playback_input input_log filepath control_var (i + 1) len
+    writeIORef demo_ref (SEQ.index demo_seq i)
+    putMVar control_var 1
+    playback_input demo_seq filepath control_var demo_ref (i + 1) len
 
 det_demo_mode "none" = False
 det_demo_mode "record" = True
