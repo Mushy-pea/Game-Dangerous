@@ -56,7 +56,7 @@ gluint_ = 0 :: GLuint; gluint = sizeOf gluint_
 glint_ = 0 :: GLint; glint = sizeOf glint_
 glushort_ = 0 :: GLushort; glushort = sizeOf glushort_
 int__ = 0 :: Int; int_ = sizeOf int__
-ptr_size = 8 :: Int -- Corresponds to the 8 byte pointers used on the Windows x86_64 platform.  This value should be changed to 4 if compiling for systems with 4 byte pointers
+ptr_size = 8 :: Int -- Corresponds to the 8 byte pointers used on the Windows x86_64 platform.  This value should be changed to 4 if compiling for systems with 4 byte pointers.
 
 -- Data types that store information about the environment and game state, as well as an exception type.
 -- There are also a number of default and initial values for these types.
@@ -75,7 +75,7 @@ data Terrain = Flat | Positive_u | Negative_u | Positive_v | Negative_v | Open d
 data Floor_grid = Floor_grid {w_ :: Float, surface :: Terrain, local_up_ramp :: (Int, Int), local_down_ramp :: (Int, Int)} deriving (Eq, Show)
 
 data Play_state0 = Play_state0 {pos_u :: Float, pos_v :: Float, pos_w :: Float, vel :: [Float], angle :: Int, angle_ :: Float, message_ :: [(Int, [Int])], rend_mode :: Int, view_mode :: Int, view_angle :: Int,
-game_clock :: (Int, Float, Int), torch_t0 :: Int, torch_t_limit :: Int, show_fps_ :: Bool, prob_seq :: UArray Int Int, demo_mode :: Bool} deriving (Eq, Show)
+game_clock :: (Int, Float, Int), torch_t0 :: Int, torch_t_limit :: Int, show_fps_ :: Bool, prob_seq :: UArray Int Int, playback_mode :: Bool, torch_key_last :: Int, fire_key_last :: Int} deriving (Eq, Show)
 
 data Play_state1 = Play_state1 {health :: Int, ammo :: Int, gems :: Int, torches :: Int, keys :: [Int], region :: [Int], difficulty :: ([Char], Int, Int, Int), sig_q :: [Int], next_sig_q :: [Int],
 message :: [Int], state_chg :: Int, verbose_mode :: Bool, npc_states :: Array Int NPC_state} deriving (Eq)
@@ -86,15 +86,15 @@ final_appr :: Bool, fire_prob :: Int} deriving (Eq, Show)
 
 data Save_state = Save_state {is_set :: Bool, w_grid_ :: Array (Int, Int, Int) Wall_grid, f_grid_ :: Array (Int, Int, Int) Floor_grid, obj_grid_ :: Array (Int, Int, Int) (Int, [Int]), s0_ :: Play_state0, s1_ :: Play_state1}
 
-data Io_box = Io_box {uniform_ :: UArray Int Int32, p_bind_ :: (UArray Int Word32, Int), control_var :: MVar Int, control_ref :: IORef Int}
+data Io_box = Io_box {uniform_ :: UArray Int Int32, p_bind_ :: (UArray Int Word32, Int), control_var :: MVar Int, control_ref :: IORef Int, demo_log_ref :: IORef Demo_log}
 
-data Demo_log = Demo_log {player_pos :: (Float, Float, Float), player_angle :: Int, torch_key_down :: Int, fire_key_down :: Int, gplc_step :: Int}
+data Demo_log = Demo_log {player_vel :: [Float], player_angle :: Int, fps :: Float, torch_key_down :: Int, fire_key_down :: Int}
 
 data EngineError = Invalid_wall_flag | Invalid_obj_flag | Invalid_GPLC_opcode | Invalid_conf_reg_field | Invalid_GPLC_op_argument | Invalid_map_element | NPC_feature_not_implemented deriving (Show)
 
 instance Exception EngineError
 
-ps0_init = Play_state0 {pos_u = 0, pos_v = 0, pos_w = 0, vel = [0, 0, 0], angle = 0, angle_ = 0, message_ = [], rend_mode = 0, view_mode = 0, view_angle = 0, game_clock = (1, 1, 1), torch_t0 = 1, torch_t_limit = 0, show_fps_ = False, prob_seq = def_prob_seq, demo_mode = False}
+ps0_init = Play_state0 {pos_u = 0, pos_v = 0, pos_w = 0, vel = [0, 0, 0], angle = 0, angle_ = 0, message_ = [], rend_mode = 0, view_mode = 0, view_angle = 0, game_clock = (1, 1, 1), torch_t0 = 1, torch_t_limit = 0, show_fps_ = False, prob_seq = def_prob_seq, playback_mode = False, torch_key_last = 0, fire_key_last = 0}
 ps1_init = Play_state1 {health = 100, ammo = 0, gems = 0, torches = 0, keys = [63,63,63,63,63,63], region = [19,46,41,44,27,33,31,63,28,27,51,63,4], difficulty = ("Plenty of danger please", 6, 10, 14), sig_q = [], next_sig_q = [], message = [], state_chg = 0, verbose_mode = False, npc_states = empty_npc_array}
 
 def_w_grid = Wall_grid {u1 = False, u2 = False, v1 = False, v2 = False, u1_bound = 0, u2_bound = 0, v1_bound = 0, v2_bound = 0, w_level = 0,  wall_flag = [], texture = [], obj = Nothing}
@@ -121,6 +121,8 @@ def_prob_seq = array (0, 239) [(i, 0) | i <- [0..239]]
 
 def_npc_state = NPC_state {npc_type = 0, c_health = 0, ticks_left0 = 40, ticks_left1 = 0, node_locations = [], fg_position = (0, 0, 0), dir_vector = (0, 0), direction = 0, last_dir = 0,
 dir_list = [], node_num = 0, end_node = 0, head_index = 0, reversed = False, target_u' = 0, target_v' = 0, target_w' = 0, speed = 0, avoid_dist = 0, attack_mode = False, final_appr = False, fire_prob = 0}
+
+def_demo_log = Demo_log {player_vel = [0, 0, 0], player_angle = 0, fps = 0, torch_key_down = 0, fire_key_down = 0}
 
 empty_npc_array = array (0, 127) [(i, def_npc_state) | i <- [0..127]]
 

@@ -226,6 +226,7 @@ start_game control_ref_ uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, ma
   t_log <- newEmptyMVar
   control_var_ <- newEmptyMVar
   stop_flag <- newIORef False
+  demo_ref <- newIORef def_demo_log
   r_gen <- getStdGen
   if mode == -1 then do
     if cfg' "splash_image" /= "null" then do
@@ -249,8 +250,8 @@ start_game control_ref_ uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, ma
     p_f_table0 <- callocBytes (int_ * 120000)
     p_f_table1 <- callocBytes (int_ * 37500)
     if mode == 0 then do
-      forkIO (det_input_function (cfg' "input_log_mode") control_ref_ control_var_ stop_flag (cfg' "input_log_file"))
-      tid <- forkIO (catch (update_play (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_var = control_var_, control_ref = control_ref_}) state_ref (ps0_init {pos_u = u, pos_v = v, pos_w = w, show_fps_ = select_mode (cfg' "show_fps"), prob_seq = gen_prob_seq 0 239 (read (cfg' "prob_c")) r_gen, demo_mode = det_demo_mode (cfg' "input_log_mode")}) (ps1_init {verbose_mode = select_mode (cfg' "verbose_mode")}) False (read (cfg' "min_frame_t")) (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up_ save_state sound_array 0 t_log (SEQ.empty) 60) (\e -> handle_game_logic_fail e))
+      forkIO (det_input_function (cfg' "input_log_mode") control_ref_ control_var_ stop_flag demo_ref (cfg' "input_log_file"))
+      tid <- forkIO (catch (update_play (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_var = control_var_, control_ref = control_ref_, demo_log_ref = demo_ref}) state_ref (ps0_init {pos_u = u, pos_v = v, pos_w = w, show_fps_ = select_mode (cfg' "show_fps"), prob_seq = gen_prob_seq 0 239 (read (cfg' "prob_c")) r_gen, playback_mode = det_demo_mode (cfg' "input_log_mode")}) (ps1_init {verbose_mode = select_mode (cfg' "verbose_mode")}) False (read (cfg' "min_frame_t")) (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up_ save_state sound_array 0 t_log (SEQ.empty) 60) (\e -> handle_game_logic_fail e))
       result <- catch (show_frame p_bind uniform p_mt_matrix (p_f_table0, p_f_table1) 0 0 0 0 0 state_ref w_grid f_grid obj_grid look_up_ camera_to_clip (array (0, 5) [(i, (0, [])) | i <- [0..5]])) (\e -> handle_rendering_thread_fail e)
       free p_mt_matrix
       free p_f_table0
@@ -259,8 +260,8 @@ start_game control_ref_ uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, ma
       writeIORef stop_flag True
       start_game control_ref_ uniform p_bind c conf_reg ((head (fst result)) + 1) (u, v, w, g, f, mag_r, mag_j) (snd result) sound_array frustumScale0
     else do
-      forkIO (det_input_function (cfg' "input_log_mode") control_ref_ control_var_ stop_flag (cfg' "input_log_file"))
-      tid <- forkIO (catch (update_play (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_var = control_var_, control_ref = control_ref_}) state_ref (s0_ save_state) (s1_ save_state) False (read (cfg' "min_frame_t")) (g, f, mag_r, mag_j) (w_grid_ save_state) (f_grid_ save_state) (obj_grid_ save_state) look_up_ save_state sound_array 0 t_log (SEQ.empty) 60) (\e -> handle_game_logic_fail e))
+      forkIO (det_input_function (cfg' "input_log_mode") control_ref_ control_var_ stop_flag demo_ref (cfg' "input_log_file"))
+      tid <- forkIO (catch (update_play (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_var = control_var_, control_ref = control_ref_, demo_log_ref = demo_ref}) state_ref (s0_ save_state) (s1_ save_state) False (read (cfg' "min_frame_t")) (g, f, mag_r, mag_j) (w_grid_ save_state) (f_grid_ save_state) (obj_grid_ save_state) look_up_ save_state sound_array 0 t_log (SEQ.empty) 60) (\e -> handle_game_logic_fail e))
       result <- catch (show_frame p_bind uniform p_mt_matrix (p_f_table0, p_f_table1) 0 0 0 0 0 state_ref w_grid f_grid obj_grid look_up_ camera_to_clip (array (0, 5) [(i, (0, [])) | i <- [0..5]])) (\e -> handle_rendering_thread_fail e)
       free p_mt_matrix
       free p_f_table0
@@ -269,7 +270,7 @@ start_game control_ref_ uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, ma
       writeIORef stop_flag True
       start_game control_ref_ uniform p_bind c conf_reg ((head (fst result)) + 1) (u, v, w, g, f, mag_r, mag_j) (snd result) sound_array frustumScale0
   else if mode == 2 then do
-    choice <- run_menu main_menu_text [] (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_var = control_var_, control_ref = control_ref_}) (-0.75) (-0.75) 1 0 0
+    choice <- run_menu main_menu_text [] (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_var = control_var_, control_ref = control_ref_, demo_log_ref = demo_ref}) (-0.75) (-0.75) 1 0 0
     if choice == 1 then start_game control_ref_ uniform p_bind c conf_reg 0 (u, v, w, g, f, mag_r, mag_j) save_state sound_array frustumScale0
     else if choice == 2 then do
       if is_set save_state == True then start_game control_ref_ uniform p_bind c conf_reg 1 (u, v, w, g, f, mag_r, mag_j) save_state sound_array frustumScale0
@@ -290,26 +291,26 @@ show_demo_logs demo_seq i len =
   let log = SEQ.index demo_seq i
   in
   if i == len then []
-  else show (fst__ (player_pos log)) ++ ", " ++ show (snd__ (player_pos log)) ++ ", " ++ show (third_ (player_pos log)) ++ ", " ++ show (player_angle log) ++ ", " ++ show (torch_key_down log) ++ ", " ++ show (fire_key_down log) ++ ", " ++ show (gplc_step log) ++ ", " ++ show_demo_logs demo_seq (i + 1) len
+  else show ((player_vel log) !! 0) ++ ", " ++ show ((player_vel log) !! 1) ++ ", " ++ show ((player_vel log) !! 2) ++ ", " ++ show (player_angle log) ++ ", " ++ show (fps log) ++ ", " ++ show (torch_key_down log) ++ ", " ++ show (fire_key_down log) ++ ", " ++ show_demo_logs demo_seq (i + 1) len
 
 read_demo_logs :: [[Char]] -> SEQ.Seq Demo_log
 read_demo_logs [] = SEQ.Empty
-read_demo_logs (x0:x1:x2:x3:x4:x5:x6:xs) = SEQ.singleton (Demo_log {player_pos = (read x0, read x1, read x2), player_angle = read x3, torch_key_down = read x4, fire_key_down = read x5, gplc_step = read x6}) SEQ.<| read_demo_logs xs
+read_demo_logs (x0:x1:x2:x3:x4:x5:x6:xs) = Demo_log {player_vel = [read x0, read x1, read x2], player_angle = read x3, fps = read x4, torch_key_down = read x5, fire_key_down = read x6} SEQ.<| read_demo_logs xs
+read_demo_logs _ = SEQ.Empty
 
 det_input_function :: [Char] -> IORef Int -> MVar Int -> IORef Bool -> IORef Demo_log -> [Char] -> IO ()
 det_input_function mode control_ref control_var stop_flag demo_ref filepath =
-  if mode == "record" then record_input True control_ref control_var stop_flag demo_ref filepath SEQ.Empty 0
+  if mode == "record" then record_input True control_ref control_var stop_flag demo_ref filepath SEQ.Empty 1
   else if mode == "none" then record_input False control_ref control_var stop_flag demo_ref filepath SEQ.Empty 0
   else if mode == "playback" then playback_input SEQ.Empty filepath control_var demo_ref (-1) 0
   else error "Invalid input_log_mode field in configuration file."
 
+--bracket (openFile filepath AppendMode) (hClose) (\h -> hPutStr h (show_demo_logs demo_seq 0 (SEQ.length demo_seq)))
+
 record_input :: Bool -> IORef Int -> MVar Int -> IORef Bool -> IORef Demo_log -> [Char] -> SEQ.Seq Demo_log -> Int -> IO ()
 record_input record_on control_ref control_var stop_flag demo_ref filepath demo_seq c = do
   stop <- readIORef stop_flag
-  if stop == True then do
-    h <- openFile filepath AppendMode
-    hPutStr h (show_demo_logs demo_seq 0 (SEQ.length demo_log))
-    hClose h
+  if stop == True then return ()
   else do
     mainLoopEvent
     control <- readIORef control_ref
@@ -319,25 +320,28 @@ record_input record_on control_ref control_var stop_flag demo_ref filepath demo_
     if record_on == True then do
       if mod c 7200 == 0 then do
         h <- openFile filepath AppendMode
-        hPutStr h (show_demo_logs demo_seq 0 (SEQ.length demo_log))
+        hPutStr h (show_demo_logs demo_seq 0 (SEQ.length demo_seq))
         hClose h
         record_input record_on control_ref control_var stop_flag demo_ref filepath (SEQ.singleton next_log) (c + 1)
       else record_input record_on control_ref control_var stop_flag demo_ref filepath (demo_seq SEQ.|> next_log) (c + 1)
     else record_input record_on control_ref control_var stop_flag demo_ref filepath demo_seq c
 
 playback_input :: SEQ.Seq Demo_log -> [Char] -> MVar Int -> IORef Demo_log -> Int -> Int -> IO ()
-playback_input demo_seq filepath control_var demo_ref i len = do
+playback_input demo_seq filepath control_var demo_ref i len =
+  let next_log = if i < len - 1 then SEQ.index demo_seq (i + 1)
+                 else SEQ.index demo_seq i
+  in
   if i < 0 then do
     contents <- bracket (openFile filepath ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\ninput log file size: " ++ show (length contents)); return contents)
     playback_input (read_demo_logs (splitOn ", " (take ((length contents) - 2) contents))) filepath control_var demo_ref 0 (SEQ.length (read_demo_logs (splitOn ", " (take ((length contents) - 2) contents))))
   else if i == len then putMVar control_var 1
   else do
-    writeIORef demo_ref (SEQ.index demo_seq i)
-    putMVar control_var 1
+    writeIORef demo_ref ((SEQ.index demo_seq i) {torch_key_down = torch_key_down next_log, fire_key_down = fire_key_down next_log})
+    putMVar control_var 0
     playback_input demo_seq filepath control_var demo_ref (i + 1) len
 
 det_demo_mode "none" = False
-det_demo_mode "record" = True
+det_demo_mode "record" = False
 det_demo_mode "playback" = True
 
 -- Handle exceptions thrown in the game logic and rendering threads so that a managed shut down is possible.  This allows the re - playable game state progression to be saved for debugging purposes (see demo system section above).

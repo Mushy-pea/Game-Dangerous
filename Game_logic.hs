@@ -1155,38 +1155,43 @@ jump_allowed f_grid s0 =
 -- The frames per second (FPS) measurements made here are used to drive the optional on screen FPS report and to scale player movement rates in real time, to allow for a variable frame rate
 -- with consistent game play speed.  It is intended that the engine will be limited to ~60 FPS (set via the "min_frame_t" field of the conf_reg array) with movement scaling applied
 -- between 40 - 60 FPS.  Below 40 FPS game play slow down will be seen.
-determine_fps :: SEQ.Seq Integer -> Integer -> Bool -> (Float, [Int], SEQ.Seq Integer)
-determine_fps t_seq t_current demo_mode =
+determine_fps :: SEQ.Seq Integer -> Integer -> (Float, [Int], SEQ.Seq Integer)
+determine_fps t_seq t_current =
   let frame_rate0 = 1000000000 / (fromIntegral (t_current - SEQ.index t_seq 0) / 40)
       frame_rate1 = if frame_rate0 >= 40 then frame_rate0
                     else 40
   in
-  if demo_mode == True then (32, [-1, 6, 16, 19, 69, 63] ++ conv_msg 40, SEQ.Empty)
-  else if SEQ.length t_seq < 40 then (48, [-1, 6, 16, 19, 69, 63] ++ conv_msg 0, t_seq SEQ.|> t_current)
+  if SEQ.length t_seq < 40 then (48, [-1, 6, 16, 19, 69, 63] ++ conv_msg 0, t_seq SEQ.|> t_current)
   else (frame_rate1 / 1.25, [-1, 6, 16, 19, 69, 63] ++ conv_msg (truncate frame_rate0), (SEQ.drop 1 (t_seq SEQ.|> t_current)))
 
 -- Game time is now composed of game_t (GPLC interpreter ticks) and frame_num (number of the next frame to be rendered).  This function updates both of these per frame.
-update_game_clock :: (Int, Float, Int) -> Float -> Bool -> (Bool, (Int, Float, Int))
-update_game_clock (game_t, fl_game_t, frame_num) f_rate demo_mode =
+update_game_clock :: (Int, Float, Int) -> Float -> (Bool, (Int, Float, Int))
+update_game_clock (game_t, fl_game_t, frame_num) f_rate =
   let fl_game_t' = fl_game_t + (1 / f_rate) / (1 / 40)
   in
-  if demo_mode == True then (True, (game_t + 1, fl_game_t', frame_num + 1))
-  else if truncate fl_game_t == truncate fl_game_t' then (False, (game_t, fl_game_t', frame_num + 1))
+  if truncate fl_game_t == truncate fl_game_t' then (False, (game_t, fl_game_t', frame_num + 1))
   else (True, (truncate fl_game_t', fl_game_t', frame_num + 1))
 
 -- This function recurses once per game logic clock tick and is the central branching point of the game logic thread.
 update_play :: Io_box -> MVar (Play_state0, Array (Int, Int, Int) Wall_grid, Save_state) -> Play_state0 -> Play_state1 -> Bool -> Integer -> (Float, Float, Float, Float) -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> UArray (Int, Int) Float -> Save_state -> Array Int Source -> Integer -> MVar Integer -> SEQ.Seq Integer -> Float -> IO ()
 update_play io_box state_ref s0 s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up save_state sound_array t_last t_log t_seq f_rate =
   let det = detect_coll (truncate (pos_w s0)) (pos_u s0, pos_v s0) ((vel s0) !! 0 / f_rate, (vel s0) !! 1 / f_rate) obj_grid w_grid
+      det_pos_w = \log -> pos_w s0 + (player_vel log) !! 2
       floor = floor_surf (det !! 0) (det !! 1) (pos_w s0) f_grid
       vel_0 = update_vel (vel s0) [0, 0, 0] ((drop 2 det) ++ [0]) f_rate f
       vel_2 = update_vel (vel s0) [0, 0, g] ((drop 2 det) ++ [0]) f_rate 0
-      game_clock' = update_game_clock (game_clock s0) f_rate (demo_mode s0)
+      game_clock' = update_game_clock (game_clock s0) f_rate
       s0_ = \x -> x {message_ = []}
       angle' = \x -> mod_angle_ (angle_ s0) f_rate x
-      det_fps = \t_current -> determine_fps t_seq t_current (demo_mode s0)
+      det_fps = \t_current -> determine_fps t_seq t_current
+      fix_f_rate = \log t'' -> if playback_mode s0 == True then fps log
+                               else fst__ (det_fps t'')
   in do
   control <- takeMVar (control_var io_box)
+  log <- readIORef (demo_log_ref io_box)
+  writeIORef (demo_log_ref io_box) (Demo_log {player_vel = vel s0, player_angle = angle s0, fps = f_rate, torch_key_down = torch_key_last s0, fire_key_down = fire_key_last s0})
+  if control == 1 then putStr "\n\nDemo completed successfully." >> exitSuccess
+  else return ()
   link0 <- link_gplc0 (fst game_clock') (drop 4 det) [truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)] w_grid [] f_grid obj_grid [] s0 (s1 {sig_q = prioritise_npcs (sig_q s1) [] []}) look_up True
   link1 <- link_gplc1 s0 s1 obj_grid 0
   link1_ <- link_gplc1 s0 s1 obj_grid 1
@@ -1201,7 +1206,7 @@ update_play io_box state_ref s0 s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_
     else putMVar t_log (toNanoSecs t)
   t'' <- takeMVar t_log
   if mod (fst__ (game_clock s0)) 40 == 0 && show_fps_ s0 == True then do
-    update_play io_box state_ref (s0 {message_ = [(40, snd__ (det_fps (toNanoSecs t)))], game_clock = snd game_clock'}) s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up save_state sound_array t_last t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
+    update_play io_box state_ref (s0 {message_ = [(40, snd__ (det_fps (toNanoSecs t)))], game_clock = snd game_clock'}) s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up save_state sound_array t_last t_log (third_ (det_fps t'')) (fix_f_rate log t'')
   else if control == 2 then do
     choice <- run_menu (pause_text s1 (difficulty s1)) [] io_box (-0.75) (-0.75) 1 0 0
     if choice == 1 then update_play io_box state_ref (s0_ s0) s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
@@ -1213,16 +1218,17 @@ update_play io_box state_ref s0 s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_
     else do
       putMVar state_ref (s0 {message_ = [(-3, [])]}, w_grid, save_state)
       update_play io_box state_ref (s0_ s0) s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
-  else if control == 10 then update_play io_box state_ref (s0_ (fourth link0)) ((fifth link0) {sig_q = sig_q s1 ++ [2, 0, 0, 0]}) in_flight min_frame_t (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
+  else if control == 10 || (playback_mode s0 == True && torch_key_down log == 1) then update_play io_box state_ref (s0_ ((fourth link0) {torch_key_last = 1})) ((fifth link0) {sig_q = sig_q s1 ++ [2, 0, 0, 0]}) in_flight min_frame_t (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up save_state sound_array t'' t_log (third_ (det_fps t'')) (fix_f_rate log t'')
   else if control == 11 then do
     if view_mode s0 == 0 then update_play io_box state_ref (s0_ ((fourth link0) {view_mode = 1})) (fifth link0) in_flight min_frame_t (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
     else update_play io_box state_ref (s0_ ((fourth link0) {view_mode = 0})) (fifth link0) in_flight min_frame_t (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
   else if control == 12 then update_play io_box state_ref (s0_ ((fourth link0) {view_angle = mod_angle (view_angle s0) 5})) (fifth link0) in_flight min_frame_t (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
-  else if control == 13 then update_play io_box state_ref (s0_ (fourth link0)) ((fifth link0) {sig_q = sig_q s1 ++ [2, 0, 0, 1]}) in_flight min_frame_t (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
+  else if control == 13 || (playback_mode s0 == True && fire_key_down log == 1) then update_play io_box state_ref (s0_ ((fourth link0) {fire_key_last = 1})) ((fifth link0) {sig_q = sig_q s1 ++ [2, 0, 0, 1]}) in_flight min_frame_t (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up save_state sound_array t'' t_log (third_ (det_fps t'')) (fix_f_rate log t'')
   else if message s1 /= [] then do
     event <- proc_msg0 (message s1) s0 s1 io_box sound_array
     putMVar state_ref (fst event, w_grid, save_state)
-    update_play io_box state_ref (s0_ (fst event)) (snd event) in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
+    update_play io_box state_ref (s0_ (fst event)) (snd event) in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up save_state sound_array t'' t_log (third_ (det_fps t'')) (fix_f_rate log t'')
+  else if playback_mode s0 == True then update_play io_box state_ref (s0_ ((fourth link0) {pos_u = det !! 0, pos_v = det !! 1, pos_w = det_pos_w log, vel = player_vel log, angle = player_angle log, game_clock = snd game_clock'})) (fifth link0) in_flight min_frame_t (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up save_state sound_array t'' t_log (third_ (det_fps t'')) (fps log)
   else
     if in_flight == False then
       if (pos_w s0) - floor > 0.02 then do
@@ -1262,10 +1268,6 @@ update_play io_box state_ref s0 s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_
         update_play io_box state_ref (s0_ (s0 {pos_u = det !! 0, pos_v = det !! 1, pos_w = floor, vel = vel_0, game_clock = snd game_clock'})) link1_ False min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
       else do
         update_play io_box state_ref (s0_ (s0 {pos_u = det !! 0, pos_v = det !! 1, pos_w = floor, vel = vel_0, game_clock = snd game_clock'})) link1 False min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
-
-update_playback :: Io_box -> MVar (Play_state0, Array (Int, Int, Int) Wall_grid, Save_state) -> Play_state0 -> Play_state1 -> Bool -> Integer -> (Float, Float, Float, Float) -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> UArray (Int, Int) Float -> Save_state -> Array Int Source -> Integer -> MVar Integer -> SEQ.Seq Integer -> Float -> IO ()
-update_playback io_box state_ref s0 s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up save_state sound_array t_last t_log t_seq f_rate =
-  
 
 -- These five functions handle events triggered by a call to pass_msg within a GPLC program.  These include on screen messages, object interaction menus and sound effects.
 conv_msg :: Int -> [Int]
