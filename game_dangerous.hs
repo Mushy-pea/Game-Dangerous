@@ -35,13 +35,13 @@ main = do
   args <- getArgs
   if length args == 0 then do
     contents <- bracket (openFile "config.txt" ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nconfig file size: " ++ show (length contents)); return contents)
-    open_window ((listArray (0, 85) (splitOneOf "=\n" contents)) // [(3, "null")])
+    open_window ((listArray (0, 79) (splitOneOf "=\n" contents)) // [(3, "null")])
   else if length args == 1 then do
     contents <- bracket (openFile "config.txt" ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nconfig file size: " ++ show (length contents)); return contents)
-    open_window ((listArray (0, 85) (splitOneOf "=\n" contents)) // [(3, (args !! 0))])
+    open_window ((listArray (0, 79) (splitOneOf "=\n" contents)) // [(3, (args !! 0))])
   else do
     contents <- bracket (openFile (args !! 1) ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nconfig file size: " ++ show (length contents)); return contents)
-    open_window ((listArray (0, 85) (splitOneOf "=\n" contents)) // [(3, (args !! 0))])
+    open_window ((listArray (0, 79) (splitOneOf "=\n" contents)) // [(3, (args !! 0))])
 
 -- This function initialises the GLUT runtime system, which in turn is used to initialise a window and OpenGL context.
 open_window :: Array Int [Char] -> IO ()
@@ -66,11 +66,11 @@ open_window conf_reg =
   createWindow "Game :: Dangerous"
   actionOnWindowClose $= Exit
   displayCallback $= repaint_window
-  control_ref_ <- newIORef 0
-  keyboardCallback $= (Just (get_input control_ref_ key_set))
+  control_ref <- newIORef 0
+  keyboardCallback $= (Just (get_input control_ref key_set))
   contents <- bracket (openFile (cfg' "map_file") ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nmap file size: " ++ show (length contents)); return contents)
   screen_res <- readIORef screenRes
-  setup_game contents conf_reg screen_res control_ref_
+  setup_game contents conf_reg screen_res control_ref
 
 -- This is the callback that GLUT calls when it detects a window repaint is necessary.  This should only happen when the window is first opened, the user moves or resizes the window, or it is
 -- overlapped by another window.  For standard frame rendering, show_frame and run_menu repaint the rendered area of the window.
@@ -101,7 +101,7 @@ get_input ref key_set key pos = do
 -- This function initialises the OpenGL and OpenAL contexts.  It also decompresses the map file, manages the compilation of GLSL shaders, loading of 3D models, loading of the light map
 -- and loading of sound effects.
 setup_game :: [Char] -> Array Int [Char] -> Size -> IORef Int -> IO ()
-setup_game comp_env_map conf_reg (Size w h) control_ref_ =
+setup_game comp_env_map conf_reg (Size w h) control_ref =
   let m0 = "mod_to_world"
       m1 = "world_to_clip"
       m2 = "world_to_mod"
@@ -187,7 +187,7 @@ setup_game comp_env_map conf_reg (Size w h) control_ref_ =
   init_al_context
   contents2 <- bracket (openFile ((cfg' "sound_data_dir") ++ (last (splitOn ", " ((splitOn "\n~\n" comp_env_map) !! 8)))) ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nsound map size: " ++ show (length contents)); return contents)
   sound_array <- init_al_effect0 (splitOneOf "\n " contents2) (cfg' "sound_data_dir") (array (0, 255) [(x, Source 0) | x <- [0..255]])
-  start_game control_ref_ (listArray (0, 52) uniform) (p_bind_, p_bind_limit + 1) env_map conf_reg (-1) (read (cfg' "init_u"), read (cfg' "init_v"), read (cfg' "init_w"), read (cfg' "gravity"), read (cfg' "friction"), read (cfg' "run_power"), read (cfg' "jump_power")) def_save_state sound_array frustumScale0
+  start_game control_ref (listArray (0, 52) uniform) (p_bind_, p_bind_limit + 1) env_map conf_reg (-1) (read (cfg' "init_u"), read (cfg' "init_v"), read (cfg' "init_w"), read (cfg' "gravity"), read (cfg' "friction"), read (cfg' "run_power"), read (cfg' "jump_power")) def_save_state sound_array frustumScale0
 
 -- The model file(s) that describe all 3D and 2D models referenced in the current map are loaded here.
 load_mod_file :: [[Char]] -> [Char] -> Ptr GLuint -> IO ()
@@ -211,7 +211,7 @@ gen_prob_seq i0 i1 i2 g = listArray (i0, i1) (drop i2 (randomRs (0, 99) g))
 
 -- This function initialises the game logic thread each time a new game is started and handles user input from the main menu.
 start_game :: IORef Int -> UArray Int Int32 -> (UArray Int Word32, Int) -> [Char] -> Array Int [Char] -> Int -> (Float, Float, Float, Float, Float, Float, Float) -> Save_state -> Array Int Source -> Float -> IO ()
-start_game control_ref_ uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag_j) save_state sound_array frustumScale0 =
+start_game control_ref uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag_j) save_state sound_array frustumScale0 =
   let u_limit = (read ((splitOn "~" c) !! 8))
       v_limit = (read ((splitOn "~" c) !! 9))
       w_limit = (read ((splitOn "~" c) !! 10))
@@ -222,12 +222,6 @@ start_game control_ref_ uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, ma
       camera_to_clip = fromList 4 4 [frustumScale0, 0, 0, 0, 0, read (cfg' "frustumScale1"), 0, 0, 0, 0, ((zFar + zNear) / (zNear - zFar)), ((2 * zFar * zNear) / (zNear - zFar)), 0, 0, -1, 0]
       cfg' = cfg conf_reg 0
   in do
-  state_ref <- newEmptyMVar
-  t_log <- newEmptyMVar
-  control_var_ <- newEmptyMVar
-  stop_flag <- newIORef False
-  demo_ref <- newIORef def_demo_log
-  r_gen <- getStdGen
   if mode == -1 then do
     if cfg' "splash_image" /= "null" then do
       glDisable GL_DEPTH_TEST
@@ -243,115 +237,46 @@ start_game control_ref_ uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, ma
       free p_tt_matrix
       threadDelay 5000000
       glEnable GL_DEPTH_TEST
-      start_game control_ref_ uniform p_bind c conf_reg 2 (u, v, w, g, f, mag_r, mag_j) save_state sound_array frustumScale0
-    else start_game control_ref_ uniform p_bind c conf_reg 0 (u, v, w, g, f, mag_r, mag_j) save_state sound_array frustumScale0
+      start_game control_ref uniform p_bind c conf_reg 2 (u, v, w, g, f, mag_r, mag_j) save_state sound_array frustumScale0
+    else start_game control_ref uniform p_bind c conf_reg 0 (u, v, w, g, f, mag_r, mag_j) save_state sound_array frustumScale0
   else if mode == 0 || mode == 1 then do
     p_mt_matrix <- mallocBytes (glfloat * 128)
     p_f_table0 <- callocBytes (int_ * 120000)
     p_f_table1 <- callocBytes (int_ * 37500)
+    state_ref <- newEmptyMVar
+    t_log <- newEmptyMVar
+    r_gen <- getStdGen
     if mode == 0 then do
-      forkIO (det_input_function (cfg' "input_log_mode") control_ref_ control_var_ stop_flag demo_ref (cfg' "input_log_file"))
-      tid <- forkIO (catch (update_play (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_var = control_var_, control_ref = control_ref_, demo_log_ref = demo_ref}) state_ref (ps0_init {pos_u = u, pos_v = v, pos_w = w, show_fps_ = select_mode (cfg' "show_fps"), prob_seq = gen_prob_seq 0 239 (read (cfg' "prob_c")) r_gen, playback_mode = det_demo_mode (cfg' "input_log_mode")}) (ps1_init {verbose_mode = select_mode (cfg' "verbose_mode")}) False (read (cfg' "min_frame_t")) (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up_ save_state sound_array 0 t_log (SEQ.empty) 60) (\e -> handle_game_logic_fail e))
-      result <- catch (show_frame p_bind uniform p_mt_matrix (p_f_table0, p_f_table1) 0 0 0 0 0 state_ref w_grid f_grid obj_grid look_up_ camera_to_clip (array (0, 5) [(i, (0, [])) | i <- [0..5]])) (\e -> handle_rendering_thread_fail e)
+      tid <- forkIO (update_play (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref}) state_ref (ps0_init {pos_u = u, pos_v = v, pos_w = w, show_fps_ = select_mode (cfg' "show_fps"), prob_seq = gen_prob_seq 0 239 (read (cfg' "prob_c")) r_gen}) (ps1_init {verbose_mode = select_mode (cfg' "verbose_mode")}) False (read (cfg' "min_frame_t")) (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up_ save_state sound_array 0 t_log (SEQ.empty) 60)
+      result <- show_frame p_bind uniform p_mt_matrix (p_f_table0, p_f_table1) 0 0 0 0 0 state_ref w_grid f_grid obj_grid look_up_ camera_to_clip (array (0, 5) [(i, (0, [])) | i <- [0..5]])
       free p_mt_matrix
       free p_f_table0
       free p_f_table1
       killThread tid
-      writeIORef stop_flag True
-      start_game control_ref_ uniform p_bind c conf_reg ((head (fst result)) + 1) (u, v, w, g, f, mag_r, mag_j) (snd result) sound_array frustumScale0
+      start_game control_ref uniform p_bind c conf_reg ((head (fst result)) + 1) (u, v, w, g, f, mag_r, mag_j) (snd result) sound_array frustumScale0
     else do
-      forkIO (det_input_function (cfg' "input_log_mode") control_ref_ control_var_ stop_flag demo_ref (cfg' "input_log_file"))
-      tid <- forkIO (catch (update_play (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_var = control_var_, control_ref = control_ref_, demo_log_ref = demo_ref}) state_ref (s0_ save_state) (s1_ save_state) False (read (cfg' "min_frame_t")) (g, f, mag_r, mag_j) (w_grid_ save_state) (f_grid_ save_state) (obj_grid_ save_state) look_up_ save_state sound_array 0 t_log (SEQ.empty) 60) (\e -> handle_game_logic_fail e))
-      result <- catch (show_frame p_bind uniform p_mt_matrix (p_f_table0, p_f_table1) 0 0 0 0 0 state_ref w_grid f_grid obj_grid look_up_ camera_to_clip (array (0, 5) [(i, (0, [])) | i <- [0..5]])) (\e -> handle_rendering_thread_fail e)
+      tid <- forkIO (update_play (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref}) state_ref (s0_ save_state) (s1_ save_state) False (read (cfg' "min_frame_t")) (g, f, mag_r, mag_j) (w_grid_ save_state) (f_grid_ save_state) (obj_grid_ save_state) look_up_ save_state sound_array 0 t_log (SEQ.empty) 60)
+      result <- show_frame p_bind uniform p_mt_matrix (p_f_table0, p_f_table1) 0 0 0 0 0 state_ref w_grid f_grid obj_grid look_up_ camera_to_clip (array (0, 5) [(i, (0, [])) | i <- [0..5]])
       free p_mt_matrix
       free p_f_table0
       free p_f_table1
       killThread tid
-      writeIORef stop_flag True
-      start_game control_ref_ uniform p_bind c conf_reg ((head (fst result)) + 1) (u, v, w, g, f, mag_r, mag_j) (snd result) sound_array frustumScale0
+      start_game control_ref uniform p_bind c conf_reg ((head (fst result)) + 1) (u, v, w, g, f, mag_r, mag_j) (snd result) sound_array frustumScale0
   else if mode == 2 then do
-    choice <- run_menu main_menu_text [] (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_var = control_var_, control_ref = control_ref_, demo_log_ref = demo_ref}) (-0.75) (-0.75) 1 0 0
-    if choice == 1 then start_game control_ref_ uniform p_bind c conf_reg 0 (u, v, w, g, f, mag_r, mag_j) save_state sound_array frustumScale0
+    choice <- run_menu main_menu_text [] (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref}) (-0.75) (-0.75) 1 0 0
+    if choice == 1 then start_game control_ref uniform p_bind c conf_reg 0 (u, v, w, g, f, mag_r, mag_j) save_state sound_array frustumScale0
     else if choice == 2 then do
-      if is_set save_state == True then start_game control_ref_ uniform p_bind c conf_reg 1 (u, v, w, g, f, mag_r, mag_j) save_state sound_array frustumScale0
-      else start_game control_ref_ uniform p_bind c conf_reg 0 (u, v, w, g, f, mag_r, mag_j) save_state sound_array frustumScale0
+      if is_set save_state == True then start_game control_ref uniform p_bind c conf_reg 1 (u, v, w, g, f, mag_r, mag_j) save_state sound_array frustumScale0
+      else start_game control_ref uniform p_bind c conf_reg 0 (u, v, w, g, f, mag_r, mag_j) save_state sound_array frustumScale0
     else exitSuccess
   else if mode == 3 then do
-    if is_set save_state == True then start_game control_ref_ uniform p_bind c conf_reg 1 (u, v, w, g, f, mag_r, mag_j) save_state sound_array frustumScale0
-    else start_game control_ref_ uniform p_bind c conf_reg 0 (u, v, w, g, f, mag_r, mag_j) save_state sound_array frustumScale0
+    if is_set save_state == True then start_game control_ref uniform p_bind c conf_reg 1 (u, v, w, g, f, mag_r, mag_j) save_state sound_array frustumScale0
+    else start_game control_ref uniform p_bind c conf_reg 0 (u, v, w, g, f, mag_r, mag_j) save_state sound_array frustumScale0
   else if mode == 4 then exitSuccess
   else if mode == 6 then do
     putStr "\nYou have completed the demo.  Nice one.  Check the project website later for details of further releases."
     exitSuccess
   else return ()
-
--- These functions are part of the engine's demo system, which allows user inputs to be recorded and played back.
-show_demo_logs :: SEQ.Seq Demo_log -> Int -> Int -> [Char]
-show_demo_logs demo_seq i len =
-  let log = SEQ.index demo_seq i
-  in
-  if i == len then []
-  else show ((player_vel log) !! 0) ++ ", " ++ show ((player_vel log) !! 1) ++ ", " ++ show ((player_vel log) !! 2) ++ ", " ++ show (player_angle log) ++ ", " ++ show (fps log) ++ ", " ++ show (torch_key_down log) ++ ", " ++ show (fire_key_down log) ++ ", " ++ show_demo_logs demo_seq (i + 1) len
-
-read_demo_logs :: [[Char]] -> SEQ.Seq Demo_log
-read_demo_logs [] = SEQ.Empty
-read_demo_logs (x0:x1:x2:x3:x4:x5:x6:xs) = Demo_log {player_vel = [read x0, read x1, read x2], player_angle = read x3, fps = read x4, torch_key_down = read x5, fire_key_down = read x6} SEQ.<| read_demo_logs xs
-read_demo_logs _ = SEQ.Empty
-
-det_input_function :: [Char] -> IORef Int -> MVar Int -> IORef Bool -> IORef Demo_log -> [Char] -> IO ()
-det_input_function mode control_ref control_var stop_flag demo_ref filepath =
-  if mode == "record" then record_input True control_ref control_var stop_flag demo_ref filepath SEQ.Empty 1
-  else if mode == "none" then record_input False control_ref control_var stop_flag demo_ref filepath SEQ.Empty 0
-  else if mode == "playback" then playback_input SEQ.Empty filepath control_var demo_ref (-1) 0
-  else error "Invalid input_log_mode field in configuration file."
-
---bracket (openFile filepath AppendMode) (hClose) (\h -> hPutStr h (show_demo_logs demo_seq 0 (SEQ.length demo_seq)))
-
-record_input :: Bool -> IORef Int -> MVar Int -> IORef Bool -> IORef Demo_log -> [Char] -> SEQ.Seq Demo_log -> Int -> IO ()
-record_input record_on control_ref control_var stop_flag demo_ref filepath demo_seq c = do
-  stop <- readIORef stop_flag
-  if stop == True then return ()
-  else do
-    mainLoopEvent
-    control <- readIORef control_ref
-    writeIORef control_ref 0
-    putMVar control_var control
-    next_log <- readIORef demo_ref
-    if record_on == True then do
-      if mod c 7200 == 0 then do
-        h <- openFile filepath AppendMode
-        hPutStr h (show_demo_logs demo_seq 0 (SEQ.length demo_seq))
-        hClose h
-        record_input record_on control_ref control_var stop_flag demo_ref filepath (SEQ.singleton next_log) (c + 1)
-      else record_input record_on control_ref control_var stop_flag demo_ref filepath (demo_seq SEQ.|> next_log) (c + 1)
-    else record_input record_on control_ref control_var stop_flag demo_ref filepath demo_seq c
-
-playback_input :: SEQ.Seq Demo_log -> [Char] -> MVar Int -> IORef Demo_log -> Int -> Int -> IO ()
-playback_input demo_seq filepath control_var demo_ref i len =
-  let next_log = if i < len - 1 then SEQ.index demo_seq (i + 1)
-                 else SEQ.index demo_seq i
-  in
-  if i < 0 then do
-    contents <- bracket (openFile filepath ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\ninput log file size: " ++ show (length contents)); return contents)
-    playback_input (read_demo_logs (splitOn ", " (take ((length contents) - 2) contents))) filepath control_var demo_ref 0 (SEQ.length (read_demo_logs (splitOn ", " (take ((length contents) - 2) contents))))
-  else if i == len then putMVar control_var 1
-  else do
-    writeIORef demo_ref ((SEQ.index demo_seq i) {torch_key_down = torch_key_down next_log, fire_key_down = fire_key_down next_log})
-    putMVar control_var 0
-    playback_input demo_seq filepath control_var demo_ref (i + 1) len
-
-det_demo_mode "none" = False
-det_demo_mode "record" = False
-det_demo_mode "playback" = True
-
--- Handle exceptions thrown in the game logic and rendering threads so that a managed shut down is possible.  This allows the re - playable game state progression to be saved for debugging purposes (see demo system section above).
-handle_game_logic_fail :: SomeException -> IO ()
-handle_game_logic_fail e = putStr ("\n\nFailure in game logic thread.  Exception thrown: " ++ show e)
-
-handle_rendering_thread_fail :: SomeException -> IO ([Int], Save_state)
-handle_rendering_thread_fail e = do
-  putStr ("\n\nFailure in rendering thread.  Exception thrown: " ++ show e)
-  return ([], def_save_state)
 
 -- Find the uniform locations of GLSL uniform variables.
 find_gl_uniform :: [[Char]] -> [Int] -> Ptr GLuint -> [Int32] -> IO [Int32]
