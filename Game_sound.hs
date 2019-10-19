@@ -10,6 +10,8 @@
 
 module Game_sound where
 
+import Prelude hiding ((!!))
+import Index_wrapper
 import System.IO
 import Foreign
 import Foreign.C.Types
@@ -106,8 +108,8 @@ load_snd_buf1 (x:xs) (y:ys) = do
 load_snd_buf2 :: WAVESamples -> Ptr a -> Int -> IO ()
 load_snd_buf2 [] p_buf i = return ()
 load_snd_buf2 (x:xs) p_buf i = do
-  poke (plusPtr p_buf i) (fromIntegral (div (x !! 0) 65536) :: Int16)
-  poke (plusPtr p_buf (i + 2)) (fromIntegral (div (x !! 1) 65536) :: Int16)
+  poke (plusPtr p_buf i) (fromIntegral (div ((x, 608) !! 0) 65536) :: Int16)
+  poke (plusPtr p_buf (i + 2)) (fromIntegral (div ((x, 609) !! 1) 65536) :: Int16)
   load_snd_buf2 xs p_buf (i + 4)
 
 

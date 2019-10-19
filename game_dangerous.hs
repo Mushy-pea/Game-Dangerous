@@ -3,6 +3,8 @@
 
 module Main where
 
+import Prelude hiding ((!!))
+import Index_wrapper
 import System.IO
 import Foreign
 import Foreign.C.String
@@ -38,10 +40,10 @@ main = do
     open_window ((listArray (0, 79) (splitOneOf "=\n" contents)) // [(3, "null")])
   else if length args == 1 then do
     contents <- bracket (openFile "config.txt" ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nconfig file size: " ++ show (length contents)); return contents)
-    open_window ((listArray (0, 79) (splitOneOf "=\n" contents)) // [(3, (args !! 0))])
+    open_window ((listArray (0, 79) (splitOneOf "=\n" contents)) // [(3, ((args, 0) !! 0))])
   else do
-    contents <- bracket (openFile (args !! 1) ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nconfig file size: " ++ show (length contents)); return contents)
-    open_window ((listArray (0, 79) (splitOneOf "=\n" contents)) // [(3, (args !! 0))])
+    contents <- bracket (openFile ((args, 1) !! 1) ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nconfig file size: " ++ show (length contents)); return contents)
+    open_window ((listArray (0, 79) (splitOneOf "=\n" contents)) // [(3, ((args, 2) !! 0))])
 
 -- This function initialises the GLUT runtime system, which in turn is used to initialise a window and OpenGL context.
 open_window :: Array Int [Char] -> IO ()
@@ -111,10 +113,10 @@ setup_game comp_env_map conf_reg (Size w h) control_ref =
       lm3 = "lmap_int1"
       lm4 = "lmap_t0"
       lm5 = "lmap_t1"
-      proc_map' = proc_map (splitOn "\n~\n" comp_env_map) (read ((splitOn "\n~\n" comp_env_map) !! 12)) (read ((splitOn "\n~\n" comp_env_map) !! 13)) (read ((splitOn "\n~\n" comp_env_map) !! 14))
-      env_map = ".~.~.~.~" ++ fst (proc_map') ++ "~" ++ snd (proc_map') ++ ((splitOn "\n~\n" comp_env_map) !! 10) ++ "~" ++ ((splitOn "\n~\n" comp_env_map) !! 11) ++ "~" ++ ((splitOn "\n~\n" comp_env_map) !! 12) ++ "~" ++ ((splitOn "\n~\n" comp_env_map) !! 13) ++ "~" ++ ((splitOn "\n~\n" comp_env_map) !! 14)
+      proc_map' = proc_map (splitOn "\n~\n" comp_env_map) (read (((splitOn "\n~\n" comp_env_map), 3) !! 12)) (read (((splitOn "\n~\n" comp_env_map), 4) !! 13)) (read (((splitOn "\n~\n" comp_env_map), 5) !! 14))
+      env_map = ".~.~.~.~" ++ fst (proc_map') ++ "~" ++ snd (proc_map') ++ (((splitOn "\n~\n" comp_env_map), 6) !! 10) ++ "~" ++ (((splitOn "\n~\n" comp_env_map), 7) !! 11) ++ "~" ++ (((splitOn "\n~\n" comp_env_map), 8) !! 12) ++ "~" ++ (((splitOn "\n~\n" comp_env_map), 9) !! 13) ++ "~" ++ (((splitOn "\n~\n" comp_env_map), 10) !! 14)
       cfg' = cfg conf_reg 0
-      p_bind_limit = (read ((splitOn "\n~\n" comp_env_map) !! 7)) - 1
+      p_bind_limit = (read (((splitOn "\n~\n" comp_env_map), 11) !! 7)) - 1
       frustumScale0 = (read (cfg' "frustumScale1")) / (fromIntegral w / fromIntegral h)
   in do
   glEnable GL_DEPTH_TEST
@@ -128,48 +130,48 @@ setup_game comp_env_map conf_reg (Size w h) control_ref =
   gl_program0 <- peekElemOff p_gl_program 0; gl_program1 <- peekElemOff p_gl_program 1; gl_program2 <- peekElemOff p_gl_program 2; gl_program3 <- peekElemOff p_gl_program 3; gl_program4 <- peekElemOff p_gl_program 4; gl_program5 <- peekElemOff p_gl_program 5; gl_program6 <- peekElemOff p_gl_program 6
   glClearColor 0 0 0 0
   glClearDepth 1
-  contents1 <- bracket (openFile ((cfg' "model_data_dir") ++ ((splitOn "\n~\n" comp_env_map) !! 9)) ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nlight map file size: " ++ show (length contents)); return contents)
+  contents1 <- bracket (openFile ((cfg' "model_data_dir") ++ (((splitOn "\n~\n" comp_env_map), 12) !! 9)) ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nlight map file size: " ++ show (length contents)); return contents)
   p_lmap_pos0 <- callocBytes (glfloat * 300)
   p_lmap_pos1 <- callocBytes (glfloat * 300)
   p_lmap_int0 <- callocBytes (glfloat * 300)
   p_lmap_int1 <- callocBytes (glfloat * 300)
   p_lmap_t0 <- callocBytes (glfloat * 240)
   p_lmap_t1 <- callocBytes (glfloat * 240)
-  load_array (take 300 (proc_floats (splitOn ", " ((splitOn "\n~\n" contents1) !! 0)))) p_lmap_pos0 0
-  load_array (take 300 (proc_floats (splitOn ", " ((splitOn "\n~\n" contents1) !! 1)))) p_lmap_pos1 0
-  load_array (take 300 (proc_floats (splitOn ", " ((splitOn "\n~\n" contents1) !! 2)))) p_lmap_int0 0
-  load_array (take 300 (proc_floats (splitOn ", " ((splitOn "\n~\n" contents1) !! 3)))) p_lmap_int1 0
-  load_array (take 240 (proc_floats (splitOn ", " ((splitOn "\n~\n" contents1) !! 4)))) p_lmap_t0 0
-  load_array (take 240 (proc_floats (splitOn ", " ((splitOn "\n~\n" contents1) !! 5)))) p_lmap_t1 0
+  load_array (take 300 (proc_floats (splitOn ", " (((splitOn "\n~\n" contents1), 13) !! 0)))) p_lmap_pos0 0
+  load_array (take 300 (proc_floats (splitOn ", " (((splitOn "\n~\n" contents1), 14) !! 1)))) p_lmap_pos1 0
+  load_array (take 300 (proc_floats (splitOn ", " (((splitOn "\n~\n" contents1), 15) !! 2)))) p_lmap_int0 0
+  load_array (take 300 (proc_floats (splitOn ", " (((splitOn "\n~\n" contents1), 16) !! 3)))) p_lmap_int1 0
+  load_array (take 240 (proc_floats (splitOn ", " (((splitOn "\n~\n" contents1), 17) !! 4)))) p_lmap_t0 0
+  load_array (take 240 (proc_floats (splitOn ", " (((splitOn "\n~\n" contents1), 18) !! 5)))) p_lmap_t1 0
   glUseProgram gl_program0
-  glUniform3fv (fromIntegral (uniform !! 3)) 100 (castPtr p_lmap_pos0)
-  glUniform3fv (fromIntegral (uniform !! 4)) 100 (castPtr p_lmap_pos1)
-  glUniform3fv (fromIntegral (uniform !! 5)) 100 (castPtr p_lmap_int0)
-  glUniform3fv (fromIntegral (uniform !! 6)) 100 (castPtr p_lmap_int1)
-  glUniform1fv (fromIntegral (uniform !! 7)) 240 (castPtr p_lmap_t0)
-  glUniform1fv (fromIntegral (uniform !! 8)) 240 (castPtr p_lmap_t1)
+  glUniform3fv (fromIntegral ((uniform, 19) !! 3)) 100 (castPtr p_lmap_pos0)
+  glUniform3fv (fromIntegral ((uniform, 20) !! 4)) 100 (castPtr p_lmap_pos1)
+  glUniform3fv (fromIntegral ((uniform, 21) !! 5)) 100 (castPtr p_lmap_int0)
+  glUniform3fv (fromIntegral ((uniform, 22) !! 6)) 100 (castPtr p_lmap_int1)
+  glUniform1fv (fromIntegral ((uniform, 23) !! 7)) 240 (castPtr p_lmap_t0)
+  glUniform1fv (fromIntegral ((uniform, 24) !! 8)) 240 (castPtr p_lmap_t1)
   glUseProgram gl_program1
-  glUniform1i (fromIntegral (uniform !! 22)) 0
-  glUniform3fv (fromIntegral (uniform !! 14)) 100 (castPtr p_lmap_pos0)
-  glUniform3fv (fromIntegral (uniform !! 15)) 100 (castPtr p_lmap_pos1)
-  glUniform3fv (fromIntegral (uniform !! 16)) 100 (castPtr p_lmap_int0)
-  glUniform3fv (fromIntegral (uniform !! 17)) 100 (castPtr p_lmap_int1)
-  glUniform1fv (fromIntegral (uniform !! 18)) 240 (castPtr p_lmap_t0)
-  glUniform1fv (fromIntegral (uniform !! 19)) 240 (castPtr p_lmap_t1)
+  glUniform1i (fromIntegral ((uniform, 25) !! 22)) 0
+  glUniform3fv (fromIntegral ((uniform, 26) !! 14)) 100 (castPtr p_lmap_pos0)
+  glUniform3fv (fromIntegral ((uniform, 27) !! 15)) 100 (castPtr p_lmap_pos1)
+  glUniform3fv (fromIntegral ((uniform, 28) !! 16)) 100 (castPtr p_lmap_int0)
+  glUniform3fv (fromIntegral ((uniform, 29) !! 17)) 100 (castPtr p_lmap_int1)
+  glUniform1fv (fromIntegral ((uniform, 30) !! 18)) 240 (castPtr p_lmap_t0)
+  glUniform1fv (fromIntegral ((uniform, 31) !! 19)) 240 (castPtr p_lmap_t1)
   glUseProgram gl_program3
-  glUniform1i (fromIntegral (uniform !! 35)) 0
+  glUniform1i (fromIntegral ((uniform, 32) !! 35)) 0
   glUseProgram gl_program4
-  glUniform1i (fromIntegral (uniform !! 37)) 0
+  glUniform1i (fromIntegral ((uniform, 33) !! 37)) 0
   glUseProgram gl_program5
-  glUniform1i (fromIntegral (uniform !! 49)) 0
-  glUniform3fv (fromIntegral (uniform !! 43)) 100 (castPtr p_lmap_pos0)
-  glUniform3fv (fromIntegral (uniform !! 44)) 100 (castPtr p_lmap_pos1)
-  glUniform3fv (fromIntegral (uniform !! 45)) 100 (castPtr p_lmap_int0)
-  glUniform3fv (fromIntegral (uniform !! 46)) 100 (castPtr p_lmap_int1)
-  glUniform1fv (fromIntegral (uniform !! 47)) 240 (castPtr p_lmap_t0)
-  glUniform1fv (fromIntegral (uniform !! 48)) 240 (castPtr p_lmap_t1)
+  glUniform1i (fromIntegral ((uniform, 34) !! 49)) 0
+  glUniform3fv (fromIntegral ((uniform, 35) !! 43)) 100 (castPtr p_lmap_pos0)
+  glUniform3fv (fromIntegral ((uniform, 36) !! 44)) 100 (castPtr p_lmap_pos1)
+  glUniform3fv (fromIntegral ((uniform, 37) !! 45)) 100 (castPtr p_lmap_int0)
+  glUniform3fv (fromIntegral ((uniform, 38) !! 46)) 100 (castPtr p_lmap_int1)
+  glUniform1fv (fromIntegral ((uniform, 39) !! 47)) 240 (castPtr p_lmap_t0)
+  glUniform1fv (fromIntegral ((uniform, 40) !! 48)) 240 (castPtr p_lmap_t1)
   glUseProgram gl_program6
-  glUniform1i (fromIntegral (uniform !! 53)) 0
+  glUniform1i (fromIntegral ((uniform, 41) !! 53)) 0
   putStr "\nCompiling OpenGL shader programs..."
   validate_prog gl_program0 0
   validate_prog gl_program1 1
@@ -180,12 +182,12 @@ setup_game comp_env_map conf_reg (Size w h) control_ref =
   validate_prog gl_program6 6
   p_bind <- buffer_to_array (castPtr p_gl_program) (array (0, p_bind_limit) [(x, 0) | x <- [0..p_bind_limit]]) 0 (p_bind_limit - 6) 6
   putStr "\nLoading 3D models..."
-  mod_bind <- callocBytes ((read ((splitOn "\n~\n" comp_env_map) !! 7)) * gluint)
-  load_mod_file (init (splitOn ", " ((splitOn "\n~\n" comp_env_map) !! 8))) (cfg' "model_data_dir") mod_bind
+  mod_bind <- callocBytes ((read (((splitOn "\n~\n" comp_env_map), 42) !! 7)) * gluint)
+  load_mod_file (init (splitOn ", " (((splitOn "\n~\n" comp_env_map), 43) !! 8))) (cfg' "model_data_dir") mod_bind
   free p_gl_program; free p_lmap_pos0; free p_lmap_pos1; free p_lmap_int0; free p_lmap_int1; free p_lmap_t0; free p_lmap_t1
   p_bind_ <- buffer_to_array (castPtr mod_bind) p_bind 0 0 (p_bind_limit - 16)
   init_al_context
-  contents2 <- bracket (openFile ((cfg' "sound_data_dir") ++ (last (splitOn ", " ((splitOn "\n~\n" comp_env_map) !! 8)))) ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nsound map size: " ++ show (length contents)); return contents)
+  contents2 <- bracket (openFile ((cfg' "sound_data_dir") ++ (last (splitOn ", " (((splitOn "\n~\n" comp_env_map), 44) !! 8)))) ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nsound map size: " ++ show (length contents)); return contents)
   sound_array <- init_al_effect0 (splitOneOf "\n " contents2) (cfg' "sound_data_dir") (array (0, 255) [(x, Source 0) | x <- [0..255]])
   start_game control_ref (listArray (0, 52) uniform) (p_bind_, p_bind_limit + 1) env_map conf_reg (-1) (read (cfg' "init_u"), read (cfg' "init_v"), read (cfg' "init_w"), read (cfg' "gravity"), read (cfg' "friction"), read (cfg' "run_power"), read (cfg' "jump_power")) def_save_state sound_array frustumScale0
 
@@ -195,10 +197,10 @@ load_mod_file [] path p_bind = return ()
 load_mod_file (x:xs) path p_bind = do
   h <- openFile (path ++ x) ReadMode
   mod_data <- hGetContents h
-  if ((splitOn "~" mod_data) !! 0) == [] then setup_object (load_object0 (splitOn "&" ((splitOn "~" mod_data) !! 1))) (proc_marker (proc_ints (splitOn ", " ((splitOn "~" mod_data) !! 2)))) (proc_floats (splitOn ", " ((splitOn "~" mod_data) !! 3))) (proc_elements (splitOn ", " ((splitOn "~" mod_data) !! 4))) [] p_bind
+  if (((splitOn "~" mod_data), 45) !! 0) == [] then setup_object (load_object0 (splitOn "&" (((splitOn "~" mod_data), 46) !! 1))) (proc_marker (proc_ints (splitOn ", " (((splitOn "~" mod_data), 47) !! 2)))) (proc_floats (splitOn ", " (((splitOn "~" mod_data), 48) !! 3))) (proc_elements (splitOn ", " (((splitOn "~" mod_data), 49) !! 4))) [] p_bind
   else do
-    bs_tex <- load_bitmap0 (splitOn ", " ((splitOn "~" mod_data) !! 0)) (load_object0 (splitOn "&" ((splitOn "~" mod_data) !! 1))) path [] 1
-    setup_object (load_object0 (splitOn "&" ((splitOn "~" mod_data) !! 1))) (proc_marker (proc_ints (splitOn ", " ((splitOn "~" mod_data) !! 2)))) (proc_floats (splitOn ", " ((splitOn "~" mod_data) !! 3))) (proc_elements (splitOn ", " ((splitOn "~" mod_data) !! 4))) bs_tex p_bind
+    bs_tex <- load_bitmap0 (splitOn ", " (((splitOn "~" mod_data), 50) !! 0)) (load_object0 (splitOn "&" (((splitOn "~" mod_data), 51) !! 1))) path [] 1
+    setup_object (load_object0 (splitOn "&" (((splitOn "~" mod_data), 52) !! 1))) (proc_marker (proc_ints (splitOn ", " (((splitOn "~" mod_data), 53) !! 2)))) (proc_floats (splitOn ", " (((splitOn "~" mod_data), 54) !! 3))) (proc_elements (splitOn ", " (((splitOn "~" mod_data), 55) !! 4))) bs_tex p_bind
   hClose h
   load_mod_file xs path p_bind
 
@@ -212,12 +214,12 @@ gen_prob_seq i0 i1 i2 g = listArray (i0, i1) (drop i2 (randomRs (0, 99) g))
 -- This function initialises the game logic thread each time a new game is started and handles user input from the main menu.
 start_game :: IORef Int -> UArray Int Int32 -> (UArray Int Word32, Int) -> [Char] -> Array Int [Char] -> Int -> (Float, Float, Float, Float, Float, Float, Float) -> Save_state -> Array Int Source -> Float -> IO ()
 start_game control_ref uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag_j) save_state sound_array frustumScale0 =
-  let u_limit = (read ((splitOn "~" c) !! 8))
-      v_limit = (read ((splitOn "~" c) !! 9))
-      w_limit = (read ((splitOn "~" c) !! 10))
-      w_grid = check_map_layer (-3) 0 0 u_limit v_limit (make_array0 ((build_table0 (elems (build_table1 (splitOn ", " ((splitOn "~" c) !! 7)) (empty_w_grid u_limit v_limit w_limit) 7500)) u_limit v_limit w_limit) ++ (sort_grid0 (splitOn "&" ((splitOn "~" c) !! 4)))) u_limit v_limit w_limit) w_grid_flag
-      f_grid = check_map_layer 0 0 0 ((div (u_limit + 1) 2) - 1) ((div (v_limit + 1) 2) - 1) (make_array1 (load_floor0 (splitOn "&" ((splitOn "~" c) !! 5))) ((div (u_limit + 1) 2) - 1) ((div (v_limit + 1) 2) - 1) w_limit) f_grid_flag
-      obj_grid = check_map_layer 0 0 0 u_limit v_limit (empty_obj_grid u_limit v_limit w_limit // load_obj_grid (splitOn ", " ((splitOn "~" c) !! 6))) obj_grid_flag
+  let u_limit = (read (((splitOn "~" c), 56) !! 8))
+      v_limit = (read (((splitOn "~" c), 57) !! 9))
+      w_limit = (read (((splitOn "~" c), 58) !! 10))
+      w_grid = check_map_layer (-3) 0 0 u_limit v_limit (make_array0 ((build_table0 (elems (build_table1 (splitOn ", " (((splitOn "~" c), 59) !! 7)) (empty_w_grid u_limit v_limit w_limit) 7500)) u_limit v_limit w_limit) ++ (sort_grid0 (splitOn "&" (((splitOn "~" c), 60) !! 4)))) u_limit v_limit w_limit) w_grid_flag
+      f_grid = check_map_layer 0 0 0 ((div (u_limit + 1) 2) - 1) ((div (v_limit + 1) 2) - 1) (make_array1 (load_floor0 (splitOn "&" (((splitOn "~" c), 61) !! 5))) ((div (u_limit + 1) 2) - 1) ((div (v_limit + 1) 2) - 1) w_limit) f_grid_flag
+      obj_grid = check_map_layer 0 0 0 u_limit v_limit (empty_obj_grid u_limit v_limit w_limit // load_obj_grid (splitOn ", " (((splitOn "~" c), 62) !! 6))) obj_grid_flag
       look_up_ = look_up [make_table 0 0, make_table 1 0, make_table 2 0, make_table 3 0]
       camera_to_clip = fromList 4 4 [frustumScale0, 0, 0, 0, 0, read (cfg' "frustumScale1"), 0, 0, 0, 0, ((zFar + zNear) / (zNear - zFar)), ((2 * zFar * zNear) / (zNear - zFar)), 0, 0, -1, 0]
       cfg' = cfg conf_reg 0
@@ -391,19 +393,19 @@ setup_object (x:xs) (y:ys) vertex element bs_tex p_bind = do
   vao <- peekElemOff p_bind (ident x)
   p0 <- mallocBytes gluint
   p1 <- mallocBytes gluint
-  p2 <- mallocBytes (glfloat * y !! 1)
-  p3 <- mallocBytes (glushort * y !! 3)
+  p2 <- mallocBytes (glfloat * (y, 63) !! 1)
+  p3 <- mallocBytes (glushort * (y, 64) !! 3)
   glGenBuffers 1 p0
   glGenBuffers 1 p1
   a_buf <- peek p0
   e_buf <- peek p1
-  load_array (take (y !! 1) (drop (y !! 0) vertex)) p2 0
-  load_array (take (y !! 3) (drop (y !! 2) element)) p3 0
+  load_array (take ((y, 65) !! 1) (drop ((y, 66) !! 0) vertex)) p2 0
+  load_array (take ((y, 67) !! 3) (drop ((y, 68) !! 2) element)) p3 0
   glBindVertexArray vao
   glBindBuffer GL_ARRAY_BUFFER a_buf
-  glBufferData GL_ARRAY_BUFFER (unsafeCoerce (plusPtr zero_ptr (glfloat * y !! 1)) :: GLsizeiptr) p2 GL_STREAM_DRAW
+  glBufferData GL_ARRAY_BUFFER (unsafeCoerce (plusPtr zero_ptr (glfloat * (y, 69) !! 1)) :: GLsizeiptr) p2 GL_STREAM_DRAW
   glBindBuffer GL_ELEMENT_ARRAY_BUFFER e_buf
-  glBufferData GL_ELEMENT_ARRAY_BUFFER (unsafeCoerce (plusPtr zero_ptr (glushort * y !! 3)) :: GLsizeiptr) p3 GL_STREAM_DRAW
+  glBufferData GL_ELEMENT_ARRAY_BUFFER (unsafeCoerce (plusPtr zero_ptr (glushort * (y, 70) !! 3)) :: GLsizeiptr) p3 GL_STREAM_DRAW
   free p0; free p1; free p2; free p3
   glVertexAttribPointer 0 4 GL_FLOAT 0 0 zero_ptr
   if num_tex x > 0 then do
