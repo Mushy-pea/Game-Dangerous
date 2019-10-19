@@ -215,14 +215,12 @@ mod_angle' a b = b
 -- for fine grain frame rate dependent changes to the player angle to be made.
 mod_angle_ :: Float -> Float -> Bool -> Float
 mod_angle_ a f_rate clockwise =
-  let angle_step = 6 / (f_rate / 40)
-  in
   if clockwise == True then
-    if a - angle_step < 0 then 200 * pi + (a - angle_step)
-    else a - angle_step
+    if a - 5 < 0 then 200 * pi + (a - 5)
+    else a - 5
   else
-    if a + angle_step > 200 * pi then angle_step - (200 * pi - a)
-    else a + angle_step
+    if a + 5 > 200 * pi then 5 - (200 * pi - a)
+    else a + 5
 
 -- These functions implement a ray tracing algorhythm, which is part of the visible surface determination (VSD) system and is used for line of sight checks by the non - player character logic.
 -- The Ray_test class exists so that the ray tracer can conveniently provide differing functionality when called from the VSD system or game logic.

@@ -1101,12 +1101,12 @@ detect_coll w_block (u, v) (step_u, step_v) obj_grid w_grid =
   else if u' < u1_bound grid_i && grid_o3 == 1 then [u', v', 0, 0, 3, 1]
   else [u', v', 0, 0, 0, 0]
 
-thrust :: Int -> Int -> Float -> Float -> UArray (Int, Int) Float -> [Float]
-thrust dir a force f_rate look_up =
-  if dir == 3 then transform [force / f_rate, 0, 0, 1] (rotation_w a look_up)
-  else if dir == 4 then transform [force / f_rate, 0, 0, 1] (rotation_w (mod_angle a 471) look_up)
-  else if dir == 5 then transform [force / f_rate, 0, 0, 1] (rotation_w (mod_angle a 314) look_up)
-  else transform [force / f_rate, 0, 0, 1] (rotation_w (mod_angle a 157) look_up)
+thrust :: Int -> Int -> Float -> UArray (Int, Int) Float -> [Float]
+thrust dir a force look_up =
+  if dir == 3 then transform [force / 40, 0, 0, 1] (rotation_w a look_up)
+  else if dir == 4 then transform [force / 40, 0, 0, 1] (rotation_w (mod_angle a 471) look_up)
+  else if dir == 5 then transform [force / 40, 0, 0, 1] (rotation_w (mod_angle a 314) look_up)
+  else transform [force / 40, 0, 0, 1] (rotation_w (mod_angle a 157) look_up)
 
 floor_surf :: Float -> Float -> Float -> Array (Int, Int, Int) Floor_grid -> Float
 floor_surf u v w f_grid =
@@ -1131,7 +1131,7 @@ update_vel :: [Float] -> [Float] -> [Float] -> Float -> Float -> [Float]
 update_vel [] _ _ f_rate f = []
 update_vel (x:xs) (y:ys) (z:zs) f_rate f =
   if z == 1 then 0 : update_vel xs ys zs f_rate f
-  else (x + y / f_rate + f * x / f_rate) : update_vel xs ys zs f_rate f
+  else (x + y / 32 + f * x / f_rate) : update_vel xs ys zs f_rate f
 
 -- Used to generate the sequence of message tile references that represent the pause screen text.
 pause_text :: Play_state1 -> ([Char], Int, Int, Int) -> [(Int, [Int])]
@@ -1232,7 +1232,7 @@ update_play io_box state_ref s0 s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_
         update_play io_box state_ref (s0_ ((fourth link0) {pos_u = (det, 528) !! 0, pos_v = (det, 529) !! 1, vel = vel_0, game_clock = snd game_clock'})) (fifth link0) True min_frame_t (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
       else if control > 2 && control < 7 then do
         putMVar state_ref (s0 {pos_u = (det, 530) !! 0, pos_v = (det, 531) !! 1, pos_w = floor}, w_grid, save_state)
-        update_play io_box state_ref (s0_ ((fourth link0) {pos_u = (det, 532) !! 0, pos_v = (det, 533) !! 1, pos_w = floor, vel = update_vel (vel s0) (take 3 (thrust (fromIntegral control) (angle s0) mag_r f_rate look_up)) ((drop 2 det) ++ [0]) f_rate f, game_clock = snd game_clock'})) (fifth link0) False min_frame_t (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
+        update_play io_box state_ref (s0_ ((fourth link0) {pos_u = (det, 532) !! 0, pos_v = (det, 533) !! 1, pos_w = floor, vel = update_vel (vel s0) (take 3 (thrust (fromIntegral control) (angle s0) mag_r look_up)) ((drop 2 det) ++ [0]) f_rate f, game_clock = snd game_clock'})) (fifth link0) False min_frame_t (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
       else if control == 7 then do
         putMVar state_ref (s0 {pos_u = (det, 534) !! 0, pos_v = (det, 535) !! 1, pos_w = floor, angle = truncate (angle' False)}, w_grid, save_state)
         update_play io_box state_ref (s0_ ((fourth link0) {pos_u = (det, 536) !! 0, pos_v = (det, 537) !! 1, pos_w = floor, vel = vel_0, angle = truncate (angle' False), angle_ = (angle' False), game_clock = snd game_clock'})) (fifth link0) False min_frame_t (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
