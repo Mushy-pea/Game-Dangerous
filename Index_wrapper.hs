@@ -13,3 +13,5 @@ import qualified Prelude as PREL
 
 -- The commenting out of these two functions can be inverted to switch off the debugging provided by the index wrapper system and save most of the runtime overhead.
 --(ls, location) !! i = ls PREL.!! i
+
+-- current max location: 630

@@ -282,9 +282,6 @@ send_signal 1 sig dest obj_grid s1 d_list =
   in
   (obj_grid // [(dest, (fst (obj_grid ! dest), (head prog) : sig : drop 2 prog))], s1)
 
-place_hold :: Int -> [Int] -> Play_state1 -> Play_state1
-place_hold val d_list s = unsafePerformIO (putStr "\nplace_hold run with value " >> print ((d_list, 287) !! val) >> return s)
-
 project_init :: Int -> Int -> Int -> Int -> Int -> (Int, Int, Int) -> (Int, Int, Int) -> Int -> Int -> Array (Int, Int, Int) (Int, [Int]) -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> [Int] -> UArray (Int, Int) Float -> [((Int, Int, Int), (Int, [(Int, Int)]))]
 project_init u v w a vel (i0, i1, i2) (i3, i4, i5) offset obj_flag obj_grid obj_grid_upd d_list look_up =
   let source = ((d_list, 288) !! i0, (d_list, 289) !! i1, (d_list, 290) !! i2)
@@ -836,6 +833,9 @@ npc_damage mode (w:u:v:blocks) w_grid w_grid_upd obj_grid obj_grid_upd s0 s1 d_l
   if c_health char_state - damage <= 0 then (((-w - 1, u, v), def_w_grid) : w_grid_upd, ((w, u, v), (-1, [])) : obj_grid_upd, s1 {message = message s1 ++ [2, 4, 14]})
   else (w_grid_upd, obj_grid_upd, s1 {npc_states = (npc_states s1) // [((d_list, 406) !! 8, char_state {c_health = (c_health char_state) - damage})], message = message s1 ++ [2, 4, 16]})
 
+place_light :: Int -> Int -> Int -> Int -> Int -> Int -> Play_state0 -> [Int] -> Play_state0
+place_light colour_r colour_g colour_b u v w s0 d_list = s0 {mobile_lights = [int_to_float ((d_list, 625) !! colour_r), int_to_float ((d_list, 626) !! colour_g), int_to_float ((d_list, 627) !! colour_b), int_to_float ((d_list, 628) !! u), int_to_float ((d_list, 629) !! v), int_to_float ((d_list, 630) !! w)] ++ mobile_lights s0}
+
 -- Branch on each GPLC op - code to call the corresponding function, with optional per op - code status reports for debugging.
 run_gplc :: [Int] -> [Int] -> Array (Int, Int, Int) Wall_grid -> [((Int, Int, Int), Wall_grid)] -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> Play_state0 -> Play_state1 -> UArray (Int, Int) Float -> Int -> IO ([((Int, Int, Int), Wall_grid)], Array (Int, Int, Int) Floor_grid, [((Int, Int, Int), (Int, [(Int, Int)]))], Play_state0, Play_state1)
 run_gplc [] d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up c = return (w_grid_upd, f_grid, obj_grid_upd, s0, s1)
@@ -876,9 +876,9 @@ run_gplc (x0:x1:x2:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 
 run_gplc (x0:x1:x2:x3:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up 8 = do
   report_state (verbose_mode s1) 2 [] [] ("\nchg_obj_type run with arguments " ++ "0: " ++ show ((d_list, 450) !! x0) ++ " 1: " ++ show ((d_list, 451) !! x1) ++ " 2: " ++ show ((d_list, 452) !! x2) ++ " 3: " ++ show ((d_list, 453) !! x3))
   run_gplc (tail_ xs) d_list w_grid w_grid_upd f_grid obj_grid (chg_obj_type x0 (x1, x2, x3) d_list obj_grid obj_grid_upd) s0 s1 look_up (head_ xs)
-run_gplc (x0:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up 9 = do
-  report_state (verbose_mode s1) 1 (snd (obj_grid ! ((d_list, 454) !! 0, (d_list, 455) !! 1, (d_list, 456) !! 2))) [] []
-  run_gplc (tail_ xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 (place_hold x0 d_list s1) look_up (head_ xs)
+run_gplc (x0:x1:x2:x3:x4:x5:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up 9 = do
+  report_state (verbose_mode s1) 2 [] [] ("\nplace_light run with arguments 0: " ++ show ((d_list, 619) !! x0) ++ " 1: " ++ show ((d_list, 620) !! x1) ++ " 2: " ++ show ((d_list, 621) !! x2) ++ " 3: " ++ show ((d_list, 622) !! x3) ++ " 4: " ++ show ((d_list, 623) !! x4) ++ " 5: " ++ show ((d_list, 624) !! x5))
+  run_gplc (tail_ xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd (place_light ) s1 look_up (head_ xs)
 run_gplc (x0:x1:x2:x3:x4:x5:x6:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up 10 = do
   report_state (verbose_mode s1) 2 [] [] ("\nchg_grid_ run with arguments " ++ "0: " ++ show ((d_list, 457) !! x0) ++ " 1: " ++ show ((d_list, 458) !! x1) ++ " 2: " ++ show ((d_list, 459) !! x2) ++ " 3: " ++ show ((d_list, 460) !! x3) ++ " 4: " ++ show ((d_list, 461) !! x4) ++ " 5: " ++ show ((d_list, 462) !! x5) ++ " 6: " ++ show ((d_list, 463) !! x6))
   run_gplc (tail_ xs) d_list w_grid w_grid_upd f_grid obj_grid (chg_grid_ x0 (x1, x2, x3) (x4, x5, x6) obj_grid_upd d_list) s0 s1 look_up (head_ xs)
@@ -1182,7 +1182,7 @@ update_play io_box state_ref s0 s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_
       vel_0 = update_vel (vel s0) [0, 0, 0] ((drop 2 det) ++ [0]) f_rate f
       vel_2 = update_vel (vel s0) [0, 0, g] ((drop 2 det) ++ [0]) f_rate 0
       game_clock' = update_game_clock (game_clock s0) (f_rate * 1.25)
-      s0_ = \x -> x {message_ = []}
+      s0_ = \x -> x {message_ = [], mobile_lights = []}
       angle' = \x -> mod_angle_ (angle_ s0) f_rate x
       det_fps = \t_current -> determine_fps t_seq t_current
   in do
