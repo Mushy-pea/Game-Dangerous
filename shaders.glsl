@@ -34,8 +34,18 @@ vec4 staticLightIntensity0 = vec4(lmap_int0[look_up], 1);
 vec4 staticLightIntensity1 = vec4(lmap_int1[look_up], 1);
 vec3 staticLightPosition0 = lmap_pos0[look_up];
 vec3 staticLightPosition1 = lmap_pos1[look_up];
-lightIntensities = (staticLightIntensity0, staticLightIntensity1, mobileLightIntensities[0], mobileLightIntensities[1], mobileLightIntensities[2], mobileLightIntensities[3]);
-worldLightPositions = (staticLightPosition0, staticLightPosition1, mobileLightPositions[0], mobileLightPositions[1], mobileLightPositions[2], mobileLightPositions[3]);
+lightIntensities[0] = staticLightIntensity0;
+lightIntensities[1] = staticLightIntensity1;
+lightIntensities[2] = mobileLightIntensities[0];
+lightIntensities[3] = mobileLightIntensities[1];
+lightIntensities[4] = mobileLightIntensities[2];
+lightIntensities[5] = mobileLightIntensities[3];
+worldLightPositions[0] = staticLightPosition0;
+worldLightPositions[1] = staticLightPosition1;
+worldLightPositions[2] = mobileLightPositions[0];
+worldLightPositions[3] = mobileLightPositions[1];
+worldLightPositions[4] = mobileLightPositions[2];
+worldLightPositions[5] = mobileLightPositions[3];
 
 gl_Position = world_to_clip * worldPos;
 }
@@ -62,7 +72,7 @@ vec4 gamma = vec4(g, g, g, 1);
 float distanceSqr;
 vec3 lightDifference; vec3 lightDir;
 float cosAngleIncidence[6];
-float attenuation[6] = float(0, 0, 0, 0, 0, 0);
+float attenuation[6] = float[6](0, 0, 0, 0, 0, 0);
 
 for (int n = 0; n < numLights; n++)
 {
@@ -111,8 +121,18 @@ vec4 staticLightIntensity0 = vec4(lmap_int0[look_up], 1);
 vec4 staticLightIntensity1 = vec4(lmap_int1[look_up], 1);
 vec3 staticLightPosition0 = lmap_pos0[look_up];
 vec3 staticLightPosition1 = lmap_pos1[look_up];
-lightIntensities = (staticLightIntensity0, staticLightIntensity1, mobileLightIntensities[0], mobileLightIntensities[1], mobileLightIntensities[2], mobileLightIntensities[3]);
-worldLightPositions = (staticLightPosition0, staticLightPosition1, mobileLightPositions[0], mobileLightPositions[1], mobileLightPositions[2], mobileLightPositions[3]);
+lightIntensities[0] = staticLightIntensity0;
+lightIntensities[1] = staticLightIntensity1;
+lightIntensities[2] = mobileLightIntensities[0];
+lightIntensities[3] = mobileLightIntensities[1];
+lightIntensities[4] = mobileLightIntensities[2];
+lightIntensities[5] = mobileLightIntensities[3];
+worldLightPositions[0] = staticLightPosition0;
+worldLightPositions[1] = staticLightPosition1;
+worldLightPositions[2] = mobileLightPositions[0];
+worldLightPositions[3] = mobileLightPositions[1];
+worldLightPositions[4] = mobileLightPositions[2];
+worldLightPositions[5] = mobileLightPositions[3];
 
 gl_Position = world_to_clip * worldPos;
 }
@@ -140,9 +160,9 @@ vec4 gamma = vec4(g, g, g, 1);
 float distanceSqr;
 vec3 lightDifference; vec3 lightDir;
 float cosAngleIncidence[6];
-float attenuation[6] = float(0, 0, 0, 0, 0, 0);
+float attenuation[6] = float[6](0, 0, 0, 0, 0, 0);
 
-for (int n = 0; n < numLights; n++)
+for (int n = 0; n < 2; n++)
 {
     lightDifference = modelInWorldPosition - worldLightPositions[n];
     distanceSqr = dot(lightDifference, lightDifference);
@@ -152,7 +172,7 @@ for (int n = 0; n < numLights; n++)
 }
 
 vec4 diffColour = texture(tex_unit0, tex_coord);
-vec4 totalStaticLight = (attenuation[0] * lmap_t0[t] * cosAngleIncidence[0] * lightIntensities[0] * diffColour) + (attenuation[1] * lmap_t1[t] * cosAngleIncidence[1] * lightIntensities[1] * diffColour) + (vec4(0.1, 0.1, 0.1, 1) * diffColour);
+vec4 totalStaticLight = (attenuation[0] * lmap_t0[t] * cosAngleIncidence[0] * lightIntensities[0] * diffColour) + (attenuation[1] * lmap_t1[t] * cosAngleIncidence[1] * lightIntensities[1] * diffColour);
 vec4 totalLight = totalStaticLight + (attenuation[2] * cosAngleIncidence[2] * lightIntensities[2] * diffColour) + (attenuation[3] * cosAngleIncidence[3] * lightIntensities[3] * diffColour) + (attenuation[4] * cosAngleIncidence[4] * lightIntensities[4] * diffColour) + (attenuation[5] * cosAngleIncidence[5] * lightIntensities[5] * diffColour);
 outputColour = pow(totalLight, gamma);
 }
