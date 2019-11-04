@@ -15,6 +15,7 @@ flat out vec4 lightIntensities[6];
 flat out vec3 worldLightPositions[6];
 
 uniform mat4 mod_to_world;
+uniform mat4 world_to_mod;
 uniform mat4 world_to_clip;
 uniform vec3 lmap_pos0[100];
 uniform vec3 lmap_pos1[100];
@@ -80,7 +81,7 @@ for (int n = 0; n < numLights; n++)
     distanceSqr = dot(lightDifference, lightDifference);
     lightDir = lightDifference * inversesqrt(distanceSqr);
     attenuation[n] = 1 / distanceSqr;
-    cosAngleIncidence[n] = clamp(dot(vertNormal, lightDir), 0, 1);
+    cosAngleIncidence[n] = abs(dot(vertNormal, lightDir));
 }
 
 vec4 totalStaticLight = (attenuation[0] * lmap_t0[t] * cosAngleIncidence[0] * lightIntensities[0] * diffColour) + (attenuation[1] * lmap_t1[t] * cosAngleIncidence[1] * lightIntensities[1] * diffColour) + (vec4(0.1, 0.1, 0.1, 1) * diffColour);
@@ -102,6 +103,7 @@ flat out vec4 lightIntensities[6];
 flat out vec3 worldLightPositions[6];
 
 uniform mat4 mod_to_world;
+uniform mat4 world_to_mod;
 uniform mat4 world_to_clip;
 uniform vec3 lmap_pos0[100];
 uniform vec3 lmap_pos1[100];
@@ -162,13 +164,13 @@ vec3 lightDifference; vec3 lightDir;
 float cosAngleIncidence[6];
 float attenuation[6] = float[6](0, 0, 0, 0, 0, 0);
 
-for (int n = 0; n < 2; n++)
+for (int n = 0; n < numLights; n++)
 {
     lightDifference = modelInWorldPosition - worldLightPositions[n];
     distanceSqr = dot(lightDifference, lightDifference);
     lightDir = lightDifference * inversesqrt(distanceSqr);
     attenuation[n] = 1 / distanceSqr;
-    cosAngleIncidence[n] = clamp(dot(vertNormal, lightDir), 0, 1);
+    cosAngleIncidence[n] = abs(dot(vertNormal, lightDir));
 }
 
 vec4 diffColour = texture(tex_unit0, tex_coord);

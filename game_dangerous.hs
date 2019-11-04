@@ -192,7 +192,7 @@ setup_game comp_env_map conf_reg (Size w h) control_ref =
   init_al_context
   contents2 <- bracket (openFile ((cfg' "sound_data_dir") ++ (last (splitOn ", " (((splitOn "\n~\n" comp_env_map), 44) !! 8)))) ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nsound map size: " ++ show (length contents)); return contents)
   sound_array <- init_al_effect0 (splitOneOf "\n " contents2) (cfg' "sound_data_dir") (array (0, 255) [(x, Source 0) | x <- [0..255]])
-  start_game control_ref (listArray (0, 58) uniform) (p_bind_, p_bind_limit + 1) env_map conf_reg (-1) (read (cfg' "init_u"), read (cfg' "init_v"), read (cfg' "init_w"), read (cfg' "gravity"), read (cfg' "friction"), read (cfg' "run_power"), read (cfg' "jump_power")) def_save_state sound_array frustumScale0
+  start_game control_ref (listArray (0, 59) uniform) (p_bind_, p_bind_limit + 1) env_map conf_reg (-1) (read (cfg' "init_u"), read (cfg' "init_v"), read (cfg' "init_w"), read (cfg' "gravity"), read (cfg' "friction"), read (cfg' "run_power"), read (cfg' "jump_power")) def_save_state sound_array frustumScale0
 
 -- The model file(s) that describe all 3D and 2D models referenced in the current map are loaded here.
 load_mod_file :: [[Char]] -> [Char] -> Ptr GLuint -> IO ()
@@ -465,19 +465,19 @@ show_frame p_bind uniform (p_mt_matrix, p_light_buffer) filter_table u v w a a' 
   if rend_mode (fst__ p_state) == 0 then do
     load_array (fst (mobile_lights (fst__ p_state)) ++ snd (mobile_lights (fst__ p_state))) p_light_buffer 0
     glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 7)))
-    if mobile_lights (fst__ p_state) == ([], []) then glUniform1i (coerce (uniform ! 54)) (fromIntegral 2)
+    if mobile_lights (fst__ p_state) == ([], []) then glUniform1i (coerce (uniform ! 56)) (fromIntegral 2)
     else do
-      glUniform1i (coerce (uniform ! 54)) ((div (fromIntegral (length (mobile_lights (fst__ p_state)))) 7) + 2)
-      glUniform4fv (coerce (uniform ! 52)) (fromIntegral (div (length (fst (mobile_lights (fst__ p_state)))) 4)) p_light_buffer
-      glUniform3fv (coerce (uniform ! 53)) (fromIntegral (div (length (snd (mobile_lights (fst__ p_state)))) 3)) (plusPtr p_light_buffer (glfloat * length (fst (mobile_lights (fst__ p_state)))))
+      glUniform1i (coerce (uniform ! 56)) ((div (fromIntegral (length (mobile_lights (fst__ p_state)))) 7) + 2)
+      glUniform4fv (coerce (uniform ! 54)) (fromIntegral (div (length (fst (mobile_lights (fst__ p_state)))) 4)) p_light_buffer
+      glUniform3fv (coerce (uniform ! 55)) (fromIntegral (div (length (snd (mobile_lights (fst__ p_state)))) 3)) (plusPtr p_light_buffer (glfloat * length (fst (mobile_lights (fst__ p_state)))))
     glUniform1i (coerce (uniform ! 9)) (fromIntegral (mod (fst__ (game_clock (fst__ p_state))) 240))
     glUniformMatrix4fv (coerce (uniform ! 1)) 1 1 (castPtr p_mt_matrix)
     glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 6)))
-    if mobile_lights (fst__ p_state) == ([], []) then glUniform1i (coerce (uniform ! 57)) (fromIntegral 2)
+    if mobile_lights (fst__ p_state) == ([], []) then glUniform1i (coerce (uniform ! 59)) (fromIntegral 2)
     else do
-      glUniform1i (coerce (uniform ! 57)) ((div (fromIntegral (length (mobile_lights (fst__ p_state)))) 7) + 2)
-      glUniform4fv (coerce (uniform ! 55)) (fromIntegral (div (length (fst (mobile_lights (fst__ p_state)))) 4)) p_light_buffer
-      glUniform3fv (coerce (uniform ! 56)) (fromIntegral (div (length (snd (mobile_lights (fst__ p_state)))) 3)) (plusPtr p_light_buffer (glfloat * length (fst (mobile_lights (fst__ p_state)))))
+      glUniform1i (coerce (uniform ! 59)) ((div (fromIntegral (length (mobile_lights (fst__ p_state)))) 7) + 2)
+      glUniform4fv (coerce (uniform ! 57)) (fromIntegral (div (length (fst (mobile_lights (fst__ p_state)))) 4)) p_light_buffer
+      glUniform3fv (coerce (uniform ! 58)) (fromIntegral (div (length (snd (mobile_lights (fst__ p_state)))) 3)) (plusPtr p_light_buffer (glfloat * length (fst (mobile_lights (fst__ p_state)))))
     glUniform1i (coerce (uniform ! 20)) (fromIntegral (mod (fst__ (game_clock (fst__ p_state))) 240))
     glUniformMatrix4fv (coerce (uniform ! 12)) 1 1 (castPtr p_mt_matrix)
   else do
