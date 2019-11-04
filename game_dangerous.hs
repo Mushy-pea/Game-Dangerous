@@ -467,7 +467,7 @@ show_frame p_bind uniform (p_mt_matrix, p_light_buffer) filter_table u v w a a' 
     glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 7)))
     if mobile_lights (fst__ p_state) == ([], []) then glUniform1i (coerce (uniform ! 56)) (fromIntegral 2)
     else do
-      glUniform1i (coerce (uniform ! 56)) ((div (fromIntegral (length (mobile_lights (fst__ p_state)))) 7) + 2)
+      glUniform1i (coerce (uniform ! 56)) ((div (fromIntegral (length (fst (mobile_lights (fst__ p_state))))) 4) + 2)
       glUniform4fv (coerce (uniform ! 54)) (fromIntegral (div (length (fst (mobile_lights (fst__ p_state)))) 4)) p_light_buffer
       glUniform3fv (coerce (uniform ! 55)) (fromIntegral (div (length (snd (mobile_lights (fst__ p_state)))) 3)) (plusPtr p_light_buffer (glfloat * length (fst (mobile_lights (fst__ p_state)))))
     glUniform1i (coerce (uniform ! 9)) (fromIntegral (mod (fst__ (game_clock (fst__ p_state))) 240))
@@ -475,7 +475,8 @@ show_frame p_bind uniform (p_mt_matrix, p_light_buffer) filter_table u v w a a' 
     glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 6)))
     if mobile_lights (fst__ p_state) == ([], []) then glUniform1i (coerce (uniform ! 59)) (fromIntegral 2)
     else do
-      glUniform1i (coerce (uniform ! 59)) ((div (fromIntegral (length (mobile_lights (fst__ p_state)))) 7) + 2)
+      putStr ("\nmobile_lights: " ++ show (mobile_lights (fst__ p_state)))
+      glUniform1i (coerce (uniform ! 59)) ((div (fromIntegral (length (fst (mobile_lights (fst__ p_state))))) 4) + 2)
       glUniform4fv (coerce (uniform ! 57)) (fromIntegral (div (length (fst (mobile_lights (fst__ p_state)))) 4)) p_light_buffer
       glUniform3fv (coerce (uniform ! 58)) (fromIntegral (div (length (snd (mobile_lights (fst__ p_state)))) 3)) (plusPtr p_light_buffer (glfloat * length (fst (mobile_lights (fst__ p_state)))))
     glUniform1i (coerce (uniform ! 20)) (fromIntegral (mod (fst__ (game_clock (fst__ p_state))) 240))
