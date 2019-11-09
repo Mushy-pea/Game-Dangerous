@@ -129,7 +129,7 @@ setup_game comp_env_map conf_reg (Size w h) control_ref =
   contents0 <- bracket (openFile (cfg' "shader_file") ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nshader file size: " ++ show (length contents)); return contents)
   p_gl_program <- mallocBytes (7 * gluint)
   make_gl_program (tail (splitOn "#" contents0)) p_gl_program 0
-  uniform <- find_gl_uniform [m0, m1, m2, lm0, lm1, lm2, lm3, lm4, lm5, "t", "mode", m0, m1, m2, lm0, lm1, lm2, lm3, lm4, lm5, "t", "mode", "tex_unit0", m0, m1, m2, "worldTorchPos", "timer", "mode", m0, m1, m2, "worldTorchPos", "timer", "mode", "tex_unit0", "tt_matrix", "tex_unit0", "mode", m0, m1, m2, "normal_transf", lm0, lm1, lm2, lm3, lm4, lm5, "tex_unit0", "t", m0, m1, "tex_unit0", dl0, dl1, dl2, dl0, dl1, dl2] [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 0, 0, 0, 1, 1, 1] p_gl_program []
+  uniform <- find_gl_uniform [m0, m1, m2, lm0, lm1, lm2, lm3, lm4, lm5, "t", "mode", m0, m1, m2, lm0, lm1, lm2, lm3, lm4, lm5, "t", "mode", "tex_unit0", m0, m1, m2, "worldTorchPos", "timer", "mode", m0, m1, m2, "worldTorchPos", "timer", "mode", "tex_unit0", "tt_matrix", "tex_unit0", "mode", m0, m1, m2, "normal_transf", lm0, lm1, lm2, lm3, lm4, lm5, "tex_unit0", "t", m0, m1, "tex_unit0", dl0, dl1, dl2, dl0, dl1, dl2, dl0, dl1, dl2, dl0, dl1, dl2] [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3] p_gl_program []
   gl_program0 <- peekElemOff p_gl_program 0; gl_program1 <- peekElemOff p_gl_program 1; gl_program2 <- peekElemOff p_gl_program 2; gl_program3 <- peekElemOff p_gl_program 3; gl_program4 <- peekElemOff p_gl_program 4; gl_program5 <- peekElemOff p_gl_program 5; gl_program6 <- peekElemOff p_gl_program 6
   glClearColor 0 0 0 0
   glClearDepth 1
@@ -192,7 +192,7 @@ setup_game comp_env_map conf_reg (Size w h) control_ref =
   init_al_context
   contents2 <- bracket (openFile ((cfg' "sound_data_dir") ++ (last (splitOn ", " (((splitOn "\n~\n" comp_env_map), 44) !! 8)))) ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nsound map size: " ++ show (length contents)); return contents)
   sound_array <- init_al_effect0 (splitOneOf "\n " contents2) (cfg' "sound_data_dir") (array (0, 255) [(x, Source 0) | x <- [0..255]])
-  start_game control_ref (listArray (0, 59) uniform) (p_bind_, p_bind_limit + 1) env_map conf_reg (-1) (read (cfg' "init_u"), read (cfg' "init_v"), read (cfg' "init_w"), read (cfg' "gravity"), read (cfg' "friction"), read (cfg' "run_power"), read (cfg' "jump_power")) def_save_state sound_array frustumScale0
+  start_game control_ref (listArray (0, 65) uniform) (p_bind_, p_bind_limit + 1) env_map conf_reg (-1) (read (cfg' "init_u"), read (cfg' "init_v"), read (cfg' "init_w"), read (cfg' "gravity"), read (cfg' "friction"), read (cfg' "run_power"), read (cfg' "jump_power")) def_save_state sound_array frustumScale0
 
 -- The model file(s) that describe all 3D and 2D models referenced in the current map are loaded here.
 load_mod_file :: [[Char]] -> [Char] -> Ptr GLuint -> IO ()
@@ -248,7 +248,7 @@ start_game control_ref uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag
     p_mt_matrix <- mallocBytes (glfloat * 128)
     p_f_table0 <- callocBytes (int_ * 120000)
     p_f_table1 <- callocBytes (int_ * 37500)
-    p_light_buffer <- mallocBytes (glfloat * 28)
+    p_light_buffer <- mallocBytes (glfloat * 35)
     state_ref <- newEmptyMVar
     t_log <- newEmptyMVar
     r_gen <- getStdGen
@@ -475,20 +475,28 @@ show_frame p_bind uniform (p_mt_matrix, p_light_buffer) filter_table u v w a a' 
     glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 6)))
     if mobile_lights (fst__ p_state) == ([], []) then glUniform1i (coerce (uniform ! 59)) (fromIntegral 2)
     else do
-      putStr ("\nmobile_lights: " ++ show (mobile_lights (fst__ p_state)))
       glUniform1i (coerce (uniform ! 59)) ((div (fromIntegral (length (fst (mobile_lights (fst__ p_state))))) 4) + 2)
       glUniform4fv (coerce (uniform ! 57)) (fromIntegral (div (length (fst (mobile_lights (fst__ p_state)))) 4)) p_light_buffer
       glUniform3fv (coerce (uniform ! 58)) (fromIntegral (div (length (snd (mobile_lights (fst__ p_state)))) 3)) (plusPtr p_light_buffer (glfloat * length (fst (mobile_lights (fst__ p_state)))))
     glUniform1i (coerce (uniform ! 20)) (fromIntegral (mod (fst__ (game_clock (fst__ p_state))) 240))
     glUniformMatrix4fv (coerce (uniform ! 12)) 1 1 (castPtr p_mt_matrix)
   else do
+    load_array ([3, 3, 3, 1] ++ fst (mobile_lights (fst__ p_state)) ++ [coerce u, coerce v, coerce w] ++ snd (mobile_lights (fst__ p_state))) p_light_buffer 0
     glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 5)))
+    if mobile_lights (fst__ p_state) == ([], []) then glUniform1i (coerce (uniform ! 62)) (fromIntegral 1)
+    else do
+      glUniform1i (coerce (uniform ! 62)) ((div (fromIntegral (length (fst (mobile_lights (fst__ p_state))))) 4) + 1)
+      glUniform4fv (coerce (uniform ! 60)) ((fromIntegral (div (length (fst (mobile_lights (fst__ p_state)))) 4)) + 1) p_light_buffer
+      glUniform3fv (coerce (uniform ! 61)) ((fromIntegral (div (length (snd (mobile_lights (fst__ p_state)))) 3)) + 1) (plusPtr p_light_buffer (glfloat * length (fst (mobile_lights (fst__ p_state))) + 16))
     glUniformMatrix4fv (coerce (uniform ! 24)) 1 1 (castPtr p_mt_matrix)
-    glUniform4f (coerce (uniform ! 26)) (coerce u) (coerce v) (coerce w) 1
     glUniform1i (coerce (uniform ! 27)) (fromIntegral (torch_t_limit (fst__ p_state) - (fst__ (game_clock (fst__ p_state)) - torch_t0 (fst__ p_state))))
     glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 4)))
+    if mobile_lights (fst__ p_state) == ([], []) then glUniform1i (coerce (uniform ! 65)) (fromIntegral 1)
+    else do
+      glUniform1i (coerce (uniform ! 65)) ((div (fromIntegral (length (fst (mobile_lights (fst__ p_state))))) 4) + 1)
+      glUniform4fv (coerce (uniform ! 63)) ((fromIntegral (div (length (fst (mobile_lights (fst__ p_state)))) 4)) + 1) p_light_buffer
+      glUniform3fv (coerce (uniform ! 64)) ((fromIntegral (div (length (snd (mobile_lights (fst__ p_state)))) 3)) + 1) (plusPtr p_light_buffer (glfloat * length (fst (mobile_lights (fst__ p_state))) + 16))
     glUniformMatrix4fv (coerce (uniform ! 30)) 1 1 (castPtr p_mt_matrix)
-    glUniform4f (coerce (uniform ! 32)) (coerce u) (coerce v) (coerce w) 1
     glUniform1i (coerce (uniform ! 33)) (fromIntegral (torch_t_limit (fst__ p_state) - (fst__ (game_clock (fst__ p_state)) - torch_t0 (fst__ p_state))))
   glBindVertexArray (unsafeCoerce ((fst p_bind) ! 0))
   if view_mode (fst__ p_state) == 0 then do
@@ -548,25 +556,20 @@ show_walls [] uniform p_bind p_mt_matrix u v w a look_up mode = return ()
 show_walls (x:xs) uniform p_bind p_mt_matrix u v w a look_up mode = do
   if isNull x == False then do
     load_array (toList (model_to_world (translate_u x) (translate_v x) (translate_w x) 0 False look_up)) (castPtr p_mt_matrix) 0
-    load_array (toList (world_to_model (translate_u x) (translate_v x) (translate_w x) 0 False look_up)) (castPtr p_mt_matrix) 16
     if texture_ x == 0 && mode == 0 then do
       glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 7)))
       glUniformMatrix4fv (coerce (uniform ! 0)) 1 1 p_mt_matrix
-      glUniformMatrix4fv (coerce (uniform ! 2)) 1 1 (plusPtr p_mt_matrix (glfloat * 16))
     else if texture_ x > 0 && texture_ x < (snd p_bind) && mode == 0 then do
       glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 6)))
       glBindTexture GL_TEXTURE_2D (unsafeCoerce ((fst p_bind) ! texture_ x))
       glUniformMatrix4fv (coerce (uniform ! 11)) 1 1 p_mt_matrix
-      glUniformMatrix4fv (coerce (uniform ! 13)) 1 1 (plusPtr p_mt_matrix (glfloat * 16))
     else if texture_ x == 0 && mode == 1 then do
       glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 5)))
       glUniformMatrix4fv (coerce (uniform ! 23)) 1 1 p_mt_matrix
-      glUniformMatrix4fv (coerce (uniform ! 25)) 1 1 (plusPtr p_mt_matrix (glfloat * 16))
     else if texture_ x > 0 && texture_ x < (snd p_bind) && mode == 1 then do
       glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 4)))
       glBindTexture GL_TEXTURE_2D (unsafeCoerce ((fst p_bind) ! texture_ x))
       glUniformMatrix4fv (coerce (uniform ! 29)) 1 1 p_mt_matrix
-      glUniformMatrix4fv (coerce (uniform ! 31)) 1 1 (plusPtr p_mt_matrix (glfloat * 16))
     else do
       putStr "\nshow_walls: Invalid wall_place texture reference in map..."
       show_walls xs uniform p_bind p_mt_matrix u v w a look_up mode
@@ -579,24 +582,19 @@ show_object :: [Obj_place] -> UArray Int Int32 -> (UArray Int Word32, Int) -> Pt
 show_object [] uniform p_bind p_mt_matrix u v w a look_up mode = return ()
 show_object (x:xs) uniform p_bind p_mt_matrix u v w a look_up mode = do
   load_array (toList (model_to_world (u__ x) (v__ x) (w__ x) 0 False look_up)) (castPtr p_mt_matrix) 0
-  load_array (toList (world_to_model (u__ x) (v__ x) (w__ x) 0 False look_up)) (castPtr p_mt_matrix) 16
   if ident_ x < (snd p_bind) && texture__ x == 0 && mode == 0 then do
     glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 7)))
     glUniformMatrix4fv (coerce (uniform ! 0)) 1 1 p_mt_matrix
-    glUniformMatrix4fv (coerce (uniform ! 2)) 1 1 (plusPtr p_mt_matrix (glfloat * 16))
   else if (ident_ x) + (texture__ x) < snd p_bind && texture__ x > 0 && mode == 0 then do
     glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 6)))
     glUniformMatrix4fv (coerce (uniform ! 11)) 1 1 p_mt_matrix
-    glUniformMatrix4fv (coerce (uniform ! 13)) 1 1 (plusPtr p_mt_matrix (glfloat * 16))
     glBindTexture GL_TEXTURE_2D (unsafeCoerce ((fst p_bind) ! ((ident_ x) + (texture__ x))))
   else if ident_ x < (snd p_bind) && texture__ x == 0 && mode == 1 then do
     glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 5)))
     glUniformMatrix4fv (coerce (uniform ! 23)) 1 1 p_mt_matrix
-    glUniformMatrix4fv (coerce (uniform ! 25)) 1 1 (plusPtr p_mt_matrix (glfloat * 16))
   else if (ident_ x) + (texture__ x) < snd p_bind && texture__ x > 0 && mode == 1 then do
     glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 4)))
     glUniformMatrix4fv (coerce (uniform ! 29)) 1 1 p_mt_matrix
-    glUniformMatrix4fv (coerce (uniform ! 31)) 1 1 (plusPtr p_mt_matrix (glfloat * 16))
     glBindTexture GL_TEXTURE_2D (unsafeCoerce ((fst p_bind) ! ((ident_ x) + (texture__ x))))
   else do
     putStr "\nshow_object: Invalid obj_place object or texture reference in map..."
