@@ -186,58 +186,57 @@ layout(location = 0) in vec4 position;
 layout(location = 1) in vec4 colour;
 layout(location = 2) in vec3 normal;
 
-out vec3 modelPosition;
+out vec3 modelInWorldPosition;
 out vec4 diffColour;
-out vec3 vertNormal;
-out vec3 modTorchPos;
+flat out vec3 vertNormal;
 
 uniform mat4 mod_to_world;
 uniform mat4 world_to_clip;
 uniform mat4 world_to_mod;
-uniform vec4 worldTorchPos;
 
 void main() {
-modelPosition = position.xyz;
+vec4 worldPos = mod_to_world * position;
+modelInWorldPosition = worldPos.xyz;
 diffColour = colour;
 vertNormal = normal;
-vec4 modTorchPos_ = world_to_mod * worldTorchPos;
-modTorchPos = modTorchPos_.xyz;
-vec4 worldPos = mod_to_world * position;
 gl_Position = world_to_clip * worldPos;
 }
 
 // Fragment shader (program 2, torch lighted object, no texture)
 #version 330
 
-in vec3 modelPosition;
+in vec3 modelInWorldPosition;
 in vec4 diffColour;
-in vec3 vertNormal;
-in vec3 modTorchPos;
+flat in vec3 vertNormal;
 
 out vec4 outputColour;
 
+uniform vec4 mobileLightIntensities[5];
+uniform vec3 mobileLightPositions[5];
 uniform int timer;
-
-float lightAttenuation (in vec3 fragPos, in vec3 lightPos, out vec3 lightDir) {
-vec3 lightDifference = fragPos - lightPos;
-float distanceSqr = dot(lightDifference, lightDifference);
-lightDir = lightDifference * inversesqrt(distanceSqr);
-return (1 / distanceSqr);
-}
+uniform int numLights;
 
 void main() {
-vec3 torchDir; float adjust;
+float adjust; float distanceSqr;
+vec3 lightDifference; vec3 lightDir;
+float cosAngleIncidence[5]; float attenuation[5] = float[5](0, 0, 0, 0, 0);
 if (timer > 0)
   adjust = 1;
 else
   adjust = 0;
 float g = 0.4545455;
 vec4 gamma = vec4(g, g, g, 1);
-float attenuation = lightAttenuation(modelPosition, modTorchPos, torchDir);
-float cosAngIncidence = dot(vertNormal, torchDir);
-cosAngIncidence = clamp(cosAngIncidence, 0, 1);
 
-vec4 totalLight = attenuation * adjust * cosAngIncidence * vec4(3, 3, 3, 1) * diffColour;
+for (int n = 0; n < numLights; n++)
+{
+    lightDifference = modelInWorldPosition - mobileLightPositions[n];
+    distanceSqr = dot(lightDifference, lightDifference);
+    lightDir = lightDifference * inversesqrt(distanceSqr);
+    attenuation[n] = 1 / distanceSqr;
+    cosAngleIncidence[n] = clamp(dot(vertNormal, lightDir));
+}
+
+vec4 totalLight = (attenuation[0] * adjust * cosAngleIncidence[0] * mobileLightIntensities[0] * diffColour) + (attenuation[1] * cosAngleIncidence[1] * mobileLightIntensities[1] * diffColour) + (attenuation[2] * cosAngleIncidence[2] * mobileLightIntensities[2] * diffColour) + (attenuation[3] * cosAngleIncidence[3] * mobileLightIntensities[3] * diffColour) + (attenuation[4] * cosAngleIncidence[4] * mobileLightIntensities[4] * diffColour);
 outputColour = pow(totalLight, gamma);
 }
 
