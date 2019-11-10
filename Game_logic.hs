@@ -842,9 +842,8 @@ run_gplc [] d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up 
 run_gplc code d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up 0 =
   let location = (((splitOn [536870911] code), 407) !! 2)
   in do
-  report_state (verbose_mode s1) 2 [] [] ("\nscript contents: " ++ show code)
---  report_state (verbose_mode s1) 2 [] [] "\non_signal run.  Initial state is..."
---  report_state (verbose_mode s1) 0 (snd (obj_grid ! ((location, 408) !! 0, (location, 409) !! 1, (location, 410) !! 2))) (((splitOn [536870911] code), 411) !! 2) []
+  report_state (verbose_mode s1) 2 [] [] "\non_signal run.  Initial state is..."
+  report_state (verbose_mode s1) 0 (snd (obj_grid ! ((location, 408) !! 0, (location, 409) !! 1, (location, 410) !! 2))) (((splitOn [536870911] code), 411) !! 2) []
   run_gplc (on_signal (drop 2 (((splitOn [536870911] code), 412) !! 0)) (((splitOn [536870911] code), 413) !! 1) ((code, 414) !! 1)) (((splitOn [536870911] code), 415) !! 2) w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up 1
 run_gplc code d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 look_up 1 =
   let if0' = if0 code d_list
