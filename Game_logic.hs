@@ -541,6 +541,17 @@ vector_to_angle u_comp v_comp =
   else if u_comp < 0 && v_comp < 0 then 314 + a
   else 628 - a
 
+shift_fireball_pos :: Int -> Float -> Float -> (Float, Float)
+shift_fireball_pos dir u v =
+  if dir == 1 then (u + 1.1, v)
+  else if dir == 2 then (u + 1.1, v + 1.1)
+  else if dir == 3 then (u, v + 1.1)
+  else if dir == 4 then (u - 1.1, v + 1.1)
+  else if dir == 5 then (u - 1.1, v)
+  else if dir == 6 then (u - 1.1, v - 1.1)
+  else if dir == 7 then (u, v - 1.1)
+  else (u + 1.1, v - 1.1)
+
 npc_decision :: Int -> Int -> Int -> Int -> Int -> Int -> [Int] -> [Int] -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> Play_state0 -> Play_state1 -> UArray (Int, Int) Float -> ([((Int, Int, Int), (Int, [(Int, Int)]))], Play_state1)
 npc_decision 0 flag offset target_w target_u target_v d_list (w:u:v:xs) w_grid f_grid obj_grid obj_grid_upd s0 s1 look_up =
   let char_state = (npc_states s1) ! ((d_list, 352) !! 8)
@@ -576,13 +587,13 @@ npc_decision 2 flag offset target_w target_u target_v d_list (w:u:v:xs) w_grid f
       line_sight0 = chk_line_sight 2 (fst qa) w u v (snd__ (fg_position char_state), third_ (fg_position char_state)) target_u target_v w_grid f_grid obj_grid look_up
       line_sight1 = chk_line_sight 3 (fst qa) w u v (snd__ (fg_position char_state), third_ (fg_position char_state)) target_u target_v w_grid f_grid obj_grid look_up
       another_dir_ = another_dir (delete (snd qa) [1..8]) 7 w u v (snd__ fg_pos, third_ fg_pos) w_grid f_grid obj_grid look_up s0
+      fb_pos = shift_fireball_pos (snd qa) (snd__ fg_pos) (third_ fg_pos)
   in
   if final_appr char_state == True then
-    if line_sight0 == 0 then
-      if (prob_seq s0) ! (mod (fst__ (game_clock s0)) 240) < fire_prob char_state && attack_mode char_state == True && npc_type ((npc_states s1) ! 127) == fst__ (game_clock s0) then
-        (((w, u, v), (fst prog, [(offset, 1), (offset + 1, fl_to_int (fst__ fg_pos)), (offset + 2, fl_to_int (snd__ fg_pos)), (offset + 3, fl_to_int (third_ fg_pos)), (offset + 4, a)])) : obj_grid_upd, s1 {npc_states = (npc_states s1) // [((d_list, 361) !! 8, char_state {direction = snd qa, last_dir = snd qa}), (127, def_npc_state {npc_type = (fst__ (game_clock s0)) + 1})]})
+    if line_sight0 > avoid_dist char_state then
+      if (prob_seq s0) ! (mod (fst__ (game_clock s0)) 240) < fire_prob char_state && attack_mode char_state == True && npc_type ((npc_states s1) ! 127) /= fst__ (game_clock s0) then
+        (((w, u, v), (fst prog, [(offset, 1), (offset + 1, fl_to_int (fst__ fg_pos)), (offset + 2, fl_to_int (fst fb_pos)), (offset + 3, fl_to_int (snd fb_pos)), (offset + 4, a)])) : obj_grid_upd, s1 {npc_states = (npc_states s1) // [((d_list, 361) !! 8, char_state {direction = snd qa, last_dir = snd qa}), (127, def_npc_state {npc_type = (fst__ (game_clock s0))})]})
       else (obj_grid_upd, s1 {npc_states = (npc_states s1) // [((d_list, 362) !! 8, char_state {direction = snd qa, last_dir = snd qa})]})
-    else if line_sight0 > avoid_dist char_state then (obj_grid_upd, s1 {npc_states = (npc_states s1) // [((d_list, 363) !! 8, char_state {direction = snd qa, last_dir = snd qa})]})
     else (obj_grid_upd, s1 {npc_states = (npc_states s1) // [((d_list, 364) !! 8, char_state {direction = another_dir_, last_dir = another_dir_})]})
   else
     if line_sight1 < 0 then (obj_grid_upd, s1 {npc_states = (npc_states s1) // [((d_list, 365) !! 8, char_state {direction = line_sight1, last_dir = direction char_state})]})
@@ -684,7 +695,7 @@ npc_move offset d_list (w:u:v:w1:u1:v1:blocks) w_grid w_grid_upd f_grid obj_grid
       else (w_grid_upd, obj_grid_upd, s1 {next_sig_q = [129, w, u, v] ++ next_sig_q s1})
     else if direction char_state >= 0 then
       if isNothing (obj (w_grid ! (-w - 1, u', v'))) == True || (u, v) == (u', v') then
-        (w_grid'' ++ w_grid_upd, ((w, u, v), (-2, [])) : ((w, u', v'), (-2, [(offset - 10, u'), (offset - 9, v')])) : obj_grid_upd, s1 {npc_states = (npc_states s1) // [((d_list, 376) !! 8, char_state {dir_vector = dir_vector', fg_position = add_vel_pos (fg_position char_state) dir_vector', node_locations = [w, u', v', 0, 0, 0], ticks_left0 = 1})], next_sig_q = [129, w, u', v'] ++ next_sig_q s1})
+        (w_grid'' ++ w_grid_upd, ((w, u, v), (-2, [])) : ((w, u', v'), (-2, [(offset - 9, u'), (offset - 8, v')])) : obj_grid_upd, s1 {npc_states = (npc_states s1) // [((d_list, 376) !! 8, char_state {dir_vector = dir_vector', fg_position = add_vel_pos (fg_position char_state) dir_vector', node_locations = [w, u', v', 0, 0, 0], ticks_left0 = 1})], next_sig_q = [129, w, u', v'] ++ next_sig_q s1})
       else (w_grid_upd, obj_grid_upd, s1 {next_sig_q = [129, w, u, v] ++ next_sig_q s1})
     else if direction char_state < -4 then ([((-w - 1, u, v), def_w_grid), ((-w - 1, u'' 0, v'' 0), (w_grid ! (-w - 1, u, v)) {obj = Just (o_target {ident_ = char_rotation 0 (npc_dir_remap (direction char_state)) ((d_list, 377) !! 9)})})] ++ w_grid_upd, (take 4 (ramp_fill w (u'' 0) (v'' 0) (direction char_state) (2, []) (surface (f_grid ! (w, div (u'' 0) 2, div (v'' 0) 2))))) ++ [((w, u, v), (-2, [])), ((w, u'' 0, v'' 0), (-2, [(offset, 1)]))] ++ obj_grid_upd, s1 {npc_states = (npc_states s1) // [((d_list, 378) !! 8, char_state {node_locations = [w, u'' 0, v'' 0, 0, 0, 0], fg_position = adjust_fg_position w (u'' 0) (v'' 0) (direction char_state), ticks_left0 = 41})], next_sig_q = [129, w, u'' 0, v'' 0] ++ next_sig_q s1})
     else
