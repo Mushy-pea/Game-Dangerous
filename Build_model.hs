@@ -83,7 +83,7 @@ message :: [Int], state_chg :: Int, verbose_mode :: Bool, npc_states :: Array In
 
 data NPC_state = NPC_state {npc_type :: Int, c_health :: Int, ticks_left0 :: Int, ticks_left1 :: Int, node_locations :: [Int], fg_position :: (Float, Float, Float), dir_vector :: (Float, Float), direction :: Int,
 last_dir :: Int, dir_list :: [Int], node_num :: Int, end_node :: Int, head_index :: Int, reversed :: Bool, target_u' :: Int, target_v' :: Int, target_w' :: Int, speed :: Float, avoid_dist :: Int, attack_mode :: Bool,
-final_appr :: Bool, fire_prob :: Int} deriving (Eq, Show)
+final_appr :: Bool, fire_prob :: Int, fireball_state :: [(Int, Int)]} deriving (Eq, Show)
 
 data Save_state = Save_state {is_set :: Bool, w_grid_ :: Array (Int, Int, Int) Wall_grid, f_grid_ :: Array (Int, Int, Int) Floor_grid, obj_grid_ :: Array (Int, Int, Int) (Int, [Int]), s0_ :: Play_state0, s1_ :: Play_state1}
 
@@ -119,7 +119,7 @@ def_wall_place = Wall_place {rotate = 0, translate_u = 0, translate_v = 0, trans
 def_prob_seq = array (0, 239) [(i, 0) | i <- [0..239]]
 
 def_npc_state = NPC_state {npc_type = 0, c_health = 0, ticks_left0 = 40, ticks_left1 = 0, node_locations = [], fg_position = (0, 0, 0), dir_vector = (0, 0), direction = 0, last_dir = 0,
-dir_list = [], node_num = 0, end_node = 0, head_index = 0, reversed = False, target_u' = 0, target_v' = 0, target_w' = 0, speed = 0, avoid_dist = 0, attack_mode = False, final_appr = False, fire_prob = 0}
+dir_list = [], node_num = 0, end_node = 0, head_index = 0, reversed = False, target_u' = 0, target_v' = 0, target_w' = 0, speed = 0, avoid_dist = 0, attack_mode = False, final_appr = False, fire_prob = 0, fireball_state = []}
 
 empty_npc_array = array (0, 127) [(i, def_npc_state) | i <- [0..127]]
 
