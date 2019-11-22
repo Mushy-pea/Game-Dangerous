@@ -440,8 +440,10 @@ chk_line_sight mode a w_block u_block v_block (fg_u, fg_v) target_u target_v w_g
 
 -- Type 1 NPCs can move in 8 directions and type 2 in a subset of 4 of these.  This function maps these directions (encoded as 1 - 8) to centiradians, which is the
 -- angle representation used elsewhere in the engine.
-npc_dir_table :: Int -> Int
-npc_dir_table dir = truncate (78.625 * fromIntegral (dir - 1))
+npc_dir_table :: Bool -> Int -> Int
+npc_dir_table shift_flag dir =
+  if shift_flag == True then truncate (78.54 * fromIntegral (dir - 1)) + 6
+  else truncate (78.54 * fromIntegral (dir - 1))
 
 -- When a type 1 NPC is ascending or descending a ramp its direction is encoded as a negative integer from -1 to -8.  This function maps these directions to the
 -- other encoding described above and is used when an NPC reaches the top or bottom of a ramp.
@@ -455,25 +457,25 @@ npc_dir_remap (-7) = 3
 npc_dir_remap (-8) = 7
 
 -- Determine an alternative viable direction if an NPC is blocked from following its primary choice of direction.
-another_dir :: [Int] -> Int -> Int -> Int -> Int -> (Float, Float) -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> UArray (Int, Int) Float -> Play_state0 -> Int
-another_dir [] c w_block u_block v_block (fg_u, fg_v) w_grid f_grid obj_grid look_up s0 = 0
-another_dir poss_dirs c w_block u_block v_block (fg_u, fg_v) w_grid f_grid obj_grid look_up s0 =
+another_dir :: Bool -> [Int] -> Int -> Int -> Int -> Int -> (Float, Float) -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> UArray (Int, Int) Float -> Play_state0 -> Int
+another_dir shift_flag [] c w_block u_block v_block (fg_u, fg_v) w_grid f_grid obj_grid look_up s0 = 0
+another_dir shift_flag poss_dirs c w_block u_block v_block (fg_u, fg_v) w_grid f_grid obj_grid look_up s0 =
   let choice = (poss_dirs, 351) !! (mod ((prob_seq s0) ! (mod (fst__ (game_clock s0) + c) 240)) c)
   in
-  if chk_line_sight 1 (npc_dir_table choice) w_block u_block v_block (fg_u, fg_v) 0 0 w_grid f_grid obj_grid look_up == 0 then choice
-  else another_dir (delete choice poss_dirs) (c - 1) w_block u_block v_block (fg_u, fg_v) w_grid f_grid obj_grid look_up s0
+  if chk_line_sight 1 (npc_dir_table shift_flag choice) w_block u_block v_block (fg_u, fg_v) 0 0 w_grid f_grid obj_grid look_up == 0 then choice
+  else another_dir shift_flag (delete choice poss_dirs) (c - 1) w_block u_block v_block (fg_u, fg_v) w_grid f_grid obj_grid look_up s0
 
 -- This function is involved in implementing the restriction to the number of possible directions for an NPC.
 quantise_angle :: Int -> (Int, Int)
 quantise_angle a =
-  if a < 79 then (0, 1)
-  else if a < 157 then (79, 2)
-  else if a < 236 then (157, 3)
-  else if a < 314 then (236, 4)
-  else if a < 393 then (314, 5)
-  else if a < 471 then (393, 6)
-  else if a < 550 then (471, 7)
-  else (550, 8)
+  if a < 79 then (6, 1)
+  else if a < 157 then (85, 2)
+  else if a < 236 then (163, 3)
+  else if a < 314 then (239, 4)
+  else if a < 393 then (320, 5)
+  else if a < 471 then (399, 6)
+  else if a < 550 then (477, 7)
+  else (556, 8)
 
 -- Type 2 (centipede) NPCs can't reverse so that they don't trample their own tails (but see the explanation of cpede_head_swap below as it relates to this issue).
 -- This function is involved in implementing that restriction.
@@ -521,11 +523,11 @@ cpede_decision 0 choice i target_u target_v w u v w_grid f_grid obj_grid s0 s1 l
     else cpede_decision 1 7 i target_u target_v w u v w_grid f_grid obj_grid s0 s1 look_up
 cpede_decision 1 choice i target_u target_v w u v w_grid f_grid obj_grid s0 s1 look_up =
   let char_state = (npc_states s1) ! i
-      line_sight = chk_line_sight 2 (npc_dir_table choice) w u v ((fromIntegral u) + 0.5, (fromIntegral v) + 0.5) target_u target_v w_grid f_grid obj_grid look_up
+      line_sight = chk_line_sight 2 (npc_dir_table False choice) w u v ((fromIntegral u) + 0.5, (fromIntegral v) + 0.5) target_u target_v w_grid f_grid obj_grid look_up
   in
   if line_sight == 0 then (choice, True && attack_mode char_state)
   else if line_sight > avoid_dist char_state then (choice, False)
-  else (another_dir (delete (cpede_reverse choice) (delete choice [1, 3, 5, 7])) 2 w u v ((fromIntegral u) + 0.5, (fromIntegral v) + 0.5) w_grid f_grid obj_grid look_up s0, False)
+  else (another_dir False (delete (cpede_reverse choice) (delete choice [1, 3, 5, 7])) 2 w u v ((fromIntegral u) + 0.5, (fromIntegral v) + 0.5) w_grid f_grid obj_grid look_up s0, False)
 
 -- Updates the list of centipede segment directions so that the tail follows the direction the head has taken.
 upd_dir_list :: Int -> [Int] -> [Int]
@@ -566,7 +568,7 @@ npc_decision 0 flag offset target_w target_u target_v d_list (w:u:v:xs) w_grid f
     else npc_decision 3 1 offset w (target_u' char_state) (target_v' char_state) d_list (w:u:v:xs) w_grid f_grid obj_grid obj_grid_upd s0 (s1'' ((ticks_left1 char_state) - 1) target_u target_v False) look_up
   else if npc_type char_state < 2 && (u /= truncate (snd__ fg_pos + fst (dir_vector char_state)) || v /= truncate (third_ fg_pos + snd (dir_vector char_state))) then
     if attack_mode char_state == True then npc_decision 1 0 offset (truncate (pos_w s0)) (truncate (pos_u s0)) (truncate (pos_v s0)) d_list (w:u:v:xs) w_grid f_grid obj_grid obj_grid_upd s0 (s1' 0 0 0 0 0) look_up
-    else if ticks_left1 char_state == 0 || (w == target_w' char_state && u == target_u' char_state && v == target_v' char_state) then npc_decision 1 0 offset (fst__ rand_target) (snd__ rand_target) (third_ rand_target) d_list (w:u:v:xs) w_grid f_grid obj_grid obj_grid_upd s0 (s1' 0 1000 (fst__ rand_target) (snd__ rand_target) (third_ rand_target)) look_up
+    else if ticks_left1 char_state < 1 || (w == target_w' char_state && u == target_u' char_state && v == target_v' char_state) then npc_decision 1 0 offset (fst__ rand_target) (snd__ rand_target) (third_ rand_target) d_list (w:u:v:xs) w_grid f_grid obj_grid obj_grid_upd s0 (s1' 0 1000 (fst__ rand_target) (snd__ rand_target) (third_ rand_target)) look_up
     else npc_decision 1 0 offset (target_w' char_state) (target_u' char_state) (target_v' char_state) d_list (w:u:v:xs) w_grid f_grid obj_grid obj_grid_upd s0 (s1' 0 ((ticks_left1 char_state) - 1) (target_w' char_state) (target_u' char_state) (target_v' char_state)) look_up
   else if npc_type char_state < 2 then (obj_grid_upd, s1' 1 ((ticks_left1 char_state) - 1) (target_w' char_state) (target_u' char_state) (target_v' char_state))
   else (obj_grid_upd, s1' (ticks_left0 char_state) ((ticks_left1 char_state) - 1) (target_w' char_state) (target_u' char_state) (target_v' char_state))
@@ -586,7 +588,7 @@ npc_decision 2 flag offset target_w target_u target_v d_list (w:u:v:xs) w_grid f
       prog = obj_grid ! (w, u, v)
       line_sight0 = chk_line_sight 2 (fst qa) w u v (snd__ (fg_position char_state), third_ (fg_position char_state)) target_u target_v w_grid f_grid obj_grid look_up
       line_sight1 = chk_line_sight 3 (fst qa) w u v (snd__ (fg_position char_state), third_ (fg_position char_state)) target_u target_v w_grid f_grid obj_grid look_up
-      another_dir_ = another_dir (delete (snd qa) [1..8]) 7 w u v (snd__ fg_pos, third_ fg_pos) w_grid f_grid obj_grid look_up s0
+      another_dir_ = another_dir True (delete (snd qa) [1..8]) 7 w u v (snd__ fg_pos, third_ fg_pos) w_grid f_grid obj_grid look_up s0
       fb_pos = shift_fireball_pos (snd qa) (snd__ fg_pos) (third_ fg_pos)
   in
   if final_appr char_state == True then
@@ -608,13 +610,13 @@ npc_decision 3 flag offset target_w target_u target_v d_list (w:u:v:xs) w_grid f
   in
   if snd choice == True then
     if (prob_seq s0) ! (mod (fst__ (game_clock s0)) 240) < fire_prob char_state then
-      (((w, u, v), (fst prog, [(offset, 1), (offset + 1, fl_to_int (fst__ fg_pos)), (offset + 2, fl_to_int (snd__ fg_pos)), (offset + 3, fl_to_int (third_ fg_pos)), (offset + 4, npc_dir_table (fst choice))])) : obj_grid_upd, s1 {npc_states = (npc_states s1) // [((d_list, 371) !! 8, char_state {direction = fst choice})]})
+      (((w, u, v), (fst prog, [(offset, 1), (offset + 1, fl_to_int (fst__ fg_pos)), (offset + 2, fl_to_int (snd__ fg_pos)), (offset + 3, fl_to_int (third_ fg_pos)), (offset + 4, npc_dir_table False (fst choice))])) : obj_grid_upd, s1 {npc_states = (npc_states s1) // [((d_list, 371) !! 8, char_state {direction = fst choice})]})
     else (obj_grid_upd, s1 {npc_states = (npc_states s1) // [((d_list, 372) !! 8, char_state {direction = fst choice})]})
   else (obj_grid_upd, s1 {npc_states = (npc_states s1) // [((d_list, 373) !! 8, char_state {direction = fst choice})]})
 
 det_dir_vector :: Int -> Float -> UArray (Int, Int) Float -> (Float, Float)
 det_dir_vector dir speed look_up =
-  let dir' = npc_dir_table dir
+  let dir' = npc_dir_table True dir
   in
   if dir == 0 then (0, 0)
   else (speed * look_up ! (2, dir'), speed * look_up ! (1, dir'))
