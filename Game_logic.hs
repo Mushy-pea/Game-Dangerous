@@ -319,9 +319,11 @@ project_update p_state p_state' (i0, i1, i2) w_grid w_grid_upd obj_grid obj_grid
       index = (w_block, u_block, v_block)
       grid_i = fromJust (obj (w_grid ! index))
       grid_i' = (obj (w_grid ! index))
+      bs = bounds obj_grid
   in
   if isNothing grid_i' == True then ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 1)])) : obj_grid_upd, s1)
   else if ident_ grid_i /= 128 then (w_grid_upd, (location, (fst target, [(p_state' + 8, 2), (p_state' + 9, w_block_), (p_state' + 10, u_block), (p_state' + 11, v_block)])) : obj_grid_upd, s1)
+  else if u == 0 || v == 0 || u == snd__ (snd bs) || v == third_ (snd bs) then ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 1)])) : obj_grid_upd, s1)
   else if u_block' == u_block && v_block' == v_block then ((index, (w_grid ! index) {obj = Just (grid_i {u__ = u__ grid_i + int_to_float vel_u, v__ = v__ grid_i + int_to_float vel_v})}) : w_grid_upd, (location, (fst target, [(p_state', u'), (p_state' + 1, v')])) : obj_grid_upd, s1)
   else if u_block' == u_block && v_block' == v_block + 1 then
     if v2 (w_grid ! (w_block_, u_block, v_block)) == True then ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 1)])) : obj_grid_upd, s1)
@@ -697,7 +699,7 @@ npc_move offset d_list (w:u:v:w1:u1:v1:blocks) w_grid w_grid_upd f_grid obj_grid
       else (w_grid_upd, obj_grid_upd, s1 {next_sig_q = [129, w, u, v] ++ next_sig_q s1})
     else if direction char_state >= 0 then
       if isNothing (obj (w_grid ! (-w - 1, u', v'))) == True || (u, v) == (u', v') then
-        (w_grid'' ++ w_grid_upd, ((w, u, v), (-2, [])) : ((w, u', v'), (-2, [(offset - 9, u'), (offset - 8, v')] ++ fireball_state char_state)) : obj_grid_upd, s1 {npc_states = (npc_states s1) // [((d_list, 376) !! 8, char_state {dir_vector = dir_vector', fg_position = add_vel_pos (fg_position char_state) dir_vector', node_locations = [w, u', v', 0, 0, 0], ticks_left0 = 1, fireball_state = []})], next_sig_q = [129, w, u', v'] ++ next_sig_q s1})
+        (w_grid'' ++ w_grid_upd, ((w, u, v), (-2, [])) : ((w, u', v'), (-2, [(offset - 10, w), (offset - 9, u'), (offset - 8, v')] ++ fireball_state char_state)) : obj_grid_upd, s1 {npc_states = (npc_states s1) // [((d_list, 376) !! 8, char_state {dir_vector = dir_vector', fg_position = add_vel_pos (fg_position char_state) dir_vector', node_locations = [w, u', v', 0, 0, 0], ticks_left0 = 1, fireball_state = []})], next_sig_q = [129, w, u', v'] ++ next_sig_q s1})
       else (w_grid_upd, obj_grid_upd, s1 {next_sig_q = [129, w, u, v] ++ next_sig_q s1})
     else if direction char_state < -4 then ([((-w - 1, u, v), def_w_grid), ((-w - 1, u'' 0, v'' 0), (w_grid ! (-w - 1, u, v)) {obj = Just (o_target {ident_ = char_rotation 0 (npc_dir_remap (direction char_state)) ((d_list, 377) !! 9)})})] ++ w_grid_upd, (take 4 (ramp_fill w (u'' 0) (v'' 0) (direction char_state) (2, []) (surface (f_grid ! (w, div (u'' 0) 2, div (v'' 0) 2))))) ++ [((w, u, v), (-2, [])), ((w, u'' 0, v'' 0), (-2, [(offset, 1)]))] ++ obj_grid_upd, s1 {npc_states = (npc_states s1) // [((d_list, 378) !! 8, char_state {node_locations = [w, u'' 0, v'' 0, 0, 0, 0], fg_position = adjust_fg_position w (u'' 0) (v'' 0) (direction char_state), ticks_left0 = 41})], next_sig_q = [129, w, u'' 0, v'' 0] ++ next_sig_q s1})
     else
