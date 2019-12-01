@@ -35,7 +35,7 @@ load_array (x:xs) p i = do
   pokeElemOff p i x
   load_array xs p (i + 1)
 
--- This function is used to patch a problem that can happen within project_update and cause an engine shutdown.
+-- These two functions are used to patch a problem that can happen within project_update and cause an engine shutdown.
 filter_sig_q :: [Int] -> (Int, Int, Int) -> (Int, Int, Int) -> [Int]
 filter_sig_q [] (i0, i1, i2) (i3, i4, i5) = []
 filter_sig_q (x0:x1:x2:x3:xs) (i0, i1, i2) (i3, i4, i5) =
