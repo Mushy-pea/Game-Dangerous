@@ -271,7 +271,7 @@ start_game control_ref uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag
       killThread tid
       start_game control_ref uniform p_bind c conf_reg ((head (fst result)) + 1) (u, v, w, g, f, mag_r, mag_j) (snd result) sound_array frustumScale0
   else if mode == 2 then do
-    choice <- run_menu main_menu_text [] (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref}) (-0.75) (-0.75) 1 0 0
+    choice <- run_menu main_menu_text [] (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref}) (-0.75) (-0.75) 1 0 0 ps0_init
     if choice == 1 then start_game control_ref uniform p_bind c conf_reg 0 (u, v, w, g, f, mag_r, mag_j) save_state sound_array frustumScale0
     else if choice == 2 then do
       if is_set save_state == True then start_game control_ref uniform p_bind c conf_reg 1 (u, v, w, g, f, mag_r, mag_j) save_state sound_array frustumScale0

@@ -17,6 +17,7 @@ import Data.Array.IArray
 import Data.Array.Unboxed
 import Data.Maybe
 import Data.IORef
+import qualified Data.Sequence as SEQ
 import Foreign hiding (rotate)
 import Foreign.C.String
 import Foreign.C.Types
@@ -601,3 +602,13 @@ check_map_layer w u v u_limit v_limit grid flag =
   else
     if grid ! (w, u, v) == flag then throw Invalid_map_element
     else check_map_layer w u (v + 1) u_limit v_limit grid flag
+
+-- This function generates the differential between an original map state array (such as Wall_grid or Obj_grid) and a newer map state.  It is part of the implementation of the game state saving system.
+gen_array_diff :: Eq a => Int -> Int -> Int -> Int -> Int -> Array (Int, Int, Int) a -> Array (Int, Int, Int) a -> SEQ.Seq [Char] -> SEQ.Seq [Char]
+gen_array_diff w u v u_limit v_limit arr0 arr1 acc =
+  if w == 2 && u > u_limit then acc
+  else if u > u_limit then gen_array_diff (w + 1) 0 0 u_limit v_limit arr0 arr1 acc
+  else if v > v_limit then gen_array_diff w (u + 1) 0 u_limit v_limit arr0 arr1 acc
+  else
+    if arr0 ! (w, u, v) == arr1 ! (w, u, v) then gen_array_diff w u (v + 1) u_limit v_limit arr0 arr1 acc
+    else gen_array_diff w u (v + 1) u_limit v_limit arr0 arr1 (SEQ.>< (SEQ.fromList (show (arr1 ! (w, u, v)))))
