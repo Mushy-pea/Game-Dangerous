@@ -1,6 +1,6 @@
 # Game :: Dangerous (a tribute to ZZT)
 
-##A project update as of 04/12/2019
+## A project update as of 04/12/2019
 
 Recent progress has mainly been in fixing problems in the non - player character (NPC) logic and adding support for
 moving light sources and NPCs that can throw them.  There are a few video links below on this and previous updates.
