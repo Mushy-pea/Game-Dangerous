@@ -80,7 +80,7 @@ data Play_state0 = Play_state0 {pos_u :: Float, pos_v :: Float, pos_w :: Float, 
 game_clock :: (Int, Float, Int), torch_t0 :: Int, torch_t_limit :: Int, show_fps_ :: Bool, prob_seq :: UArray Int Int, mobile_lights :: ([Float], [Float])} deriving (Eq, Show)
 
 data Play_state1 = Play_state1 {health :: Int, ammo :: Int, gems :: Int, torches :: Int, keys :: [Int], region :: [Int], difficulty :: ([Char], Int, Int, Int), sig_q :: [Int], next_sig_q :: [Int],
-message :: [Int], state_chg :: Int, verbose_mode :: Bool, npc_states :: Array Int NPC_state} deriving (Eq)
+message :: [Int], state_chg :: Int, verbose_mode :: Bool, npc_states :: Array Int NPC_state} deriving (Eq, Show)
 
 data NPC_state = NPC_state {npc_type :: Int, c_health :: Int, ticks_left0 :: Int, ticks_left1 :: Int, node_locations :: [Int], fg_position :: (Float, Float, Float), dir_vector :: (Float, Float), direction :: Int,
 last_dir :: Int, dir_list :: [Int], node_num :: Int, end_node :: Int, head_index :: Int, reversed :: Bool, target_u' :: Int, target_v' :: Int, target_w' :: Int, speed :: Float, avoid_dist :: Int, attack_mode :: Bool,
@@ -552,33 +552,6 @@ build_table0 w_grid u_max v_max w_max = reverse (map (splitEvery (v_max + 1)) (s
 view_circle :: Float -> Float -> Float -> Int -> UArray (Int, Int) Float -> (Float, Float)
 view_circle a b r t look_up = (a + r * look_up ! (2, t), b + r * look_up ! (1, t))
 
--- These five functions are currently unused but are intended to later form part of the game state saving system.
-patch_w_grid :: [[Char]] -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Wall_grid
-patch_w_grid [] w_grid = w_grid
-patch_w_grid (x0:x1:x2:x3:x4:x5:x6:x7:x8:x9:x10:xs) w_grid =
-  if x0 == "0" then w_grid // [((read x0, read x1, read x2), def_w_grid)]
-  else patch_w_grid xs (w_grid // [((read x1, read x2, read x3), Wall_grid {u1 = False, u2 = False, v1 = False, v2 = False, u1_bound = 0, u2_bound = 0, v1_bound = 0, v2_bound = 0, w_level = 0,  wall_flag = [], texture = [], obj = Just Obj_place {ident_ = read x4, u__ = read x5, v__ = read x6, w__ = read x7, rotation = [0, 0, 0], rotate_ = False, phase = 0, texture__ = read x8, num_elem = read x9, obj_flag = read x10}})])
-
-patch_f_grid :: [[Char]] -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) Floor_grid
-patch_f_grid [] f_grid = f_grid
-patch_f_grid (x0:x1:x2:x3:x4:xs) f_grid = patch_f_grid xs (f_grid // [((read x0, read x1, read x2), Floor_grid {w_ = read x3, surface = read x4})])
-
-patch_obj_grid :: [[Char]] -> Array (Int, Int, Int) (Int, [Int]) -> Array (Int, Int, Int) (Int, [Int])
-patch_obj_grid [] obj_grid = obj_grid
-patch_obj_grid (x0:x1:x2:x3:x4:xs) obj_grid =
-  let dest = (read x0, read x1, read x2)
-  in
-  patch_obj_grid (drop (read x4) xs) (obj_grid // [(dest, (read x3, proc_ints (take (read x4) xs)))])
-
-set_play_state0 :: [[Char]] -> Play_state0
-set_play_state0 (x0:x1:x2:x3:x4:x5:x6:x7:x8:x9:x10:x11:x12:xs) = Play_state0 {pos_u = read x0, pos_v = read x1, pos_w = read x2, vel = [read x3, read x4, read x5], angle = read x6, message_ = [], rend_mode = read x7, view_mode = read x8, view_angle = read x9, game_clock = (1, 1, 1), torch_t0 = read x11, torch_t_limit = read x12, show_fps_ = False}
-
-set_play_state1 :: Int -> [[Char]] -> Play_state1 -> Play_state1
-set_play_state1 0 (x0:x1:x2:x3:x4:x5:x6:x7:x8:x9:x10:xs) s1 = set_play_state1 1 (drop (read x10) xs) (s1 {health = read x0, ammo = read x1, gems = read x2, torches = read x3, keys = [read x4, read x5, read x6, read x7, read x8, read x9], region = proc_ints (take (read x10) xs)})
-set_play_state1 1 (x0:xs) s1 = set_play_state1 2 (drop (read x0) xs) (s1 {sig_q = proc_ints (take (read x0) xs)})
-set_play_state1 2 (x0:xs) s1 = set_play_state1 3 (drop (read x0) xs) (s1 {message = proc_ints (take (read x0) xs)})
-set_play_state1 3 (x0:xs) s1 = s1 {state_chg = read x0}
-
 -- Used to query the conf_reg array, which holds startup parameters passed at the command line or from the engine's configuration file.
 cfg :: Array Int [Char] -> Int -> [Char] -> [Char]
 cfg conf_reg i query =
@@ -603,12 +576,22 @@ check_map_layer w u v u_limit v_limit grid flag =
     if grid ! (w, u, v) == flag then throw Invalid_map_element
     else check_map_layer w u (v + 1) u_limit v_limit grid flag
 
--- This function generates the differential between an original map state array (such as Wall_grid or Obj_grid) and a newer map state.  It is part of the implementation of the game state saving system.
-gen_array_diff :: Eq a => Int -> Int -> Int -> Int -> Int -> Array (Int, Int, Int) a -> Array (Int, Int, Int) a -> SEQ.Seq [Char] -> SEQ.Seq [Char]
+-- This function generates the differential between an original map state array (Wall_grid, Floor_grid or Obj_grid) and a newer map state.  It is part of the implementation of the game state saving system.
+gen_array_diff :: (Eq a, Show a) => Int -> Int -> Int -> Int -> Int -> Array (Int, Int, Int) a -> Array (Int, Int, Int) a -> SEQ.Seq [Char] -> SEQ.Seq [Char]
 gen_array_diff w u v u_limit v_limit arr0 arr1 acc =
   if w == 2 && u > u_limit then acc
   else if u > u_limit then gen_array_diff (w + 1) 0 0 u_limit v_limit arr0 arr1 acc
   else if v > v_limit then gen_array_diff w (u + 1) 0 u_limit v_limit arr0 arr1 acc
   else
     if arr0 ! (w, u, v) == arr1 ! (w, u, v) then gen_array_diff w u (v + 1) u_limit v_limit arr0 arr1 acc
-    else gen_array_diff w u (v + 1) u_limit v_limit arr0 arr1 (SEQ.>< (SEQ.fromList (show (arr1 ! (w, u, v)))))
+    else gen_array_diff w u (v + 1) u_limit v_limit arr0 arr1 (acc SEQ.>< (SEQ.singleton (show (w, u, v) ++ ", " ++ (show (arr1 ! (w, u, v))))))
+
+-- This function applies the updates specified in a save game file to the original map state, thereby reconstructing the saved state.
+apply_diff :: Eq a => [((Int, Int, Int), a)] -> Array (Int, Int, Int) a -> Array (Int, Int, Int) a
+apply_diff [] arr = arr
+apply_diff (((i0, i1, i2), y):xs) arr =
+  let bd = bounds arr
+  in
+  if i0 < fst__ (fst bd) || i0 > fst__ (snd bd) || i1 < snd__ (fst bd) || i1 > snd__ (snd bd) || i2 < third_ (fst bd) || i2 > third_ (snd bd) then error ("\nOut of bounds index found in save game file.  index: " ++ show (i0, i1, i2) ++ " bounds: " ++ show bd)
+  else apply_diff xs (arr // [((i0, i1, i2), y)])
+

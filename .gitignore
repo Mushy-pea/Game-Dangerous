@@ -49,3 +49,4 @@ audit_code.hs
 config1.txt
 config2.txt
 Preprocess_map_.hs
+*.sav

@@ -260,6 +260,7 @@ start_game control_ref uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag
       free p_f_table1
       free p_light_buffer
       killThread tid
+      save_array_diff0 (gen_array_diff 0 0 0 u_limit v_limit w_grid (w_grid_ (snd result)) SEQ.empty) (gen_array_diff 0 0 0 ((div (u_limit + 1) 2) - 1) ((div (v_limit + 1) 2) - 1) f_grid (f_grid_ (snd result)) SEQ.empty) (gen_array_diff 0 0 0 u_limit v_limit obj_grid (obj_grid_ (snd result)) SEQ.empty) (s0_ save_state) (s1_ save_state) conf_reg
       start_game control_ref uniform p_bind c conf_reg ((head (fst result)) + 1) (u, v, w, g, f, mag_r, mag_j) (snd result) sound_array frustumScale0
     else do
       tid <- forkIO (update_play (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref}) state_ref (s0_ save_state) (s1_ save_state) False (read (cfg' "min_frame_t")) (g, f, mag_r, mag_j) (w_grid_ save_state) (f_grid_ save_state) (obj_grid_ save_state) look_up_ save_state sound_array 0 t_log (SEQ.empty) 60)
@@ -285,6 +286,29 @@ start_game control_ref uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag
     putStr "\nYou have completed the demo.  Nice one.  Check the project website later for details of further releases."
     exitSuccess
   else return ()
+
+-- These two functions deal with generating a save game file.
+save_array_diff0 :: SEQ.Seq [Char] -> SEQ.Seq [Char] -> SEQ.Seq [Char] -> Play_state0 -> Play_state1 -> Array Int [Char] -> IO ()
+save_array_diff0 w_grid_seq f_grid_seq obj_grid_seq s0 s1 conf_reg =
+  let cfg' = cfg conf_reg 0
+  in do
+  h <- openFile "save_game0.sav" WriteMode
+  hPutStr h ("version_and_platform_string: " ++ cfg' "version_and_platform_string" ++ "\nWall_grid: ")
+  save_array_diff1 w_grid_seq h 0 ((SEQ.length w_grid_seq) - 1)
+  hPutStr h "\n\nFloor_grid: "
+  save_array_diff1 f_grid_seq h 0 ((SEQ.length f_grid_seq) - 1)
+  hPutStr h "\n\nObj_grid: "
+  save_array_diff1 obj_grid_seq h 0 ((SEQ.length obj_grid_seq) - 1)
+  hPutStr h ("\n\nPlay_state0: " ++ show s0 ++ "\n\nPlay_state1: " ++ show s1)
+  hClose h
+  putStr "\n\nGame saved as: save_game0.sav"
+
+save_array_diff1 :: SEQ.Seq [Char] -> Handle -> Int -> Int -> IO ()
+save_array_diff1 diff_seq h i limit = do
+  if i > limit then return ()
+  else do
+    hPutStr h ("\n" ++ (SEQ.index diff_seq i))
+    save_array_diff1 diff_seq h (i + 1) limit
 
 -- Find the uniform locations of GLSL uniform variables.
 find_gl_uniform :: [[Char]] -> [Int] -> Ptr GLuint -> [Int32] -> IO [Int32]
