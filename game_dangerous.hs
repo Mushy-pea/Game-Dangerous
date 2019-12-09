@@ -18,6 +18,7 @@ import Data.List.Split
 import Data.Matrix hiding ((!))
 import qualified Data.Sequence as SEQ
 import Data.IORef
+import qualified Data.List as LS
 import System.Environment
 import Data.Coerce
 import Unsafe.Coerce
@@ -37,13 +38,13 @@ main = do
   args <- getArgs
   if length args == 0 then do
     contents <- bracket (openFile "config.txt" ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nconfig file size: " ++ show (length contents)); return contents)
-    open_window ((listArray (0, 79) (splitOneOf "=\n" contents)) // [(3, "null")])
+    open_window ((listArray (0, 81) (splitOneOf "=\n" contents)) // [(3, "null")])
   else if length args == 1 then do
     contents <- bracket (openFile "config.txt" ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nconfig file size: " ++ show (length contents)); return contents)
-    open_window ((listArray (0, 79) (splitOneOf "=\n" contents)) // [(3, ((args, 0) !! 0))])
+    open_window ((listArray (0, 81) (splitOneOf "=\n" contents)) // [(3, ((args, 0) !! 0))])
   else do
     contents <- bracket (openFile ((args, 1) !! 1) ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nconfig file size: " ++ show (length contents)); return contents)
-    open_window ((listArray (0, 79) (splitOneOf "=\n" contents)) // [(3, ((args, 2) !! 0))])
+    open_window ((listArray (0, 81) (splitOneOf "=\n" contents)) // [(3, ((args, 2) !! 0))])
 
 -- This function initialises the GLUT runtime system, which in turn is used to initialise a window and OpenGL context.
 open_window :: Array Int [Char] -> IO ()
@@ -260,7 +261,7 @@ start_game control_ref uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag
       free p_f_table1
       free p_light_buffer
       killThread tid
-      save_array_diff0 (gen_array_diff 0 0 0 u_limit v_limit w_grid (w_grid_ (snd result)) SEQ.empty) (gen_array_diff 0 0 0 ((div (u_limit + 1) 2) - 1) ((div (v_limit + 1) 2) - 1) f_grid (f_grid_ (snd result)) SEQ.empty) (gen_array_diff 0 0 0 u_limit v_limit obj_grid (obj_grid_ (snd result)) SEQ.empty) (s0_ save_state) (s1_ save_state) conf_reg
+      save_array_diff0 0 ([], []) (gen_array_diff 0 0 0 u_limit v_limit w_grid (w_grid_ (snd result)) SEQ.empty) (gen_array_diff 0 0 0 ((div (u_limit + 1) 2) - 1) ((div (v_limit + 1) 2) - 1) f_grid (f_grid_ (snd result)) SEQ.empty) (gen_array_diff 0 0 0 u_limit v_limit obj_grid (obj_grid_ (snd result)) SEQ.empty) (s0_ save_state) (s1_ save_state) conf_reg
       start_game control_ref uniform p_bind c conf_reg ((head (fst result)) + 1) (u, v, w, g, f, mag_r, mag_j) (snd result) sound_array frustumScale0
     else do
       tid <- forkIO (update_play (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref}) state_ref (s0_ save_state) (s1_ save_state) False (read (cfg' "min_frame_t")) (g, f, mag_r, mag_j) (w_grid_ save_state) (f_grid_ save_state) (obj_grid_ save_state) look_up_ save_state sound_array 0 t_log (SEQ.empty) 60)
@@ -287,21 +288,36 @@ start_game control_ref uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag
     exitSuccess
   else return ()
 
+select_save_file :: [[Char]] -> Int -> ([Char], [Char])
+select_save_file file_list limit =
+  let i = read ((file_list, 631) !! 0)
+  in
+  if i == limit then ((file_list, 632) !! limit, "1" ++ concat (LS.intersperse "\n" (tail file_list)))
+  else ((file_list, 633) !! i, show (i + 1) ++ concat (LS.intersperse "\n" (tail file_list)))
+
 -- These two functions deal with generating a save game file.
-save_array_diff0 :: SEQ.Seq [Char] -> SEQ.Seq [Char] -> SEQ.Seq [Char] -> Play_state0 -> Play_state1 -> Array Int [Char] -> IO ()
-save_array_diff0 w_grid_seq f_grid_seq obj_grid_seq s0 s1 conf_reg =
+save_array_diff0 :: Int -> ([Char], [Char]) -> SEQ.Seq [Char] -> SEQ.Seq [Char] -> SEQ.Seq [Char] -> Play_state0 -> Play_state1 -> Array Int [Char] -> IO ()
+save_array_diff0 mode (save_file, save_log) w_grid_seq f_grid_seq obj_grid_seq s0 s1 conf_reg =
   let cfg' = cfg conf_reg 0
   in do
-  h <- openFile "save_game0.sav" WriteMode
-  hPutStr h ("version_and_platform_string: " ++ cfg' "version_and_platform_string" ++ "\nWall_grid: ")
-  save_array_diff1 w_grid_seq h 0 ((SEQ.length w_grid_seq) - 1)
-  hPutStr h "\n\nFloor_grid: "
-  save_array_diff1 f_grid_seq h 0 ((SEQ.length f_grid_seq) - 1)
-  hPutStr h "\n\nObj_grid: "
-  save_array_diff1 obj_grid_seq h 0 ((SEQ.length obj_grid_seq) - 1)
-  hPutStr h ("\n\nPlay_state0: " ++ show s0 ++ "\n\nPlay_state1: " ++ show s1)
-  hClose h
-  putStr "\n\nGame saved as: save_game0.sav"
+  if mode == 0 then do
+    h0 <- openFile "save_log.log" ReadMode
+    contents <- hGetContents h0
+    save_array_diff0 1 (select_save_file (splitOn "\n" contents) ((length (splitOn "\n" contents)) - 1)) w_grid_seq f_grid_seq obj_grid_seq s0 s1 conf_reg
+  else do
+    h0 <- openFile "save_log.log" WriteMode
+    hPutStr h0 save_log
+    hClose h0
+    h1 <- openFile save_file WriteMode
+    hPutStr h1 ("version_and_platform_string: " ++ cfg' "version_and_platform_string" ++ "\nWall_grid: ")
+    save_array_diff1 w_grid_seq h1 0 ((SEQ.length w_grid_seq) - 1)
+    hPutStr h1 "\n\nFloor_grid: "
+    save_array_diff1 f_grid_seq h1 0 ((SEQ.length f_grid_seq) - 1)
+    hPutStr h1 "\n\nObj_grid: "
+    save_array_diff1 obj_grid_seq h1 0 ((SEQ.length obj_grid_seq) - 1)
+    hPutStr h1 ("\n\nPlay_state0: " ++ show s0 ++ "\n\nPlay_state1: " ++ show s1)
+    hClose h1
+    putStr ("\n\nGame saved as: " ++ save_file)
 
 save_array_diff1 :: SEQ.Seq [Char] -> Handle -> Int -> Int -> IO ()
 save_array_diff1 diff_seq h i limit = do
