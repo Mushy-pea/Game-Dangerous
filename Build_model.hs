@@ -18,6 +18,7 @@ import Data.Array.Unboxed
 import Data.Maybe
 import Data.IORef
 import qualified Data.Sequence as SEQ
+import Data.Binary
 import Foreign hiding (rotate)
 import Foreign.C.String
 import Foreign.C.Types
@@ -69,6 +70,11 @@ data Object = Object {ident :: Int, att_offset :: Int, num_tex :: Int, tex_w :: 
 data Wall_place = Wall_place {rotate :: GLint, translate_u :: Float, translate_v :: Float, translate_w :: Float, wall_flag_ :: Int, texture_ :: Int, isNull :: Bool} deriving (Show)
 
 data Obj_place = Obj_place {ident_ :: Int, u__ :: Float, v__ :: Float, w__ :: Float, rotation :: [Int], rotate_ :: Bool, phase :: Float, texture__ :: Int, num_elem :: CInt, obj_flag :: Int} deriving (Eq, Show)
+
+instance Binary Obj_place where
+  put Obj_place {ident_ = a, u__ = b, v__ = c, w__ = d, rotation = e, rotate_ = f, phase = g, texture__ = h, num_elem = i, obj_flag = j} = put a >> put b >> put c >> put d >> put e >> put f >> put g >> put h >> put i >> put j
+
+  get = t <- 
 
 data Ray_hit = U1 | U2 | V1 | V2 | Corner0 | Corner1 | Corner2 | Corner3 | U1_hit | U2_hit | V1_hit | V2_hit | Corner0_hit | Corner1_hit | Corner2_hit | Corner3_hit | Object_hit | Ramp_found deriving (Eq)
 
