@@ -72,18 +72,70 @@ data Wall_place = Wall_place {rotate :: GLint, translate_u :: Float, translate_v
 data Obj_place = Obj_place {ident_ :: Int, u__ :: Float, v__ :: Float, w__ :: Float, rotation :: [Int], rotate_ :: Bool, phase :: Float, texture__ :: Int, num_elem :: CInt, obj_flag :: Int} deriving (Eq, Show)
 
 instance Binary Obj_place where
-  put Obj_place {ident_ = a, u__ = b, v__ = c, w__ = d, rotation = e, rotate_ = f, phase = g, texture__ = h, num_elem = i, obj_flag = j} = put a >> put b >> put c >> put d >> put e >> put f >> put g >> put h >> put i >> put j
+  put Obj_place {ident_ = a, u__ = b, v__ = c, w__ = d, texture__ = e, num_elem = f, obj_flag = g} = put a >> put b >> put c >> put d >> put e >> (put ((fromIntegral f) :: Int)) >> put g
 
-  get = t <- 
+  get = do a <- get
+           b <- get
+           c <- get
+           d <- get
+           e <- get
+           f <- get :: Get Int
+           g <- get
+           return (Obj_place {ident_ = a, u__ = b, v__ = c, w__ = d, texture__ = e, num_elem = (fromIntegral f) :: CInt, obj_flag = g})
 
 data Ray_hit = U1 | U2 | V1 | V2 | Corner0 | Corner1 | Corner2 | Corner3 | U1_hit | U2_hit | V1_hit | V2_hit | Corner0_hit | Corner1_hit | Corner2_hit | Corner3_hit | Object_hit | Ramp_found deriving (Eq)
 
 data Terrain = Flat | Positive_u | Negative_u | Positive_v | Negative_v | Open deriving (Eq, Show, Read)
 
+instance Binary Terrain where
+  put t = do
+                      case t of
+                        Flat -> put (0 :: Word8)
+                        Positive_u -> put (1 :: Word8)
+                        Negative_u -> put (2 :: Word8)
+                        Positive_v -> put (3 :: Word8)
+                        Negative_v -> put (4 :: Word8)
+                        Open -> put (5 :: Word8)
+
+  get = do t <- get :: Get Word8
+           case t of
+             0 -> return Flat
+             1 -> return Positive_u
+             2 -> return Negative_u
+             3 -> return Positive_v
+             4 -> return Negative_v
+             5 -> return Open
+
 data Floor_grid = Floor_grid {w_ :: Float, surface :: Terrain, local_up_ramp :: (Int, Int), local_down_ramp :: (Int, Int)} deriving (Eq, Show)
+
+instance Binary Floor_grid where
+  put Floor_grid {w_ = a, surface = b, local_up_ramp = c, local_down_ramp = d} = put a >> put b >> put c >> put d
+
+  get = do a <- get
+           b <- get
+           c <- get
+           d <- get
+           return (Floor_grid {w_ = a, surface = b, local_up_ramp = c, local_down_ramp = d})
 
 data Play_state0 = Play_state0 {pos_u :: Float, pos_v :: Float, pos_w :: Float, vel :: [Float], angle :: Int, angle_ :: Float, message_ :: [(Int, [Int])], rend_mode :: Int, view_mode :: Int, view_angle :: Int,
 game_clock :: (Int, Float, Int), torch_t0 :: Int, torch_t_limit :: Int, show_fps_ :: Bool, prob_seq :: UArray Int Int, mobile_lights :: ([Float], [Float])} deriving (Eq, Show)
+
+instance Binary Play_state0 where
+  put Play_state0 {pos_u = a, pos_v = b, pos_w = c, vel = d, angle = e, angle_ = f, rend_mode = g, view_mode = h, view_angle = i, game_clock = j, torch_t0 = k, torch_t_limit = l} = put a >> put b >> put c >> put d >> put e >> put f >> put g >> put h >> put i >> put j >> put k >> put l
+
+  get = do a <- get
+           b <- get
+           c <- get
+           d <- get
+           e <- get
+           f <- get
+           g <- get
+           h <- get
+           i <- get
+           j <- get
+           k <- get
+           l <- get
+           return (Play_state0 {pos_u = a, pos_v = b, pos_w = c, vel = d, angle = e, angle_ = f, rend_mode = g, view_mode = h, view_angle = i, game_clock = j, torch_t0 = k, torch_t_limit = l})
 
 data Play_state1 = Play_state1 {health :: Int, ammo :: Int, gems :: Int, torches :: Int, keys :: [Int], region :: [Int], difficulty :: ([Char], Int, Int, Int), sig_q :: [Int], next_sig_q :: [Int],
 message :: [Int], state_chg :: Int, verbose_mode :: Bool, npc_states :: Array Int NPC_state} deriving (Eq, Show)
@@ -91,6 +143,35 @@ message :: [Int], state_chg :: Int, verbose_mode :: Bool, npc_states :: Array In
 data NPC_state = NPC_state {npc_type :: Int, c_health :: Int, ticks_left0 :: Int, ticks_left1 :: Int, node_locations :: [Int], fg_position :: (Float, Float, Float), dir_vector :: (Float, Float), direction :: Int,
 last_dir :: Int, dir_list :: [Int], node_num :: Int, end_node :: Int, head_index :: Int, reversed :: Bool, target_u' :: Int, target_v' :: Int, target_w' :: Int, speed :: Float, avoid_dist :: Int, attack_mode :: Bool,
 final_appr :: Bool, fire_prob :: Int, fireball_state :: [(Int, Int)]} deriving (Eq, Show)
+
+instance Binary NPC_state where
+  put NPC_state {npc_type = a, c_health = b, ticks_left0 = c, ticks_left1 = d, node_locations = e, fg_position = f, dir_vector = g, direction = h, last_dir = i, dir_list = j, node_num = k, end_node = l, head_index = m, reversed = n, target_u' = o, target_v' = p, target_w' = q, speed = r, avoid_dist = s, attack_mode = t, final_appr = u, fire_prob = v, fireball_state = w} =
+    put a >> put b >> put c >> put d >> put e >> put f >> put g >> put h >> put i >> put j >> put k >> put l >> put m >> put n >> put o >> put p >> put q >> put r >> put s >> put t >> put u >> put v >> put w
+
+  get = do a <- get
+           b <- get
+           c <- get
+           d <- get
+           e <- get
+           f <- get
+           g <- get
+           h <- get
+           i <- get
+           j <- get
+           k <- get
+           l <- get
+           m <- get
+           n <- get
+           o <- get
+           p <- get
+           q <- get
+           r <- get
+           s <- get
+           t <- get
+           u <- get
+           v <- get
+           w <- get
+           return (NPC_state {npc_type = a, c_health = b, ticks_left0 = c, ticks_left1 = d, node_locations = e, fg_position = f, dir_vector = g, direction = h, last_dir = i, dir_list = j, node_num = k, end_node = l, head_index = m, reversed = n, target_u' = o, target_v' = p, target_w' = q, speed = r, avoid_dist = s, attack_mode = t, final_appr = u, fire_prob = v, fireball_state = w})
 
 data Save_state = Save_state {is_set :: Bool, w_grid_ :: Array (Int, Int, Int) Wall_grid, f_grid_ :: Array (Int, Int, Int) Floor_grid, obj_grid_ :: Array (Int, Int, Int) (Int, [Int]), s0_ :: Play_state0, s1_ :: Play_state1}
 

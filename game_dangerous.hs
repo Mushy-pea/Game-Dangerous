@@ -16,7 +16,7 @@ import Data.Bits
 import Data.Word
 import Data.List.Split
 import Data.Matrix hiding ((!))
-import Data.Binary
+import Data.Binary hiding (get)
 import qualified Data.Sequence as SEQ
 import Data.IORef
 import qualified Data.List as LS
@@ -31,6 +31,7 @@ import Control.Exception
 import System.Exit
 import System.Random
 import Build_model
+import Decompress_map
 import Game_logic
 import Game_sound
 
