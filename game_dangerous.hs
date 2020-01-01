@@ -297,7 +297,7 @@ select_save_file file_list limit =
   else ((file_list, 633) !! i, show (i + 1) ++ concat (LS.intersperse "\n" (tail file_list)))
 
 -- These two functions deal with generating a save game file.
-save_array_diff0 :: Int -> ([Char], [Char]) -> SEQ.Seq [Char] -> SEQ.Seq [Char] -> SEQ.Seq [Char] -> Play_state0 -> Play_state1 -> Array Int [Char] -> IO ()
+save_array_diff0 :: Int -> ([Char], [Char]) -> SEQ.Seq Wall_grid -> SEQ.Seq Floor_grid -> SEQ.Seq (Int, [Int]) -> Play_state0 -> Play_state1 -> Array Int [Char] -> IO ()
 save_array_diff0 mode (save_file, save_log) w_grid_seq f_grid_seq obj_grid_seq s0 s1 conf_reg =
   let cfg' = cfg conf_reg 0
   in do

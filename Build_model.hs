@@ -140,6 +140,22 @@ instance Binary Play_state0 where
 data Play_state1 = Play_state1 {health :: Int, ammo :: Int, gems :: Int, torches :: Int, keys :: [Int], region :: [Int], difficulty :: ([Char], Int, Int, Int), sig_q :: [Int], next_sig_q :: [Int],
 message :: [Int], state_chg :: Int, verbose_mode :: Bool, npc_states :: Array Int NPC_state} deriving (Eq, Show)
 
+instance Binary Play_state1 where
+  put Play_state1 {health = a, ammo = b, gems = c, torches = d, keys = e, region = f, difficulty = g, next_sig_q = h, message = i, state_chg = j, npc_states = k} = put a >> put b >> put c >> put d >> put e >> put f >> put g >> put h >> put i >> put j >> put k
+
+  get = do a <- get
+           b <- get
+           c <- get
+           d <- get
+           e <- get
+           f <- get
+           g <- get
+           h <- get
+           i <- get
+           j <- get
+           k <- get
+           return Play_state1 {health = a, ammo = b, gems = c, torches = d, keys = e, region = f, difficulty = g, next_sig_q = h, message = i, state_chg = j, npc_states = k}
+
 data NPC_state = NPC_state {npc_type :: Int, c_health :: Int, ticks_left0 :: Int, ticks_left1 :: Int, node_locations :: [Int], fg_position :: (Float, Float, Float), dir_vector :: (Float, Float), direction :: Int,
 last_dir :: Int, dir_list :: [Int], node_num :: Int, end_node :: Int, head_index :: Int, reversed :: Bool, target_u' :: Int, target_v' :: Int, target_w' :: Int, speed :: Float, avoid_dist :: Int, attack_mode :: Bool,
 final_appr :: Bool, fire_prob :: Int, fireball_state :: [(Int, Int)]} deriving (Eq, Show)
@@ -663,15 +679,20 @@ check_map_layer w u v u_limit v_limit grid flag =
     if grid ! (w, u, v) == flag then throw Invalid_map_element
     else check_map_layer w u (v + 1) u_limit v_limit grid flag
 
--- This function generates the differential between an original map state array (Wall_grid, Floor_grid or Obj_grid) and a newer map state.  It is part of the implementation of the game state saving system.
-gen_array_diff :: (Eq a, Show a) => Int -> Int -> Int -> Int -> Int -> Array (Int, Int, Int) a -> Array (Int, Int, Int) a -> SEQ.Seq [Char] -> SEQ.Seq [Char]
+class Gen_diff a where
+  gen_array_diff1 :: a -> SEQ.Seq a
+
+
+
+-- This function determines the differential between an original map state array (Wall_grid, Floor_grid or Obj_grid) and a newer map state.  It is part of the implementation of the game state saving system.
+gen_array_diff :: Eq a => Int -> Int -> Int -> Int -> Int -> Array (Int, Int, Int) a -> Array (Int, Int, Int) a -> SEQ.Seq a -> SEQ.Seq a
 gen_array_diff w u v u_limit v_limit arr0 arr1 acc =
   if w == 2 && u > u_limit then acc
   else if u > u_limit then gen_array_diff (w + 1) 0 0 u_limit v_limit arr0 arr1 acc
   else if v > v_limit then gen_array_diff w (u + 1) 0 u_limit v_limit arr0 arr1 acc
   else
     if arr0 ! (w, u, v) == arr1 ! (w, u, v) then gen_array_diff w u (v + 1) u_limit v_limit arr0 arr1 acc
-    else gen_array_diff w u (v + 1) u_limit v_limit arr0 arr1 (acc SEQ.>< (SEQ.singleton (show (w, u, v) ++ ", " ++ (show (arr1 ! (w, u, v))))))
+    else gen_array_diff w u (v + 1) u_limit v_limit arr0 arr1 (acc SEQ.>< (SEQ.singleton (arr1 ! (w, u, v))))
 
 -- This function applies the updates specified in a save game file to the original map state, thereby reconstructing the saved state.
 apply_diff :: Eq a => [((Int, Int, Int), a)] -> Array (Int, Int, Int) a -> Array (Int, Int, Int) a
