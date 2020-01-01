@@ -679,11 +679,6 @@ check_map_layer w u v u_limit v_limit grid flag =
     if grid ! (w, u, v) == flag then throw Invalid_map_element
     else check_map_layer w u (v + 1) u_limit v_limit grid flag
 
-class Gen_diff a where
-  gen_array_diff1 :: a -> SEQ.Seq a
-
-
-
 -- This function determines the differential between an original map state array (Wall_grid, Floor_grid or Obj_grid) and a newer map state.  It is part of the implementation of the game state saving system.
 gen_array_diff :: Eq a => Int -> Int -> Int -> Int -> Int -> Array (Int, Int, Int) a -> Array (Int, Int, Int) a -> SEQ.Seq a -> SEQ.Seq a
 gen_array_diff w u v u_limit v_limit arr0 arr1 acc =
