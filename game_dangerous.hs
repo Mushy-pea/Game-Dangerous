@@ -263,7 +263,7 @@ start_game control_ref uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag
       free p_f_table1
       free p_light_buffer
       killThread tid
-      save_array_diff0 0 ([], []) (gen_array_diff 0 0 0 u_limit v_limit w_grid (w_grid_ (snd result)) SEQ.empty) (gen_array_diff 0 0 0 ((div (u_limit + 1) 2) - 1) ((div (v_limit + 1) 2) - 1) f_grid (f_grid_ (snd result)) SEQ.empty) (gen_array_diff 0 0 0 u_limit v_limit obj_grid (obj_grid_ (snd result)) SEQ.empty) (s0_ save_state) (s1_ save_state) conf_reg
+      save_array_diff0 0 ([], []) (wrapped_save_array_diff1 (gen_array_diff 0 0 0 u_limit v_limit w_grid (w_grid_ (snd result)) SEQ.empty)) (wrapped_save_array_diff1 (gen_array_diff 0 0 0 ((div (u_limit + 1) 2) - 1) ((div (v_limit + 1) 2) - 1) f_grid (f_grid_ (snd result)) SEQ.empty)) (wrapped_save_array_diff1 (gen_array_diff 0 0 0 u_limit v_limit obj_grid (obj_grid_ (snd result)) SEQ.empty)) (encode (s0_ (snd result))) (encode (s1_ (snd result)))
       start_game control_ref uniform p_bind c conf_reg ((head (fst result)) + 1) (u, v, w, g, f, mag_r, mag_j) (snd result) sound_array frustumScale0
     else do
       tid <- forkIO (update_play (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref}) state_ref (s0_ save_state) (s1_ save_state) False (read (cfg' "min_frame_t")) (g, f, mag_r, mag_j) (w_grid_ save_state) (f_grid_ save_state) (obj_grid_ save_state) look_up_ save_state sound_array 0 t_log (SEQ.empty) 60)
@@ -290,6 +290,10 @@ start_game control_ref uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag
     exitSuccess
   else return ()
 
+wrapped_save_array_diff1 :: Serialise_diff a => SEQ.Seq a -> LBS.ByteString
+wrapped_save_array_diff1 x = save_array_diff1 x LBS.empty 0 ((SEQ.length x) - 1)
+
+-- Sequential saves of the same game produce a sequence of save game files up to a preset maximum.  The automation of this feature is done in the function below.
 select_save_file :: [[Char]] -> Int -> ([Char], [Char])
 select_save_file file_list limit =
   let i = read ((file_list, 631) !! 0)
@@ -297,11 +301,14 @@ select_save_file file_list limit =
   if i == limit then ((file_list, 632) !! limit, "1" ++ concat (LS.intersperse "\n" (tail file_list)))
   else ((file_list, 633) !! i, show (i + 1) ++ concat (LS.intersperse "\n" (tail file_list)))
 
-class Serialise_diff where
+-- This class and the two other functions below deal with generating a save game file.
+-- The Serialise_diff class is used so that the Obj_place type gets extracted from Wall_grid.  This is done because the rest of the Wall_grid structure is not exposed to the
+-- GPLC interpreter and so cannot change during game play.
+class Serialise_diff a where
   save_diff :: a -> LBS.ByteString
 
 instance Serialise_diff Wall_grid where
-  save_diff x = encode (Obj_place x)
+  save_diff x = encode (Just (obj x))
 
 instance Serialise_diff Floor_grid where
   save_diff x = encode x
@@ -309,7 +316,6 @@ instance Serialise_diff Floor_grid where
 instance Serialise_diff (Int, [Int]) where
   save_diff x = encode x
 
--- These two functions deal with generating a save game file.
 save_array_diff0 :: Int -> ([Char], [Char]) -> LBS.ByteString -> LBS.ByteString -> LBS.ByteString -> LBS.ByteString -> LBS.ByteString -> IO ()
 save_array_diff0 mode (save_file, save_log) w_grid_bstring f_grid_bstring obj_grid_bstring s0_bstring s1_bstring = do
   if mode == 0 then do
@@ -321,10 +327,9 @@ save_array_diff0 mode (save_file, save_log) w_grid_bstring f_grid_bstring obj_gr
     hPutStr h0 save_log
     hClose h0
     LBS.writeFile save_file (LBS.append (LBS.append (LBS.append (LBS.append w_grid_bstring f_grid_bstring) obj_grid_bstring) s0_bstring) s1_bstring)
-
     putStr ("\n\nGame saved as: " ++ save_file)
 
-save_array_diff1 :: SEQ.Seq a -> LBS.ByteString -> Int -> Int -> LBS.ByteString
+save_array_diff1 :: Serialise_diff a => SEQ.Seq a -> LBS.ByteString -> Int -> Int -> LBS.ByteString
 save_array_diff1 diff_seq diff_bytestring i limit =
   if i > limit then LBS.append (encode (fromIntegral (LBS.length diff_bytestring) :: Int)) diff_bytestring
   else save_array_diff1 diff_seq (LBS.append diff_bytestring (save_diff (SEQ.index diff_seq i))) (i + 1) limit
