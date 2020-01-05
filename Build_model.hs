@@ -680,14 +680,14 @@ check_map_layer w u v u_limit v_limit grid flag =
     else check_map_layer w u (v + 1) u_limit v_limit grid flag
 
 -- This function determines the differential between an original map state array (Wall_grid, Floor_grid or Obj_grid) and a newer map state.  It is part of the implementation of the game state saving system.
-gen_array_diff :: Eq a => Int -> Int -> Int -> Int -> Int -> Array (Int, Int, Int) a -> Array (Int, Int, Int) a -> SEQ.Seq a -> SEQ.Seq a
+gen_array_diff :: Eq a => Int -> Int -> Int -> Int -> Int -> Array (Int, Int, Int) a -> Array (Int, Int, Int) a -> SEQ.Seq ((Int, Int, Int), a) -> SEQ.Seq ((Int, Int, Int), a)
 gen_array_diff w u v u_limit v_limit arr0 arr1 acc =
   if w == 2 && u > u_limit then acc
   else if u > u_limit then gen_array_diff (w + 1) 0 0 u_limit v_limit arr0 arr1 acc
   else if v > v_limit then gen_array_diff w (u + 1) 0 u_limit v_limit arr0 arr1 acc
   else
     if arr0 ! (w, u, v) == arr1 ! (w, u, v) then gen_array_diff w u (v + 1) u_limit v_limit arr0 arr1 acc
-    else gen_array_diff w u (v + 1) u_limit v_limit arr0 arr1 (acc SEQ.>< (SEQ.singleton (arr1 ! (w, u, v))))
+    else gen_array_diff w u (v + 1) u_limit v_limit arr0 arr1 (acc SEQ.>< (SEQ.singleton ((w, u, v), (arr1 ! (w, u, v)))))
 
 -- This function applies the updates specified in a save game file to the original map state, thereby reconstructing the saved state.
 apply_diff :: Eq a => [((Int, Int, Int), a)] -> Array (Int, Int, Int) a -> Array (Int, Int, Int) a
