@@ -81,7 +81,7 @@ instance Binary Obj_place where
            e <- get
            f <- get :: Get Int
            g <- get
-           return (Obj_place {ident_ = a, u__ = b, v__ = c, w__ = d, texture__ = e, num_elem = (fromIntegral f) :: CInt, obj_flag = g})
+           return (Obj_place {ident_ = a, u__ = b, v__ = c, w__ = d, rotation = [], rotate_ = False, phase = 0, texture__ = e, num_elem = (fromIntegral f) :: CInt, obj_flag = g})
 
 data Ray_hit = U1 | U2 | V1 | V2 | Corner0 | Corner1 | Corner2 | Corner3 | U1_hit | U2_hit | V1_hit | V2_hit | Corner0_hit | Corner1_hit | Corner2_hit | Corner3_hit | Object_hit | Ramp_found deriving (Eq)
 
@@ -135,7 +135,7 @@ instance Binary Play_state0 where
            j <- get
            k <- get
            l <- get
-           return (Play_state0 {pos_u = a, pos_v = b, pos_w = c, vel = d, angle = e, angle_ = f, rend_mode = g, view_mode = h, view_angle = i, game_clock = j, torch_t0 = k, torch_t_limit = l})
+           return (Play_state0 {pos_u = a, pos_v = b, pos_w = c, vel = d, angle = e, angle_ = f, message_ = [], rend_mode = g, view_mode = h, view_angle = i, game_clock = j, torch_t0 = k, torch_t_limit = l, show_fps_ = False, prob_seq = def_prob_seq, mobile_lights = ([], [])})
 
 data Play_state1 = Play_state1 {health :: Int, ammo :: Int, gems :: Int, torches :: Int, keys :: [Int], region :: [Int], difficulty :: ([Char], Int, Int, Int), sig_q :: [Int], next_sig_q :: [Int],
 message :: [Int], state_chg :: Int, verbose_mode :: Bool, npc_states :: Array Int NPC_state} deriving (Eq, Show)
@@ -154,7 +154,7 @@ instance Binary Play_state1 where
            i <- get
            j <- get
            k <- get
-           return Play_state1 {health = a, ammo = b, gems = c, torches = d, keys = e, region = f, difficulty = g, next_sig_q = h, message = i, state_chg = j, npc_states = k}
+           return Play_state1 {health = a, ammo = b, gems = c, torches = d, keys = e, region = f, difficulty = g, sig_q = [], next_sig_q = h, message = i, state_chg = j, verbose_mode = False, npc_states = k}
 
 data NPC_state = NPC_state {npc_type :: Int, c_health :: Int, ticks_left0 :: Int, ticks_left1 :: Int, node_locations :: [Int], fg_position :: (Float, Float, Float), dir_vector :: (Float, Float), direction :: Int,
 last_dir :: Int, dir_list :: [Int], node_num :: Int, end_node :: Int, head_index :: Int, reversed :: Bool, target_u' :: Int, target_v' :: Int, target_w' :: Int, speed :: Float, avoid_dist :: Int, attack_mode :: Bool,
