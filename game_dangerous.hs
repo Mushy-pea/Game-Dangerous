@@ -305,7 +305,7 @@ class Serialise_diff a where
   save_diff :: ((Int, Int, Int), a) -> LBS.ByteString
 
 instance Serialise_diff Wall_grid where
-  save_diff ((w, u, v), x) = LBS.append (encode (w, u, v)) (encode (Just (obj x)))
+  save_diff ((w, u, v), x) = LBS.append (encode (w, u, v)) (encode (obj x))
 
 instance Serialise_diff Floor_grid where
   save_diff ((w, u, v), x) = LBS.append (encode (w, u, v)) (encode x)
@@ -323,17 +323,20 @@ save_array_diff0 mode (save_file, save_log) w_grid_bstring f_grid_bstring obj_gr
     h0 <- openFile "save_log.log" WriteMode
     hPutStr h0 save_log
     hClose h0
-    LBS.writeFile save_file (LBS.append (LBS.append (LBS.append (LBS.append w_grid_bstring f_grid_bstring) obj_grid_bstring) s0_bstring) s1_bstring)
+    putStr ("\nObj_place sequence length: " ++ show ((decode (LBS.take 8 w_grid_bstring)) :: Int) ++ ", " ++ show ((decode (LBS.take 8 (LBS.drop 8 w_grid_bstring))) :: Int))
+    putStr ("\nFloor_grid sequence length: " ++ show ((decode (LBS.take 8 f_grid_bstring)) :: Int) ++ ", " ++ show ((decode (LBS.take 8 (LBS.drop 8 f_grid_bstring))) :: Int))
+    putStr ("\nObj_grid sequence length: " ++ show ((decode (LBS.take 8 obj_grid_bstring)) :: Int) ++ ", " ++ show ((decode (LBS.take 8 (LBS.drop 8 obj_grid_bstring))) :: Int))
+    LBS.writeFile save_file (LBS.append (LBS.append (LBS.append (LBS.append (LBS.drop 8 w_grid_bstring) (LBS.drop 8 f_grid_bstring)) (LBS.drop 8 obj_grid_bstring)) s0_bstring) s1_bstring)
     putStr ("\n\nGame saved as: " ++ save_file)
 
 wrapped_save_array_diff1 :: Serialise_diff a => SEQ.Seq ((Int, Int, Int), a) -> LBS.ByteString
 wrapped_save_array_diff1 x =
-  if SEQ.length x == 0 then encode (0 :: Int)
+  if SEQ.length x == 0 then LBS.append (encode (0 :: Int)) (encode (0 :: Int))
   else save_array_diff1 x LBS.empty 0 ((SEQ.length x) - 1)
 
 save_array_diff1 :: Serialise_diff a => SEQ.Seq ((Int, Int, Int), a) -> LBS.ByteString -> Int -> Int -> LBS.ByteString
 save_array_diff1 diff_seq diff_bytestring i limit =
-  if i > limit then LBS.append (encode (fromIntegral (LBS.length diff_bytestring) :: Int)) diff_bytestring
+  if i > limit then LBS.append (encode i) (LBS.append (encode (fromIntegral (LBS.length diff_bytestring) :: Int)) diff_bytestring)
   else save_array_diff1 diff_seq (LBS.append diff_bytestring (save_diff (SEQ.index diff_seq i))) (i + 1) limit
 
 label_play_state_encoding :: LBS.ByteString -> LBS.ByteString
