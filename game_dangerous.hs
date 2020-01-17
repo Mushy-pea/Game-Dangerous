@@ -40,13 +40,10 @@ main = do
   args <- getArgs
   if length args == 0 then do
     contents <- bracket (openFile "config.txt" ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nconfig file size: " ++ show (length contents)); return contents)
-    open_window ((listArray (0, 81) (splitOneOf "=\n" contents)) // [(3, "null")])
-  else if length args == 1 then do
-    contents <- bracket (openFile "config.txt" ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nconfig file size: " ++ show (length contents)); return contents)
-    open_window ((listArray (0, 81) (splitOneOf "=\n" contents)) // [(3, ((args, 0) !! 0))])
+    open_window (listArray (0, 81) (splitOneOf "=\n" contents))
   else do
-    contents <- bracket (openFile ((args, 1) !! 1) ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nconfig file size: " ++ show (length contents)); return contents)
-    open_window ((listArray (0, 81) (splitOneOf "=\n" contents)) // [(3, ((args, 2) !! 0))])
+    contents <- bracket (openFile ((args, 1) !! 0) ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nconfig file size: " ++ show (length contents)); return contents)
+    open_window (listArray (0, 81) (splitOneOf "=\n" contents))
 
 -- This function initialises the GLUT runtime system, which in turn is used to initialise a window and OpenGL context.
 open_window :: Array Int [Char] -> IO ()
@@ -263,7 +260,7 @@ start_game control_ref uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag
       free p_f_table1
       free p_light_buffer
       killThread tid
-      save_array_diff0 0 ([], []) (wrapped_save_array_diff1 (gen_array_diff (-3) 0 0 u_limit v_limit w_grid (w_grid_ (snd result)) SEQ.empty)) (wrapped_save_array_diff1 (gen_array_diff 0 0 0 ((div (u_limit + 1) 2) - 1) ((div (v_limit + 1) 2) - 1) f_grid (f_grid_ (snd result)) SEQ.empty)) (wrapped_save_array_diff1 (gen_array_diff 0 0 0 u_limit v_limit obj_grid (obj_grid_ (snd result)) SEQ.empty)) (label_play_state_encoding (encode (s0_ (snd result)))) (label_play_state_encoding (encode (s1_ (snd result))))
+      save_array_diff0 0 ([], []) (wrapped_save_array_diff1 (gen_array_diff (-3) 0 0 u_limit v_limit w_grid (w_grid_ (snd result)) SEQ.empty)) (wrapped_save_array_diff1 (gen_array_diff 0 0 0 ((div (u_limit + 1) 2) - 1) ((div (v_limit + 1) 2) - 1) f_grid (f_grid_ (snd result)) SEQ.empty)) (wrapped_save_array_diff1 (gen_array_diff 0 0 0 u_limit v_limit obj_grid (obj_grid_ (snd result)) SEQ.empty)) (label_play_state_encoding (encode (s0_ (snd result)))) (label_play_state_encoding (encode (s1_ (snd result)))) conf_reg
       start_game control_ref uniform p_bind c conf_reg ((head (fst result)) + 1) (u, v, w, g, f, mag_r, mag_j) (snd result) sound_array frustumScale0
     else do
       tid <- forkIO (update_play (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref}) state_ref (s0_ save_state) (s1_ save_state) False (read (cfg' "min_frame_t")) (g, f, mag_r, mag_j) (w_grid_ save_state) (f_grid_ save_state) (obj_grid_ save_state) look_up_ save_state sound_array 0 t_log (SEQ.empty) 60)
@@ -290,6 +287,11 @@ start_game control_ref uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag
     exitSuccess
   else return ()
 
+gen_load_menu :: [[Char]] -> [[Char]] -> [Int]
+gen_load_menu [] acc = [2, 4, 0]
+gen_load_menu (x:xs) =
+  if head x == "_" then gen_load_menu xs
+
 -- Sequential saves of the same game produce a sequence of save game files up to a preset maximum.  The automation of this feature is done in the function below.
 select_save_file :: [[Char]] -> Int -> ([Char], [Char])
 select_save_file file_list limit =
@@ -313,21 +315,18 @@ instance Serialise_diff Floor_grid where
 instance Serialise_diff (Int, [Int]) where
   save_diff ((w, u, v), x) = LBS.append (encode (w, u, v)) (encode x)
 
-save_array_diff0 :: Int -> ([Char], [Char]) -> LBS.ByteString -> LBS.ByteString -> LBS.ByteString -> LBS.ByteString -> LBS.ByteString -> IO ()
-save_array_diff0 mode (save_file, save_log) w_grid_bstring f_grid_bstring obj_grid_bstring s0_bstring s1_bstring = do
+save_array_diff0 :: Int -> ([Char], [Char]) -> LBS.ByteString -> LBS.ByteString -> LBS.ByteString -> LBS.ByteString -> LBS.ByteString -> Array Int [Char] -> IO ()
+save_array_diff0 mode (save_file, save_log) w_grid_bstring f_grid_bstring obj_grid_bstring s0_bstring s1_bstring conf_reg = do
   if mode == 0 then do
     h0 <- openFile "save_log.log" ReadMode
     contents <- hGetContents h0
-    save_array_diff0 1 (select_save_file (splitOn "\n" contents) ((length (splitOn "\n" contents)) - 1)) w_grid_bstring f_grid_bstring obj_grid_bstring s0_bstring s1_bstring
+    save_array_diff0 1 (select_save_file (splitOn "\n" contents) ((length (splitOn "\n" contents)) - 1)) w_grid_bstring f_grid_bstring obj_grid_bstring s0_bstring s1_bstring conf_reg
   else do
     h0 <- openFile "save_log.log" WriteMode
     hPutStr h0 save_log
     hClose h0
-    putStr ("\nObj_place sequence length: " ++ show ((decode (LBS.take 8 w_grid_bstring)) :: Int) ++ ", " ++ show ((decode (LBS.take 8 (LBS.drop 8 w_grid_bstring))) :: Int))
-    putStr ("\nFloor_grid sequence length: " ++ show ((decode (LBS.take 8 f_grid_bstring)) :: Int) ++ ", " ++ show ((decode (LBS.take 8 (LBS.drop 8 f_grid_bstring))) :: Int))
-    putStr ("\nObj_grid sequence length: " ++ show ((decode (LBS.take 8 obj_grid_bstring)) :: Int) ++ ", " ++ show ((decode (LBS.take 8 (LBS.drop 8 obj_grid_bstring))) :: Int))
-    LBS.writeFile save_file (LBS.append (LBS.append (LBS.append (LBS.append (LBS.drop 8 w_grid_bstring) (LBS.drop 8 f_grid_bstring)) (LBS.drop 8 obj_grid_bstring)) s0_bstring) s1_bstring)
-    putStr ("\n\nGame saved as: " ++ save_file)
+    LBS.writeFile ((cfg conf_reg 0 "game_save_path") ++ (tail save_file)) (LBS.append (LBS.append (LBS.append (LBS.append (LBS.drop 8 w_grid_bstring) (LBS.drop 8 f_grid_bstring)) (LBS.drop 8 obj_grid_bstring)) s0_bstring) s1_bstring)
+    putStr ("\n\nGame saved as: " ++ (cfg conf_reg 0 "game_save_path") ++ save_file)
 
 wrapped_save_array_diff1 :: Serialise_diff a => SEQ.Seq ((Int, Int, Int), a) -> LBS.ByteString
 wrapped_save_array_diff1 x =
