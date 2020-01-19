@@ -287,18 +287,26 @@ start_game control_ref uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag
     exitSuccess
   else return ()
 
-gen_load_menu :: [[Char]] -> [[Char]] -> [Int]
-gen_load_menu [] acc = [2, 4, 0]
-gen_load_menu (x:xs) =
-  if head x == "_" then gen_load_menu xs
+-- This function determines the content of the load game menu that allows the user to load a previous game state.
+gen_load_menu :: [[Char]] -> [(Int, [Int])] -> Int -> [(Int, [Int])]
+gen_load_menu [] acc c =
+  if acc == [] then no_game_states_header
+  else load_game_menu_header ++ acc
+gen_load_menu ((y0:y1:y2:y3:y4:y5:y6:y7:y8:y9:y10:y11:y12:y13:y14:y15:y16):xs) acc c =
+  if y0 == '_' then gen_load_menu xs (acc ++ [(c, game_state_text ++ [c + 53] ++ game_time_text ++ [(read [y11]) + 53, (read [y12]) + 53, 69, (read [y13]) + 53, (read [y14]) + 53, 69, (read [y15]) + 53, (read [y16]) + 53])]) (c + 1)
+  else gen_load_menu xs acc c
 
+record_game_time :: Play_state0 -> [Char]
+record_game_time s0 =
+  if game_t s0 < 2400 then "0000" ++ reverse (take 2 ("0" ++ reverse (show (div (game_t s0) 40
+  
 -- Sequential saves of the same game produce a sequence of save game files up to a preset maximum.  The automation of this feature is done in the function below.
 select_save_file :: [[Char]] -> Int -> ([Char], [Char])
 select_save_file file_list limit =
   let i = read ((file_list, 631) !! 0)
   in
-  if i == limit then ((file_list, 632) !! limit, "1\n" ++ concat (LS.intersperse "\n" (tail file_list)))
-  else ((file_list, 633) !! i, show (i + 1) ++ "\n" ++ concat (LS.intersperse "\n" (tail file_list)))
+  if i == limit then (take 9 (tail ((file_list, 632) !! limit)), "1\n" ++ concat (LS.intersperse "\n" (tail file_list)))
+  else (take 9 (tail ((file_list, 633) !! i)), show (i + 1) ++ "\n" ++ concat (LS.intersperse "\n" (tail file_list)))
 
 -- This class and the four other functions below deal with generating a save game file.
 -- The Serialise_diff class is used so that the Obj_place type gets extracted from Wall_grid.  This is done because the rest of the Wall_grid structure is not exposed to the
