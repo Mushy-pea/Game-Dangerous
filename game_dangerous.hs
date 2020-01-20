@@ -260,7 +260,7 @@ start_game control_ref uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag
       free p_f_table1
       free p_light_buffer
       killThread tid
-      save_array_diff0 0 ([], []) (wrapped_save_array_diff1 (gen_array_diff (-3) 0 0 u_limit v_limit w_grid (w_grid_ (snd result)) SEQ.empty)) (wrapped_save_array_diff1 (gen_array_diff 0 0 0 ((div (u_limit + 1) 2) - 1) ((div (v_limit + 1) 2) - 1) f_grid (f_grid_ (snd result)) SEQ.empty)) (wrapped_save_array_diff1 (gen_array_diff 0 0 0 u_limit v_limit obj_grid (obj_grid_ (snd result)) SEQ.empty)) (label_play_state_encoding (encode (s0_ (snd result)))) (label_play_state_encoding (encode (s1_ (snd result)))) conf_reg
+--      save_array_diff0 0 ([], []) (wrapped_save_array_diff1 (gen_array_diff (-3) 0 0 u_limit v_limit w_grid (w_grid_ (snd result)) SEQ.empty)) (wrapped_save_array_diff1 (gen_array_diff 0 0 0 ((div (u_limit + 1) 2) - 1) ((div (v_limit + 1) 2) - 1) f_grid (f_grid_ (snd result)) SEQ.empty)) (wrapped_save_array_diff1 (gen_array_diff 0 0 0 u_limit v_limit obj_grid (obj_grid_ (snd result)) SEQ.empty)) (label_play_state_encoding (encode (s0_ (snd result)))) (label_play_state_encoding (encode (s1_ (snd result)))) conf_reg
       start_game control_ref uniform p_bind c conf_reg ((head (fst result)) + 1) (u, v, w, g, f, mag_r, mag_j) (snd result) sound_array frustumScale0
     else do
       tid <- forkIO (update_play (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref}) state_ref (s0_ save_state) (s1_ save_state) False (read (cfg' "min_frame_t")) (g, f, mag_r, mag_j) (w_grid_ save_state) (f_grid_ save_state) (obj_grid_ save_state) look_up_ save_state sound_array 0 t_log (SEQ.empty) 60)
@@ -288,17 +288,17 @@ start_game control_ref uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag
   else return ()
 
 -- This function determines the content of the load game menu that allows the user to load a previous game state.
-gen_load_menu :: [[Char]] -> [(Int, [Int])] -> Int -> [(Int, [Int])]
-gen_load_menu [] acc c =
-  if acc == [] then no_game_states_header
-  else load_game_menu_header ++ acc
-gen_load_menu ((y0:y1:y2:y3:y4:y5:y6:y7:y8:y9:y10:y11:y12:y13:y14:y15:y16):xs) acc c =
-  if y0 == '_' then gen_load_menu xs (acc ++ [(c, game_state_text ++ [c + 53] ++ game_time_text ++ [(read [y11]) + 53, (read [y12]) + 53, 69, (read [y13]) + 53, (read [y14]) + 53, 69, (read [y15]) + 53, (read [y16]) + 53])]) (c + 1)
-  else gen_load_menu xs acc c
+--gen_load_menu :: [[Char]] -> [(Int, [Int])] -> Int -> [(Int, [Int])]
+--gen_load_menu [] acc c =
+--  if acc == [] then no_game_states_header
+--  else load_game_menu_header ++ acc
+--gen_load_menu ((y0:y1:y2:y3:y4:y5:y6:y7:y8:y9:y10:y11:y12:y13:y14:y15:y16):xs) acc c =
+--  if y0 == '_' then gen_load_menu xs (acc ++ [(c, (game_state_text :: [Int]) ++ [c + 53] ++ game_time_text ++ [(read [y11]) + 53, (read [y12]) + 53, 69, (read [y13]) + 53, (read [y14]) + 53, 69, (read [y15]) + 53, (read [y16]) + 53])]) (c + 1)
+--  else gen_load_menu xs acc c
 
-record_game_time :: Play_state0 -> [Char]
-record_game_time s0 =
-  if game_t s0 < 2400 then "0000" ++ reverse (take 2 ("0" ++ reverse (show (div (game_t s0) 40
+--record_game_time :: Play_state0 -> [Char]
+--record_game_time s0 =
+--  if game_t s0 < 2400 then "0000" ++ reverse (take 2 ("0" ++ reverse (show (div (game_t s0) 40
   
 -- Sequential saves of the same game produce a sequence of save game files up to a preset maximum.  The automation of this feature is done in the function below.
 select_save_file :: [[Char]] -> Int -> ([Char], [Char])

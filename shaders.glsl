@@ -51,6 +51,8 @@ worldLightPositions[5] = mobileLightPositions[3];
 gl_Position = world_to_clip * worldPos;
 }
 
+//(dot(vertNormal, lightDir));
+
 // Fragment shader (program 0, two point lighted object, no texture)
 #version 330
 
@@ -81,7 +83,7 @@ for (int n = 0; n < numLights; n++)
     distanceSqr = dot(lightDifference, lightDifference);
     lightDir = lightDifference * inversesqrt(distanceSqr);
     attenuation[n] = 1 / distanceSqr;
-    cosAngleIncidence[n] = abs(dot(vertNormal, lightDir));
+    cosAngleIncidence[n] = clamp(0.15, 1, dot(vertNormal, lightDir));
 }
 
 vec4 totalStaticLight = (attenuation[0] * lmap_t0[t] * cosAngleIncidence[0] * lightIntensities[0] * diffColour) + (attenuation[1] * lmap_t1[t] * cosAngleIncidence[1] * lightIntensities[1] * diffColour) + (vec4(0.1, 0.1, 0.1, 1) * diffColour);
@@ -170,7 +172,7 @@ for (int n = 0; n < numLights; n++)
     distanceSqr = dot(lightDifference, lightDifference);
     lightDir = lightDifference * inversesqrt(distanceSqr);
     attenuation[n] = 1 / distanceSqr;
-    cosAngleIncidence[n] = abs(dot(vertNormal, lightDir));
+    cosAngleIncidence[n] = clamp(0.15, 1, dot(vertNormal, lightDir));
 }
 
 vec4 diffColour = texture(tex_unit0, tex_coord);
@@ -233,7 +235,7 @@ for (int n = 0; n < numLights; n++)
     distanceSqr = dot(lightDifference, lightDifference);
     lightDir = lightDifference * inversesqrt(distanceSqr);
     attenuation[n] = 1 / distanceSqr;
-    cosAngleIncidence[n] = abs(dot(vertNormal, lightDir));
+    cosAngleIncidence[n] = clamp(0.15, 1, dot(vertNormal, lightDir));
 }
 
 vec4 totalLight = (attenuation[0] * adjust * cosAngleIncidence[0] * mobileLightIntensities[0] * diffColour) + (attenuation[1] * cosAngleIncidence[1] * mobileLightIntensities[1] * diffColour) + (attenuation[2] * cosAngleIncidence[2] * mobileLightIntensities[2] * diffColour) + (attenuation[3] * cosAngleIncidence[3] * mobileLightIntensities[3] * diffColour) + (attenuation[4] * cosAngleIncidence[4] * mobileLightIntensities[4] * diffColour);
@@ -295,7 +297,7 @@ for (int n = 0; n < numLights; n++)
     distanceSqr = dot(lightDifference, lightDifference);
     lightDir = lightDifference * inversesqrt(distanceSqr);
     attenuation[n] = 1 / distanceSqr;
-    cosAngleIncidence[n] = abs(dot(vertNormal, lightDir));
+    cosAngleIncidence[n] = clamp(0.15, 1, dot(vertNormal, lightDir));
 }
 
 vec4 diffColour = texture(tex_unit0, tex_coord);
