@@ -70,7 +70,7 @@ msg28 = [39,16,38,27,51,31,44,63,49,27,45,63,31,27,46,31,40,63,28,51,63,27,63,29
 --      <                    Ouch...Centipede bite!                                           >
 msg29 = [2, 4, 17, 0, 15, 47, 29, 34, 66, 66, 66, 3, 31, 40, 46, 35, 42, 31, 30, 31, 63, 28, 35, 46, 31, 73]
 -- <                               Choose which game to load                                                     >    <               Game state:                               >          <                         Game time:                       >
-choose_game_text = [3, 34, 41, 41, 45, 31, 63, 49, 34, 35, 29, 34, 63, 33, 27, 39, 31, 63, 46, 41, 63, 38, 41, 27, 30]; game_state_text = [7, 27, 39, 31, 63, 45, 46, 27, 46, 31, 69, 63]; game_time_text = [63, 7, 27, 39, 31, 63, 46, 35, 39, 31, 69, 63]
+choose_game_text = [3, 34, 41, 41, 45, 31, 63, 49, 34, 35, 29, 34, 63, 33, 27, 39, 31, 63, 46, 41, 63, 38, 41, 27, 30]; game_state_text = [7, 27, 39, 31, 63, 45, 46, 27, 46, 31, 69, 63] :: [Int]; game_time_text = [63, 7, 27, 39, 31, 63, 46, 35, 39, 31, 69, 63] :: [Int]
 load_game_menu_header = [(0, choose_game_text), (0, [])] :: [(Int, [Int])]; no_game_states_header = [(0, [14, 41, 63, 33, 27, 39, 31, 63, 45, 46, 27, 46, 31, 45, 63, 32, 41, 47, 40, 30, 66]), (0, []), (1, msg12)] :: [(Int, [Int])]
 
 main_menu_text :: [(Int, [Int])]
@@ -1200,13 +1200,23 @@ determine_fps t_seq t_current =
   if SEQ.length t_seq < 40 then (48, [-1, 6, 16, 19, 69, 63] ++ conv_msg 0, t_seq SEQ.|> t_current)
   else (frame_rate1 / 1.25, [-1, 6, 16, 19, 69, 63] ++ conv_msg (truncate frame_rate0), (SEQ.drop 1 (t_seq SEQ.|> t_current)))
 
--- Game time is now composed of game_t (GPLC interpreter ticks) and frame_num (number of the next frame to be rendered).  This function updates both of these per frame.
+-- Game time is now composed of game_t (GPLC interpreter ticks) and frame_num (number of the next frame to be rendered).  These two functions deal with updating
+-- game time and preparing a user readable representation of it, respectively.
 update_game_clock :: (Int, Float, Int) -> Float -> (Bool, (Int, Float, Int))
 update_game_clock (game_t, fl_game_t, frame_num) f_rate =
   let fl_game_t' = fl_game_t + (1 / f_rate) / (1 / 40)
   in
   if truncate fl_game_t == truncate fl_game_t' then (False, (game_t, fl_game_t', frame_num + 1))
   else (True, (truncate fl_game_t', fl_game_t', frame_num + 1))
+
+show_game_time :: Int -> [Char] -> Bool -> [Char]
+show_game_time t result True = reverse (take 6 (reverse ("00000" ++ result)))
+show_game_time t result False =
+  if t < 400 then show_game_time 0 (result ++ "0" ++ show (div t 40)) True
+  else if t < 2400 then show_game_time 0 (result ++ show (div t 40)) True
+  else if t < 24000 then show_game_time (mod t 2400) (result ++ "0" ++ show (div t 2400)) False
+  else if t < 144000 then show_game_time (mod t 2400) (result ++ show (div t 2400)) False
+  else show_game_time (mod t 144000) ("0" ++ show (div t 144000)) False
 
 -- This function recurses once for each recursion of show_frame (and rendering of that frame) and is the central branching point of the game logic thread.
 update_play :: Io_box -> MVar (Play_state0, Array (Int, Int, Int) Wall_grid, Save_state) -> Play_state0 -> Play_state1 -> Bool -> Integer -> (Float, Float, Float, Float) -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> UArray (Int, Int) Float -> Save_state -> Array Int Source -> Integer -> MVar Integer -> SEQ.Seq Integer -> Float -> IO ()

@@ -260,7 +260,7 @@ start_game control_ref uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag
       free p_f_table1
       free p_light_buffer
       killThread tid
---      save_array_diff0 0 ([], []) (wrapped_save_array_diff1 (gen_array_diff (-3) 0 0 u_limit v_limit w_grid (w_grid_ (snd result)) SEQ.empty)) (wrapped_save_array_diff1 (gen_array_diff 0 0 0 ((div (u_limit + 1) 2) - 1) ((div (v_limit + 1) 2) - 1) f_grid (f_grid_ (snd result)) SEQ.empty)) (wrapped_save_array_diff1 (gen_array_diff 0 0 0 u_limit v_limit obj_grid (obj_grid_ (snd result)) SEQ.empty)) (label_play_state_encoding (encode (s0_ (snd result)))) (label_play_state_encoding (encode (s1_ (snd result)))) conf_reg
+      save_array_diff0 (is_set (snd result)) 0 ([], []) (wrapped_save_array_diff1 (gen_array_diff (-3) 0 0 u_limit v_limit w_grid (w_grid_ (snd result)) SEQ.empty)) (wrapped_save_array_diff1 (gen_array_diff 0 0 0 ((div (u_limit + 1) 2) - 1) ((div (v_limit + 1) 2) - 1) f_grid (f_grid_ (snd result)) SEQ.empty)) (wrapped_save_array_diff1 (gen_array_diff 0 0 0 u_limit v_limit obj_grid (obj_grid_ (snd result)) SEQ.empty)) (label_play_state_encoding (encode (s0_ (snd result)))) (label_play_state_encoding (encode (s1_ (snd result)))) conf_reg
       start_game control_ref uniform p_bind c conf_reg ((head (fst result)) + 1) (u, v, w, g, f, mag_r, mag_j) (snd result) sound_array frustumScale0
     else do
       tid <- forkIO (update_play (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref}) state_ref (s0_ save_state) (s1_ save_state) False (read (cfg' "min_frame_t")) (g, f, mag_r, mag_j) (w_grid_ save_state) (f_grid_ save_state) (obj_grid_ save_state) look_up_ save_state sound_array 0 t_log (SEQ.empty) 60)
@@ -270,6 +270,7 @@ start_game control_ref uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag
       free p_f_table1
       free p_light_buffer
       killThread tid
+      save_array_diff0 (is_set (snd result)) 0 ([], []) (wrapped_save_array_diff1 (gen_array_diff (-3) 0 0 u_limit v_limit w_grid (w_grid_ (snd result)) SEQ.empty)) (wrapped_save_array_diff1 (gen_array_diff 0 0 0 ((div (u_limit + 1) 2) - 1) ((div (v_limit + 1) 2) - 1) f_grid (f_grid_ (snd result)) SEQ.empty)) (wrapped_save_array_diff1 (gen_array_diff 0 0 0 u_limit v_limit obj_grid (obj_grid_ (snd result)) SEQ.empty)) (label_play_state_encoding (encode (s0_ (snd result)))) (label_play_state_encoding (encode (s1_ (snd result)))) conf_reg
       start_game control_ref uniform p_bind c conf_reg ((head (fst result)) + 1) (u, v, w, g, f, mag_r, mag_j) (snd result) sound_array frustumScale0
   else if mode == 2 then do
     choice <- run_menu main_menu_text [] (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref}) (-0.75) (-0.75) 1 0 0 ps0_init
@@ -288,25 +289,27 @@ start_game control_ref uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag
   else return ()
 
 -- This function determines the content of the load game menu that allows the user to load a previous game state.
---gen_load_menu :: [[Char]] -> [(Int, [Int])] -> Int -> [(Int, [Int])]
---gen_load_menu [] acc c =
---  if acc == [] then no_game_states_header
---  else load_game_menu_header ++ acc
---gen_load_menu ((y0:y1:y2:y3:y4:y5:y6:y7:y8:y9:y10:y11:y12:y13:y14:y15:y16):xs) acc c =
---  if y0 == '_' then gen_load_menu xs (acc ++ [(c, (game_state_text :: [Int]) ++ [c + 53] ++ game_time_text ++ [(read [y11]) + 53, (read [y12]) + 53, 69, (read [y13]) + 53, (read [y14]) + 53, 69, (read [y15]) + 53, (read [y16]) + 53])]) (c + 1)
---  else gen_load_menu xs acc c
+gen_load_menu :: [[Char]] -> [(Int, [Int])] -> Int -> [(Int, [Int])]
+gen_load_menu [] acc c =
+  if acc == [] then no_game_states_header
+  else load_game_menu_header ++ acc
+gen_load_menu ((y0:y1:y2:y3:y4:y5:y6:y7:y8:y9:y10:y11:y12:y13:y14:y15:y16:ys):xs) acc c =
+  if y0 == '_' then gen_load_menu xs (acc ++ [(c, game_state_text ++ [c + 53] ++ game_time_text ++ [(read [y11] + 53), (read [y12] + 53), 69, (read [y13] + 53), (read [y14] + 53), 69, (read [y15] + 53), (read [y16] + 53)])]) (c + 1)
+  else gen_load_menu xs acc c
 
---record_game_time :: Play_state0 -> [Char]
---record_game_time s0 =
---  if game_t s0 < 2400 then "0000" ++ reverse (take 2 ("0" ++ reverse (show (div (game_t s0) 40
-  
+add_time_stamp :: [[Char]] -> Play_state0 -> Int -> Int -> [Char]
+add_time_stamp [] s0 save_slot i = []
+add_time_stamp ((y0:y1:y2:y3:y4:y5:y6:y7:y8:y9:y10:y11:y12:y13:y14:y15:y16:ys):xs) s0 save_slot i =
+  if i == save_slot then [y0, y1, y2, y3, y4, y5, y6, y7, y8, y9, y10] ++ show_game_time (mod (fst__ (game_clock s0)) 1440000) [] False ++ "\n" ++ add_time_stamp xs s0 save_slot (i + 1)
+  else [y0, y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16] ++ add_time_stamp xs s0 save_slot (i + 1)
+
 -- Sequential saves of the same game produce a sequence of save game files up to a preset maximum.  The automation of this feature is done in the function below.
-select_save_file :: [[Char]] -> Int -> ([Char], [Char])
-select_save_file file_list limit =
+select_save_file :: [[Char]] -> Play_state0 -> Int -> ([Char], [Char])
+select_save_file file_list s0 limit =
   let i = read ((file_list, 631) !! 0)
   in
-  if i == limit then (take 9 (tail ((file_list, 632) !! limit)), "1\n" ++ concat (LS.intersperse "\n" (tail file_list)))
-  else (take 9 (tail ((file_list, 633) !! i)), show (i + 1) ++ "\n" ++ concat (LS.intersperse "\n" (tail file_list)))
+  if i == limit then (tail (take 10 (tail ((file_list, 632) !! limit))), "1\n" ++ add_time_stamp (tail file_list) s0 i 1)
+  else (tail (take 10 (tail ((file_list, 632) !! i))), show (i + 1) ++ "\n" ++ add_time_stamp (tail file_list) s0 i 1)
 
 -- This class and the four other functions below deal with generating a save game file.
 -- The Serialise_diff class is used so that the Obj_place type gets extracted from Wall_grid.  This is done because the rest of the Wall_grid structure is not exposed to the
@@ -323,17 +326,18 @@ instance Serialise_diff Floor_grid where
 instance Serialise_diff (Int, [Int]) where
   save_diff ((w, u, v), x) = LBS.append (encode (w, u, v)) (encode x)
 
-save_array_diff0 :: Int -> ([Char], [Char]) -> LBS.ByteString -> LBS.ByteString -> LBS.ByteString -> LBS.ByteString -> LBS.ByteString -> Array Int [Char] -> IO ()
-save_array_diff0 mode (save_file, save_log) w_grid_bstring f_grid_bstring obj_grid_bstring s0_bstring s1_bstring conf_reg = do
+save_array_diff0 :: Bool -> Int -> ([Char], [Char]) -> LBS.ByteString -> LBS.ByteString -> LBS.ByteString -> LBS.ByteString -> LBS.ByteString -> Array Int [Char] -> Play_state0 -> IO ()
+save_array_diff0 False mode (save_file, save_log) w_grid_bstring f_grid_bstring obj_grid_bstring s0_bstring s1_bstring conf_reg s0 = return ()
+save_array_diff0 True mode (save_file, save_log) w_grid_bstring f_grid_bstring obj_grid_bstring s0_bstring s1_bstring conf_reg s0 = do
   if mode == 0 then do
     h0 <- openFile "save_log.log" ReadMode
     contents <- hGetContents h0
-    save_array_diff0 1 (select_save_file (splitOn "\n" contents) ((length (splitOn "\n" contents)) - 1)) w_grid_bstring f_grid_bstring obj_grid_bstring s0_bstring s1_bstring conf_reg
+    save_array_diff0 1 (select_save_file (splitOn "\n" contents) s0 ((length (splitOn "\n" contents)) - 1)) w_grid_bstring f_grid_bstring obj_grid_bstring s0_bstring s1_bstring conf_reg s0
   else do
     h0 <- openFile "save_log.log" WriteMode
     hPutStr h0 save_log
     hClose h0
-    LBS.writeFile ((cfg conf_reg 0 "game_save_path") ++ (tail save_file)) (LBS.append (LBS.append (LBS.append (LBS.append (LBS.drop 8 w_grid_bstring) (LBS.drop 8 f_grid_bstring)) (LBS.drop 8 obj_grid_bstring)) s0_bstring) s1_bstring)
+    LBS.writeFile ((cfg conf_reg 0 "game_save_path") ++ save_file) (LBS.append (LBS.append (LBS.append (LBS.append (LBS.drop 8 w_grid_bstring) (LBS.drop 8 f_grid_bstring)) (LBS.drop 8 obj_grid_bstring)) s0_bstring) s1_bstring)
     putStr ("\n\nGame saved as: " ++ (cfg conf_reg 0 "game_save_path") ++ save_file)
 
 wrapped_save_array_diff1 :: Serialise_diff a => SEQ.Seq ((Int, Int, Int), a) -> LBS.ByteString
