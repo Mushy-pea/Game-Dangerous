@@ -280,8 +280,8 @@ start_game control_ref uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag
     if choice == 1 then start_game control_ref uniform p_bind c conf_reg 0 (u, v, w, g, f, mag_r, mag_j) save_state sound_array frustumScale0
     else if choice == 2 then do
       contents <- bracket (openFile "save_log.log" ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nsave_log file size: " ++ show (length contents)); return contents)
-      state_choice <- run_menu (gen_load_menu (splitOn "\n" contents) [] 1) [] (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref}) (-0.75) (-0.75) 1 0 0 ps0_init
-      loaded_state <- load_saved_game 0 (splitOn "\n" contents) [] 0 state_choice (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref}) w_grid f_grid obj_grid
+      state_choice <- run_menu (gen_load_menu (tail (splitOn "\n" contents)) [] 1) [] (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref}) (-0.75) (-0.75) 1 0 0 ps0_init
+      loaded_state <- load_saved_game 0 (tail (splitOn "\n" contents)) [] 1 state_choice (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref}) w_grid f_grid obj_grid conf_reg
       if isNothing loaded_state == True then start_game control_ref uniform p_bind c conf_reg 2 (u, v, w, g, f, mag_r, mag_j) def_save_state sound_array frustumScale0
       else start_game control_ref uniform p_bind c conf_reg 1 (u, v, w, g, f, mag_r, mag_j) (fromJust loaded_state) sound_array frustumScale0
     else exitSuccess
@@ -324,8 +324,7 @@ proc_w_grid_upd (x SEQ.:<| xs) w_grid = (fst x, (w_grid ! (fst x)) {obj = snd x}
 
 load_game_state_file :: Int -> LBS.ByteString -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> SEQ.Seq ((Int, Int, Int), Maybe Obj_place) -> SEQ.Seq ((Int, Int, Int), Floor_grid) -> SEQ.Seq ((Int, Int, Int), (Int, [Int])) -> Play_state0 -> Play_state1 -> Save_state
 load_game_state_file c bs w_grid f_grid obj_grid w_grid_upd f_grid_upd obj_grid_upd s0 s1 =
-  if LBS.length bs == 0 then error "\nEnd of file encountered unexpectedly."
-  else if c == 0 then load_game_state_file (c + 1) (LBS.drop (8 + fromIntegral ((decode (LBS.take 8 bs)) :: Int)) bs) w_grid f_grid obj_grid (decode_sequence 0 def_obj_place_ (LBS.take (fromIntegral ((decode (LBS.take 8 bs)) :: Int)) (LBS.drop 8 bs)) SEQ.empty) f_grid_upd obj_grid_upd s0 s1
+  if c == 0 then load_game_state_file (c + 1) (LBS.drop (8 + fromIntegral ((decode (LBS.take 8 bs)) :: Int)) bs) w_grid f_grid obj_grid (decode_sequence 0 def_obj_place_ (LBS.take (fromIntegral ((decode (LBS.take 8 bs)) :: Int)) (LBS.drop 8 bs)) SEQ.empty) f_grid_upd obj_grid_upd s0 s1
   else if c == 1 then load_game_state_file (c + 1) (LBS.drop (8 + fromIntegral ((decode (LBS.take 8 bs)) :: Int)) bs) w_grid f_grid obj_grid w_grid_upd (decode_sequence 0 def_f_grid_ (LBS.take (fromIntegral ((decode (LBS.take 8 bs)) :: Int)) (LBS.drop 8 bs)) SEQ.empty) obj_grid_upd  s0 s1
   else if c == 2 then load_game_state_file (c + 1) (LBS.drop (8 + fromIntegral ((decode (LBS.take 8 bs)) :: Int)) bs) w_grid f_grid obj_grid w_grid_upd f_grid_upd (decode_sequence 0 def_obj_grid_ (LBS.take (fromIntegral ((decode (LBS.take 8 bs)) :: Int)) (LBS.drop 8 bs)) SEQ.empty)  s0 s1
   else if c == 3 then load_game_state_file (c + 1) (LBS.drop (8 + fromIntegral ((decode (LBS.take 8 bs)) :: Int)) bs) w_grid f_grid obj_grid w_grid_upd f_grid_upd obj_grid_upd ((decode (LBS.take (fromIntegral ((decode (LBS.take 8 bs)) :: Int)) (LBS.drop 8 bs))) :: Play_state0) s1
@@ -338,13 +337,13 @@ loader_error x box = do
   putStr ("\nload_saved_game: " ++ show x)
   return LBS.empty
 
-load_saved_game :: Int -> [[Char]] -> [Char] -> Int -> Int -> Io_box -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> IO (Maybe Save_state)
-load_saved_game 0 [] chosen_file c choice box w_grid f_grid obj_grid = error "\nload_saved_game: encountered an unexpected log file structure."
-load_saved_game 0 ((y0:y1:y2:y3:y4:y5:y6:y7:y8:y9:y10:y11:y12:y13:y14:y15:y16:ys):xs) chosen_file c choice box w_grid f_grid obj_grid = do
-  if c == choice then load_saved_game 1 [] [y1, y2, y3, y4, y5, y6, y7, y8, y9] c choice box w_grid f_grid obj_grid
-  else load_saved_game 0 xs chosen_file (c + 1) choice box w_grid f_grid obj_grid
-load_saved_game 1 [] chosen_file c choice box w_grid f_grid obj_grid = do
-  contents <- catch (do contents <- LBS.readFile chosen_file; return contents) (\e -> loader_error e box)
+load_saved_game :: Int -> [[Char]] -> [Char] -> Int -> Int -> Io_box -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> Array Int [Char] -> IO (Maybe Save_state)
+load_saved_game 0 [] chosen_file c choice box w_grid f_grid obj_grid conf_reg = error "\nload_saved_game: encountered an unexpected log file structure."
+load_saved_game 0 ((y0:y1:y2:y3:y4:y5:y6:y7:y8:y9:y10:y11:y12:y13:y14:y15:y16:ys):xs) chosen_file c choice box w_grid f_grid obj_grid conf_reg = do
+  if c == choice then load_saved_game 1 [] [y1, y2, y3, y4, y5, y6, y7, y8, y9] c choice box w_grid f_grid obj_grid conf_reg
+  else load_saved_game 0 xs chosen_file (c + 1) choice box w_grid f_grid obj_grid conf_reg
+load_saved_game 1 [] chosen_file c choice box w_grid f_grid obj_grid conf_reg = do
+  contents <- catch (do contents <- LBS.readFile ((cfg conf_reg 0 "game_save_path") ++ chosen_file); return contents) (\e -> loader_error e box)
   if LBS.length contents == 0 then return Nothing
   else return (Just (load_game_state_file 0 contents w_grid f_grid obj_grid SEQ.Empty SEQ.Empty SEQ.Empty ps0_init ps1_init))
 
@@ -359,8 +358,8 @@ select_save_file :: [[Char]] -> Play_state0 -> Int -> ([Char], [Char])
 select_save_file file_list s0 limit =
   let i = read ((file_list, 631) !! 0)
   in
-  if i == limit then (tail (take 10 (tail ((file_list, 632) !! limit))), "1\n" ++ add_time_stamp (tail file_list) s0 i 1)
-  else (tail (take 10 (tail ((file_list, 632) !! i))), show (i + 1) ++ "\n" ++ add_time_stamp (tail file_list) s0 i 1)
+  if i == limit then (take 9 (tail ((file_list, 632) !! limit)), "1\n" ++ init (add_time_stamp (tail file_list) s0 i 1))
+  else (take 9 (tail ((file_list, 632) !! i)), show (i + 1) ++ "\n" ++ init (add_time_stamp (tail file_list) s0 i 1))
 
 -- This class and the four other functions below deal with generating a save game file.
 -- The Serialise_diff class is used so that the Obj_place type gets extracted from Wall_grid.  This is done because the rest of the Wall_grid structure is not exposed to the

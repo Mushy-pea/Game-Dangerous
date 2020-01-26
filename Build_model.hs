@@ -141,7 +141,7 @@ data Play_state1 = Play_state1 {health :: Int, ammo :: Int, gems :: Int, torches
 message :: [Int], state_chg :: Int, verbose_mode :: Bool, npc_states :: Array Int NPC_state} deriving (Eq, Show)
 
 instance Binary Play_state1 where
-  put Play_state1 {health = a, ammo = b, gems = c, torches = d, keys = e, region = f, difficulty = g, next_sig_q = h, message = i, state_chg = j, npc_states = k} = put a >> put b >> put c >> put d >> put e >> put f >> put g >> put h >> put i >> put j >> put k
+  put Play_state1 {health = a, ammo = b, gems = c, torches = d, keys = e, region = f, difficulty = g, sig_q = h, message = i, state_chg = j, npc_states = k} = put a >> put b >> put c >> put d >> put e >> put f >> put g >> put h >> put i >> put j >> put k
 
   get = do a <- get
            b <- get
@@ -154,7 +154,7 @@ instance Binary Play_state1 where
            i <- get
            j <- get
            k <- get
-           return Play_state1 {health = a, ammo = b, gems = c, torches = d, keys = e, region = f, difficulty = g, sig_q = [], next_sig_q = h, message = i, state_chg = j, verbose_mode = False, npc_states = k}
+           return Play_state1 {health = a, ammo = b, gems = c, torches = d, keys = e, region = f, difficulty = g, sig_q = h, next_sig_q = [], message = i, state_chg = j, verbose_mode = False, npc_states = k}
 
 data NPC_state = NPC_state {npc_type :: Int, c_health :: Int, ticks_left0 :: Int, ticks_left1 :: Int, node_locations :: [Int], fg_position :: (Float, Float, Float), dir_vector :: (Float, Float), direction :: Int,
 last_dir :: Int, dir_list :: [Int], node_num :: Int, end_node :: Int, head_index :: Int, reversed :: Bool, target_u' :: Int, target_v' :: Int, target_w' :: Int, speed :: Float, avoid_dist :: Int, attack_mode :: Bool,
@@ -688,13 +688,3 @@ gen_array_diff w u v u_limit v_limit arr0 arr1 acc =
   else
     if arr0 ! (w, u, v) == arr1 ! (w, u, v) then gen_array_diff w u (v + 1) u_limit v_limit arr0 arr1 acc
     else gen_array_diff w u (v + 1) u_limit v_limit arr0 arr1 (acc SEQ.>< (SEQ.singleton ((w, u, v), (arr1 ! (w, u, v)))))
-
--- This function applies the updates specified in a save game file to the original map state, thereby reconstructing the saved state.
-apply_diff :: Eq a => [((Int, Int, Int), a)] -> Array (Int, Int, Int) a -> Array (Int, Int, Int) a
-apply_diff [] arr = arr
-apply_diff (((i0, i1, i2), y):xs) arr =
-  let bd = bounds arr
-  in
-  if i0 < fst__ (fst bd) || i0 > fst__ (snd bd) || i1 < snd__ (fst bd) || i1 > snd__ (snd bd) || i2 < third_ (fst bd) || i2 > third_ (snd bd) then error ("\nOut of bounds index found in save game file.  index: " ++ show (i0, i1, i2) ++ " bounds: " ++ show bd)
-  else apply_diff xs (arr // [((i0, i1, i2), y)])
-
