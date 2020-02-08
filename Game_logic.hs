@@ -1169,9 +1169,9 @@ update_vel (x:xs) (y:ys) (z:zs) f_rate f =
   else (x + y / 32 + f * x / f_rate) : update_vel xs ys zs f_rate f
 
 -- Used to generate the sequence of message tile references that represent the pause screen text.
-pause_text :: Play_state1 -> ([Char], Int, Int, Int) -> [(Int, [Int])]
-pause_text s1 (diff, a, b, c) =
-  [(0, msg9), (0, []), (0, msg1 ++ conv_msg (health s1)), (0, msg2 ++ conv_msg (ammo s1)), (0, msg3 ++ conv_msg (gems s1)), (0, msg4 ++ conv_msg (torches s1)), (0, msg5 ++ keys s1), (0, msg6 ++ region s1), (0, conv_msg_ ("Difficulty: " ++ diff)), (0, []), (1, msg10), (2, msg17), (3, msg11), (4, msg12)]
+pause_text :: [Char] -> Play_state1 -> ([Char], Int, Int, Int) -> [(Int, [Int])]
+pause_text (x0:x1:x2:x3:x4:x5:xs) s1 (diff, a, b, c) =
+  [(0, msg9), (0, []), (0, msg1 ++ conv_msg (health s1)), (0, msg2 ++ conv_msg (ammo s1)), (0, msg3 ++ conv_msg (gems s1)), (0, msg4 ++ conv_msg (torches s1)), (0, msg5 ++ keys s1), (0, msg6 ++ region s1), (0, conv_msg_ ("Difficulty: " ++ diff)), (0, conv_msg_ ("Time: " ++ [x0, x1, ':', x2, x3, ':', x4, x5])), (0, []), (1, msg10), (2, msg17), (3, msg11), (4, msg12)]
 
 -- This function ensures that all signals sent to NPC GPLC programs are run before any others.  This is done to fix a corner case problem that occured when an NPC and projectile
 -- tried to enter the same voxel in the same tick.
@@ -1219,6 +1219,13 @@ show_game_time t result False =
   else if t < 144000 then show_game_time (mod t 2400) (result ++ show (div t 2400)) False
   else show_game_time (mod t 144000) ("0" ++ show (div t 144000)) False
 
+collect_metrics :: [Int] -> [Char] -> Play_state0 -> [(Int, [Int])]
+collect_metrics fps_metric game_t_metric s0 =
+  let proc_time = \(x0:x1:x2:x3:x4:x5:xs) -> [read [x0] + 53, read [x1] + 53, 69, read [x2] + 53, read [x3] + 53, 69, read [x4] + 53, read [x5] + 53]
+  in
+  if on_screen_metrics s0 == 1 then [(60, fps_metric)]
+  else [(60, fps_metric), (60, proc_time game_t_metric)]
+
 -- This function recurses once for each recursion of show_frame (and rendering of that frame) and is the central branching point of the game logic thread.
 update_play :: Io_box -> MVar (Play_state0, Array (Int, Int, Int) Wall_grid, Save_state) -> Play_state0 -> Play_state1 -> Bool -> Integer -> (Float, Float, Float, Float) -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> UArray (Int, Int) Float -> Save_state -> Array Int Source -> Integer -> MVar Integer -> SEQ.Seq Integer -> Float -> IO ()
 update_play io_box state_ref s0 s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up save_state sound_array t_last t_log t_seq f_rate =
@@ -1246,10 +1253,10 @@ update_play io_box state_ref s0 s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_
       putMVar t_log (toNanoSecs t')
     else putMVar t_log (toNanoSecs t)
   t'' <- takeMVar t_log
-  if mod (fst__ (game_clock s0)) 40 == 0 && show_fps_ s0 == True then do
-    update_play io_box state_ref (s0 {message_ = [(40, snd__ (det_fps (toNanoSecs t)))], game_clock = snd game_clock'}) s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up save_state sound_array t_last t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
+  if mod (fst__ (game_clock s0)) 40 == 0 && on_screen_metrics s0 > 0 then do
+    update_play io_box state_ref (s0 {message_ = collect_metrics (snd__ (det_fps (toNanoSecs t))) (show_game_time (fst__ (game_clock s0)) [] False) s0, game_clock = snd game_clock'}) s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up save_state sound_array t_last t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
   else if control == 2 then do
-    choice <- run_menu (pause_text s1 (difficulty s1)) [] io_box (-0.75) (-0.75) 1 0 0 s0
+    choice <- run_menu (pause_text (show_game_time (fst__ (game_clock s0)) [] False) s1 (difficulty s1)) [] io_box (-0.75) (-0.75) 1 0 0 s0
     if choice == 1 then update_play io_box state_ref (s0_ s0) s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
     else if choice == 2 then do
       update_play io_box state_ref (s0_ s0) s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up (Save_state {is_set = True, w_grid_ = w_grid, f_grid_ = f_grid, obj_grid_ = obj_grid, s0_ = s0, s1_ = s1}) sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))

@@ -211,8 +211,12 @@ load_mod_file (x:xs) path p_bind = do
   load_mod_file xs path p_bind
 
 -- Functions used by start_game as part of game initialisation.
-select_mode "y" = True
-select_mode "n" = False
+select_metric_mode "none" = 0
+select_metric_mode "low" = 1
+select_metric_mode "high" = 2
+
+select_verbose_mode "y" = True
+select_verbose_mode "n" = False
 
 gen_prob_seq :: RandomGen g => Int -> Int -> Int -> g -> UArray Int Int
 gen_prob_seq i0 i1 i2 g = listArray (i0, i1) (drop i2 (randomRs (0, 99) g))
@@ -256,7 +260,7 @@ start_game control_ref uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag
     t_log <- newEmptyMVar
     r_gen <- getStdGen
     if mode == 0 then do
-      tid <- forkIO (update_play (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref}) state_ref (ps0_init {pos_u = u, pos_v = v, pos_w = w, show_fps_ = select_mode (cfg' "show_fps"), prob_seq = gen_prob_seq 0 239 (read (cfg' "prob_c")) r_gen}) (ps1_init {verbose_mode = select_mode (cfg' "verbose_mode")}) False (read (cfg' "min_frame_t")) (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up_ save_state sound_array 0 t_log (SEQ.empty) 60)
+      tid <- forkIO (update_play (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref}) state_ref (ps0_init {pos_u = u, pos_v = v, pos_w = w, on_screen_metrics = select_metric_mode (cfg' "on_screen_metrics"), prob_seq = gen_prob_seq 0 239 (read (cfg' "prob_c")) r_gen}) (ps1_init {verbose_mode = select_verbose_mode (cfg' "verbose_mode")}) False (read (cfg' "min_frame_t")) (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up_ save_state sound_array 0 t_log (SEQ.empty) 60)
       result <- show_frame p_bind uniform (p_mt_matrix, p_light_buffer) (p_f_table0, p_f_table1) 0 0 0 0 0 state_ref w_grid f_grid obj_grid look_up_ camera_to_clip (array (0, 5) [(i, (0, [])) | i <- [0..5]])
       free p_mt_matrix
       free p_f_table0
@@ -331,12 +335,14 @@ load_game_state_file c bs w_grid f_grid obj_grid w_grid_upd f_grid_upd obj_grid_
   else if c == 4 then load_game_state_file (c + 1) LBS.empty w_grid f_grid obj_grid w_grid_upd f_grid_upd obj_grid_upd s0 ((decode (LBS.take (fromIntegral ((decode (LBS.take 8 bs)) :: Int)) (LBS.drop 8 bs))) :: Play_state1)
   else Save_state {is_set = False, w_grid_ = w_grid // (proc_w_grid_upd w_grid_upd w_grid), f_grid_ = f_grid // (FOLD.toList f_grid_upd), obj_grid_ = obj_grid // (FOLD.toList obj_grid_upd), s0_ = s0, s1_ = s1}
 
+-- If an error occurs while attempting to open a save game file the user is informed through the menu system.
 loader_error :: SomeException -> Io_box -> IO LBS.ByteString
 loader_error x box = do
   run_menu error_opening_file_text [] box (-0.75) (-0.75) 1 0 0 ps0_init
   putStr ("\nload_saved_game: " ++ show x)
   return LBS.empty
 
+-- This function is the entry point to the game state saving logic and handles user input from the load game menu.
 load_saved_game :: Int -> [[Char]] -> [Char] -> Int -> Int -> Io_box -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> Array Int [Char] -> IO (Maybe Save_state)
 load_saved_game 0 [] chosen_file c choice box w_grid f_grid obj_grid conf_reg = error "\nload_saved_game: encountered an unexpected log file structure."
 load_saved_game 0 ((y0:y1:y2:y3:y4:y5:y6:y7:y8:y9:y10:y11:y12:y13:y14:y15:y16:ys):xs) chosen_file c choice box w_grid f_grid obj_grid conf_reg = do
