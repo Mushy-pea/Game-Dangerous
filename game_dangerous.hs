@@ -346,7 +346,8 @@ loader_error x box = do
 load_saved_game :: Int -> [[Char]] -> [Char] -> Int -> Int -> Io_box -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> Array Int [Char] -> IO (Maybe Save_state)
 load_saved_game 0 [] chosen_file c choice box w_grid f_grid obj_grid conf_reg = error "\nload_saved_game: encountered an unexpected log file structure."
 load_saved_game 0 ((y0:y1:y2:y3:y4:y5:y6:y7:y8:y9:y10:y11:y12:y13:y14:y15:y16:ys):xs) chosen_file c choice box w_grid f_grid obj_grid conf_reg = do
-  if c == choice then load_saved_game 1 [] [y1, y2, y3, y4, y5, y6, y7, y8, y9] c choice box w_grid f_grid obj_grid conf_reg
+  if choice == 7 then return Nothing
+  else if c == choice then load_saved_game 1 [] [y1, y2, y3, y4, y5, y6, y7, y8, y9] c choice box w_grid f_grid obj_grid conf_reg
   else load_saved_game 0 xs chosen_file (c + 1) choice box w_grid f_grid obj_grid conf_reg
 load_saved_game 1 [] chosen_file c choice box w_grid f_grid obj_grid conf_reg = do
   contents <- catch (do contents <- LBS.readFile ((cfg conf_reg 0 "game_save_path") ++ chosen_file); return contents) (\e -> loader_error e box)
@@ -357,7 +358,7 @@ load_saved_game 1 [] chosen_file c choice box w_grid f_grid obj_grid conf_reg = 
 add_time_stamp :: [[Char]] -> Play_state0 -> Int -> Int -> [Char]
 add_time_stamp [] s0 save_slot i = []
 add_time_stamp ((y0:y1:y2:y3:y4:y5:y6:y7:y8:y9:y10:y11:y12:y13:y14:y15:y16:ys):xs) s0 save_slot i =
-  if i == save_slot then [y0, y1, y2, y3, y4, y5, y6, y7, y8, y9, y10] ++ show_game_time (mod (fst__ (game_clock s0)) 1440000) [] False ++ "\n" ++ add_time_stamp xs s0 save_slot (i + 1)
+  if i == save_slot then ['_', y1, y2, y3, y4, y5, y6, y7, y8, y9, y10] ++ show_game_time (mod (fst__ (game_clock s0)) 1440000) [] False ++ "\n" ++ add_time_stamp xs s0 save_slot (i + 1)
   else [y0, y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16] ++ "\n" ++ add_time_stamp xs s0 save_slot (i + 1)
 
 select_save_file :: [[Char]] -> Play_state0 -> Int -> ([Char], [Char])
@@ -365,7 +366,7 @@ select_save_file file_list s0 limit =
   let i = read ((file_list, 631) !! 0)
   in
   if i == limit then (take 9 (tail ((file_list, 632) !! limit)), "1\n" ++ init (add_time_stamp (tail file_list) s0 i 1))
-  else (take 9 (tail ((file_list, 632) !! i)), show (i + 1) ++ "\n" ++ init (add_time_stamp (tail file_list) s0 i 1))
+  else (take 9 (tail ((file_list, 633) !! i)), show (i + 1) ++ "\n" ++ init (add_time_stamp (tail file_list) s0 i 1))
 
 -- This class and the four other functions below deal with generating a save game file.
 -- The Serialise_diff class is used so that the Obj_place type gets extracted from Wall_grid.  This is done because the rest of the Wall_grid structure is not exposed to the

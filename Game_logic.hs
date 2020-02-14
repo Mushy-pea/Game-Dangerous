@@ -71,7 +71,7 @@ msg28 = [39,16,38,27,51,31,44,63,49,27,45,63,31,27,46,31,40,63,28,51,63,27,63,29
 msg29 = [2, 4, 17, 0, 15, 47, 29, 34, 66, 66, 66, 3, 31, 40, 46, 35, 42, 31, 30, 31, 63, 28, 35, 46, 31, 73]
 -- <                               Choose which game to load                                                     >    <               Game state:                               >          <                         Game time:                       >
 choose_game_text = [3, 34, 41, 41, 45, 31, 63, 49, 34, 35, 29, 34, 63, 33, 27, 39, 31, 63, 46, 41, 63, 38, 41, 27, 30]; game_state_text = [7, 27, 39, 31, 63, 45, 46, 27, 46, 31, 69, 63] :: [Int]; game_time_text = [63, 7, 27, 39, 31, 63, 46, 35, 39, 31, 69, 63] :: [Int]
-load_game_menu_header = [(0, choose_game_text), (0, [])] :: [(Int, [Int])]; no_game_states_header = [(0, [14, 41, 63, 33, 27, 39, 31, 63, 45, 46, 27, 46, 31, 45, 63, 32, 41, 47, 40, 30, 66]), (0, []), (1, msg12)] :: [(Int, [Int])]
+load_game_menu_header = [(0, choose_game_text), (0, [])] :: [(Int, [Int])]; no_game_states_header = [(0, [14, 41, 63, 33, 27, 39, 31, 63, 45, 46, 27, 46, 31, 45, 63, 32, 41, 47, 40, 30, 66]), (0, [63]), (1, [63]), (2, [63]), (3, [63]), (4, [63]), (5, [63]), (6, [63]), (7, msg12)] :: [(Int, [Int])]
 error_opening_file_text = [(0, [20, 34, 31, 44, 31, 63, 49, 27, 45, 63, 27, 40, 63, 31, 44, 44, 41, 44, 63, 41, 42, 31, 40, 35, 40, 33, 63, 46, 34, 35, 45, 63, 32, 35, 38, 31, 66, 63, 63, 19, 41, 44, 44, 51, 66]), (0, []), (1, msg12)] :: [(Int, [Int])]
 
 main_menu_text :: [(Int, [Int])]
@@ -1217,8 +1217,10 @@ show_game_time t result False =
   else if t < 2400 then show_game_time 0 (result ++ show (div t 40)) True
   else if t < 24000 then show_game_time (mod t 2400) (result ++ "0" ++ show (div t 2400)) False
   else if t < 144000 then show_game_time (mod t 2400) (result ++ show (div t 2400)) False
-  else show_game_time (mod t 144000) ("0" ++ show (div t 144000)) False
+  else if t < 146400 then show_game_time (mod t 144000) (show (div t 144000) ++ "00") False
+  else show_game_time (mod t 144000) (show (div t 144000)) False
 
+-- Used to send a set of in game metrics to the message display system, depending on the value of the "on_screen_metrics" field of the conf_reg array.
 collect_metrics :: [Int] -> [Char] -> Play_state0 -> [(Int, [Int])]
 collect_metrics fps_metric game_t_metric s0 =
   let proc_time = \(x0:x1:x2:x3:x4:x5:xs) -> [read [x0] + 53, read [x1] + 53, 69, read [x2] + 53, read [x3] + 53, 69, read [x4] + 53, read [x5] + 53]
