@@ -6,6 +6,8 @@
 -- 2. Generation of vector transforms, which are either passed to the shaders for rendering purposes or used in the game logic.
 -- 3. Implementation of the ray tracing algorhythm used for visible surface determination.
 
+{-# LANGUAGE FlexibleInstances #-}
+
 module Build_model where
 
 import Prelude hiding ((!!))

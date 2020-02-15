@@ -26,6 +26,7 @@ import Sound.OpenAL.AL.StringQueries
 import Sound.OpenAL.AL.Source
 import Sound.OpenAL.ALC
 import Unsafe.Coerce
+import Build_model
 import AL_buffer
 
 -- See notes at the top of the module.
@@ -90,18 +91,20 @@ gen_source0 c limit acc = do
     gen_source0 (c + 1) limit (acc ++ [src])
 
 -- These four functions deal with loading sound samples from WAV files into OpenAL buffers and linking buffers to sources.
-load_snd_buf0 :: [[Char]] -> [Char] -> [(WAVESamples, Int)] -> IO [(WAVESamples, Int)]
+load_snd_buf0 :: [[Char]] -> [Char] -> [(WAVESamples, Int)] -> IO [(WAVESamples, Int, Bool)]
 load_snd_buf0 [] path acc = return acc
 load_snd_buf0 (x:xs) path acc = do
   wave_data <- getWAVEFile (path ++ x)
-  load_snd_buf0 xs path (acc ++ [(waveSamples wave_data, length (waveSamples wave_data))])
+  if head x == '_' then load_snd_buf0 xs path (acc ++ [(waveSamples wave_data, length (waveSamples wave_data), True)])
+  else load_snd_buf0 xs path (acc ++ [(waveSamples wave_data, length (waveSamples wave_data), False)])
 
-load_snd_buf1 :: [Buffer] -> [(WAVESamples, Int)] -> IO ()
+load_snd_buf1 :: [Buffer] -> [(WAVESamples, Int, Bool)] -> IO ()
 load_snd_buf1 [] [] = return ()
 load_snd_buf1 (x:xs) (y:ys) = do
-  p_buf <- mallocBytes (4 * snd y)
-  load_snd_buf2 (fst y) p_buf 0
-  (bufferData x) $= (BufferData (MemoryRegion p_buf (fromIntegral (4 * snd y))) Stereo16 44100)
+  p_buf <- mallocBytes (4 * snd__ y)
+  load_snd_buf2 (fst__ y) p_buf 0
+  if third_ y == True then (bufferData x) $= (BufferData (MemoryRegion p_buf (fromIntegral (4 * snd y))) Stereo16 32000)
+  else (bufferData x) $= (BufferData (MemoryRegion p_buf (fromIntegral (4 * snd y))) Stereo16 44100)
   free p_buf
   load_snd_buf1 xs ys
   
@@ -111,7 +114,6 @@ load_snd_buf2 (x:xs) p_buf i = do
   poke (plusPtr p_buf i) (fromIntegral (div ((x, 608) !! 0) 65536) :: Int16)
   poke (plusPtr p_buf (i + 2)) (fromIntegral (div ((x, 609) !! 1) 65536) :: Int16)
   load_snd_buf2 xs p_buf (i + 4)
-
 
 link_source :: [Game_sound.Source] -> [Buffer] -> IO ()
 link_source [] [] = return ()
