@@ -91,7 +91,7 @@ gen_source0 c limit acc = do
     gen_source0 (c + 1) limit (acc ++ [src])
 
 -- These four functions deal with loading sound samples from WAV files into OpenAL buffers and linking buffers to sources.
-load_snd_buf0 :: [[Char]] -> [Char] -> [(WAVESamples, Int)] -> IO [(WAVESamples, Int, Bool)]
+load_snd_buf0 :: [[Char]] -> [Char] -> [(WAVESamples, Int, Bool)] -> IO [(WAVESamples, Int, Bool)]
 load_snd_buf0 [] path acc = return acc
 load_snd_buf0 (x:xs) path acc = do
   wave_data <- getWAVEFile (path ++ x)
@@ -103,8 +103,8 @@ load_snd_buf1 [] [] = return ()
 load_snd_buf1 (x:xs) (y:ys) = do
   p_buf <- mallocBytes (4 * snd__ y)
   load_snd_buf2 (fst__ y) p_buf 0
-  if third_ y == True then (bufferData x) $= (BufferData (MemoryRegion p_buf (fromIntegral (4 * snd y))) Stereo16 32000)
-  else (bufferData x) $= (BufferData (MemoryRegion p_buf (fromIntegral (4 * snd y))) Stereo16 44100)
+  if third_ y == True then (bufferData x) $= (BufferData (MemoryRegion p_buf (fromIntegral (4 * snd__ y))) Stereo16 32000)
+  else (bufferData x) $= (BufferData (MemoryRegion p_buf (fromIntegral (4 * snd__ y))) Stereo16 44100)
   free p_buf
   load_snd_buf1 xs ys
   

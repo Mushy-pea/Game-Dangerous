@@ -1228,8 +1228,15 @@ collect_metrics fps_metric game_t_metric s0 =
   if on_screen_metrics s0 == 1 then [(60, fps_metric)]
   else [(60, fps_metric), (60, proc_time game_t_metric)]
 
+-- Restart the background music track each time a preset period has elapsed, if music is enabled.
+play_music :: Int -> Int -> Array Int Source -> IO ()
+play_music t period sound_array = do
+  if period == 0 then return ()
+  else if mod t period == 0 || t == 40 then play_ (sound_array ! (snd (bounds sound_array)))
+  else return ()
+
 -- This function recurses once for each recursion of show_frame (and rendering of that frame) and is the central branching point of the game logic thread.
-update_play :: Io_box -> MVar (Play_state0, Array (Int, Int, Int) Wall_grid, Save_state) -> Play_state0 -> Play_state1 -> Bool -> Integer -> (Float, Float, Float, Float) -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> UArray (Int, Int) Float -> Save_state -> Array Int Source -> Integer -> MVar Integer -> SEQ.Seq Integer -> Float -> IO ()
+update_play :: Io_box -> MVar (Play_state0, Array (Int, Int, Int) Wall_grid, Save_state) -> Play_state0 -> Play_state1 -> Bool -> Integer -> (Float, Float, Float, Float) -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> UArray (Int, Int) Float -> Save_state -> (Array Int Source, Int) -> Integer -> MVar Integer -> SEQ.Seq Integer -> Float -> IO ()
 update_play io_box state_ref s0 s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up save_state sound_array t_last t_log t_seq f_rate =
   let det = detect_coll (truncate (pos_w s0)) (pos_u s0, pos_v s0) (((vel s0), 522) !! 0 / f_rate, ((vel s0), 523) !! 1 / f_rate) obj_grid w_grid
       floor = floor_surf ((det, 524) !! 0) ((det, 525) !! 1) (pos_w s0) f_grid
@@ -1255,8 +1262,13 @@ update_play io_box state_ref s0 s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_
       putMVar t_log (toNanoSecs t')
     else putMVar t_log (toNanoSecs t)
   t'' <- takeMVar t_log
-  if mod (fst__ (game_clock s0)) 40 == 0 && on_screen_metrics s0 > 0 then do
-    update_play io_box state_ref (s0 {message_ = collect_metrics (snd__ (det_fps (toNanoSecs t))) (show_game_time (fst__ (game_clock s0)) [] False) s0, game_clock = snd game_clock'}) s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up save_state sound_array t_last t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
+  if mod (fst__ (game_clock s0)) 40 == 0 then do
+    if on_screen_metrics s0 > 0 then do
+      play_music (fst__ (game_clock s0)) (snd sound_array) (fst sound_array)
+      update_play io_box state_ref (s0 {message_ = collect_metrics (snd__ (det_fps (toNanoSecs t))) (show_game_time (fst__ (game_clock s0)) [] False) s0, game_clock = snd game_clock'}) s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up save_state sound_array t_last t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
+    else do
+      play_music (fst__ (game_clock s0)) (snd sound_array) (fst sound_array)
+      update_play io_box state_ref (s0 {game_clock = snd game_clock'}) s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up save_state sound_array t_last t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
   else if control == 2 then do
     choice <- run_menu (pause_text (show_game_time (fst__ (game_clock s0)) [] False) s1 (difficulty s1)) [] io_box (-0.75) (-0.75) 1 0 0 s0
     if choice == 1 then update_play io_box state_ref (s0_ s0) s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
@@ -1275,7 +1287,7 @@ update_play io_box state_ref s0 s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_
   else if control == 12 then update_play io_box state_ref (s0_ ((fourth link0) {view_angle = mod_angle (view_angle s0) 5})) (fifth link0) in_flight min_frame_t (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
   else if control == 13 then update_play io_box state_ref (s0_ (fourth link0)) ((fifth link0) {sig_q = sig_q s1 ++ [2, 0, 0, 1]}) in_flight min_frame_t (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
   else if message s1 /= [] then do
-    event <- proc_msg0 (message s1) s0 s1 io_box sound_array
+    event <- proc_msg0 (message s1) s0 s1 io_box (fst sound_array)
     putMVar state_ref (fst event, w_grid, save_state)
     update_play io_box state_ref (s0_ (fst event)) (snd event) in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
   else
