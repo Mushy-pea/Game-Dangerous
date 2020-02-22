@@ -107,7 +107,7 @@ load_snd_buf1 (x:xs) (y:ys) = do
   else (bufferData x) $= (BufferData (MemoryRegion p_buf (fromIntegral (4 * snd__ y))) Stereo16 44100)
   free p_buf
   load_snd_buf1 xs ys
-  
+
 load_snd_buf2 :: WAVESamples -> Ptr a -> Int -> IO ()
 load_snd_buf2 [] p_buf i = return ()
 load_snd_buf2 (x:xs) p_buf i = do
