@@ -19,9 +19,6 @@ import Wave
 import Data.StateVar
 import Data.Maybe
 import Data.Array.IArray
-import qualified Data.Binary as BIN
-import qualified Data.ByteString.Lazy as LBS
-import qualified Data.ByteString as BS
 import Graphics.Rendering.OpenGL.GL.Tensor
 import Sound.OpenAL.AL.BasicTypes
 import Sound.OpenAL.AL.Listener
@@ -50,19 +47,6 @@ instance Storable Game_sound.Source where
    alignment ~(Source b) = alignment b
    peek                  = peek1 Source . castPtr
    poke ptr   (Source b) = poke1 (castPtr ptr) b
-
-swap_bytes :: Int16 -> Int16
-swap_bytes x =
-  let y = mod x 256
-      z = x - y
-  in y * 256 + div z 256
-
-newtype SoundBlock = SoundBlock WAVESample
-
-instance BIN.Binary SoundBlock where
-  put x = BIN.put (swap_bytes (fromIntegral (div x 65536) :: Int16))
-
-  get = return 0
 
 -- Initialise the OpenAL context.
 init_al_context :: IO ()
@@ -117,13 +101,19 @@ load_snd_buf0 (x:xs) path acc = do
 load_snd_buf1 :: [Buffer] -> [(WAVESamples, Int, Bool)] -> IO ()
 load_snd_buf1 [] [] = return ()
 load_snd_buf1 (x:xs) (y:ys) = do
-  BS.useAsCString (LBS.toStrict (BIN.encode (fst__ y))) (load_snd_buf2 x (4 * snd__ y) (third_ y))
+  p_buf <- mallocBytes (4 * snd__ y)
+  load_snd_buf2 (fst__ y) p_buf 0
+  if third_ y == True then (bufferData x) $= (BufferData (MemoryRegion p_buf (fromIntegral (4 * snd__ y))) Stereo16 32000)
+  else (bufferData x) $= (BufferData (MemoryRegion p_buf (fromIntegral (4 * snd__ y))) Stereo16 44100)
+  free p_buf
   load_snd_buf1 xs ys
 
-load_snd_buf2 :: Buffer -> Int -> Bool -> Ptr CChar -> IO ()
-load_snd_buf2 x size mode p_buf = do
-  if mode == True then (bufferData x) $= (BufferData (MemoryRegion p_buf (fromIntegral size) Stereo16 32000))
-  else (bufferData x) $= (BufferData (MemoryRegion p_buf (fromIntegral size) Stereo16 44100))
+load_snd_buf2 :: WAVESamples -> Ptr a -> Int -> IO ()
+load_snd_buf2 [] p_buf i = return ()
+load_snd_buf2 (x:xs) p_buf i = do
+  poke (plusPtr p_buf i) (fromIntegral (div ((x, 608) !! 0) 65536) :: Int16)
+  poke (plusPtr p_buf (i + 2)) (fromIntegral (div ((x, 609) !! 1) 65536) :: Int16)
+  load_snd_buf2 xs p_buf (i + 4)
 
 link_source :: [Game_sound.Source] -> [Buffer] -> IO ()
 link_source [] [] = return ()
