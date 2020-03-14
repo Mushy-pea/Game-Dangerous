@@ -49,9 +49,6 @@ instance Storable Game_sound.Source where
    peek                  = peek1 Source . castPtr
    poke ptr   (Source b) = poke1 (castPtr ptr) b
 
-foreign import ccall "loadBuffer"
-  loadBuffer :: Int32 -> Int32 -> Ptr Int32 -> Ptr CChar -> IO ()
-
 -- Initialise the OpenAL context.
 init_al_context :: IO ()
 init_al_context = do
@@ -103,11 +100,12 @@ load_snd_buf0 file path = do
 
 load_snd_buf1 :: Buffer -> (BS.ByteString, Int, Bool) -> IO ()
 load_snd_buf1 buf (bs, len, mode) = do
-  p_buf <- mallocBytes len
-  BS.useAsCString bs (loadBuffer 0 0 p_buf)
-  if mode == True then (bufferData buf) $= (BufferData (MemoryRegion p_buf (fromIntegral (len - 44))) Stereo16 32000)
-  else (bufferData buf) $= (BufferData (MemoryRegion p_buf (fromIntegral (len - 44))) Stereo16 44100)
-  free p_buf
+  BS.useAsCString (BS.drop 44 bs) (load_snd_buf2 mode buf len)
+
+load_snd_buf2 :: Bool -> Buffer -> Int -> Ptr CChar -> IO ()
+load_snd_buf2 mode buf len p_waveFile =
+  if mode == True then (bufferData buf) $= (BufferData (MemoryRegion p_waveFile (fromIntegral len)) Stereo16 32000)
+  else (bufferData buf) $= (BufferData (MemoryRegion p_waveFile (fromIntegral len)) Stereo16 44100)
 
 link_source :: Game_sound.Source -> Buffer -> IO ()
 link_source src buf = do
