@@ -91,6 +91,14 @@ gen_source0 c limit acc = do
     src <- gen_source1
     gen_source0 (c + 1) limit (acc ++ [src])
 
+decode_Int16 :: Int16 -> Int16 -> Int16
+decode_Int16 x y = x + 256 * y
+
+show_buffer :: BS.ByteString -> Int -> Int -> [Char]
+show_buffer bs i limit =
+  if i > limit then []
+  else show (decode_Int16 (fromIntegral (BS.index bs 0)) (fromIntegral (BS.index bs 1))) ++ ", " ++ show_buffer (BS.drop 2 bs) (i + 1) limit
+
 -- These four functions deal with loading sound samples from WAV files into OpenAL buffers and linking buffers to sources.
 load_snd_buf0 :: [Char] -> [Char] -> IO (BS.ByteString, Int, Bool)
 load_snd_buf0 file path = do
@@ -101,6 +109,7 @@ load_snd_buf0 file path = do
 load_snd_buf1 :: Buffer -> (BS.ByteString, Int, Bool) -> IO ()
 load_snd_buf1 buf (bs, len, mode) = do
   BS.useAsCString (BS.drop 44 bs) (load_snd_buf2 mode buf len)
+  putStr ("\n\nsound buffer content: " ++ show_buffer (BS.drop 44 bs) 0 1023)
 
 load_snd_buf2 :: Bool -> Buffer -> Int -> Ptr CChar -> IO ()
 load_snd_buf2 mode buf len p_waveFile =
