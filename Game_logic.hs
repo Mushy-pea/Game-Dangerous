@@ -697,6 +697,7 @@ npc_move offset d_list (w:u:v:w1:u1:v1:blocks) w_grid w_grid_upd f_grid obj_grid
       v'' = \x -> if x == 0 then snd (local_up_ramp (f_grid ! (w, div u 2, div v 2))) * 2
                   else snd (local_down_ramp (f_grid ! (w, div u 2, div v 2))) * 2
       o_target = fromMaybe def_obj_place (obj (w_grid ! (-w - 1, u, v)))
+      o_target_ = fromMaybe def_obj_place (obj (w_grid ! (- 1, 0, 2)))
       prog = obj_grid ! (w, u, v)
       prog' = \x y -> (fst prog, take offset (snd prog) ++ [x, y] ++ drop (offset + 2) (snd prog))
       ramp_fill' = \dw -> last (ramp_fill (w + dw) u v (direction char_state) (-2, [(offset, 0)]) (surface (f_grid ! (w, div u 2, div v 2))))
@@ -705,7 +706,7 @@ npc_move offset d_list (w:u:v:w1:u1:v1:blocks) w_grid w_grid_upd f_grid obj_grid
       conv_ramp_fill0 = conv_ramp_fill w u v 1 (direction char_state) (surface (f_grid ! (w, div u 2, div v 2)))
       conv_ramp_fill1 = conv_ramp_fill w u v 0 (direction char_state) (surface (f_grid ! (w, div u 2, div v 2)))
       w_grid' = ((-w - 1, u, v), (w_grid ! (-w - 1, u, v)) {obj = Just (o_target {u__ = snd__ (fg_position char_state), v__ = third_ (fg_position char_state)})})
-      w_grid'' = [((-w - 1, u', v'), (w_grid ! (-w - 1, u, v)) {obj = Just (o_target {ident_ = char_rotation 0 (direction char_state) ((d_list, 375) !! 9)})}), ((-w - 1, u, v), def_w_grid)]
+      w_grid'' = [((-w - 1, u', v'), (w_grid ! (- 1, 0, 2)) {obj = Just (o_target_ {ident_ = char_rotation 0 (direction char_state) ((d_list, 375) !! 9), w__ = fst__ (fg_position char_state), u__ = snd__ (fg_position char_state), v__ = third_ (fg_position char_state)})}), ((-w - 1, u, v), def_w_grid)]
       w_grid''' = ((-w - 1, u, v), (w_grid ! (-w - 1, u, v)) {obj = Just (o_target {w__ = fst__ ramp_climb_, u__ = snd__ ramp_climb_, v__ = third_ ramp_climb_})})
       w_grid_4 = \dw -> ([((-w - 1, u, v), def_w_grid)] ++ drop 4 (ramp_fill (-w - 1 + dw) u v (direction char_state) ((w_grid ! (-w - 1, u, v)) {obj = Just (o_target {w__ = fst__ ramp_climb_, u__ = snd__ ramp_climb_, v__ = third_ ramp_climb_})}) (surface (f_grid ! (w, div u 2, div v 2)))))
       damage = det_damage (difficulty s1) s0
@@ -1408,7 +1409,6 @@ run_menu (n:ns) acc io_box x y c c_max d s0 = do
     load_array [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1] p_tt_matrix 0
     glUniformMatrix4fv (fromIntegral ((uniform_ io_box) ! 36)) 1 1 p_tt_matrix
     glDrawElements GL_TRIANGLES 6 GL_UNSIGNED_SHORT zero_ptr
-    putStr ("\nPosition: " ++ show (pos_u s0, pos_v s0, pos_w s0))
     free p_tt_matrix
   else return ()
   glBindVertexArray (unsafeCoerce ((fst (p_bind_ io_box)) ! 933))
