@@ -1368,9 +1368,6 @@ proc_msg0 (x0:x1:xs) s0 s1 io_box sound_array =
   else if x0 == 0 && state_chg s1 == 4 then proc_msg0 (drop (x1 - 3) xs) (s0 {message_ = message_ s0 ++ [(600, x0 : take (x1 - 3) xs ++ msg4 ++ conv_msg (torches s1))]}) s1 io_box sound_array
   else if x0 < 0 then return (s0 {message_ = message_ s0 ++ [(x0, take x1 xs)]}, s1)
   else if x0 == 1 then do
-    if last (take (x1 - 3) xs) == 83 then do
-      writeIORef (mode_ref_ io_box) 1
-      return (s0 {message_ = [)
     choice <- run_menu (proc_msg1 (tail (splitOn [-1] (take (x1 - 3) xs)))) [] io_box (-0.96) (-0.2) 1 0 0 s0
     proc_msg0 (drop (x1 - 3) xs) s0 (s1 {sig_q = sig_q s1 ++ [choice + 1, (signal_, 579) !! 0, (signal_, 580) !! 1, (signal_, 581) !! 2]}) io_box sound_array
   else if x0 == 2 then do
