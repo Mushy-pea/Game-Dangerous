@@ -241,8 +241,8 @@ start_game control_ref uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag
   if mode == -1 then do
     if cfg' "splash_image" /= "null" then do
       glDisable GL_DEPTH_TEST
-      glBindVertexArray (unsafeCoerce ((fst p_bind) ! 1017))
-      glBindTexture GL_TEXTURE_2D (unsafeCoerce ((fst p_bind) ! 1019))
+      glBindVertexArray (unsafeCoerce ((fst p_bind) ! 1026))
+      glBindTexture GL_TEXTURE_2D (unsafeCoerce ((fst p_bind) ! 1027))
       glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 3)))
       glUniform1i (fromIntegral (uniform ! 38)) 0
       p_tt_matrix <- mallocBytes (glfloat * 16)
@@ -284,11 +284,11 @@ start_game control_ref uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag
       save_array_diff0 (is_set (snd result)) 0 ([], []) (wrapped_save_array_diff1 (gen_array_diff (-3) 0 0 u_limit v_limit w_grid (w_grid_ (snd result)) SEQ.empty)) (wrapped_save_array_diff1 (gen_array_diff 0 0 0 ((div (u_limit + 1) 2) - 1) ((div (v_limit + 1) 2) - 1) f_grid (f_grid_ (snd result)) SEQ.empty)) (wrapped_save_array_diff1 (gen_array_diff 0 0 0 u_limit v_limit obj_grid (obj_grid_ (snd result)) SEQ.empty)) (label_play_state_encoding (encode (s0_ (snd result)))) (label_play_state_encoding (encode (s1_ (snd result)))) conf_reg (s0_ (snd result))
       start_game control_ref uniform p_bind c conf_reg ((head (fst result)) + 1) (u, v, w, g, f, mag_r, mag_j) (snd result) sound_array frustumScale0
   else if mode == 2 then do
-    choice <- run_menu main_menu_text [] (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref}) (-0.75) (-0.75) 1 0 0 ps0_init
+    choice <- run_menu main_menu_text [] (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref}) (-0.75) (-0.75) 1 0 0 ps0_init 1
     if choice == 1 then start_game control_ref uniform p_bind c conf_reg 0 (u, v, w, g, f, mag_r, mag_j) save_state sound_array frustumScale0
     else if choice == 2 then do
       contents <- bracket (openFile "save_log.log" ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nsave_log file size: " ++ show (length contents)); return contents)
-      state_choice <- run_menu (gen_load_menu (tail (splitOn "\n" contents)) [] 1) [] (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref}) (-0.75) (-0.75) 1 0 0 ps0_init
+      state_choice <- run_menu (gen_load_menu (tail (splitOn "\n" contents)) [] 1) [] (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref}) (-0.75) (-0.75) 1 0 0 ps0_init 1
       loaded_state <- load_saved_game 0 (tail (splitOn "\n" contents)) [] 1 state_choice (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref}) w_grid f_grid obj_grid conf_reg
       if isNothing loaded_state == True then start_game control_ref uniform p_bind c conf_reg 2 (u, v, w, g, f, mag_r, mag_j) def_save_state sound_array frustumScale0
       else start_game control_ref uniform p_bind c conf_reg 1 (u, v, w, g, f, mag_r, mag_j) (fromJust loaded_state) sound_array frustumScale0
@@ -342,7 +342,7 @@ load_game_state_file c bs w_grid f_grid obj_grid w_grid_upd f_grid_upd obj_grid_
 -- If an error occurs while attempting to open a save game file the user is informed through the menu system.
 loader_error :: SomeException -> Io_box -> IO LBS.ByteString
 loader_error x box = do
-  run_menu error_opening_file_text [] box (-0.75) (-0.75) 1 0 0 ps0_init
+  run_menu error_opening_file_text [] box (-0.75) (-0.75) 1 0 0 ps0_init 1
   putStr ("\nload_saved_game: " ++ show x)
   return LBS.empty
 
