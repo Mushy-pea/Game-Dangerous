@@ -1402,7 +1402,7 @@ run_menu [] acc io_box x y c c_max d s0 background = do
 run_menu (n:ns) acc io_box x y c c_max d s0 background = do
   if d == 2 then do
     glBindVertexArray (unsafeCoerce ((fst (p_bind_ io_box)) ! 1026))
-    glBindTexture GL_TEXTURE_2D (unsafeCoerce ((fst (p_bind_ io_box)) ! (1027 + background)))
+    glBindTexture GL_TEXTURE_2D (unsafeCoerce ((fst (p_bind_ io_box)) ! (1026 + background)))
     glUseProgram (unsafeCoerce ((fst (p_bind_ io_box)) ! ((snd (p_bind_ io_box)) - 3)))
     glUniform1i (fromIntegral ((uniform_ io_box) ! 38)) 0
     p_tt_matrix <- mallocBytes (glfloat * 16)

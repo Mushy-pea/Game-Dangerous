@@ -239,10 +239,10 @@ start_game control_ref uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag
                     else read (cfg' "music_period")
   in do
   if mode == -1 then do
-    if cfg' "splash_image" /= "null" then do
+    if cfg' "splash_image" == "on" then do
       glDisable GL_DEPTH_TEST
       glBindVertexArray (unsafeCoerce ((fst p_bind) ! 1026))
-      glBindTexture GL_TEXTURE_2D (unsafeCoerce ((fst p_bind) ! 1027))
+      glBindTexture GL_TEXTURE_2D (unsafeCoerce ((fst p_bind) ! 1028))
       glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 3)))
       glUniform1i (fromIntegral (uniform ! 38)) 0
       p_tt_matrix <- mallocBytes (glfloat * 16)
