@@ -1363,19 +1363,19 @@ proc_msg0 (x0:x1:xs) s0 s1 io_box sound_array =
   else if x0 == 0 && state_chg s1 == 1 && health s1 <= 0 then do
     play_ (sound_array ! 20)
     return (s0 {message_ = [(-2, take (x1 - 3) xs)]}, s1)
-  else if x0 == 0 && state_chg s1 == 1 then proc_msg0 (drop (x1 - 3) xs) (s0 {message_ = message_ s0 ++ [(600, x0 : take (x1 - 3) xs ++ msg1 ++ conv_msg (health s1))]}) s1 io_box sound_array
-  else if x0 == 0 && state_chg s1 == 2 then proc_msg0 (drop (x1 - 3) xs) (s0 {message_ = message_ s0 ++ [(600, x0 : take (x1 - 3) xs ++ msg2 ++ conv_msg (ammo s1))]}) s1 io_box sound_array
-  else if x0 == 0 && state_chg s1 == 3 then proc_msg0 (drop (x1 - 3) xs) (s0 {message_ = message_ s0 ++ [(600, x0 : take (x1 - 3) xs ++ msg3 ++ conv_msg (gems s1))]}) s1 io_box sound_array
-  else if x0 == 0 && state_chg s1 == 4 then proc_msg0 (drop (x1 - 3) xs) (s0 {message_ = message_ s0 ++ [(600, x0 : take (x1 - 3) xs ++ msg4 ++ conv_msg (torches s1))]}) s1 io_box sound_array
-  else if x0 == 0 && state_chg s1 == 0 then proc_msg0 (drop (x1 - 3) xs) (s0 {message_ = message_ s0 ++ [(600, x0 : take (x1 - 3) xs)]}) s1 io_box sound_array
+  else if x0 == 0 && state_chg s1 == 1 then proc_msg0 (drop x1 xs) (s0 {message_ = message_ s0 ++ [(600, x0 : take (x1 - 3) xs ++ msg1 ++ conv_msg (health s1))]}) s1 io_box sound_array
+  else if x0 == 0 && state_chg s1 == 2 then proc_msg0 (drop x1 xs) (s0 {message_ = message_ s0 ++ [(600, x0 : take (x1 - 3) xs ++ msg2 ++ conv_msg (ammo s1))]}) s1 io_box sound_array
+  else if x0 == 0 && state_chg s1 == 3 then proc_msg0 (drop x1 xs) (s0 {message_ = message_ s0 ++ [(600, x0 : take (x1 - 3) xs ++ msg3 ++ conv_msg (gems s1))]}) s1 io_box sound_array
+  else if x0 == 0 && state_chg s1 == 4 then proc_msg0 (drop x1 xs) (s0 {message_ = message_ s0 ++ [(600, x0 : take (x1 - 3) xs ++ msg4 ++ conv_msg (torches s1))]}) s1 io_box sound_array
+  else if x0 == 0 && state_chg s1 == 0 then proc_msg0 (drop x1 xs) (s0 {message_ = message_ s0 ++ [(600, x0 : take (x1 - 3) xs)]}) s1 io_box sound_array
   else if x0 == 2 then do
     if ((xs, 582) !! 0) == 0 then return ()
     else play_ (sound_array ! (((xs, 583) !! 0) - 1))
-    proc_msg0 (drop (x1 - 3) xs) s0 s1 io_box sound_array
-  else if x0 == 3 then proc_msg0 [] (s0 {pos_u = int_to_float ((xs, 584) !! 0), pos_v = int_to_float ((xs, 585) !! 1), pos_w = int_to_float ((xs, 586) !! 2)}) s1 io_box sound_array
+    proc_msg0 (drop 1 xs) s0 s1 io_box sound_array
+  else if x0 == 3 then proc_msg0 (drop 3 xs) (s0 {pos_u = int_to_float ((xs, 584) !! 0), pos_v = int_to_float ((xs, 585) !! 1), pos_w = int_to_float ((xs, 586) !! 2)}) s1 io_box sound_array
   else do
     choice <- run_menu (proc_msg1 (tail (splitOn [-1] (take (x1 - 3) xs)))) [] io_box (-0.96) (-0.2) 1 0 0 s0 (x0 - 3)
-    proc_msg0 (drop (x1 - 3) xs) s0 (s1 {sig_q = sig_q s1 ++ [choice + 1, (signal_, 579) !! 0, (signal_, 580) !! 1, (signal_, 581) !! 2]}) io_box sound_array
+    proc_msg0 (drop x1 xs) s0 (s1 {sig_q = sig_q s1 ++ [choice + 1, (signal_, 579) !! 0, (signal_, 580) !! 1, (signal_, 581) !! 2]}) io_box sound_array
 
 -- Used by the game logic thread for in game menus and by the main thread for the main menu.
 run_menu :: [(Int, [Int])] -> [(Int, [Int])] -> Io_box -> Float -> Float -> Int -> Int -> Int -> Play_state0 -> Int -> IO Int
