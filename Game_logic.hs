@@ -62,7 +62,7 @@ msg12 = [5,50,35,46]; msg13 = [25,15,47,29,34,73,63,20,34,31,63,42,38,27,51,31,4
 --      <       MAIN MENU       >          <         Save game        >          <         Load game        >          <            New save file             >          <     < Back     >
 msg16 = [13,1,9,14,63,13,5,14,21]; msg17 = [19,27,48,31,63,33,27,39,31]; msg18 = [12,41,27,30,63,33,27,39,31]; msg19 = [14,31,49,63,45,27,48,31,63,32,35,38,31]; msg20 = [74,63,2,27,29,37]
 --        <     Ouch!    >         <                      Fatal fall. 0 days since last accident.                                                     >
-msg25 = [8,15,47,29,34,73,2,4,17]; msg26 = [39,6,27,46,27,38,63,32,27,38,38,66,63,53,63,30,27,51,45,63,45,35,40,29,31,63,38,27,45,46,63,27,29,29,35,30,31,40,46,66]
+msg25 = [5,15,47,29,34,73,2,2,17]; msg26 = [39,6,27,46,27,38,63,32,27,38,38,66,63,53,63,30,27,51,45,63,45,35,40,29,31,63,38,27,45,46,63,27,29,29,35,30,31,40,46,66]
 --      <                                Player shredded by a bullet. What a blood bath!                                                             >
 msg27 = [47,16,38,27,51,31,44,63,45,34,44,31,30,30,31,30,63,28,51,63,27,63,28,47,38,38,31,46,66,63,23,34,27,46,63,27,63,28,38,41,41,30,63,28,27,46,34,73]
 --      <                                Player was eaten by a centipede. Tasty!                                             >
@@ -1401,8 +1401,8 @@ run_menu [] acc io_box x y c c_max d s0 background = do
     run_menu acc [] io_box x 0.1 c c_max 2 s0 background
 run_menu (n:ns) acc io_box x y c c_max d s0 background = do
   if d == 2 then do
-    glBindVertexArray (unsafeCoerce ((fst (p_bind_ io_box)) ! 1026))
-    glBindTexture GL_TEXTURE_2D (unsafeCoerce ((fst (p_bind_ io_box)) ! (1026 + background)))
+    glBindVertexArray (unsafeCoerce ((fst (p_bind_ io_box)) ! 1027))
+    glBindTexture GL_TEXTURE_2D (unsafeCoerce ((fst (p_bind_ io_box)) ! (1027 + background)))
     glUseProgram (unsafeCoerce ((fst (p_bind_ io_box)) ! ((snd (p_bind_ io_box)) - 3)))
     glUniform1i (fromIntegral ((uniform_ io_box) ! 38)) 0
     p_tt_matrix <- mallocBytes (glfloat * 16)
