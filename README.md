@@ -20,10 +20,9 @@ So, I can finally say with some confidence that I'm intending to start building 
 next month.  I can't commit to a timeline for completing this, but it at least now seems feasible that this bizarre
 combination of functional programming and retro gaming may see open waters this year.  :)
 
+[![Preview unavailable](https://img.youtube.com/vi/oHMakxQZjlk/default.jpg)](https://youtu.be/oHMakxQZjlk)
 
 [![Preview unavailable](https://img.youtube.com/vi/4Y2er6WZ5qs/default.jpg)](https://youtu.be/4Y2er6WZ5qs)
-
-[![Preview unavailable](https://img.youtube.com/vi/JeaYRfN2Fjo/default.jpg)](https://youtu.be/JeaYRfN2Fjo)
 
 [![Preview unavailable](https://img.youtube.com/vi/8HuMVTjA138/default.jpg)](https://youtu.be/8HuMVTjA138)
 

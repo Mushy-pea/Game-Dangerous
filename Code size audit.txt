@@ -1,6 +1,6 @@
 Game :: Dangerous code size audit (18/02/2020)
 
-Engine (Haskell): 3175 lines, 5.1% comments, 245 KB
+Engine (Haskell): 3167 lines, 5.12% comments, 245 KB
 
 Development tool chain (Haskell): 546 lines, 5.13% comments, 37 KB
 
