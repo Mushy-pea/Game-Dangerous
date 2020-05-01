@@ -626,12 +626,12 @@ show_frame p_bind uniform (p_mt_matrix, p_light_buffer) filter_table u v w a a' 
     filtered_surv0 <- filter_surv (fst survey0) [] (fst filter_table) (third_ (game_clock (fst__ p_state)))
     filtered_surv1 <- filter_surv (snd survey0) [] (snd filter_table) (third_ (game_clock (fst__ p_state)))
     show_walls filtered_surv0 uniform p_bind (plusPtr p_mt_matrix (glfloat * 16)) u v w a look_up (rend_mode (fst__ p_state))
-    show_object [ceiling_model] uniform p_bind (plusPtr p_mt_matrix (glfloat * 48)) u v w a look_up (rend_mode (fst__ p_state))
+    show_object (ceiling_model : filtered_surv1) uniform p_bind (plusPtr p_mt_matrix (glfloat * 48)) u v w a look_up (rend_mode (fst__ p_state))
   else do
     filtered_surv0 <- filter_surv (fst survey1) [] (fst filter_table) (third_ (game_clock (fst__ p_state)))
     filtered_surv1 <- filter_surv (snd survey1) [] (snd filter_table) (third_ (game_clock (fst__ p_state)))
     show_walls filtered_surv0 uniform p_bind (plusPtr p_mt_matrix (glfloat * 16)) u v w a look_up (rend_mode (fst__ p_state))
-    show_object [ceiling_model] uniform p_bind (plusPtr p_mt_matrix (glfloat * 48)) u v w a look_up (rend_mode (fst__ p_state))
+    show_object (ceiling_model : filtered_surv1) uniform p_bind (plusPtr p_mt_matrix (glfloat * 48)) u v w a look_up (rend_mode (fst__ p_state))
   msg_residue <- handle_message0 (handle_message1 (message_ (fst__ p_state)) msg_queue 0 3) uniform p_bind 0
   if fst msg_residue == 1 then return ([1], third_ p_state)
   else if fst msg_residue == 2 then do

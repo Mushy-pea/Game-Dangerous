@@ -1185,7 +1185,7 @@ prioritise_npcs (x0:x1:x2:x3:xs) acc0 acc1 =
 -- This function handles preemptive ceiling collision detection (i.e. stops the player jumping if there is a ceiling directly above).
 jump_allowed :: Array (Int, Int, Int) Floor_grid -> Play_state0 -> Bool
 jump_allowed f_grid s0 =
-  if truncate (pos_w s0) == 2 then True
+  if truncate (pos_w s0) == 2 then False
   else
     if surface (f_grid ! (truncate (pos_w s0) + 1, div (truncate (pos_u s0)) 2, div (truncate (pos_v s0)) 2)) == Open || surface (f_grid ! (truncate (pos_w s0), div (truncate (pos_u s0)) 2, div (truncate (pos_v s0)) 2)) /= Flat then True
     else False

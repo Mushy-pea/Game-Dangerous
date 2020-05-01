@@ -229,7 +229,9 @@ dir_list = [], node_num = 0, end_node = 0, head_index = 0, reversed = False, tar
 
 empty_npc_array = array (0, 127) [(i, def_npc_state) | i <- [0..127]]
 
-ceiling_model = Obj_place {ident_ = 2046, u__ = 0, v__ = 0, w__ = 0, rotation = [], rotate_ = False, phase = 0, texture__ = 1, num_elem = 6, obj_flag = 0}
+-- The implementation of the environmental ceiling is simple and usea a single model that is rendered in every frame.  The Obj_place value for this model has therefore been hard coded and is added directly to
+-- the [Obj_place] taken by Main.show_object, as there is no requirement for the ray tracer to be involved.
+ceiling_model = Obj_place {ident_ = 1044, u__ = 0, v__ = 0, w__ = 0, rotation = [], rotate_ = False, phase = 0, texture__ = 1, num_elem = 36, obj_flag = 0}
 
 -- This data type is used in the control structure that manages the Main Menu.
 data User_menu = User_menu {menu_text :: [Char], action :: IO (), inner_nodes :: [User_menu]}
