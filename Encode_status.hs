@@ -7,15 +7,30 @@
 -- and decoding.  This means a naive attempt to guess a valid code has a 1 in 2 ^ 67 chance of success, as codes that would result in game state values outside a
 -- valid range are rejected.  This approach has been taken to avoid adding complexity to the per map game state saving system.
 
-module Encode_status where
+module Main where
 
 import System.IO
 import Data.Array.IArray
+import Data.Maybe
 import Build_model
 
-bit_reorder_pattern = [122,31,71,38,13,126,12,27,115,118,106,96,0,10,26,78,108,17,11,14,7,42,15,77,113,100,1,92,87,104,105,6,58,43,8,53,3,2,9,4,18,68,86,102,22,30,74,91,57,85,20,107,61,95,72,34,125,50,65,114,88,35,94,21,54,59,63,80,112,41,76,99,39,121,117,73,48,66,28,46,69,70,120,97,51,23,111,82,81,98,127,56,33,60,37,32,49,64,90,123,45,79,25,52,109,16,103,83,47,124,19,5,29,62,119,44,67,110,84,36,101,55,24,89,116,75,93,40] :: [Int]
+bit_reorder_scheme = [122,31,71,38,13,126,12,27,115,118,106,96,0,10,26,78,108,17,11,14,7,42,15,77,113,100,1,92,87,104,105,6,58,43,8,53,3,2,9,4,18,68,86,102,22,30,74,91,57,85,20,107,61,95,72,34,125,50,65,114,88,35,94,21,54,59,63,80,112,41,76,99,39,121,117,73,48,66,28,46,69,70,120,97,51,23,111,82,81,98,127,56,33,60,37,32,49,64,90,123,45,79,25,52,109,16,103,83,47,124,19,5,29,62,119,44,67,110,84,36,101,55,24,89,116,75,93,40] :: [Int]
 
--- These functions were originally written for a previous unpublished game project called Maze Game.  They are used to convert numbers from hexadecimal to binary form.
+main = do
+  putStr "\nEnter unlock code: "
+  code <- getLine
+  test_decode code
+
+test_decode :: [Char] -> IO ()
+test_decode code =
+  let bit_list = pad (decimal_binary (hex_decimal code 0) (2 ^ 127)) [] 127 0
+      reordered_bit_list = reorder_bits bit_reorder_scheme (listArray (0, 127) bit_list) (array (0, 127) [(i, 0) | i <- [0 .. 127]]) 0
+      game_state = extract_state_values reordered_bit_list ps0_init ps1_init 0
+  in do
+  if isNothing game_state == False then putStr ("\n\n" ++ show (fst (fromJust game_state)) ++ "\n\n" ++ show (snd (fromJust game_state)))
+  else putStr ("\n\nInvalid map unlock code entered.")
+
+-- These three functions were originally written for a previous unpublished game project called Maze Game.  They are used to convert numbers from hexadecimal to binary form.
 decimal_binary :: Integer -> Integer -> [Int]
 decimal_binary d_num factor = if (d_num - factor) < 0 then 0 : decimal_binary d_num (div factor 2)
                               else if (d_num - factor) == 0 then [1]
@@ -69,6 +84,13 @@ set_difficulty 1 = ("Plenty of danger please.", 6, 10, 14)
 set_difficulty 2 = ("Ultra danger.", 10, 15, 20)
 set_difficulty 3 = ("Health and safety nightmare!", 15, 20, 25)
 
+-- This function is used to set the keys value within Play_state1.
+set_keys :: [Int] -> Int -> [Int]
+set_keys [] char_num = []
+set_keys (x:xs) char_num =
+  if x == 1 then char_num : set_keys xs (char_num + 1)
+  else 0 : set_keys xs (char_num + 1)
+
 -- This function initialises certain values in the Play_state0 and Play_state1 structures based on the information encoded in the level unlock code.
 extract_state_values :: Array Int Int -> Play_state0 -> Play_state1 -> Int -> Maybe (Play_state0, Play_state1)
 extract_state_values bit_arr s0 s1 0 =
@@ -89,7 +111,7 @@ extract_state_values bit_arr s0 s1 3 =
      else Nothing
 extract_state_values bit_arr s0 s1 4 =
   let keys_ = det_state_values bit_arr 0 15 16 0 64
-  in if keys_ < 64 then extract_state_values bit_arr s0 (s1 {keys = pad (decimal_binary (fromIntegral keys_) 32) [] 5 0}) 5
+  in if keys_ < 64 then extract_state_values bit_arr s0 (s1 {keys = set_keys (pad (decimal_binary (fromIntegral keys_) 32) [] 5 0) 77}) 5
      else Nothing
 extract_state_values bit_arr s0 s1 5 =
   let difficulty_ = det_state_values bit_arr 0 15 16 0 80
@@ -97,7 +119,7 @@ extract_state_values bit_arr s0 s1 5 =
      else Nothing
 extract_state_values bit_arr s0 s1 6 =
   let time = det_state_values bit_arr 0 15 16 0 96
-  in if time < 65536 then extract_state_values bit_arr (s0 {game_clock = (time * 40, time * 40, 1)}) s1 7
+  in if time < 65536 then extract_state_values bit_arr (s0 {game_clock = (time * 40, fromIntegral (time * 40), 1)}) s1 7
      else Nothing
 extract_state_values bit_arr s0 s1 7 =
   let story_state_ = det_state_values bit_arr 0 15 16 0 112
