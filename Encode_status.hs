@@ -30,7 +30,7 @@ test_decode code =
   if isNothing game_state == False then putStr ("\n\n" ++ show (fst (fromJust game_state)) ++ "\n\n" ++ show (snd (fromJust game_state)))
   else putStr ("\n\nInvalid map unlock code entered.")
 
--- These three functions were originally written for a previous unpublished game project called Maze Game.  They are used to convert numbers from hexadecimal to binary form.
+-- These five functions were originally written for a previous unpublished game project called Maze Game.  They are used to convert numbers from hexadecimal to binary form.
 decimal_binary :: Integer -> Integer -> [Int]
 decimal_binary d_num factor = if (d_num - factor) < 0 then 0 : decimal_binary d_num (div factor 2)
                               else if (d_num - factor) == 0 then [1]
@@ -64,6 +64,31 @@ count2 'E' = 14
 count2 'F' = 15
 count2 x = error ("\nInvalid character in level unlock code: " ++ [x])
 
+count1 :: [Int] -> Char
+count1 xs = case xs of
+             [0, 0, 0, 0] -> '0'
+             [0, 0, 0, 1] -> '1'
+             [0, 0, 1, 0] -> '2'
+             [0, 0, 1, 1] -> '3'
+             [0, 1, 0, 0] -> '4'
+             [0, 1, 0, 1] -> '5'
+             [0, 1, 1, 0] -> '6'
+             [0, 1, 1, 1] -> '7'
+             [1, 0, 0, 0] -> '8'
+             [1, 0, 0, 1] -> '9'
+             [1, 0, 1, 0] -> 'A'
+             [1, 0, 1, 1] -> 'B'
+             [1, 1, 0, 0] -> 'C'
+             [1, 1, 0, 1] -> 'D'
+             [1, 1, 1, 0] -> 'E'
+             [1, 1, 1, 1] -> 'F'
+
+-- This function is used to convert numbers from binary to hexadecimal form.
+binary_to_hex :: Array Int Int -> Int -> [Char]
+binary_to_hex bit_arr i =
+  if i == 128 then []
+  else count1 [bit_arr ! i, bit_arr ! (i + 1), bit_arr ! (i + 2), bit_arr ! (i + 3)] : binary_to_hex bit_arr (i + 4)
+
 -- This function re - orders the 128 bit block derived from the 32 hex digit level unlock code, which adds some obfuscation.
 reorder_bits :: [Int] -> Array Int Int -> Array Int Int -> Int -> Array Int Int
 reorder_bits [] bit_arr_in  bit_arr_out i = bit_arr_out
@@ -76,6 +101,25 @@ det_state_values bit_arr total order len c i =
   else
     if bit_arr ! i == 1 then det_state_values bit_arr (total + 2 ^ order) (order - 1) len (c + 1) (i + 1)
     else det_state_values bit_arr total (order - 1) len (c + 1) (i + 1)
+
+-- This function is used to encode the difficulty field of Play_state1 as an integer.
+difficulty_to_int :: ([Char], Int, Int, Int) -> Int
+difficulty_to_int ("Hey, not too risky!", 6, 8, 10) = 0
+difficulty_to_int ("Plenty of danger please.", 6, 10, 14) = 1
+difficulty_to_int ("Ultra danger.", 10, 15, 20) = 2
+difficulty_to_int ("Health and safety nightmare!", 15, 20, 25) = 3
+
+-- This function encodes the value of the keys field of Play_state1 as an integer.
+keys_to_int :: [Int] -> Int
+keys_to_int (red : green : blue : yellow : purple : white : xs) =
+  let key_value = \key -> if key == 77 then 32
+                          else if key == 78 then 16
+                          else if key == 79 then 8
+                          else if key == 80 then 4
+                          else if key == 81 then 2
+                          else if key == 82 then 1
+                          else 0
+  in (key_value red) + (key_value green) + (key_value blue) + (key_value yellow) + (key_value purple) + (key_value white)
 
 -- This function is used to set the difficulty based on an integer.
 set_difficulty :: Int -> ([Char], Int, Int, Int)
@@ -125,4 +169,16 @@ extract_state_values bit_arr s0 s1 7 =
   let story_state_ = det_state_values bit_arr 0 15 16 0 112
   in if story_state_ < 256 then Just (s0, s1 {story_state = story_state_})
      else Nothing
+
+encode_state_values :: Play_state0 -> Play_state1 -> [Int]
+encode_state_values s0 s1 =
+  let health_block = pad (decimal_binary (health s1) (2 ^ 15)) [] 15 0
+      ammo_block = pad (decimal_binary (ammo s1) (2 ^ 15)) [] 15 0
+      gems_block = pad (decimal_binary (gems s1) (2 ^ 15)) [] 15 0
+      torches_block = pad (decimal_binary (torches s1) (2 ^ 15)) [] 15 0
+      keys_block = pad (decimal_binary (keys_to_int (keys s1)) (2 ^ 15)) [] 15 0
+      difficulty_block = pad (decimal_binary (difficulty_to_int (difficulty s1)) (2 ^ 15)) [] 15 0
+      time_block = pad (decimal_binary (div (fst__ (game_clock s0)) 40) (2 ^ 15)) [] 15 0
+      story_state_block = pad (decimal_binary (story_state s1) (2 ^ 15)) [] 15 0
+  in health_block ++ ammo_block ++ gems_block ++ torches_block ++ keys_block ++ difficulty_block ++ time_block ++ story_state_block
 
