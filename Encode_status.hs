@@ -3,46 +3,14 @@
 
 -- The functions in this module are part of the system that handles progression between maps.  Upon reaching the transition point between two maps
 -- the user is presented with a 32 hex digit level unlock code, within which is encoded certain game state values.  This code will be required to unlock
--- the map being entered.  A high level of redundancy is added to these codes (only 61 of 128 bits are used) and a bit reordering step is performed during encoding
--- and decoding.  This means a naive attempt to guess a valid code has a 1 in 2 ^ 67 chance of success, as codes that would result in game state values outside a
--- valid range are rejected.  This approach has been taken to avoid adding complexity to the per map game state saving system.
+-- the map being entered.  A high level of redundancy is added to these codes (only 61 of 128 bits are used) and codes that would result in game state values 
+-- being set outside of their valid range are rejected.  This approach has been taken to avoid adding complexity to the per map game state saving system.
 
-module Main where
+module Encode_status where
 
-import System.IO
 import Data.Array.IArray
 import Data.Maybe
 import Build_model
-
-bit_reorder_scheme = [122,31,71,38,13,126,12,27,115,118,106,96,0,10,26,78,108,17,11,14,7,42,15,77,113,100,1,92,87,104,105,6,58,43,8,53,3,2,9,4,18,68,86,102,22,30,74,91,57,85,20,107,61,95,72,34,125,50,65,114,88,35,94,21,54,59,63,80,112,41,76,99,39,121,117,73,48,66,28,46,69,70,120,97,51,23,111,82,81,98,127,56,33,60,37,32,49,64,90,123,45,79,25,52,109,16,103,83,47,124,19,5,29,62,119,44,67,110,84,36,101,55,24,89,116,75,93,40] :: [Int]
-
-ps0_test = Play_state0 {pos_u = 0, pos_v = 0, pos_w = 0, vel = [0, 0, 0], angle = 0, angle_ = 0, message_ = [], rend_mode = 0, view_mode = 0, view_angle = 0, game_clock = (92800, 1, 1), torch_t0 = 1, torch_t_limit = 0, on_screen_metrics = 0, prob_seq = def_prob_seq, mobile_lights = ([], [])}
-ps1_test = Play_state1 {health = 67, ammo = 12, gems = 204, torches = 3, keys = [77, 63, 63, 63, 63, 63], region = [19,46,41,44,27,33,31,63,28,27,51,63,4], difficulty = ("Health and safety nightmare!", 15, 20, 25), sig_q = [], next_sig_q = [], message = [], state_chg = 0, verbose_mode = False, npc_states = empty_npc_array, story_state = 34}
-
-main = do
-  putStr "\nSelect mode: "
-  mode <- getLine
-  if mode == "0" then do
-    putStr ("\n\nEnter level unlock code: ")
-    code <- getLine
-    test_decode code
-  else test_encode ps0_test ps1_test
-
-test_decode :: [Char] -> IO ()
-test_decode code =
-  let bit_list = pad (decimal_binary (hex_decimal code 0) (2 ^ 127)) [] 127 0
-      reordered_bit_list = reorder_bits bit_reorder_scheme (listArray (0, 127) bit_list) (array (0, 127) [(i, 0) | i <- [0 .. 127]]) 0
-      game_state = extract_state_values reordered_bit_list ps0_init ps1_init 0
-  in do
-  if isNothing game_state == False then putStr ("\n\n" ++ show (fst (fromJust game_state)) ++ "\n\n" ++ show (snd (fromJust game_state)))
-  else putStr ("\n\nInvalid map unlock code entered.")
-
-test_encode :: Play_state0 -> Play_state1 -> IO ()
-test_encode s0 s1 =
-  let bit_arr = listArray (0, 127) (encode_state_values s0 s1)
-      bit_arr' = reorder_bits bit_reorder_scheme bit_arr (array (0, 127) [(i, 0) | i <- [0 .. 127]]) 0
-  in do
-  putStr ("\n\nLevel unlock code: " ++ binary_to_hex bit_arr' 0)
 
 -- These five functions were originally written for a previous unpublished game project called Maze Game.  They are used to convert numbers from hexadecimal to binary form.
 decimal_binary :: Integer -> Integer -> [Int]
@@ -57,7 +25,7 @@ pad num acc pad_size c =
 
 hex_decimal :: [Char] -> Integer -> Integer
 hex_decimal [] c = 0
-hex_decimal (x:xs) c = (count2 x) * (16 ^ c) + hex_decimal xs (c + 1)
+hex_decimal (x:xs) c = (count2 x) * (16 ^ c) + hex_decimal xs (c - 1)
 
 count2 :: Char -> Integer
 count2 '0' = 0
@@ -103,11 +71,6 @@ binary_to_hex bit_arr i =
   if i == 128 then []
   else count1 [bit_arr ! i, bit_arr ! (i + 1), bit_arr ! (i + 2), bit_arr ! (i + 3)] : binary_to_hex bit_arr (i + 4)
 
--- This function re - orders the 128 bit block derived from the 32 hex digit level unlock code, which adds some obfuscation.
-reorder_bits :: [Int] -> Array Int Int -> Array Int Int -> Int -> Array Int Int
-reorder_bits [] bit_arr_in  bit_arr_out i = bit_arr_out
-reorder_bits (x:xs) bit_arr_in  bit_arr_out i = reorder_bits xs bit_arr_in (bit_arr_out // [(i, bit_arr_in ! x)]) (i + 1)
-
 -- This function checks a specified block of bits from the 128 bit unlock code and returns the integer that this encodes.
 det_state_values :: Array Int Int -> Int -> Int -> Int -> Int -> Int -> Int
 det_state_values bit_arr total order len c i =
@@ -147,7 +110,7 @@ set_keys :: [Int] -> Int -> [Int]
 set_keys [] char_num = []
 set_keys (x:xs) char_num =
   if x == 1 then char_num : set_keys xs (char_num + 1)
-  else 0 : set_keys xs (char_num + 1)
+  else 63 : set_keys xs (char_num + 1)
 
 -- This function initialises certain values in the Play_state0 and Play_state1 structures based on the information encoded in the level unlock code.
 extract_state_values :: Array Int Int -> Play_state0 -> Play_state1 -> Int -> Maybe (Play_state0, Play_state1)
