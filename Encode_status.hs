@@ -16,10 +16,17 @@ import Build_model
 
 bit_reorder_scheme = [122,31,71,38,13,126,12,27,115,118,106,96,0,10,26,78,108,17,11,14,7,42,15,77,113,100,1,92,87,104,105,6,58,43,8,53,3,2,9,4,18,68,86,102,22,30,74,91,57,85,20,107,61,95,72,34,125,50,65,114,88,35,94,21,54,59,63,80,112,41,76,99,39,121,117,73,48,66,28,46,69,70,120,97,51,23,111,82,81,98,127,56,33,60,37,32,49,64,90,123,45,79,25,52,109,16,103,83,47,124,19,5,29,62,119,44,67,110,84,36,101,55,24,89,116,75,93,40] :: [Int]
 
+ps0_test = Play_state0 {pos_u = 0, pos_v = 0, pos_w = 0, vel = [0, 0, 0], angle = 0, angle_ = 0, message_ = [], rend_mode = 0, view_mode = 0, view_angle = 0, game_clock = (92800, 1, 1), torch_t0 = 1, torch_t_limit = 0, on_screen_metrics = 0, prob_seq = def_prob_seq, mobile_lights = ([], [])}
+ps1_test = Play_state1 {health = 67, ammo = 12, gems = 204, torches = 3, keys = [77, 63, 63, 63, 63, 63], region = [19,46,41,44,27,33,31,63,28,27,51,63,4], difficulty = ("Health and safety nightmare!", 15, 20, 25), sig_q = [], next_sig_q = [], message = [], state_chg = 0, verbose_mode = False, npc_states = empty_npc_array, story_state = 34}
+
 main = do
-  putStr "\nEnter unlock code: "
-  code <- getLine
-  test_decode code
+  putStr "\nSelect mode: "
+  mode <- getLine
+  if mode == "0" then do
+    putStr ("\n\nEnter level unlock code: ")
+    code <- getLine
+    test_decode code
+  else test_encode ps0_test ps1_test
 
 test_decode :: [Char] -> IO ()
 test_decode code =
@@ -29,6 +36,13 @@ test_decode code =
   in do
   if isNothing game_state == False then putStr ("\n\n" ++ show (fst (fromJust game_state)) ++ "\n\n" ++ show (snd (fromJust game_state)))
   else putStr ("\n\nInvalid map unlock code entered.")
+
+test_encode :: Play_state0 -> Play_state1 -> IO ()
+test_encode s0 s1 =
+  let bit_arr = listArray (0, 127) (encode_state_values s0 s1)
+      bit_arr' = reorder_bits bit_reorder_scheme bit_arr (array (0, 127) [(i, 0) | i <- [0 .. 127]]) 0
+  in do
+  putStr ("\n\nLevel unlock code: " ++ binary_to_hex bit_arr' 0)
 
 -- These five functions were originally written for a previous unpublished game project called Maze Game.  They are used to convert numbers from hexadecimal to binary form.
 decimal_binary :: Integer -> Integer -> [Int]
@@ -172,13 +186,13 @@ extract_state_values bit_arr s0 s1 7 =
 
 encode_state_values :: Play_state0 -> Play_state1 -> [Int]
 encode_state_values s0 s1 =
-  let health_block = pad (decimal_binary (health s1) (2 ^ 15)) [] 15 0
-      ammo_block = pad (decimal_binary (ammo s1) (2 ^ 15)) [] 15 0
-      gems_block = pad (decimal_binary (gems s1) (2 ^ 15)) [] 15 0
-      torches_block = pad (decimal_binary (torches s1) (2 ^ 15)) [] 15 0
-      keys_block = pad (decimal_binary (keys_to_int (keys s1)) (2 ^ 15)) [] 15 0
-      difficulty_block = pad (decimal_binary (difficulty_to_int (difficulty s1)) (2 ^ 15)) [] 15 0
-      time_block = pad (decimal_binary (div (fst__ (game_clock s0)) 40) (2 ^ 15)) [] 15 0
-      story_state_block = pad (decimal_binary (story_state s1) (2 ^ 15)) [] 15 0
+  let health_block = pad (decimal_binary (fromIntegral (health s1)) (2 ^ 15)) [] 15 0
+      ammo_block = pad (decimal_binary (fromIntegral (ammo s1)) (2 ^ 15)) [] 15 0
+      gems_block = pad (decimal_binary (fromIntegral (gems s1)) (2 ^ 15)) [] 15 0
+      torches_block = pad (decimal_binary (fromIntegral (torches s1)) (2 ^ 15)) [] 15 0
+      keys_block = pad (decimal_binary (fromIntegral (keys_to_int (keys s1))) (2 ^ 15)) [] 15 0
+      difficulty_block = pad (decimal_binary (fromIntegral (difficulty_to_int (difficulty s1))) (2 ^ 15)) [] 15 0
+      time_block = pad (decimal_binary (fromIntegral (div (fst__ (game_clock s0)) 40)) (2 ^ 15)) [] 15 0
+      story_state_block = pad (decimal_binary (fromIntegral (story_state s1)) (2 ^ 15)) [] 15 0
   in health_block ++ ammo_block ++ gems_block ++ torches_block ++ keys_block ++ difficulty_block ++ time_block ++ story_state_block
 
