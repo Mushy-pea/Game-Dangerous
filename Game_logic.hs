@@ -27,6 +27,7 @@ import Data.Coerce
 import System.Clock
 import Build_model
 import Game_sound
+import Encode_status
 
 -- Used to load C style arrays, which are used with certain OpenGL functions.
 load_array :: Storable a => [a] -> Ptr a -> Int -> IO ()

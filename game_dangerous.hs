@@ -40,6 +40,7 @@ import Build_model
 import Decompress_map
 import Game_logic
 import Game_sound
+import Handle_input
 
 main = do
   args <- getArgs
@@ -84,26 +85,6 @@ open_window conf_reg =
 repaint_window :: IO ()
 repaint_window = do
   swapBuffers
-
--- This is the callback that GLUT calls each time mainLoopEvent has been called and there is keyboard input in the window message queue.
-get_input :: IORef Int -> Array Int Char -> Char -> Position -> IO ()
-get_input ref key_set key pos = do
-  if key == key_set ! 0 then writeIORef ref 2         -- Pause
-  else if key == key_set ! 1 then writeIORef ref 3    -- Forward
-  else if key == key_set ! 2 then writeIORef ref 4    -- Strafe right
-  else if key == key_set ! 3 then writeIORef ref 5    -- Back
-  else if key == key_set ! 4 then writeIORef ref 6    -- Strafe Left
-  else if key == key_set ! 5 then writeIORef ref 7    -- Turn left
-  else if key == key_set ! 6 then writeIORef ref 8    -- Turn right
-  else if key == key_set ! 7 then writeIORef ref 9    -- Jump
-  else if key == key_set ! 8 then writeIORef ref 10   -- Light torch
-  else if key == key_set ! 9 then writeIORef ref 11   -- Switch view mode
-  else if key == key_set ! 10 then writeIORef ref 12  -- Rotate 3rd person view
-  else if key == key_set ! 11 then writeIORef ref 13  -- Fire
-  else if key == key_set ! 12 then writeIORef ref 14  -- Select menu option
-  else if key == key_set ! 13 then writeIORef ref 15  -- Go back one level in menu
-  else if key == key_set ! 14 then writeIORef ref 16  -- Return to menu root
-  else writeIORef ref 0
 
 -- This function initialises the OpenGL and OpenAL contexts.  It also decompresses the map file, manages the compilation of GLSL shaders, loading of 3D models, loading of the light map
 -- and loading of sound effects.

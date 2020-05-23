@@ -115,27 +115,27 @@ set_keys (x:xs) char_num =
 -- This function initialises certain values in the Play_state0 and Play_state1 structures based on the information encoded in the level unlock code.
 extract_state_values :: Array Int Int -> Play_state0 -> Play_state1 -> Int -> Maybe (Play_state0, Play_state1)
 extract_state_values bit_arr s0 s1 0 =
-  let health_ = det_state_values bit_arr 0 15 16 0 0
+  let health_ = (det_state_values bit_arr 0 15 16 0 0) - 51712
   in if health_ < 256 then extract_state_values bit_arr s0 (s1 {health = health_}) 1
      else Nothing
 extract_state_values bit_arr s0 s1 1 =
-  let ammo_ = det_state_values bit_arr 0 15 16 0 16
+  let ammo_ = (det_state_values bit_arr 0 15 16 0 16) - 28160
   in if ammo_ < 256 then extract_state_values bit_arr s0 (s1 {ammo = ammo_}) 2
      else Nothing
 extract_state_values bit_arr s0 s1 2 =
-  let gems_ = det_state_values bit_arr 0 15 16 0 32
+  let gems_ = (det_state_values bit_arr 0 15 16 0 32) - 12288
   in if gems_ < 256 then extract_state_values bit_arr s0 (s1 {gems = gems_}) 3
      else Nothing
 extract_state_values bit_arr s0 s1 3 =
-  let torches_ = det_state_values bit_arr 0 15 16 0 48
+  let torches_ = (det_state_values bit_arr 0 15 16 0 48) - 45568
   in if torches_ < 256 then extract_state_values bit_arr s0 (s1 {torches = torches_}) 4
      else Nothing
 extract_state_values bit_arr s0 s1 4 =
-  let keys_ = det_state_values bit_arr 0 15 16 0 64
+  let keys_ = (det_state_values bit_arr 0 15 16 0 64) - 59392
   in if keys_ < 64 then extract_state_values bit_arr s0 (s1 {keys = set_keys (pad (decimal_binary (fromIntegral keys_) 32) [] 5 0) 77}) 5
      else Nothing
 extract_state_values bit_arr s0 s1 5 =
-  let difficulty_ = det_state_values bit_arr 0 15 16 0 80
+  let difficulty_ = (det_state_values bit_arr 0 15 16 0 80) - 38400
   in if difficulty_ < 4 then extract_state_values bit_arr s0 (s1 {difficulty = set_difficulty difficulty_}) 6
      else Nothing
 extract_state_values bit_arr s0 s1 6 =
@@ -143,19 +143,20 @@ extract_state_values bit_arr s0 s1 6 =
   in if time < 65536 then extract_state_values bit_arr (s0 {game_clock = (time * 40, fromIntegral (time * 40), 1)}) s1 7
      else Nothing
 extract_state_values bit_arr s0 s1 7 =
-  let story_state_ = det_state_values bit_arr 0 15 16 0 112
+  let story_state_ = (det_state_values bit_arr 0 15 16 0 112) - 20480
   in if story_state_ < 256 then Just (s0, s1 {story_state = story_state_})
      else Nothing
 
+-- This function encodes certain game state values into a 128 bit number.
 encode_state_values :: Play_state0 -> Play_state1 -> [Int]
 encode_state_values s0 s1 =
-  let health_block = pad (decimal_binary (fromIntegral (health s1)) (2 ^ 15)) [] 15 0
-      ammo_block = pad (decimal_binary (fromIntegral (ammo s1)) (2 ^ 15)) [] 15 0
-      gems_block = pad (decimal_binary (fromIntegral (gems s1)) (2 ^ 15)) [] 15 0
-      torches_block = pad (decimal_binary (fromIntegral (torches s1)) (2 ^ 15)) [] 15 0
-      keys_block = pad (decimal_binary (fromIntegral (keys_to_int (keys s1))) (2 ^ 15)) [] 15 0
-      difficulty_block = pad (decimal_binary (fromIntegral (difficulty_to_int (difficulty s1))) (2 ^ 15)) [] 15 0
+  let health_block = pad (decimal_binary (fromIntegral ((health s1) + 51712)) (2 ^ 15)) [] 15 0
+      ammo_block = pad (decimal_binary (fromIntegral ((ammo s1) + 28160)) (2 ^ 15)) [] 15 0
+      gems_block = pad (decimal_binary (fromIntegral ((gems s1) + 12288)) (2 ^ 15)) [] 15 0
+      torches_block = pad (decimal_binary (fromIntegral ((torches s1) + 45568)) (2 ^ 15)) [] 15 0
+      keys_block = pad (decimal_binary (fromIntegral ((keys_to_int (keys s1)) + 59392)) (2 ^ 15)) [] 15 0
+      difficulty_block = pad (decimal_binary (fromIntegral ((difficulty_to_int (difficulty s1)) + 38400)) (2 ^ 15)) [] 15 0
       time_block = pad (decimal_binary (fromIntegral (div (fst__ (game_clock s0)) 40)) (2 ^ 15)) [] 15 0
-      story_state_block = pad (decimal_binary (fromIntegral (story_state s1)) (2 ^ 15)) [] 15 0
+      story_state_block = pad (decimal_binary (fromIntegral ((story_state s1) + 20480)) (2 ^ 15)) [] 15 0
   in health_block ++ ammo_block ++ gems_block ++ torches_block ++ keys_block ++ difficulty_block ++ time_block ++ story_state_block
 
