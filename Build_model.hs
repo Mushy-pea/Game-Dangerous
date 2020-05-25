@@ -191,7 +191,7 @@ instance Binary NPC_state where
            w <- get
            return (NPC_state {npc_type = a, c_health = b, ticks_left0 = c, ticks_left1 = d, node_locations = e, fg_position = f, dir_vector = g, direction = h, last_dir = i, dir_list = j, node_num = k, end_node = l, head_index = m, reversed = n, target_u' = o, target_v' = p, target_w' = q, speed = r, avoid_dist = s, attack_mode = t, final_appr = u, fire_prob = v, fireball_state = w})
 
-data Save_state = Save_state {is_set :: Bool, w_grid_ :: Array (Int, Int, Int) Wall_grid, f_grid_ :: Array (Int, Int, Int) Floor_grid, obj_grid_ :: Array (Int, Int, Int) (Int, [Int]), s0_ :: Play_state0, s1_ :: Play_state1}
+data Game_state = Save_state {is_set :: Bool, w_grid_ :: Array (Int, Int, Int) Wall_grid, f_grid_ :: Array (Int, Int, Int) Floor_grid, obj_grid_ :: Array (Int, Int, Int) (Int, [Int]), s0_ :: Play_state0, s1_ :: Play_state1}
 
 data Io_box = Io_box {uniform_ :: UArray Int Int32, p_bind_ :: (UArray Int Word32, Int), control_ :: IORef Int}
 
@@ -232,9 +232,6 @@ empty_npc_array = array (0, 127) [(i, def_npc_state) | i <- [0..127]]
 -- The implementation of the environmental ceiling is simple and usea a single model that is rendered in every frame.  The Obj_place value for this model has therefore been hard coded and is added directly to
 -- the [Obj_place] taken by Main.show_object, as there is no requirement for the ray tracer to be involved.
 ceiling_model = Obj_place {ident_ = 1044, u__ = 0, v__ = 0, w__ = 0, rotation = [], rotate_ = False, phase = 0, texture__ = 1, num_elem = 36, obj_flag = 0}
-
--- This data type is used in the control structure that manages the Main Menu.
-data User_menu = User_menu {menu_text :: [Char], action :: IO (), inner_nodes :: [User_menu]}
 
 -- This list is used to sequence centipede NPC animation.
 cpede_frames = [0, 1, 2, 3, 4, 5, 4, 3, 2, 1, 0] :: [Int]
