@@ -15,7 +15,36 @@ import Data.Array.IArray
 import Build_model
 
 -- This recursive data type is used to implement the control structure that updates the game state in response to console input.
-data Comm_struct = Comm_struct {page_dictionary :: [[Char]], branches :: Array Int Comm_struct, update_game_state :: Game_state -> [Char] -> Game_state}
+data Comm_struct = Comm_struct {dictionary_page :: [[Char]], branches :: Maybe (Array Int Comm_struct), update_game_state :: Maybe (Game_state -> [Char] -> Game_state)}
+
+-- The following shows the structure of the decision tree implemented using the above data type.
+
+-- unlock(0) (unlock_wrapper)
+
+-- set(0) -> Wall_grid (1) 			-> structure (2) (set_wall_grid_structure)
+--							-> textures (2) (set_wall_grid_textures)
+--							-> Obj_place (2) (set_obj_place)
+
+--  -> Floor_grid (1) (set_floor_grid)
+--  -> Obj_grid(1) (set_obj_grid)
+--  -> Play_state0(1) 				-> position (3) (set_player_position)
+--							-> angle (3) (set_camera_angle)
+--							-> rend_mode (3) (set_rend_mode)
+
+--  -> Play_State1(1)				-> health (4) (set_health)
+--							-> ammo (4) (set_ammo)
+--							-> gems (4) (set_gems)
+--							-> torches (4) (set_torches)
+--							-> keys (4) (set_keys)
+--							-> region (4) (set_region)
+--							-> difficulty (4) (set_difficulty)
+--							-> verbose_mode (4) (set_verbose_mode)
+--							-> story_state (4) (set_story_state)
+
+--send_signal(0) (send_signal_)
+
+-- These are the functions that update the game state in response to the engine receiving console commands.
+
 
 -- These are the pages used in the hierarchical dictionary look up used to interpret console input.
 page0 = ["unlock", "set", "send_signal"]
@@ -24,9 +53,66 @@ page2 = ["structure", "textures", "Obj_place"]
 page3 = ["position", "angle", "rend_mode"]
 page4 = ["health", "ammo", "gems", "torches", "keys", "region", "difficulty", "verbose_mode", "story_state"]
 
---wall_grid_branch = Comm_struct {}
+-- These are the sets of branches that exist for non - end nodes.
+base_branches = array (0, 2) [(0, unlock_node), (1, set_node), (2, send_signal_node)]
 
---branches_node0_1 = array (0, 4) [(0, Comm_struct {page_dictionary = }
+set_node_branches = array (0, 4) [(0, wall_grid_node), (1, floor_grid_node), (2, obj_grid_node), (3, play_state0_node), (4, play_state1_node)]
+
+wall_grid_node_branches = array (0, 2) [(0, structure_node), (1, textures_node), (2, obj_place_node)]
+
+play_state0_node_branches = array (0, 2) [(0, position_node), (1, angle_node), (2, rend_mode_node)]
+
+play_state1_node_branches = array (0, 8) [(0, health_node), (1, ammo_node), (2, gems_node), (3, torches_node), (4, keys_node), (5, region_node), (6, difficulty_node), (7, verbose_mode_node), (8, story_state_node)]
+
+-- These are the nodes of the decision tree.
+base_node = Comm_struct {dictionary_page = page0, branches = Just base_branches, update_game_state = Nothing}
+
+unlock_node = Comm_struct {dictionary_page = [], branches = Nothing, update_game_state = Just unlock_wrapper}
+
+set_node = Comm_struct {dictionary_page = page1, branches = Just set_node_branches, update_game_state = Nothing}
+
+send_signal_node = Comm_struct {dictionary_page = [], branches = Nothing, update_game_state = Just send_signal_}
+
+wall_grid_node = Comm_struct {dictionary_page = page2, branches = Just wall_grid_node_branches, update_game_state = Nothing}
+
+floor_grid_node = Comm_struct {dictionary_page = [], branches = Nothing, update_game_state = Just set_floor_grid}
+
+obj_grid_node = Comm_struct {dictionary_page = [], branches = Nothing, update_game_state = set_obj_grid}
+
+play_state0_node = Comm_struct {dictionary_page = page3, branches = Just play_state0_node_branches, update_game_state = Nothing}
+
+play_state1_node = Comm_struct {dictionary_page = page4, branches = Just play_state1_node_branches, update_game_state = Nothing}
+
+structure_node = Comm_struct {dictionary_page = [], branches = Nothing, update_game_state = Just set_wall_grid_structure}
+
+textures_node = Comm_struct {dictionary_page = [], branches = Nothing, update_game_state = Just set_wall_grid_textures}
+
+obj_place_node = Comm_struct {dictionary_page = [], branches = Nothing, update_game_state = Just set_obj_place}
+
+position_node = Comm_struct {dictionary_page = [], branches = Nothing, update_game_state = Just set_player_position}
+
+angle_node = Comm_struct {dictionary_page = [], branches = Nothing, update_game_state = Just set_camera_angle}
+
+rend_mode_node = Comm_struct {dictionary_page = [], branches = Nothing, update_game_state = Just set_rend_mode}
+
+health_node = Comm_struct {dictionary_page = [], branches = Nothing, update_game_state = Just set_health}
+
+ammo_node = Comm_struct {dictionary_page = [], branches = Nothing, update_game_state = Just set_ammo}
+
+gems_node = Comm_struct {dictionary_page = [], branches = Nothing, update_game_state = Just set_gems}
+
+torches_node = Comm_struct {dictionary_page = [], branches = Nothing, update_game_state = Just set_torches}
+
+keys_node = Comm_struct {dictionary_page = [], branches = Nothing, update_game_state = Just set_keys}
+
+region_node = Comm_struct {dictionary_page = [], branches = Nothing, update_game_state = Just set_region}
+
+difficulty_node = Comm_struct {dictionary_page = [], branches = Nothing, update_game_state = Just set_difficulty}
+
+verbose_mode_node = Comm_struct {dictionary_page = [], branches = Nothing, update_game_state = Just set_verbose_mode}
+
+story_state_node = Comm_struct {dictionary_page = [], branches = Nothing, update_game_state = Just set_story_state}
+
 
 -- When the engine is in interactive or menu input mode, this is the callback that GLUT calls each time mainLoopEvent has been called and there is keyboard input
 -- in the window message queue.
