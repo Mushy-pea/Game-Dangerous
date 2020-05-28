@@ -12,10 +12,11 @@ import Graphics.GL.Core33
 import Graphics.UI.GLUT
 import Data.IORef
 import Data.Array.IArray
+import Data.List.Split
 import Build_model
 
 -- This recursive data type is used to implement the control structure that updates the game state in response to console input.
-data Comm_struct = Comm_struct {dictionary_page :: [[Char]], branches :: Maybe (Array Int Comm_struct), update_game_state :: Maybe (Game_state -> [Char] -> Game_state)}
+data Comm_struct = Comm_struct {dictionary_page :: [[Char]], branches :: Maybe (Array Int Comm_struct), update_game_state :: Maybe (Game_state -> [Char] -> Maybe Game_state)}
 
 -- The following shows the structure of the decision tree implemented using the above data type.
 
@@ -44,7 +45,32 @@ data Comm_struct = Comm_struct {dictionary_page :: [[Char]], branches :: Maybe (
 --send_signal(0) (send_signal_)
 
 -- These are the functions that update the game state in response to the engine receiving console commands.
+unlock_wrapper game_state code =
+  let bit_list = pad (decimal_binary (hex_decimal code 0) (2 ^ 127)) [] 127 0
+      state_values = extract_state_values (listArray (0, 127) bit_list) (s0_ game_state) (s1_ game_state) 0
+  in if third_ state_values == True then Just game_state {is_set = False, w_grid_ = def_w_grid, f_grid_ = def_f_grid, obj_grid_ = def_obj_grid, s0_ = fst__ state_values, s1_ = snd__ state_values}
+     else Nothing
 
+send_signal_ game_state arg =
+  let arg_comp = split "," arg
+      sig = read (arg_comp !! 0)
+      i0 = read (arg_comp !! 1)
+      i1 = read (arg_comp !! 2)
+      i2 = read (arg_comp !! 3)
+      bd = bounds (obj_grid_ game_state)
+  in
+  if i0 < fst__ (fst bd) || i0 > fst__ (snd bd) || i1 < snd__ (fst bd) || i1 > snd__ (snd bd) || i2 < third_ (fst bd) || i2 > third_ (snd bd) then Nothing
+  else Just game_state {s1_ = ((s1_ game_state) {siq_queue = [sig, i0, i1, i2]})}
+
+set_floor_grid game_state arg =
+  let arg_comp = split "," arg
+      i0 = read (arg_comp !! 0)
+      i1 = read (arg_comp !! 1)
+      i2 = read (arg_comp !! 2)
+      bd = bounds (f_grid_ game_state)
+  in
+  if i0 < fst__ (fst bd) || i0 > fst__ (snd bd) || i1 < snd__ (fst bd) || i1 > snd__ (snd bd) || i2 < third_ (fst bd) || i2 > third_ (snd bd) then Nothing
+  else Just game_state {f_grid_ = (f_grid_ game_state) // [((i0, i1, i2), Floor_grid {w_ = }) }
 
 -- These are the pages used in the hierarchical dictionary look up used to interpret console input.
 page0 = ["unlock", "set", "send_signal"]

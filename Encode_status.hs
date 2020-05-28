@@ -113,39 +113,39 @@ set_keys (x:xs) char_num =
   else 63 : set_keys xs (char_num + 1)
 
 -- This function initialises certain values in the Play_state0 and Play_state1 structures based on the information encoded in the level unlock code.
-extract_state_values :: Array Int Int -> Play_state0 -> Play_state1 -> Int -> Maybe (Play_state0, Play_state1)
+extract_state_values :: Array Int Int -> Play_state0 -> Play_state1 -> Int -> (Play_state0, Play_state1, Bool)
 extract_state_values bit_arr s0 s1 0 =
   let health_ = (det_state_values bit_arr 0 15 16 0 0) - 51712
   in if health_ < 256 then extract_state_values bit_arr s0 (s1 {health = health_}) 1
-     else Nothing
+     else (ps0_init, ps1_init, False)
 extract_state_values bit_arr s0 s1 1 =
   let ammo_ = (det_state_values bit_arr 0 15 16 0 16) - 28160
   in if ammo_ < 256 then extract_state_values bit_arr s0 (s1 {ammo = ammo_}) 2
-     else Nothing
+     else (ps0_init, ps1_init, False)
 extract_state_values bit_arr s0 s1 2 =
   let gems_ = (det_state_values bit_arr 0 15 16 0 32) - 12288
   in if gems_ < 256 then extract_state_values bit_arr s0 (s1 {gems = gems_}) 3
-     else Nothing
+     else (ps0_init, ps1_init, False)
 extract_state_values bit_arr s0 s1 3 =
   let torches_ = (det_state_values bit_arr 0 15 16 0 48) - 45568
   in if torches_ < 256 then extract_state_values bit_arr s0 (s1 {torches = torches_}) 4
-     else Nothing
+     else (ps0_init, ps1_init, False)
 extract_state_values bit_arr s0 s1 4 =
   let keys_ = (det_state_values bit_arr 0 15 16 0 64) - 59392
   in if keys_ < 64 then extract_state_values bit_arr s0 (s1 {keys = set_keys (pad (decimal_binary (fromIntegral keys_) 32) [] 5 0) 77}) 5
-     else Nothing
+     else (ps0_init, ps1_init, False)
 extract_state_values bit_arr s0 s1 5 =
   let difficulty_ = (det_state_values bit_arr 0 15 16 0 80) - 38400
   in if difficulty_ < 4 then extract_state_values bit_arr s0 (s1 {difficulty = set_difficulty difficulty_}) 6
-     else Nothing
+     else (ps0_init, ps1_init, False)
 extract_state_values bit_arr s0 s1 6 =
   let time = det_state_values bit_arr 0 15 16 0 96
   in if time < 65536 then extract_state_values bit_arr (s0 {game_clock = (time * 40, fromIntegral (time * 40), 1)}) s1 7
-     else Nothing
+     else (ps0_init, ps1_init, False)
 extract_state_values bit_arr s0 s1 7 =
   let story_state_ = (det_state_values bit_arr 0 15 16 0 112) - 20480
-  in if story_state_ < 256 then Just (s0, s1 {story_state = story_state_})
-     else Nothing
+  in if story_state_ < 256 then (s0, s1 {story_state = story_state_}, True)
+     else (ps0_init, ps1_init, False)
 
 -- This function encodes certain game state values into a 128 bit number.
 encode_state_values :: Play_state0 -> Play_state1 -> [Int]
