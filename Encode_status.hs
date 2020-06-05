@@ -104,6 +104,7 @@ set_difficulty 0 = ("Hey, not too risky!", 6, 8, 10)
 set_difficulty 1 = ("Plenty of danger please.", 6, 10, 14)
 set_difficulty 2 = ("Ultra danger.", 10, 15, 20)
 set_difficulty 3 = ("Health and safety nightmare!", 15, 20, 25)
+set_difficulty _ = ("Plenty of danger please.", 6, 10, 14)
 
 -- This function is used to set the keys value within Play_state1.
 set_keys :: [Int] -> Int -> [Int]

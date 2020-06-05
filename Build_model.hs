@@ -38,6 +38,7 @@ fst__ (a, b, c) = a
 snd__ (a, b, c) = b
 third_ (a, b, c) = c
 
+int_to_bool :: Int -> Bool
 int_to_bool 0 = False
 int_to_bool 1 = True
 
