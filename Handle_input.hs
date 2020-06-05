@@ -14,9 +14,10 @@ import Data.IORef
 import Data.Array.IArray
 import Data.List.Split
 import Build_model
+import Encode_status
 
 -- This recursive data type is used to implement the control structure that updates the game state in response to console input.
-data Comm_struct = Comm_struct {dictionary_page :: [[Char]], branches :: Maybe (Array Int Comm_struct), update_game_state :: Maybe (Game_state -> [Char] -> Maybe Game_state)}
+data Comm_struct = Comm_struct {dictionary_page :: [[Char]], branches :: Maybe (Array Int Comm_struct), update_game_state :: Maybe (Game_state -> [[Char]] -> Maybe Game_state)}
 
 -- The following shows the structure of the decision tree implemented using the above data type.
 
@@ -44,33 +45,56 @@ data Comm_struct = Comm_struct {dictionary_page :: [[Char]], branches :: Maybe (
 
 --send_signal(0) (send_signal_)
 
--- These are the functions that update the game state in response to the engine receiving console commands.
+-- These are the functions that update the game state in response to the engine receiving console commands.  They are all of type (Game_state -> [[Char]] -> Maybe Game_state).
 unlock_wrapper game_state code =
-  let bit_list = pad (decimal_binary (hex_decimal code 0) (2 ^ 127)) [] 127 0
+  let bit_list = pad (decimal_binary (hex_decimal (code !! 0) 0) (2 ^ 127)) [] 127 0
       state_values = extract_state_values (listArray (0, 127) bit_list) (s0_ game_state) (s1_ game_state) 0
-  in if third_ state_values == True then Just game_state {is_set = False, w_grid_ = def_w_grid, f_grid_ = def_f_grid, obj_grid_ = def_obj_grid, s0_ = fst__ state_values, s1_ = snd__ state_values}
+  in if third_ state_values == True then Just game_state {s0_ = fst__ state_values, s1_ = snd__ state_values}
      else Nothing
 
-send_signal_ game_state arg =
-  let arg_comp = split "," arg
-      sig = read (arg_comp !! 0)
-      i0 = read (arg_comp !! 1)
-      i1 = read (arg_comp !! 2)
-      i2 = read (arg_comp !! 3)
+send_signal_ game_state args =
+  let sig = read (args !! 0)
+      w = read (args !! 1)
+      u = read (args !! 2)
+      v = read (args !! 3)
       bd = bounds (obj_grid_ game_state)
   in
-  if i0 < fst__ (fst bd) || i0 > fst__ (snd bd) || i1 < snd__ (fst bd) || i1 > snd__ (snd bd) || i2 < third_ (fst bd) || i2 > third_ (snd bd) then Nothing
-  else Just game_state {s1_ = ((s1_ game_state) {siq_queue = [sig, i0, i1, i2]})}
+  if w < fst__ (fst bd) || w > fst__ (snd bd) || u < snd__ (fst bd) || u > snd__ (snd bd) || v < third_ (fst bd) || v > third_ (snd bd) then Nothing
+  else Just game_state {s1_ = ((s1_ game_state) {sig_q = [sig, w, u, v]})}
 
-set_floor_grid game_state arg =
-  let arg_comp = split "," arg
-      i0 = read (arg_comp !! 0)
-      i1 = read (arg_comp !! 1)
-      i2 = read (arg_comp !! 2)
+set_floor_grid game_state args =
+  let w = read (args !! 0)
+      u = read (args !! 1)
+      v = read (args !! 2)
+      height = read (args !! 3)
+      terrain = read (args !! 4)
       bd = bounds (f_grid_ game_state)
   in
-  if i0 < fst__ (fst bd) || i0 > fst__ (snd bd) || i1 < snd__ (fst bd) || i1 > snd__ (snd bd) || i2 < third_ (fst bd) || i2 > third_ (snd bd) then Nothing
-  else Just game_state {f_grid_ = (f_grid_ game_state) // [((i0, i1, i2), Floor_grid {w_ = }) }
+  if w < fst__ (fst bd) || w > fst__ (snd bd) || u < snd__ (fst bd) || u > snd__ (snd bd) || v < third_ (fst bd) || v > third_ (snd bd) then Nothing
+  else Just game_state {f_grid_ = (f_grid_ game_state) // [((w, u, v), Floor_grid {w_ = height, surface = terrain})]}
+
+construct_prog_block :: [[Char]] -> [Int]
+construct_prog_block [] = []
+construct_prog_block (x:xs) = (read x) : construct_prog_block xs
+
+set_obj_grid game_state args =
+  let w = read (args !! 0)
+      u = read (args !! 1)
+      v = read (args !! 2)
+      obj_type = read (args !! 3)
+      bd = bounds (obj_grid_ game_state)
+  in
+  if w < fst__ (fst bd) || w > fst__ (snd bd) || u < snd__ (fst bd) || u > snd__ (snd bd) || v < third_ (fst bd) || v > third_ (snd bd) then Nothing
+  else Just game_state {obj_grid_ = (obj_grid_ game_state) // [((w, u, v), (obj_type, construct_prog_block (drop 4 args)))]}
+
+--set_wall_grid_structure game_state args =
+--  let w = read (args !! 0)
+--      u = read (args !! 1)
+--      v = read (args !! 2)
+--      bd = bounds (wall_grid_ game_state)
+--  in
+--  if w < fst__ (fst bd) || w > fst__ (snd bd) || u < snd__ (fst bd) || u > snd__ (snd bd) || v < third_ (fst bd) || v > third_ (snd bd) then Nothing
+--  else Just game_state {wall_grid_ = (wall_grid_ game_state) // [((w, u, v), ((wall_grid_ game_state) ! (w, u, v)) {
 
 -- These are the pages used in the hierarchical dictionary look up used to interpret console input.
 page0 = ["unlock", "set", "send_signal"]

@@ -38,6 +38,9 @@ fst__ (a, b, c) = a
 snd__ (a, b, c) = b
 third_ (a, b, c) = c
 
+int_to_bool 0 = False
+int_to_bool 1 = True
+
 -- These two functions generate trigonometric look up tables to time optimise various functions.
 make_table :: Int -> Float -> [Float]
 make_table 0 a =
@@ -220,7 +223,7 @@ w_grid_flag = Wall_grid {u1 = True, u2 = True, v1 = True, v2 = True, u1_bound = 
 f_grid_flag = Floor_grid {w_ = 3, surface = Flat, local_up_ramp = (0, 0), local_down_ramp = (0, 0)}
 obj_grid_flag = (5, []) :: (Int, [Int])
 
-def_save_state = Save_state {is_set = False, w_grid_ = def_w_grid_arr, f_grid_ = def_f_grid_arr, obj_grid_ = def_obj_grid_arr, s0_ = ps0_init, s1_ = ps1_init}
+def_save_state = Game_state {is_set = False, w_grid_ = def_w_grid_arr, f_grid_ = def_f_grid_arr, obj_grid_ = def_obj_grid_arr, s0_ = ps0_init, s1_ = ps1_init}
 def_wall_place = Wall_place {rotate = 0, translate_u = 0, translate_v = 0, translate_w = 0, wall_flag_ = 0, texture_ = 0, isNull = True}
 def_prob_seq = array (0, 239) [(i, 0) | i <- [0..239]]
 

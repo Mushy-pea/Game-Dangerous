@@ -110,9 +110,6 @@ fl_to_int x = truncate (x * 1000000)
 bool_to_int True = 1
 bool_to_int False = 0
 
-int_to_bool 0 = False
-int_to_bool 1 = True
-
 head_ [] = 1
 head_ ls = head ls
 tail_ [] = []
