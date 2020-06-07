@@ -19,7 +19,7 @@ import Build_model
 import Encode_status
 
 -- This recursive data type is used to implement the control structure that updates the game state in response to console input.
-data Comm_struct = Comm_struct {dictionary_page :: [[Char]], branches :: Maybe (Array Int Comm_struct), update_game_state :: Maybe (Game_state -> [[Char]] -> Maybe Game_state)}
+data Comm_struct = Comm_struct {dictionary_page :: [[Char]], branches :: Maybe (Array Int Comm_struct), update_game_state :: Maybe (Game_state -> [[Char]] -> (Maybe Game_state, [Char]))}
 
 -- The following shows the structure of the decision tree implemented using the above data type.
 
@@ -51,8 +51,8 @@ data Comm_struct = Comm_struct {dictionary_page :: [[Char]], branches :: Maybe (
 unlock_wrapper game_state code =
   let bit_list = pad (decimal_binary (hex_decimal (code !! 0) 0) (2 ^ 127)) [] 127 0
       state_values = extract_state_values (listArray (0, 127) bit_list) (s0_ game_state) (s1_ game_state) 0
-  in if third_ state_values == True then Just game_state {s0_ = fst__ state_values, s1_ = snd__ state_values}
-     else Nothing
+  in if third_ state_values == True then (Just game_state {s0_ = fst__ state_values, s1_ = snd__ state_values}, "Map unlocked!")
+     else (Nothing, "Invalid map unlock code.")
 
 send_signal_ game_state args =
   let sig = read (args !! 0)
@@ -61,8 +61,8 @@ send_signal_ game_state args =
       v = read (args !! 3)
       bd = bounds (obj_grid_ game_state)
   in
-  if w < fst__ (fst bd) || w > fst__ (snd bd) || u < snd__ (fst bd) || u > snd__ (snd bd) || v < third_ (fst bd) || v > third_ (snd bd) then Nothing
-  else Just game_state {s1_ = ((s1_ game_state) {sig_q = [sig, w, u, v]})}
+  if w < fst__ (fst bd) || w > fst__ (snd bd) || u < snd__ (fst bd) || u > snd__ (snd bd) || v < third_ (fst bd) || v > third_ (snd bd) then (Nothing, "send_signal_ failed.  Arguments passed were sig: " ++ (args !! 0) ++ " w: " ++ (args !! 1) ++ " u: " ++ (args !! 2) ++ " v: " ++ (args !! 3))
+  else (Just game_state {s1_ = ((s1_ game_state) {sig_q = [sig, w, u, v]})}, "send_signal succeeded.  Arguments passed were sig: " ++ (args !! 0) ++ " w: " ++ (args !! 1) ++ " u: " ++ (args !! 2) ++ " v: " ++ (args !! 3))
 
 set_floor_grid game_state args =
   let w = read (args !! 0)
@@ -72,8 +72,8 @@ set_floor_grid game_state args =
       terrain = read (args !! 4)
       bd = bounds (f_grid_ game_state)
   in
-  if w < fst__ (fst bd) || w > fst__ (snd bd) || u < snd__ (fst bd) || u > snd__ (snd bd) || v < third_ (fst bd) || v > third_ (snd bd) then Nothing
-  else Just game_state {f_grid_ = (f_grid_ game_state) // [((w, u, v), Floor_grid {w_ = height, surface = terrain, local_up_ramp = (0, 0), local_down_ramp = (0, 0)})]}
+  if w < fst__ (fst bd) || w > fst__ (snd bd) || u < snd__ (fst bd) || u > snd__ (snd bd) || v < third_ (fst bd) || v > third_ (snd bd) then (Nothing, "set_floor_grid failed.  Arguments passed were w: " ++ (args !! 0) ++ " u: " ++ (args !! 1) ++ " v: " ++ (args !! 2) ++ " height: " ++ (args !! 3) ++ " terrain: " ++ (args !! 4))
+  else (Just game_state {f_grid_ = (f_grid_ game_state) // [((w, u, v), Floor_grid {w_ = height, surface = terrain, local_up_ramp = (0, 0), local_down_ramp = (0, 0)})]}, "set_floor_grid succeeded.  Arguments passed were w: " ++ (args !! 0) ++ " u: " ++ (args !! 1) ++ " v: " ++ (args !! 2) ++ " height: " ++ (args !! 3) ++ " terrain: " ++ (args !! 4))
 
 construct_prog_block :: [[Char]] -> [Int]
 construct_prog_block [] = []
@@ -86,8 +86,8 @@ set_obj_grid game_state args =
       obj_type = read (args !! 3)
       bd = bounds (obj_grid_ game_state)
   in
-  if w < fst__ (fst bd) || w > fst__ (snd bd) || u < snd__ (fst bd) || u > snd__ (snd bd) || v < third_ (fst bd) || v > third_ (snd bd) then Nothing
-  else Just game_state {obj_grid_ = (obj_grid_ game_state) // [((w, u, v), (obj_type, construct_prog_block (drop 4 args)))]}
+  if w < fst__ (fst bd) || w > fst__ (snd bd) || u < snd__ (fst bd) || u > snd__ (snd bd) || v < third_ (fst bd) || v > third_ (snd bd) then (Nothing, "set_obj_grid failed.  Arguments passed were w: " ++ (args !! 0) ++ " u: " ++ (args !! 1) ++ " v: " ++ (args !! 2) ++ " obj_type: " ++ (args !! 3))
+  else (Just game_state {obj_grid_ = (obj_grid_ game_state) // [((w, u, v), (obj_type, construct_prog_block (drop 4 args)))]}, "set_obj_grid succeeded.  Arguments passed were w: " ++ (args !! 0) ++ " u: " ++ (args !! 1) ++ " v: " ++ (args !! 2) ++ " obj_type: " ++ (args !! 3))
 
 set_wall_grid_structure game_state args =
   let w = read (args !! 0)
@@ -97,8 +97,8 @@ set_wall_grid_structure game_state args =
       upd_ = [read (args !! 7), read (args !! 8), read (args !! 9), read (args !! 10)]
       bd = bounds (w_grid_ game_state)
   in
-  if w < fst__ (fst bd) || w > fst__ (snd bd) || u < snd__ (fst bd) || u > snd__ (snd bd) || v < third_ (fst bd) || v > third_ (snd bd) then Nothing
-  else Just game_state {w_grid_ = (w_grid_ game_state) // [((w, u, v), ((w_grid_ game_state) ! (w, u, v)) {u1 = upd 3, u2 = upd 4, v1 = upd 5, v2 = upd 6, wall_flag = upd_})]}
+  if w < fst__ (fst bd) || w > fst__ (snd bd) || u < snd__ (fst bd) || u > snd__ (snd bd) || v < third_ (fst bd) || v > third_ (snd bd) then (Nothing, "set_wall_grid_structure failed.  Arguments passed were w: " ++ (args !! 0) ++ " u: " ++ (args !! 1) ++ " v: " ++ (args !! 2) ++ " others: " ++ show (drop 3 args))
+  else (Just game_state {w_grid_ = (w_grid_ game_state) // [((w, u, v), ((w_grid_ game_state) ! (w, u, v)) {u1 = upd 3, u2 = upd 4, v1 = upd 5, v2 = upd 6, wall_flag = upd_})]}, "set_wall_grid_structure succeeded.  Arguments passed were w: " ++ (args !! 0) ++ " u: " ++ (args !! 1) ++ " v: " ++ (args !! 2) ++ " others: " ++ show (drop 3 args))
 
 set_wall_grid_textures game_state args =
   let w = read (args !! 0)
@@ -107,8 +107,8 @@ set_wall_grid_textures game_state args =
       upd = [read (args !! 3), read (args !! 4), read (args !! 5), read (args !! 6)]
       bd = bounds (w_grid_ game_state)
   in
-  if w < fst__ (fst bd) || w > fst__ (snd bd) || u < snd__ (fst bd) || u > snd__ (snd bd) || v < third_ (fst bd) || v > third_ (snd bd) then Nothing
-  else Just game_state {w_grid_ = (w_grid_ game_state) // [((w, u, v), ((w_grid_ game_state) ! (w, u, v)) {texture = upd})]}
+  if w < fst__ (fst bd) || w > fst__ (snd bd) || u < snd__ (fst bd) || u > snd__ (snd bd) || v < third_ (fst bd) || v > third_ (snd bd) then (Nothing, "set_wall_grid_textures failed.  Arguments passed were w: " ++ (args !! 0) ++ " u: " ++ (args !! 1) ++ " v: " ++ (args !! 2) ++ " others: " ++ show (drop 3 args))
+  else (Just game_state {w_grid_ = (w_grid_ game_state) // [((w, u, v), ((w_grid_ game_state) ! (w, u, v)) {texture = upd})]}, "set_wall_grid_textures succeeded.  Arguments passed were w: " ++ (args !! 0) ++ " u: " ++ (args !! 1) ++ " v: " ++ (args !! 2) ++ " others: " ++ show (drop 3 args))
 
 set_obj_place game_state args =
   let w = read (args !! 0)
@@ -119,8 +119,8 @@ set_obj_place game_state args =
       w_grid__ = w_grid_ game_state
       bd = bounds w_grid__
   in
-  if w < fst__ (fst bd) || w > fst__ (snd bd) || u < snd__ (fst bd) || u > snd__ (snd bd) || v < third_ (fst bd) || v > third_ (snd bd) then Nothing
-  else Just game_state {w_grid_ = w_grid__ // [((w, u, v), (w_grid__ ! (w, u, v)) {obj = Just def_obj_place {ident_ = upd 3, u__ = upd_ 4, v__ = upd_ 5, w__ = upd_ 6, texture__ = upd 7, num_elem = read (args !! 8), obj_flag = upd 9}})]}
+  if w < fst__ (fst bd) || w > fst__ (snd bd) || u < snd__ (fst bd) || u > snd__ (snd bd) || v < third_ (fst bd) || v > third_ (snd bd) then (Nothing, "set_obj_place failed.  Arguments passed were w: " ++ (args !! 0) ++ " u: " ++ (args !! 1) ++ " v: " ++ (args !! 2) ++ " others: " ++ show (drop 3 args))
+  else (Just game_state {w_grid_ = w_grid__ // [((w, u, v), (w_grid__ ! (w, u, v)) {obj = Just def_obj_place {ident_ = upd 3, u__ = upd_ 4, v__ = upd_ 5, w__ = upd_ 6, texture__ = upd 7, num_elem = read (args !! 8), obj_flag = upd 9}})]}, "set_obj_place succeeded.  Arguments passed were w: " ++ (args !! 0) ++ " u: " ++ (args !! 1) ++ " v: " ++ (args !! 2) ++ " others: " ++ show (drop 3 args))
 
 set_player_position game_state args =
   let w = truncate (read (args !! 0))
@@ -128,46 +128,44 @@ set_player_position game_state args =
       v = truncate (read (args !! 2))
       bd = bounds (obj_grid_ game_state)
   in
-  if w < fst__ (fst bd) || w > fst__ (snd bd) || u < snd__ (fst bd) || u > snd__ (snd bd) || v < third_ (fst bd) || v > third_ (snd bd) then Nothing
-  else Just game_state {s0_ = (s0_ game_state) {pos_u = read (args !! 0), pos_v = read (args !! 1), pos_w = read (args !! 2), vel = [0, 0, 0]}}
+  if w < fst__ (fst bd) || w > fst__ (snd bd) || u < snd__ (fst bd) || u > snd__ (snd bd) || v < third_ (fst bd) || v > third_ (snd bd) then (Nothing, "set_player_position failed.  Arguments passed were w: " ++ (args !! 0) ++ " u: " ++ (args !! 1) ++ " v: " ++ (args !! 2))
+  else (Just game_state {s0_ = (s0_ game_state) {pos_u = read (args !! 0), pos_v = read (args !! 1), pos_w = read (args !! 2), vel = [0, 0, 0]}}, "set_player_position succeeded.  Arguments passed were w: " ++ (args !! 0) ++ " u: " ++ (args !! 1) ++ " v: " ++ (args !! 2))
 
 set_camera_angle game_state args =
   let a = read (args !! 0)
-  in if a < 0 || a > 628 then Nothing
-     else Just game_state {s0_ = (s0_ game_state) {angle = a}}
+  in if a < 0 || a > 628 then (Nothing, "set_camera_angle failed.  Arguments passed were angle: " ++ (args !! 0))
+     else (Just game_state {s0_ = (s0_ game_state) {angle = a}}, "set_camera_angle succeeded.  Arguments passed were angle: " ++ (args !! 0))
 
 set_rend_mode game_state args =
   let mode = read (args !! 0)
-  in if mode < 0 || mode > 1 then Nothing
-  else Just game_state {s0_ = (s0_ game_state) {rend_mode = mode}}
+  in if mode < 0 || mode > 1 then (Nothing, "set_rend_mode failed.  Arguments passed were mode: " ++ (args !! 0))
+  else (Just game_state {s0_ = (s0_ game_state) {rend_mode = mode}}, "set_rend_mode succeeded.  Arguments passed were mode: " ++ (args !! 0))
 
-set_health game_state args = Just game_state {s1_ = (s1_ game_state) {health = read (args !! 0)}}
+set_health game_state args = (Just game_state {s1_ = (s1_ game_state) {health = read (args !! 0)}}, "set_health succeeded.")
 
-set_ammo game_state args = Just game_state {s1_ = (s1_ game_state) {ammo = read (args !! 0)}}
+set_ammo game_state args = (Just game_state {s1_ = (s1_ game_state) {ammo = read (args !! 0)}}, "set_ammo succeeded.")
 
-set_gems game_state args = Just game_state {s1_ = (s1_ game_state) {gems = read (args !! 0)}}
+set_gems game_state args = (Just game_state {s1_ = (s1_ game_state) {gems = read (args !! 0)}}, "set_gems succeeded.")
 
-set_torches game_state args = Just game_state {s1_ = (s1_ game_state) {torches = read (args !! 0)}}
+set_torches game_state args = (Just game_state {s1_ = (s1_ game_state) {torches = read (args !! 0)}}, "set_torches succeeded.")
 
-set_keys game_state args = Just game_state {s1_ = (s1_ game_state) {keys = Encode_status.set_keys [read (args !! 0), read (args !! 1), read (args !! 2), read (args !! 3), read (args !! 4), read (args !! 5)] 77}}
+set_keys game_state args = (Just game_state {s1_ = (s1_ game_state) {keys = Encode_status.set_keys [read (args !! 0), read (args !! 1), read (args !! 2), read (args !! 3), read (args !! 4), read (args !! 5)] 77}}, "set_keys succeeded.")
 
 -- This has been left as an effective no - op for now as it currently doesn't appear likely to be useful.
-set_region game_state args = Nothing
+set_region game_state args = (Nothing, "set_region called.")
 
-set_difficulty game_state args = Just game_state {s1_ = (s1_ game_state) {difficulty = Encode_status.set_difficulty (read (args !! 0))}}
+set_difficulty game_state args = (Just game_state {s1_ = (s1_ game_state) {difficulty = Encode_status.set_difficulty (read (args !! 0))}}, "set_difficulty succeeded.")
 
 set_verbose_mode game_state args =
   let mode = read (args !! 0)
-  in if mode < 0 || mode > 1 then Nothing
-  else Just game_state {s1_ = (s1_ game_state) {verbose_mode = int_to_bool mode}}
+  in if mode < 0 || mode > 1 then (Nothing, "set_verbose_mode failed.  Arguments passed were mode: " ++ (args !! 0))
+  else (Just game_state {s1_ = (s1_ game_state) {verbose_mode = int_to_bool mode}}, "set_verbose_mode succeeded.  Arguments passed were mode: " ++ (args !! 0))
 
-set_story_state game_state args = Just game_state {s1_ = (s1_ game_state) {story_state = read (args !! 0)}}
-
-null_update_game_state game_state args = Nothing
+set_story_state game_state args = (Just game_state {s1_ = (s1_ game_state) {story_state = read (args !! 0)}}, "set_story_state succeeded.")
 
 -- These are the pages used in the hierarchical dictionary look up used to interpret console input.
 page0 = ["unlock", "set", "send_signal"]
-page1 = ["Wall_grid", "Floor_grid", "Obj_grid", "Play_state0", "Play_State1"]
+page1 = ["Wall_grid", "Floor_grid", "Obj_grid", "Play_state0", "Play_state1"]
 page2 = ["structure", "textures", "Obj_place"]
 page3 = ["position", "angle", "rend_mode"]
 page4 = ["health", "ammo", "gems", "torches", "keys", "region", "difficulty", "verbose_mode", "story_state"]
@@ -232,15 +230,16 @@ verbose_mode_node = Comm_struct {dictionary_page = [], branches = Nothing, updat
 
 story_state_node = Comm_struct {dictionary_page = [], branches = Nothing, update_game_state = Just set_story_state}
 
+-- This function traverses the decision tree and thereby interprets console commands.
 interpret_command :: [[Char]] -> Comm_struct -> Game_state -> (Game_state, [Char])
 interpret_command [] comm_struct game_state = (game_state, "\nInvalid command.")
 interpret_command (x:xs) comm_struct game_state =
-  let new_game_state = (fromMaybe null_update_game_state (update_game_state comm_struct)) game_state xs
+  let new_game_state = (fromJust (update_game_state comm_struct)) game_state (x:xs)
       look_up = elemIndex x (dictionary_page comm_struct)
   in
   if isNothing (branches comm_struct) == True then
-    if isNothing new_game_state == True then (game_state, "\nInvalid command arguments.")
-    else (fromJust new_game_state, "\nCommand executed successfully.")
+    if isNothing (fst new_game_state) == True then (game_state, "\n" ++ snd new_game_state)
+    else (fromJust (fst new_game_state), "\n" ++ snd new_game_state)
   else
     if isNothing look_up == True then (game_state, "\nInvalid command.")
     else interpret_command xs ((fromJust (branches comm_struct)) ! (fromJust look_up)) game_state
