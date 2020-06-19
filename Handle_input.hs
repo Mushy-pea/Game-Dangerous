@@ -8,8 +8,10 @@
 
 module Handle_input where
 
+import Control.Concurrent
 import Graphics.GL.Core33
 import Graphics.UI.GLUT hiding (texture)
+import Foreign
 import Data.IORef
 import Data.Array.IArray
 import Data.List.Split
@@ -244,6 +246,53 @@ interpret_command (x:xs) comm_struct game_state =
     if isNothing look_up == True then (game_state, "\nInvalid command.")
     else interpret_command xs ((fromJust (branches comm_struct)) ! (fromJust look_up)) game_state
 
+char_list = "abcdefghijklmnopqrstuvwxyz0123456789 "
+
+console_front :: Game_state -> Io_box -> Int -> Int -> ([Char], [Int]) -> IO Game_state
+console_front game_state io_box current_col t current_comm = do
+  swapBuffers
+  threadDelay 16667
+  mainLoopEvent
+  control <- readIORef (control_ io_box)
+  writeIORef (control_ io_box) 0
+  glClear (GL_COLOR_BUFFER_BIT .|. GL_DEPTH_BUFFER_BIT)
+  glBindVertexArray (unsafeCoerce ((fst (p_bind_ io_box)) ! 1027))
+  glBindTexture GL_TEXTURE_2D (unsafeCoerce ((fst (p_bind_ io_box)) ! 1028)))
+  glUseProgram (unsafeCoerce ((fst (p_bind_ io_box)) ! ((snd (p_bind_ io_box)) - 3)))
+  glUniform1i (fromIntegral ((uniform_ io_box) ! 38)) 0
+  p_tt_matrix <- mallocBytes (glfloat * 16)
+  load_array [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1] p_tt_matrix 0
+  glUniformMatrix4fv (fromIntegral ((uniform_ io_box) ! 36)) 1 1 p_tt_matrix
+  glDrawElements GL_TRIANGLES 6 GL_UNSIGNED_SHORT zero_ptr
+  free p_tt_matrix
+  show_text (snd current_comm) 0 959 (uniform_ io_box) (p_bind_ io_box) (-0.75) (-0.75) 0
+  
+
+-- This function handles the drawing of message tiles (letters and numbers etc) that are used for in game messages and in menus.
+show_text :: [Int] -> Int -> Int -> UArray Int Int32 -> (UArray Int Word32, Int) -> Float -> Float -> Ptr GLfloat -> IO ()
+show_text [] mode base uniform p_bind x y p_tt_matrix = do
+  glEnable GL_DEPTH_TEST
+  free p_tt_matrix
+show_text (m:ms) mode base uniform p_bind x y p_tt_matrix = do
+  if minusPtr p_tt_matrix zero_ptr == 0 then do
+    p_tt_matrix_ <- mallocBytes (16 * glfloat)
+    glBindVertexArray (unsafeCoerce ((fst p_bind) ! 933))
+    glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 3)))
+    glDisable GL_DEPTH_TEST
+    show_text (m:ms) mode base uniform p_bind x y p_tt_matrix_
+  else do
+    load_array (MAT.toList (translation x y 0)) (castPtr p_tt_matrix) 0
+    if mode == 0 && m < 83 then do
+      glUniformMatrix4fv (unsafeCoerce (uniform ! 36)) 1 1 p_tt_matrix
+      glUniform1i (unsafeCoerce (uniform ! 38)) 0
+    else if mode == 1 && m < 83 then do
+      glUniformMatrix4fv (unsafeCoerce (uniform ! 36)) 1 1 p_tt_matrix
+      glUniform1i (unsafeCoerce (uniform ! 38)) 1
+    else show_text ms mode base uniform p_bind x y p_tt_matrix
+    glBindTexture GL_TEXTURE_2D (unsafeCoerce ((fst p_bind) ! (base + m)))
+    glDrawElements GL_TRIANGLES 6 GL_UNSIGNED_SHORT zero_ptr
+    show_text ms mode base uniform p_bind (x + 0.04) y p_tt_matrix
+
 -- When the engine is in interactive or menu input mode, this is the callback that GLUT calls each time mainLoopEvent has been called and there is keyboard input
 -- in the window message queue.
 get_input :: IORef Int -> Array Int Char -> Char -> Position -> IO ()
@@ -265,12 +314,18 @@ get_input ref key_set key pos = do
   else if key == key_set ! 14 then writeIORef ref 16  -- Return to menu root
   else writeIORef ref 0
 
--- When the engine is in console input mode, this is the callback that GLUT calls each time mainLoopEvent has been called and there is keyboard input
+-- When the engine is in console input mode, these are the callbacks that GLUT calls each time mainLoopEvent has been called and there is keyboard input
 -- in the window message queue.
-get_console_input :: IORef Int -> Array Int Char -> Int -> Char -> Position -> IO ()
-get_console_input ref key_table i key pos = do
-  if i > 36 then return ()
-  else if key_table ! i == key then writeIORef ref i
-  else get_console_input ref key_table (i + 1) key pos
+get_console_input0 :: IORef Int -> Array Int Char -> Int -> Char -> Position -> IO ()
+get_console_input0 ref key_table i key pos = do
+  if i > 36 then writeIORef ref 0
+  else if key_table ! i == key then writeIORef ref (i + 1)
+  else get_console_input0 ref key_table (i + 1) key pos
 
-
+get_console_input1 :: IORef Int -> SpecialKey -> Position -> IO ()
+get_console_input1 ref s_key pos = do
+  if s_key == KeyF4 then writeIORef ref 37                -- Run current command
+  else if s_key == LeftKey then writeIORef ref 38         -- Backspace
+  else if s_key == UpKey then writeIORef ref 39           -- Move up command history
+  else if s_key == DownKey then writeIORef ref 40         -- Move down command history
+  else writeIORef ref 0
