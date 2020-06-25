@@ -195,9 +195,9 @@ instance Binary NPC_state where
            w <- get
            return (NPC_state {npc_type = a, c_health = b, ticks_left0 = c, ticks_left1 = d, node_locations = e, fg_position = f, dir_vector = g, direction = h, last_dir = i, dir_list = j, node_num = k, end_node = l, head_index = m, reversed = n, target_u' = o, target_v' = p, target_w' = q, speed = r, avoid_dist = s, attack_mode = t, final_appr = u, fire_prob = v, fireball_state = w})
 
-data Game_state = Game_state {is_set :: Bool, w_grid_ :: Array (Int, Int, Int) Wall_grid, f_grid_ :: Array (Int, Int, Int) Floor_grid, obj_grid_ :: Array (Int, Int, Int) (Int, [Int]), s0_ :: Play_state0, s1_ :: Play_state1}
+data Game_state = Game_state {is_set :: Bool, w_grid_ :: Array (Int, Int, Int) Wall_grid, f_grid_ :: Array (Int, Int, Int) Floor_grid, obj_grid_ :: Array (Int, Int, Int) (Int, [Int]), s0__ :: Play_state0, s1_ :: Play_state1}
 
-data Io_box = Io_box {uniform_ :: UArray Int Int32, p_bind_ :: (UArray Int Word32, Int), control_ :: IORef Int}
+data Io_box = Io_box {uniform_ :: UArray Int Int32, p_bind_ :: (UArray Int Word32, Int), control_ :: IORef Int, key_set_ :: Array Int Char}
 
 data EngineError = Invalid_wall_flag | Invalid_obj_flag | Invalid_GPLC_opcode | Invalid_conf_reg_field | Invalid_GPLC_op_argument | Invalid_map_element | NPC_feature_not_implemented deriving (Show)
 
@@ -224,7 +224,7 @@ w_grid_flag = Wall_grid {u1 = True, u2 = True, v1 = True, v2 = True, u1_bound = 
 f_grid_flag = Floor_grid {w_ = 3, surface = Flat, local_up_ramp = (0, 0), local_down_ramp = (0, 0)}
 obj_grid_flag = (5, []) :: (Int, [Int])
 
-def_save_state = Game_state {is_set = False, w_grid_ = def_w_grid_arr, f_grid_ = def_f_grid_arr, obj_grid_ = def_obj_grid_arr, s0_ = ps0_init, s1_ = ps1_init}
+def_save_state = Game_state {is_set = False, w_grid_ = def_w_grid_arr, f_grid_ = def_f_grid_arr, obj_grid_ = def_obj_grid_arr, s0__ = ps0_init, s1_ = ps1_init}
 def_wall_place = Wall_place {rotate = 0, translate_u = 0, translate_v = 0, translate_w = 0, wall_flag_ = 0, texture_ = 0, isNull = True}
 def_prob_seq = array (0, 239) [(i, 0) | i <- [0..239]]
 
