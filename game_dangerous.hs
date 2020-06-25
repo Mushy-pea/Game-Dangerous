@@ -78,7 +78,7 @@ open_window conf_reg =
   keyboardCallback $= (Just (get_input control_ref key_set))
   contents <- bracket (openFile (cfg' "map_file") ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nmap file size: " ++ show (length contents)); return contents)
   screen_res <- readIORef screenRes
-  setup_game contents conf_reg screen_res control_ref
+  setup_game contents conf_reg key_set screen_res control_ref
 
 -- This is the callback that GLUT calls when it detects a window repaint is necessary.  This should only happen when the window is first opened, the user moves or resizes the window, or it is
 -- overlapped by another window.  For standard frame rendering, show_frame and run_menu repaint the rendered area of the window.
@@ -88,8 +88,8 @@ repaint_window = do
 
 -- This function initialises the OpenGL and OpenAL contexts.  It also decompresses the map file, manages the compilation of GLSL shaders, loading of 3D models, loading of the light map
 -- and loading of sound effects.
-setup_game :: [Char] -> Array Int [Char] -> Size -> IORef Int -> IO ()
-setup_game comp_env_map conf_reg (Size w h) control_ref =
+setup_game :: [Char] -> Array Int [Char] -> Array Int Char -> Size -> IORef Int -> IO ()
+setup_game comp_env_map conf_reg key_set (Size w h) control_ref =
   let m0 = "mod_to_world"
       m1 = "world_to_clip"
       m2 = "world_to_mod"
@@ -178,7 +178,7 @@ setup_game comp_env_map conf_reg (Size w h) control_ref =
   init_al_context
   contents2 <- bracket (openFile ((cfg' "sound_data_dir") ++ (last (splitOn ", " (((splitOn "\n~\n" comp_env_map), 44) !! 8)))) ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nsound map size: " ++ show (length contents)); return contents)
   sound_array <- init_al_effect0 (splitOneOf "\n " contents2) (cfg' "sound_data_dir") (array (0, (div (length (splitOneOf "\n " contents2)) 2) - 1) [(x, Source 0) | x <- [0..(div (length (splitOneOf "\n " contents2)) 2) - 1]])
-  start_game control_ref (listArray (0, 65) uniform) (p_bind_, p_bind_limit + 1) env_map conf_reg (-1) (read (cfg' "init_u"), read (cfg' "init_v"), read (cfg' "init_w"), read (cfg' "gravity"), read (cfg' "friction"), read (cfg' "run_power"), read (cfg' "jump_power")) def_save_state sound_array frustumScale0
+  start_game control_ref (listArray (0, 65) uniform) (p_bind_, p_bind_limit + 1) env_map conf_reg key_set (-1) (read (cfg' "init_u"), read (cfg' "init_v"), read (cfg' "init_w"), read (cfg' "gravity"), read (cfg' "friction"), read (cfg' "run_power"), read (cfg' "jump_power")) def_save_state sound_array frustumScale0
 
 -- The model file(s) that describe all 3D and 2D models referenced in the current map are loaded here.
 load_mod_file :: [[Char]] -> [Char] -> Ptr GLuint -> IO ()
@@ -205,8 +205,8 @@ gen_prob_seq :: RandomGen g => Int -> Int -> Int -> g -> UArray Int Int
 gen_prob_seq i0 i1 i2 g = listArray (i0, i1) (drop i2 (randomRs (0, 99) g))
 
 -- This function initialises the game logic thread each time a new game is started and handles user input from the main menu.
-start_game :: IORef Int -> UArray Int Int32 -> (UArray Int Word32, Int) -> [Char] -> Array Int [Char] -> Int -> (Float, Float, Float, Float, Float, Float, Float) -> Game_state -> Array Int Source -> Float -> IO ()
-start_game control_ref uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag_j) save_state sound_array frustumScale0 =
+start_game :: IORef Int -> UArray Int Int32 -> (UArray Int Word32, Int) -> [Char] -> Array Int [Char] -> Array Int Char -> Int -> (Float, Float, Float, Float, Float, Float, Float) -> Game_state -> Array Int Source -> Float -> IO ()
+start_game control_ref uniform p_bind c conf_reg key_set mode (u, v, w, g, f, mag_r, mag_j) save_state sound_array frustumScale0 =
   let u_limit = (read (((splitOn "~" c), 56) !! 8))
       v_limit = (read (((splitOn "~" c), 57) !! 9))
       w_limit = (read (((splitOn "~" c), 58) !! 10))
@@ -234,8 +234,8 @@ start_game control_ref uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag
       free p_tt_matrix
       threadDelay 5000000
       glEnable GL_DEPTH_TEST
-      start_game control_ref uniform p_bind c conf_reg 2 (u, v, w, g, f, mag_r, mag_j) save_state sound_array frustumScale0
-    else start_game control_ref uniform p_bind c conf_reg 0 (u, v, w, g, f, mag_r, mag_j) save_state sound_array frustumScale0
+      start_game control_ref uniform p_bind c conf_reg key_set 2 (u, v, w, g, f, mag_r, mag_j) save_state sound_array frustumScale0
+    else start_game control_ref uniform p_bind c conf_reg key_set 0 (u, v, w, g, f, mag_r, mag_j) save_state sound_array frustumScale0
   else if mode == 0 || mode == 1 then do
     p_mt_matrix <- mallocBytes (glfloat * 128)
     p_f_table0 <- callocBytes (int_ * 120000)
@@ -245,7 +245,7 @@ start_game control_ref uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag
     t_log <- newEmptyMVar
     r_gen <- getStdGen
     if mode == 0 then do
-      tid <- forkIO (update_play (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref}) state_ref (ps0_init {pos_u = u, pos_v = v, pos_w = w, on_screen_metrics = select_metric_mode (cfg' "on_screen_metrics"), prob_seq = gen_prob_seq 0 239 (read (cfg' "prob_c")) r_gen}) (ps1_init {verbose_mode = select_verbose_mode (cfg' "verbose_mode")}) False (read (cfg' "min_frame_t")) (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up_ save_state (sound_array, setup_music) 0 t_log (SEQ.empty) 60)
+      tid <- forkIO (update_play (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref, key_set_ = key_set}) state_ref (ps0_init {pos_u = u, pos_v = v, pos_w = w, on_screen_metrics = select_metric_mode (cfg' "on_screen_metrics"), prob_seq = gen_prob_seq 0 239 (read (cfg' "prob_c")) r_gen}) (ps1_init {verbose_mode = select_verbose_mode (cfg' "verbose_mode")}) False (read (cfg' "min_frame_t")) (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up_ save_state (sound_array, setup_music) 0 t_log (SEQ.empty) 60)
       result <- show_frame p_bind uniform (p_mt_matrix, p_light_buffer) (p_f_table0, p_f_table1) 0 0 0 0 0 state_ref w_grid f_grid obj_grid look_up_ camera_to_clip (array (0, 5) [(i, (0, [])) | i <- [0..5]])
       free p_mt_matrix
       free p_f_table0
@@ -253,9 +253,9 @@ start_game control_ref uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag
       free p_light_buffer
       killThread tid
       save_array_diff0 (is_set (snd result)) 0 ([], []) (wrapped_save_array_diff1 (gen_array_diff (-3) 0 0 u_limit v_limit w_grid (w_grid_ (snd result)) SEQ.empty)) (wrapped_save_array_diff1 (gen_array_diff 0 0 0 ((div (u_limit + 1) 2) - 1) ((div (v_limit + 1) 2) - 1) f_grid (f_grid_ (snd result)) SEQ.empty)) (wrapped_save_array_diff1 (gen_array_diff 0 0 0 u_limit v_limit obj_grid (obj_grid_ (snd result)) SEQ.empty)) (label_play_state_encoding (encode (s0__ (snd result)))) (label_play_state_encoding (encode (s1_ (snd result)))) conf_reg (s0__ (snd result))
-      start_game control_ref uniform p_bind c conf_reg ((head (fst result)) + 1) (u, v, w, g, f, mag_r, mag_j) (snd result) sound_array frustumScale0
+      start_game control_ref uniform p_bind c conf_reg key_set ((head (fst result)) + 1) (u, v, w, g, f, mag_r, mag_j) (snd result) sound_array frustumScale0
     else do
-      tid <- forkIO (update_play (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref}) state_ref (s0__ save_state) (s1_ save_state) False (read (cfg' "min_frame_t")) (g, f, mag_r, mag_j) (w_grid_ save_state) (f_grid_ save_state) (obj_grid_ save_state) look_up_ save_state (sound_array, setup_music) 0 t_log (SEQ.empty) 60)
+      tid <- forkIO (update_play (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref, key_set_ = key_set}) state_ref (s0__ save_state) (s1_ save_state) False (read (cfg' "min_frame_t")) (g, f, mag_r, mag_j) (w_grid_ save_state) (f_grid_ save_state) (obj_grid_ save_state) look_up_ save_state (sound_array, setup_music) 0 t_log (SEQ.empty) 60)
       result <- show_frame p_bind uniform (p_mt_matrix, p_light_buffer) (p_f_table0, p_f_table1) 0 0 0 0 0 state_ref w_grid f_grid obj_grid look_up_ camera_to_clip (array (0, 5) [(i, (0, [])) | i <- [0..5]])
       free p_mt_matrix
       free p_f_table0
@@ -263,20 +263,20 @@ start_game control_ref uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag
       free p_light_buffer
       killThread tid
       save_array_diff0 (is_set (snd result)) 0 ([], []) (wrapped_save_array_diff1 (gen_array_diff (-3) 0 0 u_limit v_limit w_grid (w_grid_ (snd result)) SEQ.empty)) (wrapped_save_array_diff1 (gen_array_diff 0 0 0 ((div (u_limit + 1) 2) - 1) ((div (v_limit + 1) 2) - 1) f_grid (f_grid_ (snd result)) SEQ.empty)) (wrapped_save_array_diff1 (gen_array_diff 0 0 0 u_limit v_limit obj_grid (obj_grid_ (snd result)) SEQ.empty)) (label_play_state_encoding (encode (s0__ (snd result)))) (label_play_state_encoding (encode (s1_ (snd result)))) conf_reg (s0__ (snd result))
-      start_game control_ref uniform p_bind c conf_reg ((head (fst result)) + 1) (u, v, w, g, f, mag_r, mag_j) (snd result) sound_array frustumScale0
+      start_game control_ref uniform p_bind c conf_reg key_set ((head (fst result)) + 1) (u, v, w, g, f, mag_r, mag_j) (snd result) sound_array frustumScale0
   else if mode == 2 then do
-    choice <- run_menu main_menu_text [] (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref}) (-0.75) (-0.75) 1 0 0 ps0_init 1
-    if choice == 1 then start_game control_ref uniform p_bind c conf_reg 0 (u, v, w, g, f, mag_r, mag_j) save_state sound_array frustumScale0
+    choice <- run_menu main_menu_text [] (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref, key_set_ = key_set}) (-0.75) (-0.75) 1 0 0 ps0_init 1
+    if choice == 1 then start_game control_ref uniform p_bind c conf_reg key_set 0 (u, v, w, g, f, mag_r, mag_j) save_state sound_array frustumScale0
     else if choice == 2 then do
       contents <- bracket (openFile "save_log.log" ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nsave_log file size: " ++ show (length contents)); return contents)
-      state_choice <- run_menu (gen_load_menu (tail (splitOn "\n" contents)) [] 1) [] (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref}) (-0.75) (-0.75) 1 0 0 ps0_init 1
-      loaded_state <- load_saved_game 0 (tail (splitOn "\n" contents)) [] 1 state_choice (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref}) w_grid f_grid obj_grid conf_reg
-      if isNothing loaded_state == True then start_game control_ref uniform p_bind c conf_reg 2 (u, v, w, g, f, mag_r, mag_j) def_save_state sound_array frustumScale0
-      else start_game control_ref uniform p_bind c conf_reg 1 (u, v, w, g, f, mag_r, mag_j) (fromJust loaded_state) sound_array frustumScale0
+      state_choice <- run_menu (gen_load_menu (tail (splitOn "\n" contents)) [] 1) [] (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref, key_set_ = key_set}) (-0.75) (-0.75) 1 0 0 ps0_init 1
+      loaded_state <- load_saved_game 0 (tail (splitOn "\n" contents)) [] 1 state_choice (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref, key_set_ = key_set}) w_grid f_grid obj_grid conf_reg
+      if isNothing loaded_state == True then start_game control_ref uniform p_bind c conf_reg key_set 2 (u, v, w, g, f, mag_r, mag_j) def_save_state sound_array frustumScale0
+      else start_game control_ref uniform p_bind c conf_reg key_set 1 (u, v, w, g, f, mag_r, mag_j) (fromJust loaded_state) sound_array frustumScale0
     else exitSuccess
   else if mode == 3 then do
-    if is_set save_state == True then start_game control_ref uniform p_bind c conf_reg 1 (u, v, w, g, f, mag_r, mag_j) save_state sound_array frustumScale0
-    else start_game control_ref uniform p_bind c conf_reg 0 (u, v, w, g, f, mag_r, mag_j) save_state sound_array frustumScale0
+    if is_set save_state == True then start_game control_ref uniform p_bind c conf_reg key_set 1 (u, v, w, g, f, mag_r, mag_j) save_state sound_array frustumScale0
+    else start_game control_ref uniform p_bind c conf_reg key_set 0 (u, v, w, g, f, mag_r, mag_j) save_state sound_array frustumScale0
   else if mode == 4 then exitSuccess
   else if mode == 6 then do
     putStr "\nYou have completed the demo.  Nice one.  Check the project website later for details of further releases."
