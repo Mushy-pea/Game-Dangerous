@@ -29,6 +29,13 @@ import Build_model
 import Game_sound
 import Handle_input
 
+-- Used to load C style arrays, which are used with certain OpenGL functions.
+load_array :: Storable a => [a] -> Ptr a -> Int -> IO ()
+load_array [] p i = return ()
+load_array (x:xs) p i = do
+  pokeElemOff p i x
+  load_array xs p (i + 1)
+
 -- These two functions are used to patch a problem that can happen within project_update and cause an engine shutdown.
 filter_sig_q :: [Int] -> (Int, Int, Int) -> (Int, Int, Int) -> [Int]
 filter_sig_q [] (i0, i1, i2) (i3, i4, i5) = []
@@ -1163,7 +1170,7 @@ update_vel (x:xs) (y:ys) (z:zs) f_rate f =
 -- Used to generate the sequence of message tile references that represent the pause screen text.
 pause_text :: [Char] -> Play_state1 -> ([Char], Int, Int, Int) -> [(Int, [Int])]
 pause_text (x0:x1:x2:x3:x4:x5:xs) s1 (diff, a, b, c) =
-  [(0, msg9), (0, []), (0, msg1 ++ conv_msg (health s1)), (0, msg2 ++ conv_msg (ammo s1)), (0, msg3 ++ conv_msg (gems s1)), (0, msg4 ++ conv_msg (torches s1)), (0, msg5 ++ keys s1), (0, msg6 ++ region s1), (0, conv_msg_ ("Difficulty: " ++ diff) Game_logic.char_list), (0, conv_msg_ ("Time: " ++ [x0, x1, ':', x2, x3, ':', x4, x5]) Game_logic.char_list), (0, []), (1, msg10), (2, msg17), (3, msg11), (4, msg12)]
+  [(0, msg9), (0, []), (0, msg1 ++ conv_msg (health s1)), (0, msg2 ++ conv_msg (ammo s1)), (0, msg3 ++ conv_msg (gems s1)), (0, msg4 ++ conv_msg (torches s1)), (0, msg5 ++ keys s1), (0, msg6 ++ region s1), (0, conv_msg_ ("Difficulty: " ++ diff)), (0, conv_msg_ ("Time: " ++ [x0, x1, ':', x2, x3, ':', x4, x5])), (0, []), (1, msg10), (2, msg17), (3, msg11), (4, msg12)]
 
 -- This function ensures that all signals sent to NPC GPLC programs are run before any others.  This is done to fix a corner case problem that occured when an NPC and projectile
 -- tried to enter the same voxel in the same tick.
@@ -1228,7 +1235,7 @@ play_music t period sound_array = do
   else return ()
 
 -- This function recurses once for each recursion of show_frame (and rendering of that frame) and is the central branching point of the game logic thread.
-update_play :: Io_box -> MVar (Play_state0, Array (Int, Int, Int) Wall_grid, Game_state) -> Play_state0 -> Play_state1 -> Bool -> Integer -> (Float, Float, Float, Float) -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> UArray (Int, Int) Float -> Game_state -> (Array Int Source, Int) -> Integer -> MVar Integer -> SEQ.Seq Integer -> Float -> IO ()
+update_play :: Io_box -> MVar (Play_state0, Array (Int, Int, Int) Wall_grid, Save_state) -> Play_state0 -> Play_state1 -> Bool -> Integer -> (Float, Float, Float, Float) -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> UArray (Int, Int) Float -> Save_state -> (Array Int Source, Int) -> Integer -> MVar Integer -> SEQ.Seq Integer -> Float -> IO ()
 update_play io_box state_ref s0 s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up save_state sound_array t_last t_log t_seq f_rate =
   let det = detect_coll (truncate (pos_w s0)) (pos_u s0, pos_v s0) (((vel s0), 522) !! 0 / f_rate, ((vel s0), 523) !! 1 / f_rate) obj_grid w_grid
       floor = floor_surf ((det, 524) !! 0) ((det, 525) !! 1) (pos_w s0) f_grid
@@ -1265,7 +1272,7 @@ update_play io_box state_ref s0 s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_
     choice <- run_menu (pause_text (show_game_time (fst__ (game_clock s0)) [] False) s1 (difficulty s1)) [] io_box (-0.75) (-0.75) 1 0 0 s0 1
     if choice == 1 then update_play io_box state_ref (s0_ s0) s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
     else if choice == 2 then do
-      update_play io_box state_ref (s0_ s0) s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up (Game_state {is_set = True, w_grid_ = w_grid, f_grid_ = f_grid, obj_grid_ = obj_grid, s0__ = s0, s1_ = s1}) sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
+      update_play io_box state_ref (s0_ s0) s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up (Save_state {is_set = True, w_grid_ = w_grid, f_grid_ = f_grid, obj_grid_ = obj_grid, s0_ = s0, s1_ = s1}) sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
     else if choice == 3 then do
       putMVar state_ref (s0 {message_ = [(-1, [])]}, w_grid, save_state)
       update_play io_box state_ref (s0_ s0) s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
@@ -1278,12 +1285,6 @@ update_play io_box state_ref s0 s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_
     else update_play io_box state_ref (s0_ ((fourth link0) {view_mode = 0})) (fifth link0) in_flight min_frame_t (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
   else if control == 12 then update_play io_box state_ref (s0_ ((fourth link0) {view_angle = mod_angle (view_angle s0) 5})) (fifth link0) in_flight min_frame_t (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
   else if control == 13 then update_play io_box state_ref (s0_ (fourth link0)) ((fifth link0) {sig_q = sig_q s1 ++ [2, 0, 0, 1]}) in_flight min_frame_t (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
-  else if control == 14 then do
-    keyboardCallback $= (Just (get_console_input0 (control_ io_box) (listArray (0, 36) Handle_input.char_list) 0))
-    specialCallback $= (Just (get_console_input1 (control_ io_box)))
-    game_state <- console_front Game_state {is_set = False, w_grid_ = w_grid, f_grid_ = f_grid, obj_grid_ = obj_grid, s0__ = s0, s1_ = s1} io_box [] []
-    keyboardCallback $= (Just (get_input (control_ io_box) ))
-    update_play io_box state_ref (s0__ game_state) (s1_ game_state) in_flight min_frame_t (g, f, mag_r, mag_j) (w_grid_ game_state) (f_grid_ game_state) (obj_grid_ game_state) look_up save_state sound_array t_last t_log t_seq f_rate
   else if message s1 /= [] then do
     event <- proc_msg0 (message s1) s0 s1 io_box (fst sound_array)
     putMVar state_ref (fst event, w_grid, save_state)
@@ -1328,7 +1329,7 @@ update_play io_box state_ref s0 s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_
       else do
         update_play io_box state_ref (s0_ (s0 {pos_u = (det, 577) !! 0, pos_v = (det, 578) !! 1, pos_w = floor, vel = vel_0, game_clock = snd game_clock'})) link1 False min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
 
--- These three functions handle events triggered by a call to pass_msg within a GPLC program.  These include on screen messages, object interaction menus and sound effects.
+-- These five functions handle events triggered by a call to pass_msg within a GPLC program.  These include on screen messages, object interaction menus and sound effects.
 conv_msg :: Int -> [Int]
 conv_msg v =
   if v < 10 then [(mod v 10) + 53]
@@ -1336,6 +1337,16 @@ conv_msg v =
   else [(div v 100) + 53, (div (v - 100) 10) + 53, (mod v 10) + 53]
 
 char_list = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 ,'.?;:+-=!()<>"
+
+find_tile :: [Char] -> Char -> Int -> Int
+find_tile [] t i = (i + 1)
+find_tile (x:xs) t i =
+  if x == t then (i + 1)
+  else find_tile xs t (i + 1)
+
+conv_msg_ :: [Char] -> [Int]
+conv_msg_ [] = []
+conv_msg_ (x:xs) = find_tile char_list x 0 : conv_msg_ xs
 
 proc_msg1 :: [[Int]] -> [(Int, [Int])]
 proc_msg1 [] = []

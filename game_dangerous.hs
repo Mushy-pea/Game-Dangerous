@@ -205,7 +205,7 @@ gen_prob_seq :: RandomGen g => Int -> Int -> Int -> g -> UArray Int Int
 gen_prob_seq i0 i1 i2 g = listArray (i0, i1) (drop i2 (randomRs (0, 99) g))
 
 -- This function initialises the game logic thread each time a new game is started and handles user input from the main menu.
-start_game :: IORef Int -> UArray Int Int32 -> (UArray Int Word32, Int) -> [Char] -> Array Int [Char] -> Int -> (Float, Float, Float, Float, Float, Float, Float) -> Game_state -> Array Int Source -> Float -> IO ()
+start_game :: IORef Int -> UArray Int Int32 -> (UArray Int Word32, Int) -> [Char] -> Array Int [Char] -> Int -> (Float, Float, Float, Float, Float, Float, Float) -> Save_state -> Array Int Source -> Float -> IO ()
 start_game control_ref uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag_j) save_state sound_array frustumScale0 =
   let u_limit = (read (((splitOn "~" c), 56) !! 8))
       v_limit = (read (((splitOn "~" c), 57) !! 9))
@@ -252,17 +252,17 @@ start_game control_ref uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag
       free p_f_table1
       free p_light_buffer
       killThread tid
-      save_array_diff0 (is_set (snd result)) 0 ([], []) (wrapped_save_array_diff1 (gen_array_diff (-3) 0 0 u_limit v_limit w_grid (w_grid_ (snd result)) SEQ.empty)) (wrapped_save_array_diff1 (gen_array_diff 0 0 0 ((div (u_limit + 1) 2) - 1) ((div (v_limit + 1) 2) - 1) f_grid (f_grid_ (snd result)) SEQ.empty)) (wrapped_save_array_diff1 (gen_array_diff 0 0 0 u_limit v_limit obj_grid (obj_grid_ (snd result)) SEQ.empty)) (label_play_state_encoding (encode (s0__ (snd result)))) (label_play_state_encoding (encode (s1_ (snd result)))) conf_reg (s0__ (snd result))
+      save_array_diff0 (is_set (snd result)) 0 ([], []) (wrapped_save_array_diff1 (gen_array_diff (-3) 0 0 u_limit v_limit w_grid (w_grid_ (snd result)) SEQ.empty)) (wrapped_save_array_diff1 (gen_array_diff 0 0 0 ((div (u_limit + 1) 2) - 1) ((div (v_limit + 1) 2) - 1) f_grid (f_grid_ (snd result)) SEQ.empty)) (wrapped_save_array_diff1 (gen_array_diff 0 0 0 u_limit v_limit obj_grid (obj_grid_ (snd result)) SEQ.empty)) (label_play_state_encoding (encode (s0_ (snd result)))) (label_play_state_encoding (encode (s1_ (snd result)))) conf_reg (s0_ (snd result))
       start_game control_ref uniform p_bind c conf_reg ((head (fst result)) + 1) (u, v, w, g, f, mag_r, mag_j) (snd result) sound_array frustumScale0
     else do
-      tid <- forkIO (update_play (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref}) state_ref (s0__ save_state) (s1_ save_state) False (read (cfg' "min_frame_t")) (g, f, mag_r, mag_j) (w_grid_ save_state) (f_grid_ save_state) (obj_grid_ save_state) look_up_ save_state (sound_array, setup_music) 0 t_log (SEQ.empty) 60)
+      tid <- forkIO (update_play (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref}) state_ref (s0_ save_state) (s1_ save_state) False (read (cfg' "min_frame_t")) (g, f, mag_r, mag_j) (w_grid_ save_state) (f_grid_ save_state) (obj_grid_ save_state) look_up_ save_state (sound_array, setup_music) 0 t_log (SEQ.empty) 60)
       result <- show_frame p_bind uniform (p_mt_matrix, p_light_buffer) (p_f_table0, p_f_table1) 0 0 0 0 0 state_ref w_grid f_grid obj_grid look_up_ camera_to_clip (array (0, 5) [(i, (0, [])) | i <- [0..5]])
       free p_mt_matrix
       free p_f_table0
       free p_f_table1
       free p_light_buffer
       killThread tid
-      save_array_diff0 (is_set (snd result)) 0 ([], []) (wrapped_save_array_diff1 (gen_array_diff (-3) 0 0 u_limit v_limit w_grid (w_grid_ (snd result)) SEQ.empty)) (wrapped_save_array_diff1 (gen_array_diff 0 0 0 ((div (u_limit + 1) 2) - 1) ((div (v_limit + 1) 2) - 1) f_grid (f_grid_ (snd result)) SEQ.empty)) (wrapped_save_array_diff1 (gen_array_diff 0 0 0 u_limit v_limit obj_grid (obj_grid_ (snd result)) SEQ.empty)) (label_play_state_encoding (encode (s0__ (snd result)))) (label_play_state_encoding (encode (s1_ (snd result)))) conf_reg (s0__ (snd result))
+      save_array_diff0 (is_set (snd result)) 0 ([], []) (wrapped_save_array_diff1 (gen_array_diff (-3) 0 0 u_limit v_limit w_grid (w_grid_ (snd result)) SEQ.empty)) (wrapped_save_array_diff1 (gen_array_diff 0 0 0 ((div (u_limit + 1) 2) - 1) ((div (v_limit + 1) 2) - 1) f_grid (f_grid_ (snd result)) SEQ.empty)) (wrapped_save_array_diff1 (gen_array_diff 0 0 0 u_limit v_limit obj_grid (obj_grid_ (snd result)) SEQ.empty)) (label_play_state_encoding (encode (s0_ (snd result)))) (label_play_state_encoding (encode (s1_ (snd result)))) conf_reg (s0_ (snd result))
       start_game control_ref uniform p_bind c conf_reg ((head (fst result)) + 1) (u, v, w, g, f, mag_r, mag_j) (snd result) sound_array frustumScale0
   else if mode == 2 then do
     choice <- run_menu main_menu_text [] (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref}) (-0.75) (-0.75) 1 0 0 ps0_init 1
@@ -311,14 +311,14 @@ proc_w_grid_upd :: SEQ.Seq ((Int, Int, Int), Maybe Obj_place) -> Array (Int, Int
 proc_w_grid_upd SEQ.Empty w_grid = []
 proc_w_grid_upd (x SEQ.:<| xs) w_grid = (fst x, (w_grid ! (fst x)) {obj = snd x}) : proc_w_grid_upd xs w_grid
 
-load_game_state_file :: Int -> LBS.ByteString -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> SEQ.Seq ((Int, Int, Int), Maybe Obj_place) -> SEQ.Seq ((Int, Int, Int), Floor_grid) -> SEQ.Seq ((Int, Int, Int), (Int, [Int])) -> Play_state0 -> Play_state1 -> Game_state
+load_game_state_file :: Int -> LBS.ByteString -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> SEQ.Seq ((Int, Int, Int), Maybe Obj_place) -> SEQ.Seq ((Int, Int, Int), Floor_grid) -> SEQ.Seq ((Int, Int, Int), (Int, [Int])) -> Play_state0 -> Play_state1 -> Save_state
 load_game_state_file c bs w_grid f_grid obj_grid w_grid_upd f_grid_upd obj_grid_upd s0 s1 =
   if c == 0 then load_game_state_file (c + 1) (LBS.drop (8 + fromIntegral ((decode (LBS.take 8 bs)) :: Int)) bs) w_grid f_grid obj_grid (decode_sequence 0 def_obj_place_ (LBS.take (fromIntegral ((decode (LBS.take 8 bs)) :: Int)) (LBS.drop 8 bs)) SEQ.empty) f_grid_upd obj_grid_upd s0 s1
   else if c == 1 then load_game_state_file (c + 1) (LBS.drop (8 + fromIntegral ((decode (LBS.take 8 bs)) :: Int)) bs) w_grid f_grid obj_grid w_grid_upd (decode_sequence 0 def_f_grid_ (LBS.take (fromIntegral ((decode (LBS.take 8 bs)) :: Int)) (LBS.drop 8 bs)) SEQ.empty) obj_grid_upd  s0 s1
   else if c == 2 then load_game_state_file (c + 1) (LBS.drop (8 + fromIntegral ((decode (LBS.take 8 bs)) :: Int)) bs) w_grid f_grid obj_grid w_grid_upd f_grid_upd (decode_sequence 0 def_obj_grid_ (LBS.take (fromIntegral ((decode (LBS.take 8 bs)) :: Int)) (LBS.drop 8 bs)) SEQ.empty)  s0 s1
   else if c == 3 then load_game_state_file (c + 1) (LBS.drop (8 + fromIntegral ((decode (LBS.take 8 bs)) :: Int)) bs) w_grid f_grid obj_grid w_grid_upd f_grid_upd obj_grid_upd ((decode (LBS.take (fromIntegral ((decode (LBS.take 8 bs)) :: Int)) (LBS.drop 8 bs))) :: Play_state0) s1
   else if c == 4 then load_game_state_file (c + 1) LBS.empty w_grid f_grid obj_grid w_grid_upd f_grid_upd obj_grid_upd s0 ((decode (LBS.take (fromIntegral ((decode (LBS.take 8 bs)) :: Int)) (LBS.drop 8 bs))) :: Play_state1)
-  else Game_state {is_set = False, w_grid_ = w_grid // (proc_w_grid_upd w_grid_upd w_grid), f_grid_ = f_grid // (FOLD.toList f_grid_upd), obj_grid_ = obj_grid // (FOLD.toList obj_grid_upd), s0__ = s0, s1_ = s1}
+  else Save_state {is_set = False, w_grid_ = w_grid // (proc_w_grid_upd w_grid_upd w_grid), f_grid_ = f_grid // (FOLD.toList f_grid_upd), obj_grid_ = obj_grid // (FOLD.toList obj_grid_upd), s0_ = s0, s1_ = s1}
 
 -- If an error occurs while attempting to open a save game file the user is informed through the menu system.
 loader_error :: SomeException -> Io_box -> IO LBS.ByteString
@@ -328,7 +328,7 @@ loader_error x box = do
   return LBS.empty
 
 -- This function is the entry point to the game state saving logic and handles user input from the load game menu.
-load_saved_game :: Int -> [[Char]] -> [Char] -> Int -> Int -> Io_box -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> Array Int [Char] -> IO (Maybe Game_state)
+load_saved_game :: Int -> [[Char]] -> [Char] -> Int -> Int -> Io_box -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> Array Int [Char] -> IO (Maybe Save_state)
 load_saved_game 0 [] chosen_file c choice box w_grid f_grid obj_grid conf_reg = error "\nload_saved_game: encountered an unexpected log file structure."
 load_saved_game 0 ((y0:y1:y2:y3:y4:y5:y6:y7:y8:y9:y10:y11:y12:y13:y14:y15:y16:ys):xs) chosen_file c choice box w_grid f_grid obj_grid conf_reg = do
   if choice == 7 then return Nothing
@@ -551,7 +551,7 @@ bind_texture (x:xs) p_bind w h offset = do
   bind_texture xs p_bind w h (offset + 1)
 
 -- This function manages the rendering of all environmental models and in game messages.  It recurses once per frame rendered and is the central branching point of the rendering thread.
-show_frame :: (UArray Int Word32, Int) -> UArray Int Int32 -> (Ptr GLfloat, Ptr GLfloat) -> (Ptr Int, Ptr Int) -> Float -> Float -> Float -> Int -> Int -> MVar (Play_state0, Array (Int, Int, Int) Wall_grid, Game_state) -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> UArray (Int, Int) Float -> Matrix Float -> Array Int (Int, [Int]) -> IO ([Int], Game_state)
+show_frame :: (UArray Int Word32, Int) -> UArray Int Int32 -> (Ptr GLfloat, Ptr GLfloat) -> (Ptr Int, Ptr Int) -> Float -> Float -> Float -> Int -> Int -> MVar (Play_state0, Array (Int, Int, Int) Wall_grid, Save_state) -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> UArray (Int, Int) Float -> Matrix Float -> Array Int (Int, [Int]) -> IO ([Int], Game_state)
 show_frame p_bind uniform (p_mt_matrix, p_light_buffer) filter_table u v w a a' state_ref w_grid f_grid obj_grid look_up camera_to_clip msg_queue =
   let survey0 = multi_survey (mod_angle a (-92)) 183 u v (truncate u) (truncate v) w_grid f_grid obj_grid look_up 2 0 [] []
       survey1 = multi_survey (mod_angle (mod_angle a' a) 222) 183 (fst view_circle') (snd view_circle') (truncate (fst view_circle')) (truncate (snd view_circle')) w_grid f_grid obj_grid look_up 2 0 [] []

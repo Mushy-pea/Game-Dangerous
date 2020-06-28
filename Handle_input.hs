@@ -14,21 +14,11 @@ import Graphics.UI.GLUT hiding (texture)
 import Foreign
 import Data.IORef
 import Data.Array.IArray
-import Data.Array.Unboxed
 import Data.List.Split
 import Data.List
 import Data.Maybe
-import qualified Data.Matrix as MAT
-import Unsafe.Coerce
 import Build_model
 import Encode_status
-
--- Used to load C style arrays, which are used with certain OpenGL functions.
-load_array :: Storable a => [a] -> Ptr a -> Int -> IO ()
-load_array [] p i = return ()
-load_array (x:xs) p i = do
-  pokeElemOff p i x
-  load_array xs p (i + 1)
 
 -- This recursive data type is used to implement the control structure that updates the game state in response to console input.
 data Comm_struct = Comm_struct {dictionary_page :: [[Char]], branches :: Maybe (Array Int Comm_struct), update_game_state :: Maybe (Game_state -> [[Char]] -> (Maybe Game_state, [Char]))}
@@ -62,8 +52,8 @@ data Comm_struct = Comm_struct {dictionary_page :: [[Char]], branches :: Maybe (
 -- These are the functions that update the game state in response to the engine receiving console commands.  They are all of type (Game_state -> [[Char]] -> Maybe Game_state).
 unlock_wrapper game_state code =
   let bit_list = pad (decimal_binary (hex_decimal (code !! 0) 0) (2 ^ 127)) [] 127 0
-      state_values = extract_state_values (listArray (0, 127) bit_list) (s0__ game_state) (s1_ game_state) 0
-  in if third_ state_values == True then (Just game_state {s0__ = fst__ state_values, s1_ = snd__ state_values}, "Map unlocked!")
+      state_values = extract_state_values (listArray (0, 127) bit_list) (s0_ game_state) (s1_ game_state) 0
+  in if third_ state_values == True then (Just game_state {s0_ = fst__ state_values, s1_ = snd__ state_values}, "Map unlocked!")
      else (Nothing, "Invalid map unlock code.")
 
 send_signal_ game_state args =
@@ -141,17 +131,17 @@ set_player_position game_state args =
       bd = bounds (obj_grid_ game_state)
   in
   if w < fst__ (fst bd) || w > fst__ (snd bd) || u < snd__ (fst bd) || u > snd__ (snd bd) || v < third_ (fst bd) || v > third_ (snd bd) then (Nothing, "set_player_position failed.  Arguments passed were w: " ++ (args !! 0) ++ " u: " ++ (args !! 1) ++ " v: " ++ (args !! 2))
-  else (Just game_state {s0__ = (s0__ game_state) {pos_u = read (args !! 0), pos_v = read (args !! 1), pos_w = read (args !! 2), vel = [0, 0, 0]}}, "set_player_position succeeded.  Arguments passed were w: " ++ (args !! 0) ++ " u: " ++ (args !! 1) ++ " v: " ++ (args !! 2))
+  else (Just game_state {s0_ = (s0_ game_state) {pos_u = read (args !! 0), pos_v = read (args !! 1), pos_w = read (args !! 2), vel = [0, 0, 0]}}, "set_player_position succeeded.  Arguments passed were w: " ++ (args !! 0) ++ " u: " ++ (args !! 1) ++ " v: " ++ (args !! 2))
 
 set_camera_angle game_state args =
   let a = read (args !! 0)
   in if a < 0 || a > 628 then (Nothing, "set_camera_angle failed.  Arguments passed were angle: " ++ (args !! 0))
-     else (Just game_state {s0__ = (s0__ game_state) {angle = a}}, "set_camera_angle succeeded.  Arguments passed were angle: " ++ (args !! 0))
+     else (Just game_state {s0_ = (s0_ game_state) {angle = a}}, "set_camera_angle succeeded.  Arguments passed were angle: " ++ (args !! 0))
 
 set_rend_mode game_state args =
   let mode = read (args !! 0)
   in if mode < 0 || mode > 1 then (Nothing, "set_rend_mode failed.  Arguments passed were mode: " ++ (args !! 0))
-  else (Just game_state {s0__ = (s0__ game_state) {rend_mode = mode}}, "set_rend_mode succeeded.  Arguments passed were mode: " ++ (args !! 0))
+  else (Just game_state {s0_ = (s0_ game_state) {rend_mode = mode}}, "set_rend_mode succeeded.  Arguments passed were mode: " ++ (args !! 0))
 
 set_health game_state args = (Just game_state {s1_ = (s1_ game_state) {health = read (args !! 0)}}, "set_health succeeded.")
 
@@ -258,24 +248,8 @@ interpret_command (x:xs) comm_struct game_state =
 
 char_list = "abcdefghijklmnopqrstuvwxyz0123456789 "
 
-find_tile :: [Char] -> Char -> Int -> Int
-find_tile [] t i = (i + 1)
-find_tile (x:xs) t i =
-  if x == t then (i + 1)
-  else find_tile xs t (i + 1)
-
-conv_msg_ :: [Char] -> [Char] -> [Int]
-conv_msg_ [] c_list = []
-conv_msg_ (x:xs) c_list = find_tile c_list x 0 : conv_msg_ xs c_list
-
-back_space :: [Char] -> [Char]
-back_space [] = []
-back_space (x:xs) = init (x:xs)
-
-console_front :: Game_state -> Io_box -> [Char] -> [Char] -> IO Game_state
-console_front game_state io_box current_comm msg =
-  let result = interpret_command (splitOn " " current_comm) base_node game_state
-  in do
+console_front :: Game_state -> Io_box -> Int -> Int -> ([Char], [Int]) -> IO Game_state
+console_front game_state io_box current_col t current_comm = do
   swapBuffers
   threadDelay 16667
   mainLoopEvent
@@ -283,7 +257,7 @@ console_front game_state io_box current_comm msg =
   writeIORef (control_ io_box) 0
   glClear (GL_COLOR_BUFFER_BIT .|. GL_DEPTH_BUFFER_BIT)
   glBindVertexArray (unsafeCoerce ((fst (p_bind_ io_box)) ! 1027))
-  glBindTexture GL_TEXTURE_2D (unsafeCoerce ((fst (p_bind_ io_box)) ! 1028))
+  glBindTexture GL_TEXTURE_2D (unsafeCoerce ((fst (p_bind_ io_box)) ! 1028)))
   glUseProgram (unsafeCoerce ((fst (p_bind_ io_box)) ! ((snd (p_bind_ io_box)) - 3)))
   glUniform1i (fromIntegral ((uniform_ io_box) ! 38)) 0
   p_tt_matrix <- mallocBytes (glfloat * 16)
@@ -291,15 +265,8 @@ console_front game_state io_box current_comm msg =
   glUniformMatrix4fv (fromIntegral ((uniform_ io_box) ! 36)) 1 1 p_tt_matrix
   glDrawElements GL_TRIANGLES 6 GL_UNSIGNED_SHORT zero_ptr
   free p_tt_matrix
-  show_text (37 : (conv_msg_ msg char_list)) 0 959 (uniform_ io_box) (p_bind_ io_box) (-0.75) (-0.75) zero_ptr
-  show_text (37 : (conv_msg_ current_comm char_list)) 0 959 (uniform_ io_box) (p_bind_ io_box) (-0.75) (-0.8) zero_ptr
-  if control == 0 then console_front game_state io_box current_comm []
-  else if control == 38 then console_front (fst result) io_box [] (snd result)
-  else if control == 39 then console_front game_state io_box (back_space current_comm) []
-  else if control == 40 then return game_state
-  else do
-    if length current_comm > 49 then console_front game_state io_box current_comm msg
-    else console_front game_state io_box (current_comm ++ [char_list !! (control + 1)]) []
+  show_text (snd current_comm) 0 959 (uniform_ io_box) (p_bind_ io_box) (-0.75) (-0.75) 0
+  
 
 -- This function handles the drawing of message tiles (letters and numbers etc) that are used for in game messages and in menus.
 show_text :: [Int] -> Int -> Int -> UArray Int Int32 -> (UArray Int Word32, Int) -> Float -> Float -> Ptr GLfloat -> IO ()
@@ -342,7 +309,9 @@ get_input ref key_set key pos = do
   else if key == key_set ! 9 then writeIORef ref 11   -- Switch view mode
   else if key == key_set ! 10 then writeIORef ref 12  -- Rotate 3rd person view
   else if key == key_set ! 11 then writeIORef ref 13  -- Fire
-  else if key == key_set ! 12 then writeIORef ref 14  -- Enter console mode
+  else if key == key_set ! 12 then writeIORef ref 14  -- Select menu option
+  else if key == key_set ! 13 then writeIORef ref 15  -- Go back one level in menu
+  else if key == key_set ! 14 then writeIORef ref 16  -- Return to menu root
   else writeIORef ref 0
 
 -- When the engine is in console input mode, these are the callbacks that GLUT calls each time mainLoopEvent has been called and there is keyboard input
@@ -355,7 +324,8 @@ get_console_input0 ref key_table i key pos = do
 
 get_console_input1 :: IORef Int -> SpecialKey -> Position -> IO ()
 get_console_input1 ref s_key pos = do
-  if s_key == KeyF4 then writeIORef ref 38                -- Run current command
-  else if s_key == KeyLeft then writeIORef ref 39         -- Backspace
-  else if s_key == KeyF6 then writeIORef ref 40           -- Exit console mode
+  if s_key == KeyF4 then writeIORef ref 37                -- Run current command
+  else if s_key == LeftKey then writeIORef ref 38         -- Backspace
+  else if s_key == UpKey then writeIORef ref 39           -- Move up command history
+  else if s_key == DownKey then writeIORef ref 40         -- Move down command history
   else writeIORef ref 0
