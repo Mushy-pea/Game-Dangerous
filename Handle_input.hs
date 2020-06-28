@@ -176,11 +176,11 @@ set_verbose_mode game_state args =
 set_story_state game_state args = (Just game_state {s1_ = (s1_ game_state) {story_state = read (args !! 0)}}, "set_story_state succeeded.")
 
 -- These are the pages used in the hierarchical dictionary look up used to interpret console input.
-page0 = ["unlock", "set", "sendsignal"]
-page1 = ["wallgrid", "floorgrid", "objgrid", "playstate0", "playstate1"]
-page2 = ["structure", "textures", "objplace"]
-page3 = ["position", "angle", "rendmode"]
-page4 = ["health", "ammo", "gems", "torches", "keys", "region", "difficulty", "verbosemode", "storystate"]
+page0 = ["unlock", "set", "send_signal"]
+page1 = ["Wall_grid", "Floor_grid", "Obj_grid", "Play_state0", "Play_state1"]
+page2 = ["structure", "textures", "Obj_place"]
+page3 = ["position", "angle", "rend_mode"]
+page4 = ["health", "ammo", "gems", "torches", "keys", "region", "difficulty", "verbose_mode", "story_state"]
 
 -- These are the sets of branches that exist for non - end nodes.
 base_branches = array (0, 2) [(0, unlock_node), (1, set_node), (2, send_signal_node)]
@@ -299,7 +299,7 @@ console_front game_state io_box current_comm msg =
   else if control == 40 then return game_state
   else do
     if length current_comm > 49 then console_front game_state io_box current_comm msg
-    else console_front game_state io_box (current_comm ++ [char_list !! (control - 1)]) []
+    else console_front game_state io_box (current_comm ++ [char_list !! (control + 1)]) []
 
 -- This function handles the drawing of message tiles (letters and numbers etc) that are used for in game messages and in menus.
 show_text :: [Int] -> Int -> Int -> UArray Int Int32 -> (UArray Int Word32, Int) -> Float -> Float -> Ptr GLfloat -> IO ()

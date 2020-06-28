@@ -1282,7 +1282,7 @@ update_play io_box state_ref s0 s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_
     keyboardCallback $= (Just (get_console_input0 (control_ io_box) (listArray (0, 36) Handle_input.char_list) 0))
     specialCallback $= (Just (get_console_input1 (control_ io_box)))
     game_state <- console_front Game_state {is_set = False, w_grid_ = w_grid, f_grid_ = f_grid, obj_grid_ = obj_grid, s0__ = s0, s1_ = s1} io_box [] []
-    keyboardCallback $= (Just (get_input (control_ io_box) (key_set_ io_box)))
+    keyboardCallback $= (Just (get_input (control_ io_box) ))
     update_play io_box state_ref (s0__ game_state) (s1_ game_state) in_flight min_frame_t (g, f, mag_r, mag_j) (w_grid_ game_state) (f_grid_ game_state) (obj_grid_ game_state) look_up save_state sound_array t_last t_log t_seq f_rate
   else if message s1 /= [] then do
     event <- proc_msg0 (message s1) s0 s1 io_box (fst sound_array)
