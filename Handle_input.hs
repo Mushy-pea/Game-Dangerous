@@ -293,15 +293,13 @@ console_front game_state io_box current_comm msg =
   free p_tt_matrix
   show_text (37 : (conv_msg_ msg char_list)) 0 959 (uniform_ io_box) (p_bind_ io_box) (-0.75) (-0.75) zero_ptr
   show_text (37 : (conv_msg_ current_comm char_list)) 0 959 (uniform_ io_box) (p_bind_ io_box) (-0.75) (-0.8) zero_ptr
-  if control == 0 then console_front game_state io_box current_comm msg
-  else if control == 38 then do
-    putStr ("\nCommand run: " ++ current_comm)
-    console_front (fst result) io_box [] (snd result)
-  else if control == 39 then console_front game_state io_box (back_space current_comm) msg
+  if control == 0 then console_front game_state io_box current_comm []
+  else if control == 38 then console_front (fst result) io_box [] (snd result)
+  else if control == 39 then console_front game_state io_box (back_space current_comm) []
   else if control == 40 then return game_state
   else do
     if length current_comm > 49 then console_front game_state io_box current_comm msg
-    else console_front game_state io_box (current_comm ++ [char_list !! (control - 1)]) msg
+    else console_front game_state io_box (current_comm ++ [char_list !! (control - 1)]) []
 
 -- This function handles the drawing of message tiles (letters and numbers etc) that are used for in game messages and in menus.
 show_text :: [Int] -> Int -> Int -> UArray Int Int32 -> (UArray Int Word32, Int) -> Float -> Float -> Ptr GLfloat -> IO ()
