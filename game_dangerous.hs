@@ -263,6 +263,7 @@ start_game control_ref uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag
     state_ref <- newEmptyMVar
     t_log <- newEmptyMVar
     r_gen <- getStdGen
+    windowPosition $= Position 50 50
     if mode == 0 then do
       tid <- forkIO (update_play (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref}) state_ref (ps0_init {pos_u = u, pos_v = v, pos_w = w, on_screen_metrics = select_metric_mode (cfg' "on_screen_metrics"), prob_seq = gen_prob_seq 0 239 (read (cfg' "prob_c")) r_gen}) (ps1_init {verbose_mode = select_verbose_mode (cfg' "verbose_mode")}) False (read (cfg' "min_frame_t")) (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up_ save_state (sound_array, setup_music) 0 t_log (SEQ.empty) 60)
       result <- show_frame p_bind uniform (p_mt_matrix, p_light_buffer) (p_f_table0, p_f_table1) 0 0 0 0 0 state_ref w_grid f_grid obj_grid look_up_ camera_to_clip (array (0, 5) [(i, (0, [])) | i <- [0..5]])
