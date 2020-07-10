@@ -195,7 +195,7 @@ instance Binary NPC_state where
            w <- get
            return (NPC_state {npc_type = a, c_health = b, ticks_left0 = c, ticks_left1 = d, node_locations = e, fg_position = f, dir_vector = g, direction = h, last_dir = i, dir_list = j, node_num = k, end_node = l, head_index = m, reversed = n, target_u' = o, target_v' = p, target_w' = q, speed = r, avoid_dist = s, attack_mode = t, final_appr = u, fire_prob = v, fireball_state = w})
 
-data Game_state = Game_state {is_set :: Bool, w_grid_ :: Array (Int, Int, Int) Wall_grid, f_grid_ :: Array (Int, Int, Int) Floor_grid, obj_grid_ :: Array (Int, Int, Int) (Int, [Int]), s0_ :: Play_state0, s1_ :: Play_state1}
+data Game_state = Game_state {is_set :: Bool, w_grid_ :: Array (Int, Int, Int) Wall_grid, f_grid_ :: Array (Int, Int, Int) Floor_grid, obj_grid_ :: Array (Int, Int, Int) (Int, [Int]), s0_ :: Play_state0, s1_ :: Play_state1, map_transit_string :: [Char]}
 
 data Io_box = Io_box {uniform_ :: UArray Int Int32, p_bind_ :: (UArray Int Word32, Int), control_ :: IORef Int}
 
