@@ -195,7 +195,7 @@ instance Binary NPC_state where
            w <- get
            return (NPC_state {npc_type = a, c_health = b, ticks_left0 = c, ticks_left1 = d, node_locations = e, fg_position = f, dir_vector = g, direction = h, last_dir = i, dir_list = j, node_num = k, end_node = l, head_index = m, reversed = n, target_u' = o, target_v' = p, target_w' = q, speed = r, avoid_dist = s, attack_mode = t, final_appr = u, fire_prob = v, fireball_state = w})
 
-data Game_state = Game_state {is_set :: Bool, w_grid_ :: Array (Int, Int, Int) Wall_grid, f_grid_ :: Array (Int, Int, Int) Floor_grid, obj_grid_ :: Array (Int, Int, Int) (Int, [Int]), s0_ :: Play_state0, s1_ :: Play_state1, map_transit_string :: [Char]}
+data Game_state = Game_state {is_set :: Bool, w_grid_ :: Array (Int, Int, Int) Wall_grid, f_grid_ :: Array (Int, Int, Int) Floor_grid, obj_grid_ :: Array (Int, Int, Int) (Int, [Int]), s0_ :: Play_state0, s1_ :: Play_state1, map_transit_string :: ([Char], [Char])}
 
 data Io_box = Io_box {uniform_ :: UArray Int Int32, p_bind_ :: (UArray Int Word32, Int), control_ :: IORef Int}
 
@@ -665,9 +665,22 @@ view_circle a b r t look_up = (a + r * look_up ! (2, t), b + r * look_up ! (1, t
 -- Used to query the conf_reg array, which holds startup parameters passed at the command line or from the engine's configuration file.
 cfg :: Array Int [Char] -> Int -> [Char] -> [Char]
 cfg conf_reg i query =
-  if i > 80 then error ("Invalid conf_reg field: " ++ query ++ "!")
+  if i > 86 then error ("Invalid conf_reg field in query operation: " ++ query ++ "!")
   else if conf_reg ! i == query then conf_reg ! (i + 1)
   else cfg conf_reg (i + 2) query
+
+-- Used to update the conf_reg array.
+update_cfg :: Array Int [Char] -> [Char] -> [Char] -> Int -> Array Int [Char]
+update_cfg conf_reg field update i =
+  if i > 86 then error ("Invalid conf_reg field in update operation: " ++ query ++ "!")
+  else if conf_reg ! i == field then conf_reg // [((i + 1), update)]
+  else update_cfg conf_reg field updata (i + 2)
+
+-- Used to construct a string representation of the conf_reg array so that an updated version can be saved to disk.
+write_cfg :: Array Int [Char] -> Int -> [Char]
+write_cfg conf_reg i =
+  if i > 86 then []
+  else (conf_reg ! i) ++ "=" ++ (conf_reg ! (i + 1)) ++ "\n" ++ write_cfg conf_reg (i + 2)
 
 -- Used to initialise the p_bind array, which contains references to all the OpenGL vertex array objects and texture objects used in the current map.
 buffer_to_array :: Ptr Word32 -> UArray Int Word32 -> Int -> Int -> Int -> IO (UArray Int Word32)

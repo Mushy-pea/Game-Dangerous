@@ -105,7 +105,7 @@ repaint_window :: IO ()
 repaint_window = do
   swapBuffers
 
--- This function initialises the OpenGL and OpenAL contexts.  It also decompresses the map file, manages the compilation of GLSL shaders, loading of 3D models, loading of the light map
+-- This function initialises the OpenAL context, decompresses the map file, manages the compilation of GLSL shaders, loading of 3D models, loading of the light map
 -- and loading of sound effects.
 setup_game :: [Char] -> Array Int [Char] -> Size -> IORef Int -> IO ()
 setup_game comp_env_map conf_reg (Size w h) control_ref =
@@ -229,7 +229,7 @@ select_state 0 x y = x
 select_state 1 x y = y
 
 -- This function initialises the game logic thread each time a new game is started and handles user input from the main menu.
-start_game :: RandomGen g => IORef Int -> UArray Int Int32 -> (UArray Int Word32, Int) -> [Char] -> Array Int [Char] -> Int -> (Float, Float, Float, Float, Float, Float, Float) -> Game_state -> Array Int Source -> Float -> g -> IO ()
+start_game :: RandomGen g => IORef Int -> UArray Int Int32 -> (UArray Int Word32, Int) -> [Char] -> Array Int [Char] -> Int -> (Float, Float, Float, Float, Float, Float, Float) -> Game_state -> Array Int Source -> Float -> g -> IO (Array Int [Char])
 start_game control_ref uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag_j) save_state sound_array frustumScale0 r_gen =
   let u_limit = (read (((splitOn "~" c), 56) !! 8))
       v_limit = (read (((splitOn "~" c), 57) !! 9))
@@ -295,8 +295,21 @@ start_game control_ref uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag
   else if mode == 5 then do
     save_array_diff0 0 ([], []) (wrapped_save_array_diff1 (gen_array_diff (-3) 0 0 u_limit v_limit w_grid (w_grid_ save_state) SEQ.empty)) (wrapped_save_array_diff1 (gen_array_diff 0 0 0 ((div (u_limit + 1) 2) - 1) ((div (v_limit + 1) 2) - 1) f_grid (f_grid_ save_state) SEQ.empty)) (wrapped_save_array_diff1 (gen_array_diff 0 0 0 u_limit v_limit obj_grid (obj_grid_ save_state) SEQ.empty)) (label_play_state_encoding (encode (s0_ save_state))) (label_play_state_encoding (encode (s1_ save_state))) conf_reg (s0_ save_state)
     start_game control_ref uniform p_bind c conf_reg 1 (u, v, w, g, f, mag_r, mag_j) save_state sound_array frustumScale0 r_gen
---  else if mode == 6 then do
+  else if mode == 6 then do
+    new_conf_reg <- upd_config_file conf_reg (map_transit_string save_state) False
+    putStr ("\n\nMap transit event triggered.  Loading next map...")
+    return new_conf_reg
   else return ()
+
+-- Used to updata the conf_reg array as a result of a map transit event, while also saving the new version to disk.
+upd_config_file :: Array Int [Char] -> ([Char], [Char]) -> Bool -> IO (Array Int [Char])
+upd_config_file conf_reg (map_file, map_unlock_code) ready_flag = do
+  if ready_flag == False then upd_config_file (update_cfg conf_reg "map_file" map_file 0) (map_file, map_unlock_code) True
+  else do
+    h <- openFile WriteMode (cfg conf_reg 0 "config_file")
+    hPutStr (init (write_cfg (update_cfg conf_reg "map_unlock_code" map_unlock_code 0) 0))
+    hClose h
+    return (update_cfg conf_reg "map_unlock_code" map_unlock_code 0)
 
 -- This function determines the content of the load game menu that allows the user to load a previous game state.
 gen_load_menu :: [[Char]] -> [(Int, [Int])] -> Int -> [(Int, [Int])]
