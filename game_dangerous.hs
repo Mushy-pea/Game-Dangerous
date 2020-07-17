@@ -40,6 +40,7 @@ import Build_model
 import Decompress_map
 import Game_logic
 import Game_sound
+import Encode_status
 
 main = do
   args <- getArgs
@@ -122,7 +123,7 @@ setup_game comp_env_map conf_reg (Size w h) control_ref =
       dl1 = "mobileLightPositions"
       dl2 = "numLights"
       proc_map' = proc_map (splitOn "\n~\n" comp_env_map) (read (((splitOn "\n~\n" comp_env_map), 3) !! 12)) (read (((splitOn "\n~\n" comp_env_map), 4) !! 13)) (read (((splitOn "\n~\n" comp_env_map), 5) !! 14))
-      env_map = ".~.~.~.~" ++ fst (proc_map') ++ "~" ++ snd (proc_map') ++ (((splitOn "\n~\n" comp_env_map), 6) !! 10) ++ "~" ++ (((splitOn "\n~\n" comp_env_map), 7) !! 11) ++ "~" ++ (((splitOn "\n~\n" comp_env_map), 8) !! 12) ++ "~" ++ (((splitOn "\n~\n" comp_env_map), 9) !! 13) ++ "~" ++ (((splitOn "\n~\n" comp_env_map), 10) !! 14)
+      env_map = ".~.~.~.~" ++ fst (proc_map') ++ "~" ++ snd (proc_map') ++ (((splitOn "\n~\n" comp_env_map), 6) !! 10) ++ "~" ++ (((splitOn "\n~\n" comp_env_map), 7) !! 11) ++ "~" ++ (((splitOn "\n~\n" comp_env_map), 8) !! 12) ++ "~" ++ (((splitOn "\n~\n" comp_env_map), 9) !! 13) ++ "~" ++ (((splitOn "\n~\n" comp_env_map), 10) !! 14) ++ "~" ++ (((splitOn "\n~\n" comp_env_map), 634) !! 15)
       cfg' = cfg conf_reg 0
       p_bind_limit = (read (((splitOn "\n~\n" comp_env_map), 11) !! 7)) - 1
       frustumScale0 = (read (cfg' "frustumScale1")) / (fromIntegral w / fromIntegral h)
@@ -224,12 +225,21 @@ select_verbose_mode "n" = False
 gen_prob_seq :: RandomGen g => Int -> Int -> Int -> g -> UArray Int Int
 gen_prob_seq i0 i1 i2 g = listArray (i0, i1) (drop i2 (randomRs (0, 99) g))
 
-select_state :: Int -> a -> a -> a
-select_state 0 x y = x
-select_state 1 x y = y
+select_state :: Int -> [Char] -> a -> a -> a -> a
+select_state 0 "unlocked" x y z = x
+select_state 0 "locked" x y z = y
+select_state 1 lock_flag x y z = z
+
+unlock_wrapper :: [Char] -> Play_state0 -> Play_state1 -> (Play_state0, Play_state1)
+unlock_wrapper map_unlock_code s0 s1 =
+  let bit_list = pad (decimal_binary (hex_decimal map_unlock_code 0) (2 ^ 127)) [] 127 0
+      state_values = extract_state_values (listArray (0, 127) bit_list) s0 s1 0
+  in
+  if third_ state_values == True then (fst__ state_values, snd__ state_values)
+  else error "\n\nInvalid map unlock code detected."
 
 -- This function initialises the game logic thread each time a new game is started and handles user input from the main menu.
-start_game :: RandomGen g => IORef Int -> UArray Int Int32 -> (UArray Int Word32, Int) -> [Char] -> Array Int [Char] -> Int -> (Float, Float, Float, Float, Float, Float, Float) -> Game_state -> Array Int Source -> Float -> g -> IO (Array Int [Char])
+start_game :: RandomGen g => IORef Int -> UArray Int Int32 -> (UArray Int Word32, Int) -> [Char] -> Array Int [Char] -> Int -> (Float, Float, Float, Float, Float, Float, Float) -> Game_state -> Array Int Source -> Float -> g -> IO ()
 start_game control_ref uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag_j) save_state sound_array frustumScale0 r_gen =
   let u_limit = (read (((splitOn "~" c), 56) !! 8))
       v_limit = (read (((splitOn "~" c), 57) !! 9))
@@ -244,6 +254,8 @@ start_game control_ref uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag
                     else read (cfg' "music_period")
       s0 = ps0_init {pos_u = u, pos_v = v, pos_w = w, on_screen_metrics = select_metric_mode (cfg' "on_screen_metrics"), prob_seq = gen_prob_seq 0 239 (read (cfg' "prob_c")) r_gen}
       s1 = ps1_init {verbose_mode = select_verbose_mode (cfg' "verbose_mode")}
+      unlocked_state = unlock_wrapper (cfg' "map_unlock_code") s0 s1
+      lock_flag = ((splitOn "~" c), 635) !! 11
   in do
   if mode == -1 then do
     if cfg' "splash_image" == "on" then do
@@ -270,7 +282,7 @@ start_game control_ref uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag
     state_ref <- newEmptyMVar
     t_log <- newEmptyMVar
     windowPosition $= Position 50 50
-    tid <- forkIO (update_play (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref}) state_ref (select_state mode s0 (s0_ save_state)) (select_state mode s1 (s1_ save_state)) False (read (cfg' "min_frame_t")) (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up_ save_state (sound_array, setup_music) 0 t_log (SEQ.empty) 60)
+    tid <- forkIO (update_play (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref}) state_ref (select_state mode lock_flag s0 (fst unlocked_state) (s0_ save_state)) (select_state mode lock_flag s1 (snd unlocked_state) (s1_ save_state)) False (read (cfg' "min_frame_t")) (g, f, mag_r, mag_j) (select_state mode w_grid (w_grid_ save_state)) (select_state mode f_grid (f_grid_ save_state)) (select_state mode obj_grid (obj_grid_ save_state)) look_up_ save_state (sound_array, setup_music) 0 t_log (SEQ.empty) 60)
     result <- show_frame p_bind uniform (p_mt_matrix, p_light_buffer) (p_f_table0, p_f_table1) 0 0 0 0 0 state_ref w_grid f_grid obj_grid look_up_ camera_to_clip (array (0, 5) [(i, (0, [])) | i <- [0..5]])
     free p_mt_matrix
     free p_f_table0
@@ -296,20 +308,22 @@ start_game control_ref uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag
     save_array_diff0 0 ([], []) (wrapped_save_array_diff1 (gen_array_diff (-3) 0 0 u_limit v_limit w_grid (w_grid_ save_state) SEQ.empty)) (wrapped_save_array_diff1 (gen_array_diff 0 0 0 ((div (u_limit + 1) 2) - 1) ((div (v_limit + 1) 2) - 1) f_grid (f_grid_ save_state) SEQ.empty)) (wrapped_save_array_diff1 (gen_array_diff 0 0 0 u_limit v_limit obj_grid (obj_grid_ save_state) SEQ.empty)) (label_play_state_encoding (encode (s0_ save_state))) (label_play_state_encoding (encode (s1_ save_state))) conf_reg (s0_ save_state)
     start_game control_ref uniform p_bind c conf_reg 1 (u, v, w, g, f, mag_r, mag_j) save_state sound_array frustumScale0 r_gen
   else if mode == 6 then do
-    new_conf_reg <- upd_config_file conf_reg (map_transit_string save_state) False
-    putStr ("\n\nMap transit event triggered.  Loading next map...")
-    return new_conf_reg
+    upd_config_file conf_reg (map_transit_string save_state) False
+    h <- openFile "save_log.log" WriteMode
+    hPutStr h def_save_log
+    hClose h
+    putStr ("\n\nConfiguration file updated due to map transit event.")
+    exitSuccess
   else return ()
 
--- Used to updata the conf_reg array as a result of a map transit event, while also saving the new version to disk.
-upd_config_file :: Array Int [Char] -> ([Char], [Char]) -> Bool -> IO (Array Int [Char])
+-- Used to updata the engine's configuration file when a map transit event occurs, such that the targetted map will be loaded the next time the engine is run.
+upd_config_file :: Array Int [Char] -> ([Char], [Char]) -> Bool -> IO ()
 upd_config_file conf_reg (map_file, map_unlock_code) ready_flag = do
   if ready_flag == False then upd_config_file (update_cfg conf_reg "map_file" map_file 0) (map_file, map_unlock_code) True
   else do
     h <- openFile WriteMode (cfg conf_reg 0 "config_file")
     hPutStr (init (write_cfg (update_cfg conf_reg "map_unlock_code" map_unlock_code 0) 0))
     hClose h
-    return (update_cfg conf_reg "map_unlock_code" map_unlock_code 0)
 
 -- This function determines the content of the load game menu that allows the user to load a previous game state.
 gen_load_menu :: [[Char]] -> [(Int, [Int])] -> Int -> [(Int, [Int])]

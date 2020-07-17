@@ -233,6 +233,8 @@ dir_list = [], node_num = 0, end_node = 0, head_index = 0, reversed = False, tar
 
 empty_npc_array = array (0, 127) [(i, def_npc_state) | i <- [0..127]]
 
+def_save_log = "1\n*save0.sav_000000\n*save1.sav_000000\n*save2.sav_000000\n*save3.sav_000000\n*save4.sav_000000\n*save5.sav_000000"
+
 -- The implementation of the environmental ceiling is simple and usea a single model that is rendered in every frame.  The Obj_place value for this model has therefore been hard coded and is added directly to
 -- the [Obj_place] taken by Main.show_object, as there is no requirement for the ray tracer to be involved.
 ceiling_model = Obj_place {ident_ = 1044, u__ = 0, v__ = 0, w__ = 0, rotation = [], rotate_ = False, phase = 0, texture__ = 1, num_elem = 36, obj_flag = 0}
