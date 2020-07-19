@@ -46,10 +46,10 @@ main = do
   args <- getArgs
   if length args == 0 then do
     contents <- bracket (openFile "config.txt" ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nconfig file size: " ++ show (length contents)); return contents)
-    open_window (listArray (0, 81) (splitOneOf "=\n" contents))
+    open_window (listArray (0, 87) (splitOneOf "=\n" contents))
   else do
     contents <- bracket (openFile ((args, 1) !! 0) ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nconfig file size: " ++ show (length contents)); return contents)
-    open_window (listArray (0, 81) (splitOneOf "=\n" contents))
+    open_window (listArray (0, 87) (splitOneOf "=\n" contents))
 
 -- This function initialises the GLUT runtime system, which in turn is used to initialise a window and OpenGL context.
 open_window :: Array Int [Char] -> IO ()
@@ -76,7 +76,7 @@ open_window conf_reg =
   displayCallback $= repaint_window
   control_ref <- newIORef 0
   keyboardCallback $= (Just (get_input control_ref key_set))
-  contents <- bracket (openFile (cfg' "map_file") ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nmap file size: " ++ show (length contents)); return contents)
+  contents <- bracket (openFile ((cfg' "map_file_path") ++ (cfg' "map_file")) ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nmap file size: " ++ show (length contents)); return contents)
   screen_res <- readIORef screenRes
   setup_game contents conf_reg screen_res control_ref
 
@@ -232,7 +232,7 @@ select_state 1 lock_flag x y z = z
 
 unlock_wrapper :: [Char] -> Play_state0 -> Play_state1 -> (Play_state0, Play_state1)
 unlock_wrapper map_unlock_code s0 s1 =
-  let bit_list = pad (decimal_binary (hex_decimal map_unlock_code 0) (2 ^ 127)) [] 127 0
+  let bit_list = pad (decimal_binary (hex_decimal map_unlock_code 31) (2 ^ 127)) [] 127 0
       state_values = extract_state_values (listArray (0, 127) bit_list) s0 s1 0
   in
   if third_ state_values == True then (fst__ state_values, snd__ state_values)
@@ -282,7 +282,7 @@ start_game control_ref uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag
     state_ref <- newEmptyMVar
     t_log <- newEmptyMVar
     windowPosition $= Position 50 50
-    tid <- forkIO (update_play (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref}) state_ref (select_state mode lock_flag s0 (fst unlocked_state) (s0_ save_state)) (select_state mode lock_flag s1 (snd unlocked_state) (s1_ save_state)) False (read (cfg' "min_frame_t")) (g, f, mag_r, mag_j) (select_state mode w_grid (w_grid_ save_state)) (select_state mode f_grid (f_grid_ save_state)) (select_state mode obj_grid (obj_grid_ save_state)) look_up_ save_state (sound_array, setup_music) 0 t_log (SEQ.empty) 60)
+    tid <- forkIO (update_play (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref}) state_ref (select_state mode lock_flag s0 (fst unlocked_state) (s0_ save_state)) (select_state mode lock_flag s1 (snd unlocked_state) (s1_ save_state)) False (read (cfg' "min_frame_t")) (g, f, mag_r, mag_j) (select_state mode lock_flag w_grid w_grid (w_grid_ save_state)) (select_state mode lock_flag f_grid f_grid (f_grid_ save_state)) (select_state mode lock_flag obj_grid obj_grid (obj_grid_ save_state)) look_up_ save_state (sound_array, setup_music) 0 t_log (SEQ.empty) 60)
     result <- show_frame p_bind uniform (p_mt_matrix, p_light_buffer) (p_f_table0, p_f_table1) 0 0 0 0 0 state_ref w_grid f_grid obj_grid look_up_ camera_to_clip (array (0, 5) [(i, (0, [])) | i <- [0..5]])
     free p_mt_matrix
     free p_f_table0
@@ -321,8 +321,8 @@ upd_config_file :: Array Int [Char] -> ([Char], [Char]) -> Bool -> IO ()
 upd_config_file conf_reg (map_file, map_unlock_code) ready_flag = do
   if ready_flag == False then upd_config_file (update_cfg conf_reg "map_file" map_file 0) (map_file, map_unlock_code) True
   else do
-    h <- openFile WriteMode (cfg conf_reg 0 "config_file")
-    hPutStr (init (write_cfg (update_cfg conf_reg "map_unlock_code" map_unlock_code 0) 0))
+    h <- openFile (cfg conf_reg 0 "config_file") WriteMode
+    hPutStr h (init (write_cfg (update_cfg conf_reg "map_unlock_code" map_unlock_code 0) 0))
     hClose h
 
 -- This function determines the content of the load game menu that allows the user to load a previous game state.

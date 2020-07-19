@@ -1288,8 +1288,12 @@ update_play io_box state_ref s0 s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_
   else if control == 13 then update_play io_box state_ref (s0_ (fourth link0)) ((fifth link0) {sig_q = sig_q s1 ++ [2, 0, 0, 1]}) in_flight min_frame_t (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (third link0) look_up save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
   else if message s1 /= [] then do
     event <- proc_msg0 (message s1) s0 s1 io_box (fst sound_array)
-    putMVar state_ref (fst event, w_grid, save_state)
-    update_play io_box state_ref (s0_ (fst event)) (snd event) in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
+    if third_ event /= ([], []) then do
+      putMVar state_ref (s0 {message_ = [(-5, [])]}, w_grid, save_state {map_transit_string = third_ event})
+      update_play io_box state_ref (s0_ s0) s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
+    else do
+      putMVar state_ref (fst__ event, w_grid, save_state)
+      update_play io_box state_ref (s0_ (fst__ event)) (snd__ event) in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
   else
     if in_flight == False then
       if (pos_w s0) - floor > 0.02 then do
@@ -1353,16 +1357,17 @@ proc_msg1 :: [[Int]] -> [(Int, [Int])]
 proc_msg1 [] = []
 proc_msg1 (x:xs) = (head x, tail x) : proc_msg1 xs
 
-proc_msg0 :: [Int] -> Play_state0 -> Play_state1 -> Io_box -> Array Int Source -> IO (Play_state0, Play_state1)
-proc_msg0 [] s0 s1 io_box sound_array = return (s0, s1 {state_chg = 0, message = []})
+proc_msg0 :: [Int] -> Play_state0 -> Play_state1 -> Io_box -> Array Int Source -> IO (Play_state0, Play_state1, ([Char], [Char]))
+proc_msg0 [] s0 s1 io_box sound_array = return (s0, s1 {state_chg = 0, message = []}, ([], []))
 proc_msg0 (x0:x1:xs) s0 s1 io_box sound_array =
   let signal_ = (head (splitOn [-1] (take x1 xs)))
+      map_unlock_code = binary_to_hex (listArray (0, 127) (encode_state_values s0 s1)) 0
   in do
---  if x0 == -5 then 
-  if x0 < 0 then return (s0 {message_ = message_ s0 ++ [(x0, take x1 xs)]}, s1)
+  if x0 == -5 then return (s0, s1, ("map" ++ show ((xs, 636) !! 0) ++ ".dan", map_unlock_code))
+  else if x0 < 0 then return (s0 {message_ = message_ s0 ++ [(x0, take x1 xs)]}, s1, ([], []))
   else if x0 == 0 && state_chg s1 == 1 && health s1 <= 0 then do
     play_ (sound_array ! 20)
-    return (s0 {message_ = [(-2, take x1 xs)]}, s1)
+    return (s0 {message_ = [(-2, take x1 xs)]}, s1, ([], []))
   else if x0 == 0 && state_chg s1 == 1 then proc_msg0 (drop x1 xs) (s0 {message_ = message_ s0 ++ [(600, x0 : take x1 xs ++ msg1 ++ conv_msg (health s1))]}) s1 io_box sound_array
   else if x0 == 0 && state_chg s1 == 2 then proc_msg0 (drop x1 xs) (s0 {message_ = message_ s0 ++ [(600, x0 : take x1 xs ++ msg2 ++ conv_msg (ammo s1))]}) s1 io_box sound_array
   else if x0 == 0 && state_chg s1 == 3 then proc_msg0 (drop x1 xs) (s0 {message_ = message_ s0 ++ [(600, x0 : take x1 xs ++ msg3 ++ conv_msg (gems s1))]}) s1 io_box sound_array

@@ -674,9 +674,9 @@ cfg conf_reg i query =
 -- Used to update the conf_reg array.
 update_cfg :: Array Int [Char] -> [Char] -> [Char] -> Int -> Array Int [Char]
 update_cfg conf_reg field update i =
-  if i > 86 then error ("Invalid conf_reg field in update operation: " ++ query ++ "!")
+  if i > 86 then error ("Invalid conf_reg field in update operation: " ++ field ++ "!")
   else if conf_reg ! i == field then conf_reg // [((i + 1), update)]
-  else update_cfg conf_reg field updata (i + 2)
+  else update_cfg conf_reg field update (i + 2)
 
 -- Used to construct a string representation of the conf_reg array so that an updated version can be saved to disk.
 write_cfg :: Array Int [Char] -> Int -> [Char]
