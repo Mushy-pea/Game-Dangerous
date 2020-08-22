@@ -217,7 +217,8 @@ load_mod_file (x:xs) path p_bind = do
 -- Functions used by start_game as part of game initialisation.
 select_metric_mode "none" = 0
 select_metric_mode "low" = 1
-select_metric_mode "high" = 2
+select_metric_mode "medium" = 2
+select_metric_mode "high" = 3
 
 select_verbose_mode "y" = True
 select_verbose_mode "n" = False

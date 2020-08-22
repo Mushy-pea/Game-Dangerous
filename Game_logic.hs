@@ -1219,13 +1219,21 @@ show_game_time t result False =
   else if t < 146400 then show_game_time (mod t 144000) (show (div t 144000) ++ "00") False
   else show_game_time (mod t 144000) (show (div t 144000)) False
 
+-- This function generates a report of the player position within the map using the message tile system.
+show_map_pos :: Play_state0 -> [Int]
+show_map_pos s0 =
+  let pos_chars = \pos -> if pos < 10 then take 1 (conv_msg (truncate (pos * 10))) ++ [66] ++ drop 1 (conv_msg (truncate (pos * 10)))
+                          else take 2 (conv_msg (truncate (pos * 10))) ++ [66] ++ drop 2 (conv_msg (truncate (pos * 10)))
+  in [0, 47, 69, 63] ++ pos_chars (pos_u s0) ++ [63, 48, 69, 63] ++ pos_chars (pos_v s0) ++ [63, 49, 69, 63] ++ pos_chars (pos_w s0)
+
 -- Used to send a set of in game metrics to the message display system, depending on the value of the "on_screen_metrics" field of the conf_reg array.
-collect_metrics :: [Int] -> [Char] -> Play_state0 -> [(Int, [Int])]
-collect_metrics fps_metric game_t_metric s0 =
+collect_metrics :: [Int] -> [Int] -> [Char] -> Play_state0 -> [(Int, [Int])]
+collect_metrics fps_metric pos_metric game_t_metric s0 =
   let proc_time = \(x0:x1:x2:x3:x4:x5:xs) -> [read [x0] + 53, read [x1] + 53, 69, read [x2] + 53, read [x3] + 53, 69, read [x4] + 53, read [x5] + 53]
   in
   if on_screen_metrics s0 == 1 then [(60, fps_metric)]
-  else [(60, fps_metric), (60, proc_time game_t_metric)]
+  else if on_screen_metrics s0 == 2 then [(60, fps_metric), (60, pos_metric)]
+  else [(60, fps_metric), (60, pos_metric), (60, proc_time game_t_metric)]
 
 -- Restart the background music track each time a preset period has elapsed, if music is enabled.
 play_music :: Int -> Int -> Array Int Source -> IO ()
@@ -1264,7 +1272,7 @@ update_play io_box state_ref s0 s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_
   if mod (fst__ (game_clock s0)) 40 == 0 then do
     if on_screen_metrics s0 > 0 then do
       play_music (fst__ (game_clock s0)) (snd sound_array) (fst sound_array)
-      update_play io_box state_ref (s0 {message_ = collect_metrics (snd__ (det_fps (toNanoSecs t))) (show_game_time (fst__ (game_clock s0)) [] False) s0, game_clock = snd game_clock'}) s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up save_state sound_array t_last t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
+      update_play io_box state_ref (s0 {message_ = collect_metrics (snd__ (det_fps (toNanoSecs t))) (show_map_pos s0) (show_game_time (fst__ (game_clock s0)) [] False) s0, game_clock = snd game_clock'}) s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up save_state sound_array t_last t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
     else do
       play_music (fst__ (game_clock s0)) (snd sound_array) (fst sound_array)
       update_play io_box state_ref (s0 {game_clock = snd game_clock'}) s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up save_state sound_array t_last t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
