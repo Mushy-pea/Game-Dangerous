@@ -70,6 +70,8 @@ msg27 = [47,16,38,27,51,31,44,63,45,34,44,31,30,30,31,30,63,28,51,63,27,63,28,47
 msg28 = [39,16,38,27,51,31,44,63,49,27,45,63,31,27,46,31,40,63,28,51,63,27,63,29,31,40,46,35,42,31,30,31,66,63,20,27,45,46,51,73]
 --      <                    Ouch...Centipede bite!                                           >
 msg29 = [2, 4, 17, 0, 15, 47, 29, 34, 66, 66, 66, 3, 31, 40, 46, 35, 42, 31, 30, 31, 63, 28, 35, 46, 31, 73]
+--      <                  Other items:                    >
+msg30 = [15, 46, 34, 31, 44, 63, 35, 46, 31, 39, 45, 69, 63]
 -- <                               Choose which game to load                                                     >    <               Game state:                               >          <                         Game time:                       >
 choose_game_text = [3, 34, 41, 41, 45, 31, 63, 49, 34, 35, 29, 34, 63, 33, 27, 39, 31, 63, 46, 41, 63, 38, 41, 27, 30]; game_state_text = [7, 27, 39, 31, 63, 45, 46, 27, 46, 31, 69, 63] :: [Int]; game_time_text = [63, 7, 27, 39, 31, 63, 46, 35, 39, 31, 69, 63] :: [Int]
 load_game_menu_header = [(0, choose_game_text), (0, [])] :: [(Int, [Int])]; no_game_states_header = [(0, [14, 41, 63, 33, 27, 39, 31, 63, 45, 46, 27, 46, 31, 45, 63, 32, 41, 47, 40, 30, 66]), (0, [63]), (1, [63]), (2, [63]), (3, [63]), (4, [63]), (5, [63]), (6, [63]), (7, msg12)] :: [(Int, [Int])]
@@ -1170,7 +1172,7 @@ update_vel (x:xs) (y:ys) (z:zs) f_rate f =
 -- Used to generate the sequence of message tile references that represent the pause screen text.
 pause_text :: [Char] -> Play_state1 -> ([Char], Int, Int, Int) -> [(Int, [Int])]
 pause_text (x0:x1:x2:x3:x4:x5:xs) s1 (diff, a, b, c) =
-  [(0, msg9), (0, []), (0, msg1 ++ conv_msg (health s1)), (0, msg2 ++ conv_msg (ammo s1)), (0, msg3 ++ conv_msg (gems s1)), (0, msg4 ++ conv_msg (torches s1)), (0, msg5 ++ keys s1), (0, msg6 ++ region s1), (0, conv_msg_ ("Difficulty: " ++ diff)), (0, conv_msg_ ("Time: " ++ [x0, x1, ':', x2, x3, ':', x4, x5])), (0, []), (1, msg10), (2, msg17), (3, msg11), (4, msg12)]
+  [(0, msg9), (0, []), (0, msg1 ++ conv_msg (health s1)), (0, msg2 ++ conv_msg (ammo s1)), (0, msg3 ++ conv_msg (gems s1)), (0, msg4 ++ conv_msg (torches s1)), (0, msg5 ++ take 6 (keys s1)), (0, msg30 ++ drop 6 (keys s1)), (0, msg6 ++ region s1), (0, conv_msg_ ("Difficulty: " ++ diff)), (0, conv_msg_ ("Time: " ++ [x0, x1, ':', x2, x3, ':', x4, x5])), (0, []), (1, msg10), (2, msg17), (3, msg11), (4, msg12)]
 
 -- This function ensures that all signals sent to NPC GPLC programs are run before any others.  This is done to fix a corner case problem that occured when an NPC and projectile
 -- tried to enter the same voxel in the same tick.
@@ -1222,7 +1224,8 @@ show_game_time t result False =
 -- This function generates a report of the player position within the map using the message tile system.
 show_map_pos :: Play_state0 -> [Int]
 show_map_pos s0 =
-  let pos_chars = \pos -> if pos < 10 then take 1 (conv_msg (truncate (pos * 10))) ++ [66] ++ drop 1 (conv_msg (truncate (pos * 10)))
+  let pos_chars = \pos -> if pos < 1 then [53, 66] ++ conv_msg (truncate (pos * 10))
+                          else if pos < 10 then take 1 (conv_msg (truncate (pos * 10))) ++ [66] ++ drop 1 (conv_msg (truncate (pos * 10)))
                           else take 2 (conv_msg (truncate (pos * 10))) ++ [66] ++ drop 2 (conv_msg (truncate (pos * 10)))
   in [0, 47, 69, 63] ++ pos_chars (pos_u s0) ++ [63, 48, 69, 63] ++ pos_chars (pos_v s0) ++ [63, 49, 69, 63] ++ pos_chars (pos_w s0)
 
