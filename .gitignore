@@ -52,3 +52,4 @@ Preprocess_map_.hs
 *.sav
 null
 save_log.log
+dist-newstyle/

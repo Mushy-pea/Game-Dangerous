@@ -13,7 +13,6 @@ module Game_sound where
 import System.IO
 import Foreign
 import Foreign.C.Types
-import Wave
 import Data.StateVar
 import Data.Maybe
 import Data.Array.IArray
