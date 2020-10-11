@@ -1,5 +1,3 @@
--- See comments in Game_sound
-
 module AL_buffer where
 
 import Foreign.C.Types
@@ -110,20 +108,20 @@ foreign import ccall unsafe "alIsBuffer"
    alIsBuffer :: Buffer -> IO ALboolean
 
 -- Custom buffer generation functions (bug fix)
-gen_buffer1 :: IO Buffer
-gen_buffer1 = do
+genBuffer1 :: IO Buffer
+genBuffer1 = do
   p_buf <- mallocBytes 4
   alGenBuffers 1 p_buf
   buf <- peek p_buf
   free p_buf
   return Buffer {bufferID = buf}
 
-gen_buffer0 :: Int -> Int -> [Buffer] -> IO [Buffer]
-gen_buffer0 c limit acc = do
+genBuffer0 :: Int -> Int -> [Buffer] -> IO [Buffer]
+genBuffer0 c limit acc = do
   if c == limit then return acc
   else do
-    buf <- gen_buffer1
-    gen_buffer0 (c + 1) limit (acc ++ [buf])
+    buf <- genBuffer1
+    genBuffer0 (c + 1) limit (acc ++ [buf])
 
 -----------------------------------------------------------
 
@@ -229,8 +227,8 @@ al_POSITION                         = 0x1004
 al_VELOCITY                         = 0x1006
 al_GAIN                             = 0x100A
 
-al_ORIENTATION :: ALenum
-al_ORIENTATION                      = 0x100F
+alORIENTATION :: ALenum
+alORIENTATION                      = 0x100F
 
 al_SOURCE_RELATIVE, al_SOURCE_TYPE, al_LOOPING, al_BUFFER, al_BUFFERS_QUEUED,
    al_BUFFERS_PROCESSED, al_MIN_GAIN, al_MAX_GAIN, al_REFERENCE_DISTANCE,

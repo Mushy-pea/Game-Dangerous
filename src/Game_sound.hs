@@ -46,8 +46,8 @@ instance Storable Game_sound.Source where
    poke ptr   (Source b) = poke1 (castPtr ptr) b
 
 -- Initialise the OpenAL context.
-init_al_context :: IO ()
-init_al_context = do
+initAlContext :: IO ()
+initAlContext = do
   def <- get defaultDeviceSpecifier
   audio_dev <- openDevice def
   if isNothing audio_dev == True then error "\nFailed to initialise an OpenAL context..."
@@ -56,62 +56,64 @@ init_al_context = do
   currentContext $= context
 
 -- Generate and link the required set of OpenAL source and buffer objects.
-init_al_effect0 :: [[Char]] -> [Char] -> Array Int Game_sound.Source -> IO (Array Int Game_sound.Source)
-init_al_effect0 sample_list path src_array = do
-  buf <- gen_buffer0 0 (div (length sample_list) 2) []
-  src <- gen_source0 0 (div (length sample_list) 2) []
-  src_array_ <- init_al_effect1 sample_list buf src path src_array
+initAlEffect0 :: [[Char]] -> [Char] -> Array Int Game_sound.Source -> IO (Array Int Game_sound.Source)
+initAlEffect0 sample_list path src_array = do
+  buf <- genBuffer0 0 (div (length sample_list) 2) []
+  src <- genSource0 0 (div (length sample_list) 2) []
+  src_array_ <- initAlEffect1 sample_list buf src path src_array
   return src_array_
 
-init_al_effect1 :: [[Char]] -> [Buffer] -> [Game_sound.Source] -> [Char] -> Array Int Game_sound.Source -> IO (Array Int Game_sound.Source)
-init_al_effect1 [] [] [] path src_array = return src_array
-init_al_effect1 (x0:x1:xs) (y:ys) (z:zs) path src_array = do
-  sample_data <- load_snd_buf0 [x1] path []
-  load_snd_buf1 [y] sample_data
-  link_source [z] [y]
-  init_al_effect1 xs ys zs path (src_array // [(read x0, z)])
+initAlEffect1 :: [[Char]] -> [Buffer] -> [Game_sound.Source] -> [Char] -> Array Int Game_sound.Source -> IO (Array Int Game_sound.Source)
+initAlEffect1 [] [] [] path src_array = return src_array
+initAlEffect1 (x0:x1:xs) (y:ys) (z:zs) path src_array = do
+  sample_data <- loadSndBuf0 [x1] path []
+  loadSndBuf1 [y] sample_data
+  linkSource [z] [y]
+  initAlEffect1 xs ys zs path (src_array // [(read x0, z)])
 
 -- Custom source generation functions (bug fix).
-gen_source1 :: IO Game_sound.Source
-gen_source1 = do
+genSource1 :: IO Game_sound.Source
+genSource1 = do
   p_src <- mallocBytes 4
   alGenSources 1 p_src
   src <- peek p_src
   free p_src
   return (Source src)
 
-gen_source0 :: Int -> Int -> [Game_sound.Source] -> IO [Game_sound.Source]
-gen_source0 c limit acc = do
+genSource0 :: Int -> Int -> [Game_sound.Source] -> IO [Game_sound.Source]
+genSource0 c limit acc = do
   if c == limit then return acc
   else do
-    src <- gen_source1
-    gen_source0 (c + 1) limit (acc ++ [src])
+    src <- genSource1
+    genSource0 (c + 1) limit (acc ++ [src])
 
 -- These four functions deal with loading sound samples from WAV files into OpenAL buffers and linking buffers to sources.
-load_snd_buf0 :: [[Char]] -> [Char] -> [(BS.ByteString, Int, Bool)] -> IO [(BS.ByteString, Int, Bool)]
-load_snd_buf0 [] path acc = return acc
-load_snd_buf0 (x:xs) path acc = do
+loadSndBuf0 :: [[Char]] -> [Char] -> [(BS.ByteString, Int, Bool)] -> IO [(BS.ByteString, Int, Bool)]
+loadSndBuf0 [] path acc = return acc
+loadSndBuf0 (x:xs) path acc = do
   waveFile <- BS.readFile (path ++ x)
-  if head x == '_' then load_snd_buf0 xs path (acc ++ [(waveFile, BS.length waveFile, True)])
-  else load_snd_buf0 xs path (acc ++ [(waveFile, BS.length waveFile, False)])
+  if head x == '_' then loadSndBuf0 xs path (acc ++ [(waveFile, BS.length waveFile, True)])
+  else loadSndBuf0 xs path (acc ++ [(waveFile, BS.length waveFile, False)])
 
-load_snd_buf1 :: [Buffer] -> [(BS.ByteString, Int, Bool)] -> IO ()
-load_snd_buf1 [] [] = return ()
-load_snd_buf1 (x:xs) ((bs, len, mode):ys) = do
-  BS.useAsCString (BS.drop 44 bs) (load_snd_buf2 mode x len)
-  load_snd_buf1 xs ys
+loadSndBuf1 :: [Buffer] -> [(BS.ByteString, Int, Bool)] -> IO ()
+loadSndBuf1 [] [] = return ()
+loadSndBuf1 (x:xs) ((bs, len, mode):ys) = do
+  BS.useAsCString (BS.drop 44 bs) (loadSndBuf2 mode x len)
+  loadSndBuf1 xs ys
   
-load_snd_buf2 :: Bool -> Buffer -> Int -> Ptr CChar -> IO ()
-load_snd_buf2 mode buf len p_waveFile =
+loadSndBuf2 :: Bool -> Buffer -> Int -> Ptr CChar -> IO ()
+loadSndBuf2 mode buf len p_waveFile =
   if mode == True then (bufferData buf) $= (BufferData (MemoryRegion p_waveFile (fromIntegral (len - 44))) Stereo16 32000)
   else (bufferData buf) $= (BufferData (MemoryRegion p_waveFile (fromIntegral (len - 44))) Stereo16 44100)
 
-link_source :: [Game_sound.Source] -> [Buffer] -> IO ()
-link_source [] [] = return ()
-link_source (x:xs) (y:ys) = do
+linkSource :: [Game_sound.Source] -> [Buffer] -> IO ()
+linkSource [] [] = return ()
+linkSource (x:xs) (y:ys) = do
   queueBuffers (unsafeCoerce x) (unsafeCoerce [y])
   (sourcePosition (unsafeCoerce x)) $= (Vertex3 0 0 1)
-  link_source xs ys
+  linkSource xs ys
 
 play_ :: Game_sound.Source -> IO ()
 play_ src = play [unsafeCoerce src]
+-- See comments in Game_sound
+
