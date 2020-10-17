@@ -45,10 +45,10 @@ import Encode_status
 main = do
   args <- getArgs
   if length args == 0 then do
-    contents <- bracket (openFile "config.txt" ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nconfig file size: " ++ show (length contents)); return contents)
+    contents <- bracket (openFile "config.txt" ReadMode) (hClose) (\h -> do c <- hGetContents h; putStr ("\ncfg file size: " ++ show (length c)); return c)
     openWindow (listArray (0, 87) (splitOneOf "=\n" contents))
   else do
-    contents <- bracket (openFile ((args, 1) !! 0) ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nconfig file size: " ++ show (length contents)); return contents)
+    contents <- bracket (openFile ((args, 1) !! 0) ReadMode) (hClose) (\h -> do c <- hGetContents h; putStr ("\ncfg file size: " ++ show (length c)); return c)
     openWindow (listArray (0, 87) (splitOneOf "=\n" contents))
 
 -- This function initialises the GLUT runtime system, which in turn is used to initialise a window and OpenGL context.
@@ -56,7 +56,10 @@ openWindow :: Array Int [Char] -> IO ()
 openWindow conf_reg =
   let cfg' = cfg conf_reg 0
       cb = \x -> head (cfg' x)
-      key_set = listArray (0, 14) [cb "cb_PAUSE", cb "cb_FORWARD", cb "cb_STRAFE_RIGHT", cb "cb_BACK", cb "cb_STRAFE_LEFT", cb "cb_TURN_LEFT", cb "cb_TURN_RIGHT", cb "cb_JUMP", cb "cb_LIGHT_TORCH", cb "cb_SWITCH_VIEW", cb "cb_ROTATE_VIEW", cb "cb_FIRE", cb "cb_MENU_SELECT", cb "cb_MENU_BACK", cb "cb_MENU_HOME"]
+      key_set = listArray (0, 14) [cb "cb_PAUSE", cb "cb_FORWARD", cb "cb_STRAFE_RIGHT", cb "cb_BACK", cb "cb_STRAFE_LEFT", cb "cb_TURN_LEFT"
+                                  , cb "cb_TURN_RIGHT", cb "cb_JUMP", cb "cb_LIGHT_TORCH", cb "cb_SWITCH_VIEW", cb "cb_ROTATE_VIEW", cb "cb_FIRE"
+                                  , cb "cb_MENU_SELECT", cb "cb_MENU_BACK", cb "cb_MENU_HOME"]
+      filePath = cfg' "map_file_path" ++ cfg' "map_file"
   in do
   putStr ("\n\nGame :: Dangerous engine " ++ cfg' "version_and_platform_string")
   putStr "\nInitialising GLUT and OpenGL runtime environment..."
@@ -76,7 +79,7 @@ openWindow conf_reg =
   displayCallback $= repaintWindow
   control_ref <- newIORef 0
   keyboardCallback $= (Just (getInput control_ref key_set))
-  contents <- bracket (openFile ((cfg' "map_file_path") ++ (cfg' "map_file")) ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nmap file size: " ++ show (length contents)); return contents)
+  contents <- bracket (openFile filePath ReadMode) (hClose) (\h -> do c <- hGetContents h; putStr ("\nmap file size: " ++ show (length c)); return c)
   screen_res <- readIORef screenRes
   setupGame contents conf_reg screen_res control_ref
 
@@ -100,14 +103,14 @@ getInput ref key_set key pos = do
   else if key == key_set ! 14 then writeIORef ref 16  -- Return to menu root
   else writeIORef ref 0
 
--- This is the callback that GLUT calls when it detects a window repaint is necessary.  This should only happen when the window is first opened, the user moves or resizes the window, or it is
--- overlapped by another window.  For standard frame rendering, showFrame and runMenu repaint the rendered area of the window.
+-- This is the callback that GLUT calls when it detects a window repaint is necessary.  This should only happen when the window is first opened, the user moves
+-- or resizes the window, or it is overlapped by another window.  For standard frame rendering, showFrame and runMenu repaint the rendered area of the window.
 repaintWindow :: IO ()
 repaintWindow = do
   swapBuffers
 
--- This function initialises the OpenAL context, decompresses the map file, manages the compilation of GLSL shaders, loading of 3D models, loading of the light map
--- and loading of sound effects.
+-- This function initialises the OpenAL context, decompresses the map file, manages the compilation of GLSL shaders, loading of 3D models, loading of the
+-- light map and loading of sound effects.
 setupGame :: [Char] -> Array Int [Char] -> Size -> IORef Int -> IO ()
 setupGame comp_env_map conf_reg (Size w h) control_ref =
   let m0 = "mod_to_world"
@@ -122,8 +125,14 @@ setupGame comp_env_map conf_reg (Size w h) control_ref =
       dl0 = "mobileLightIntensities"
       dl1 = "mobileLightPositions"
       dl2 = "numLights"
-      proc_map' = procMap (splitOn "\n~\n" comp_env_map) (read (((splitOn "\n~\n" comp_env_map), 3) !! 12)) (read (((splitOn "\n~\n" comp_env_map), 4) !! 13)) (read (((splitOn "\n~\n" comp_env_map), 5) !! 14))
-      env_map = ".~.~.~.~" ++ fst (proc_map') ++ "~" ++ snd (proc_map') ++ (((splitOn "\n~\n" comp_env_map), 6) !! 10) ++ "~" ++ (((splitOn "\n~\n" comp_env_map), 7) !! 11) ++ "~" ++ (((splitOn "\n~\n" comp_env_map), 8) !! 12) ++ "~" ++ (((splitOn "\n~\n" comp_env_map), 9) !! 13) ++ "~" ++ (((splitOn "\n~\n" comp_env_map), 10) !! 14) ++ "~" ++ (((splitOn "\n~\n" comp_env_map), 634) !! 15)
+      u_max = (read (((splitOn "\n~\n" comp_env_map), 3) !! 12))
+      v_max = (read (((splitOn "\n~\n" comp_env_map), 4) !! 13))
+      w_max = (read (((splitOn "\n~\n" comp_env_map), 5) !! 14))
+      proc_map' = procMap (splitOn "\n~\n" comp_env_map) u_max v_max w_max
+      pm'' = fst proc_map'
+      pm''' = snd proc_map'
+      mc = \i -> ((splitOn "\n~\n" comp_env_map), 637) !! i
+      env_map = ".~.~.~.~" ++ pm'' ++ "~" ++ pm''' ++ (mc 10) ++ "~" ++ (mc 11) ++ "~" ++ (mc 12) ++ "~" ++ (mc 13) ++ "~" ++ (mc 14) ++ "~" ++ (mc 15)
       cfg' = cfg conf_reg 0
       p_bind_limit = (read (((splitOn "\n~\n" comp_env_map), 11) !! 7)) - 1
       frustumScale0 = (read (cfg' "frustumScale1")) / (fromIntegral w / fromIntegral h)
@@ -132,14 +141,26 @@ setupGame comp_env_map conf_reg (Size w h) control_ref =
   glDepthFunc GL_LEQUAL
   glDepthRange 0 1
   glEnable GL_DEPTH_CLAMP
-  contents0 <- bracket (openFile (cfg' "shader_file") ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nshader file size: " ++ show (length contents)); return contents)
+  contents0 <- bracket (openFile (cfg' "shader_file") ReadMode) (hClose) (\h -> do c <- hGetContents h; putStr ("\nshader file size: " ++ show (length c)); return c)
   p_gl_program <- mallocBytes (7 * gluint)
   makeGlProgram (tail (splitOn "#" contents0)) p_gl_program 0
-  uniform <- findGlUniform [m0, m1, m2, lm0, lm1, lm2, lm3, lm4, lm5, "t", "mode", m0, m1, m2, lm0, lm1, lm2, lm3, lm4, lm5, "t", "mode", "tex_unit0", m0, m1, m2, "worldTorchPos", "timer", "mode", m0, m1, m2, "worldTorchPos", "timer", "mode", "tex_unit0", "tt_matrix", "tex_unit0", "mode", m0, m1, m2, "normal_transf", lm0, lm1, lm2, lm3, lm4, lm5, "tex_unit0", "t", m0, m1, "tex_unit0", dl0, dl1, dl2, dl0, dl1, dl2, dl0, dl1, dl2, dl0, dl1, dl2] [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3] p_gl_program []
-  gl_program0 <- peekElemOff p_gl_program 0; gl_program1 <- peekElemOff p_gl_program 1; gl_program2 <- peekElemOff p_gl_program 2; gl_program3 <- peekElemOff p_gl_program 3; gl_program4 <- peekElemOff p_gl_program 4; gl_program5 <- peekElemOff p_gl_program 5; gl_program6 <- peekElemOff p_gl_program 6
+  uniform <- findGlUniform [m0, m1, m2, lm0, lm1, lm2, lm3, lm4, lm5, "t", "mode", m0, m1, m2, lm0, lm1, lm2, lm3, lm4, lm5, "t", "mode", "tex_unit0", m0, m1
+                           , m2, "worldTorchPos", "timer", "mode", m0, m1, m2, "worldTorchPos", "timer", "mode", "tex_unit0", "tt_matrix", "tex_unit0", "mode"
+                           , m0, m1, m2, "normal_transf", lm0, lm1, lm2, lm3, lm4, lm5, "tex_unit0", "t", m0, m1, "tex_unit0", dl0, dl1, dl2, dl0, dl1, dl2
+                           , dl0, dl1, dl2, dl0, dl1, dl2]
+                           [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 5, 5, 5, 5, 5
+                           , 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3] p_gl_program []
+  gl_program0 <- peekElemOff p_gl_program 0
+  gl_program1 <- peekElemOff p_gl_program 1
+  gl_program2 <- peekElemOff p_gl_program 2
+  gl_program3 <- peekElemOff p_gl_program 3
+  gl_program4 <- peekElemOff p_gl_program 4
+  gl_program5 <- peekElemOff p_gl_program 5
+  gl_program6 <- peekElemOff p_gl_program 6
   glClearColor 0 0 0 0
   glClearDepth 1
-  contents1 <- bracket (openFile ((cfg' "model_data_dir") ++ (((splitOn "\n~\n" comp_env_map), 12) !! 9)) ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nlight map file size: " ++ show (length contents)); return contents)
+  contents1 <- bracket (openFile (cfg' "model_data_dir" ++ mc 9) ReadMode) (hClose)
+                       (\h -> do c <- hGetContents h; putStr ("\nlight map file size: " ++ show (length c)); return c)
   p_lmap_pos0 <- callocBytes (glfloat * 300)
   p_lmap_pos1 <- callocBytes (glfloat * 300)
   p_lmap_int0 <- callocBytes (glfloat * 300)
@@ -196,21 +217,29 @@ setupGame comp_env_map conf_reg (Size w h) control_ref =
   free p_gl_program; free p_lmap_pos0; free p_lmap_pos1; free p_lmap_int0; free p_lmap_int1; free p_lmap_t0; free p_lmap_t1
   p_bind_ <- bufferToArray (castPtr mod_bind) p_bind 0 0 (p_bind_limit - 16)
   initAlContext
-  contents2 <- bracket (openFile ((cfg' "sound_data_dir") ++ (last (splitOn ", " (((splitOn "\n~\n" comp_env_map), 44) !! 8)))) ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nsound map size: " ++ show (length contents)); return contents)
-  sound_array <- initAlEffect0 (splitOneOf "\n " contents2) (cfg' "sound_data_dir") (array (0, (div (length (splitOneOf "\n " contents2)) 2) - 1) [(x, Source 0) | x <- [0..(div (length (splitOneOf "\n " contents2)) 2) - 1]])
+  contents2 <- bracket (openFile ((cfg' "sound_data_dir") ++ (last (splitOn ", " (mc 8)))) ReadMode) (hClose)
+                       (\h -> do c <- hGetContents h; putStr ("\nsound map size: " ++ show (length c)); return c)
+  sound_array <- initAlEffect0 (splitOneOf "\n " contents2) (cfg' "sound_data_dir")
+                               (array (0, (div (length (splitOneOf "\n " contents2)) 2) - 1) [(x, Source 0) | x <- [0..(div (length (splitOneOf "\n " contents2)) 2) - 1]])
   r_gen <- getStdGen
-  startGame control_ref (listArray (0, 65) uniform) (p_bind_, p_bind_limit + 1) env_map conf_reg (-1) (read (cfg' "init_u"), read (cfg' "init_v"), read (cfg' "init_w"), read (cfg' "gravity"), read (cfg' "friction"), read (cfg' "run_power"), read (cfg' "jump_power")) def_save_state sound_array frustumScale0 r_gen
+  startGame control_ref (listArray (0, 65) uniform) (p_bind_, p_bind_limit + 1) env_map conf_reg (-1) (read (cfg' "init_u")) (read (cfg' "init_v"))
+            (read (cfg' "init_w")) (read (cfg' "gravity")) (read (cfg' "friction")) (read (cfg' "run_power")) (read (cfg' "jump_power"))
+            def_save_state sound_array frustumScale0 r_gen
 
 -- The model file(s) that describe all 3D and 2D models referenced in the current map are loaded here.
 loadModFile :: [[Char]] -> [Char] -> Ptr GLuint -> IO ()
 loadModFile [] path p_bind = return ()
-loadModFile (x:xs) path p_bind = do
+loadModFile (x:xs) path p_bind =
+  let md = \mod_data i -> ((splitOn "~" mod_data), 638) !! i
+  in do
   h <- openFile (path ++ x) ReadMode
   mod_data <- hGetContents h
-  if (((splitOn "~" mod_data), 45) !! 0) == [] then setupObject (loadObject0 (splitOn "&" (((splitOn "~" mod_data), 46) !! 1))) (procMarker (procInts (splitOn ", " (((splitOn "~" mod_data), 47) !! 2)))) (procFloats (splitOn ", " (((splitOn "~" mod_data), 48) !! 3))) (procElements (splitOn ", " (((splitOn "~" mod_data), 49) !! 4))) [] p_bind
+  if md mod_data 0 == [] then setupObject (loadObject0 (splitOn "&" (md mod_data 1))) (procMarker (procInts (splitOn ", " (md mod_data 2))))
+                                          (procFloats (splitOn ", " (md mod_data 3))) (procElements (splitOn ", " (md mod_data 4))) [] p_bind
   else do
     bs_tex <- loadBitmap0 (splitOn ", " (((splitOn "~" mod_data), 50) !! 0)) (loadObject0 (splitOn "&" (((splitOn "~" mod_data), 51) !! 1))) path [] 1
-    setupObject (loadObject0 (splitOn "&" (((splitOn "~" mod_data), 52) !! 1))) (procMarker (procInts (splitOn ", " (((splitOn "~" mod_data), 53) !! 2)))) (procFloats (splitOn ", " (((splitOn "~" mod_data), 54) !! 3))) (procElements (splitOn ", " (((splitOn "~" mod_data), 55) !! 4))) bs_tex p_bind
+    setupObject (loadObject0 (splitOn "&" (md mod_data 1))) (procMarker (procInts (splitOn ", " (md mod_data 2)))) (procFloats (splitOn ", " (md mod_data 3)))
+                (procElements (splitOn ", " (md mod_data 4))) bs_tex p_bind
   hClose h
   loadModFile xs path p_bind
 
@@ -240,12 +269,16 @@ unlockWrapper map_unlock_code s0 s1 =
   else error "\n\nInvalid map unlock code detected."
 
 -- This function initialises the game logic thread each time a new game is started and handles user input from the main menu.
-startGame :: RandomGen g => IORef Int -> UArray Int Int32 -> (UArray Int Word32, Int) -> [Char] -> Array Int [Char] -> Int -> (Float, Float, Float, Float, Float, Float, Float) -> Game_state -> Array Int Source -> Float -> g -> IO ()
-startGame control_ref uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag_j) save_state sound_array frustumScale0 r_gen =
+startGame :: RandomGen g => IORef Int -> UArray Int Int32 -> (UArray Int Word32, Int) -> [Char] -> Array Int [Char] -> Int -> Float -> Float -> Float -> Float -> Float -> Float -> Float -> Game_state -> Array Int Source -> Float -> g -> IO ()
+startGame control_ref uniform p_bind c conf_reg mode u v w g f mag_r mag_j save_state sound_array frustumScale0 r_gen =
   let u_limit = (read (((splitOn "~" c), 56) !! 8))
       v_limit = (read (((splitOn "~" c), 57) !! 9))
       w_limit = (read (((splitOn "~" c), 58) !! 10))
-      w_grid = checkMapLayer (-3) 0 0 u_limit v_limit (makeArray0 ((buildTable0 (elems (buildTable1 (splitOn ", " (((splitOn "~" c), 59) !! 7)) (emptyWGrid u_limit v_limit w_limit) 7500)) u_limit v_limit w_limit) ++ (sortGrid0 (splitOn "&" (((splitOn "~" c), 60) !! 4)))) u_limit v_limit w_limit) w_grid_flag
+      buildTable1_ = buildTable1 (splitOn ", " (((splitOn "~" c), 59) !! 7)) (emptyWGrid u_limit v_limit w_limit) 7500
+      buildTable0_ = buildTable0 (elems buildTable1_) u_limit v_limit w_limit
+      w_grid = checkMapLayer (-3) 0 0 u_limit v_limit
+               (makeArray0 (buildTable0_ ++ (sortGrid0 (splitOn "&" (((splitOn "~" c), 60) !! 4)))) u_limit v_limit w_limit)
+               w_grid_flag
       f_grid = checkMapLayer 0 0 0 ((div (u_limit + 1) 2) - 1) ((div (v_limit + 1) 2) - 1) (makeArray1 (loadFloor0 (splitOn "&" (((splitOn "~" c), 61) !! 5))) ((div (u_limit + 1) 2) - 1) ((div (v_limit + 1) 2) - 1) w_limit) f_grid_flag
       obj_grid = checkMapLayer 0 0 0 u_limit v_limit (emptyObjGrid u_limit v_limit w_limit // loadObjGrid (splitOn ", " (((splitOn "~" c), 62) !! 6))) obj_grid_flag
       look_up_ = lookUp [makeTable 0 0, makeTable 1 0, makeTable 2 0, makeTable 3 0]
@@ -273,8 +306,8 @@ startGame control_ref uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag_
       free p_tt_matrix
       threadDelay 5000000
       glEnable GL_DEPTH_TEST
-      startGame control_ref uniform p_bind c conf_reg 2 (u, v, w, g, f, mag_r, mag_j) save_state sound_array frustumScale0 r_gen
-    else startGame control_ref uniform p_bind c conf_reg 0 (u, v, w, g, f, mag_r, mag_j) save_state sound_array frustumScale0 r_gen
+      startGame control_ref uniform p_bind c conf_reg 2 u v w g f mag_r mag_j save_state sound_array frustumScale0 r_gen
+    else startGame control_ref uniform p_bind c conf_reg 0 u v w g f mag_r mag_j save_state sound_array frustumScale0 r_gen
   else if mode < 2 then do
     p_mt_matrix <- mallocBytes (glfloat * 128)
     p_f_table0 <- callocBytes (int_ * 120000)
@@ -290,24 +323,24 @@ startGame control_ref uniform p_bind c conf_reg mode (u, v, w, g, f, mag_r, mag_
     free p_f_table1
     free p_light_buffer
     killThread tid      
-    startGame control_ref uniform p_bind c conf_reg ((head (fst result)) + 1) (u, v, w, g, f, mag_r, mag_j) (snd result) sound_array frustumScale0 r_gen
+    startGame control_ref uniform p_bind c conf_reg ((head (fst result)) + 1) u v w g f mag_r mag_j (snd result) sound_array frustumScale0 r_gen
   else if mode == 2 then do
     choice <- runMenu mainMenuText [] (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref}) (-0.75) (-0.75) 1 0 0 ps0_init 1
-    if choice == 1 then startGame control_ref uniform p_bind c conf_reg 0 (u, v, w, g, f, mag_r, mag_j) save_state sound_array frustumScale0 r_gen
+    if choice == 1 then startGame control_ref uniform p_bind c conf_reg 0 u v w g f mag_r mag_j save_state sound_array frustumScale0 r_gen
     else if choice == 2 then do
       contents <- bracket (openFile "save_log.log" ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nsave_log file size: " ++ show (length contents)); return contents)
       state_choice <- runMenu (genLoadMenu (tail (splitOn "\n" contents)) [] 1) [] (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref}) (-0.75) (-0.75) 1 0 0 ps0_init 1
       loaded_state <- loadSavedGame 0 (tail (splitOn "\n" contents)) [] 1 state_choice (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref}) w_grid f_grid obj_grid conf_reg
-      if isNothing loaded_state == True then startGame control_ref uniform p_bind c conf_reg 2 (u, v, w, g, f, mag_r, mag_j) def_save_state sound_array frustumScale0 r_gen
-      else startGame control_ref uniform p_bind c conf_reg 1 (u, v, w, g, f, mag_r, mag_j) (fromJust loaded_state) sound_array frustumScale0 r_gen
+      if isNothing loaded_state == True then startGame control_ref uniform p_bind c conf_reg 2 u v w g f mag_r mag_j def_save_state sound_array frustumScale0 r_gen
+      else startGame control_ref uniform p_bind c conf_reg 1 u v w g f mag_r mag_j (fromJust loaded_state) sound_array frustumScale0 r_gen
     else exitSuccess
   else if mode == 3 then do
-    if is_set save_state == True then startGame control_ref uniform p_bind c conf_reg 1 (u, v, w, g, f, mag_r, mag_j) save_state sound_array frustumScale0 r_gen
-    else startGame control_ref uniform p_bind c conf_reg 0 (u, v, w, g, f, mag_r, mag_j) save_state sound_array frustumScale0 r_gen
+    if is_set save_state == True then startGame control_ref uniform p_bind c conf_reg 1 u v w g f mag_r mag_j save_state sound_array frustumScale0 r_gen
+    else startGame control_ref uniform p_bind c conf_reg 0 u v w g f mag_r mag_j save_state sound_array frustumScale0 r_gen
   else if mode == 4 then exitSuccess
   else if mode == 5 then do
     saveArrayDiff0 0 ([], []) (wrappedSaveArrayDiff1 (genArrayDiff (-3) 0 0 u_limit v_limit w_grid (w_grid_ save_state) SEQ.empty)) (wrappedSaveArrayDiff1 (genArrayDiff 0 0 0 ((div (u_limit + 1) 2) - 1) ((div (v_limit + 1) 2) - 1) f_grid (f_grid_ save_state) SEQ.empty)) (wrappedSaveArrayDiff1 (genArrayDiff 0 0 0 u_limit v_limit obj_grid (obj_grid_ save_state) SEQ.empty)) (labelPlayStateEncoding (encode (s0_ save_state))) (labelPlayStateEncoding (encode (s1_ save_state))) conf_reg (s0_ save_state)
-    startGame control_ref uniform p_bind c conf_reg 1 (u, v, w, g, f, mag_r, mag_j) save_state sound_array frustumScale0 r_gen
+    startGame control_ref uniform p_bind c conf_reg 1 u v w g f mag_r mag_j save_state sound_array frustumScale0 r_gen
   else if mode == 6 then do
     updConfigFile conf_reg (map_transit_string save_state) False
     h <- openFile "save_log.log" WriteMode
