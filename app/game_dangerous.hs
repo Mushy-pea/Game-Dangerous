@@ -224,7 +224,7 @@ setupGame comp_env_map conf_reg (Size w h) control_ref =
   r_gen <- getStdGen
   startGame control_ref (listArray (0, 65) uniform) (p_bind_, p_bind_limit + 1) env_map conf_reg (-1) (read (cfg' "init_u")) (read (cfg' "init_v"))
             (read (cfg' "init_w")) (read (cfg' "gravity")) (read (cfg' "friction")) (read (cfg' "run_power")) (read (cfg' "jump_power"))
-            def_save_state sound_array frustumScale0 r_gen
+            def_save_state sound_array (cameraToClip frustumScale0 (read (cfg' "frustumScale1"))) r_gen
 
 -- The model file(s) that describe all 3D and 2D models referenced in the current map are loaded here.
 loadModFile :: [[Char]] -> [Char] -> Ptr GLuint -> IO ()
@@ -243,23 +243,29 @@ loadModFile (x:xs) path p_bind =
   hClose h
   loadModFile xs path p_bind
 
--- Functions used by startGame as part of game initialisation.
-select_metric_mode "none" = 0
-select_metric_mode "low" = 1
-select_metric_mode "medium" = 2
-select_metric_mode "high" = 3
+-- These two functions convert parameters passed through the engine's configuration file to the corresponding values in the Play_state0 and Play_state1
+-- structures, respectively.
+selectMetricMode "none" = 0
+selectMetricMode "low" = 1
+selectMetricMode "medium" = 2
+selectMetricMode "high" = 3
 
-select_verbose_mode "y" = True
-select_verbose_mode "n" = False
+selectVerboseMode "y" = True
+selectVerboseMode "n" = False
 
+-- This function generates the pseudorandom number sequence that is exposed to certain GPLC op - codes.
 genProbSeq :: RandomGen g => Int -> Int -> Int -> g -> UArray Int Int
 genProbSeq i0 i1 i2 g = listArray (i0, i1) (drop i2 (randomRs (0, 99) g))
 
+-- The game state can be initialised within startGame in three different ways.  Namely, an unlocked or locked map being initialised to a base state
+-- or a map being initialised using a saved game file.  This function is used by startGame to select the correct game state values to pass to
+-- updatePlay depending on which mode is being used.
 selectState :: Int -> [Char] -> a -> a -> a -> a
 selectState 0 "unlocked" x y z = x
 selectState 0 "locked" x y z = y
 selectState 1 lock_flag x y z = z
 
+-- When a locked map is used to initialise the game state the unlocking logic is applied here.
 unlockWrapper :: [Char] -> Play_state0 -> Play_state1 -> (Play_state0, Play_state1)
 unlockWrapper map_unlock_code s0 s1 =
   let bit_list = pad (decimalBinary (hexDecimal map_unlock_code 31) (2 ^ 127)) [] 127 0
@@ -268,26 +274,36 @@ unlockWrapper map_unlock_code s0 s1 =
   if third_ state_values == True then (fst__ state_values, snd__ state_values)
   else error "\n\nInvalid map unlock code detected."
 
+-- This function generates the camera to clip transformation matrix that will be passed to the shaders.
+cameraToClip :: Float -> Float -> Matrix Float
+cameraToClip frustumScale0 frustumScale1 =
+  let y = \x -> fromList 4 4 x
+  in
+  y [frustumScale0, 0, 0, 0, 0, frustumScale1, 0, 0, 0, 0, ((zFar + zNear) / (zNear - zFar)), ((2 * zFar * zNear) / (zNear - zFar)), 0, 0, -1, 0]
+
 -- This function initialises the game logic thread each time a new game is started and handles user input from the main menu.
-startGame :: RandomGen g => IORef Int -> UArray Int Int32 -> (UArray Int Word32, Int) -> [Char] -> Array Int [Char] -> Int -> Float -> Float -> Float -> Float -> Float -> Float -> Float -> Game_state -> Array Int Source -> Float -> g -> IO ()
-startGame control_ref uniform p_bind c conf_reg mode u v w g f mag_r mag_j save_state sound_array frustumScale0 r_gen =
+startGame :: RandomGen g => IORef Int -> UArray Int Int32 -> (UArray Int Word32, Int) -> [Char] -> Array Int [Char] -> Int -> Float -> Float -> Float -> Float -> Float -> Float -> Float -> Game_state -> Array Int Source -> Matrix Float -> g -> IO ()
+startGame control_ref uniform p_bind c conf_reg mode u v w g f mag_r mag_j save_state sound_array camera_to_clip r_gen =
   let u_limit = (read (((splitOn "~" c), 56) !! 8))
       v_limit = (read (((splitOn "~" c), 57) !! 9))
       w_limit = (read (((splitOn "~" c), 58) !! 10))
+      fd = \limit -> (div (limit + 1) 2) - 1
       buildTable1_ = buildTable1 (splitOn ", " (((splitOn "~" c), 59) !! 7)) (emptyWGrid u_limit v_limit w_limit) 7500
       buildTable0_ = buildTable0 (elems buildTable1_) u_limit v_limit w_limit
       w_grid = checkMapLayer (-3) 0 0 u_limit v_limit
                (makeArray0 (buildTable0_ ++ (sortGrid0 (splitOn "&" (((splitOn "~" c), 60) !! 4)))) u_limit v_limit w_limit)
                w_grid_flag
-      f_grid = checkMapLayer 0 0 0 ((div (u_limit + 1) 2) - 1) ((div (v_limit + 1) 2) - 1) (makeArray1 (loadFloor0 (splitOn "&" (((splitOn "~" c), 61) !! 5))) ((div (u_limit + 1) 2) - 1) ((div (v_limit + 1) 2) - 1) w_limit) f_grid_flag
-      obj_grid = checkMapLayer 0 0 0 u_limit v_limit (emptyObjGrid u_limit v_limit w_limit // loadObjGrid (splitOn ", " (((splitOn "~" c), 62) !! 6))) obj_grid_flag
+      f_grid = checkMapLayer 0 0 0 (fd u_limit) (fd v_limit)
+                             (makeArray1 (loadFloor0 (splitOn "&" (((splitOn "~" c), 61) !! 5))) (fd u_limit) (fd v_limit) w_limit) f_grid_flag
+      obj_grid = checkMapLayer 0 0 0 u_limit v_limit (emptyObjGrid u_limit v_limit w_limit // loadObjGrid (splitOn ", " (((splitOn "~" c), 62) !! 6)))
+                               obj_grid_flag
       look_up_ = lookUp [makeTable 0 0, makeTable 1 0, makeTable 2 0, makeTable 3 0]
-      camera_to_clip = fromList 4 4 [frustumScale0, 0, 0, 0, 0, read (cfg' "frustumScale1"), 0, 0, 0, 0, ((zFar + zNear) / (zNear - zFar)), ((2 * zFar * zNear) / (zNear - zFar)), 0, 0, -1, 0]
       cfg' = cfg conf_reg 0
       setup_music = if cfg' "music" == "off" then 0
                     else read (cfg' "music_period")
-      s0 = ps0_init {pos_u = u, pos_v = v, pos_w = w, on_screen_metrics = select_metric_mode (cfg' "on_screen_metrics"), prob_seq = genProbSeq 0 239 (read (cfg' "prob_c")) r_gen}
-      s1 = ps1_init {verbose_mode = select_verbose_mode (cfg' "verbose_mode")}
+      s0 = ps0_init {pos_u = u, pos_v = v, pos_w = w, on_screen_metrics = selectMetricMode (cfg' "on_screen_metrics"),
+                     prob_seq = genProbSeq 0 239 (read (cfg' "prob_c")) r_gen}
+      s1 = ps1_init {verbose_mode = selectVerboseMode (cfg' "verbose_mode")}
       unlocked_state = unlockWrapper (cfg' "map_unlock_code") s0 s1
       lock_flag = ((splitOn "~" c), 635) !! 11
   in do
@@ -306,8 +322,8 @@ startGame control_ref uniform p_bind c conf_reg mode u v w g f mag_r mag_j save_
       free p_tt_matrix
       threadDelay 5000000
       glEnable GL_DEPTH_TEST
-      startGame control_ref uniform p_bind c conf_reg 2 u v w g f mag_r mag_j save_state sound_array frustumScale0 r_gen
-    else startGame control_ref uniform p_bind c conf_reg 0 u v w g f mag_r mag_j save_state sound_array frustumScale0 r_gen
+      startGame control_ref uniform p_bind c conf_reg 2 u v w g f mag_r mag_j save_state sound_array camera_to_clip r_gen
+    else startGame control_ref uniform p_bind c conf_reg 0 u v w g f mag_r mag_j save_state sound_array camera_to_clip r_gen
   else if mode < 2 then do
     p_mt_matrix <- mallocBytes (glfloat * 128)
     p_f_table0 <- callocBytes (int_ * 120000)
@@ -316,31 +332,43 @@ startGame control_ref uniform p_bind c conf_reg mode u v w g f mag_r mag_j save_
     state_ref <- newEmptyMVar
     t_log <- newEmptyMVar
     windowPosition $= Position 50 50
-    tid <- forkIO (updatePlay (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref}) state_ref (selectState mode lock_flag s0 (fst unlocked_state) (s0_ save_state)) (selectState mode lock_flag s1 (snd unlocked_state) (s1_ save_state)) False (read (cfg' "min_frame_t")) (g, f, mag_r, mag_j) (selectState mode lock_flag w_grid w_grid (w_grid_ save_state)) (selectState mode lock_flag f_grid f_grid (f_grid_ save_state)) (selectState mode lock_flag obj_grid obj_grid (obj_grid_ save_state)) look_up_ save_state (sound_array, setup_music) 0 t_log (SEQ.empty) 60)
-    result <- showFrame p_bind uniform (p_mt_matrix, p_light_buffer) (p_f_table0, p_f_table1) 0 0 0 0 0 state_ref w_grid f_grid obj_grid look_up_ camera_to_clip (array (0, 5) [(i, (0, [])) | i <- [0..5]])
+    tid <- forkIO (updatePlay (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref}) state_ref
+                              (selectState mode lock_flag s0 (fst unlocked_state) (s0_ save_state))
+                              (selectState mode lock_flag s1 (snd unlocked_state) (s1_ save_state)) False (read (cfg' "min_frame_t")) (g, f, mag_r, mag_j)
+                              (selectState mode lock_flag w_grid w_grid (w_grid_ save_state)) (selectState mode lock_flag f_grid f_grid (f_grid_ save_state))
+                              (selectState mode lock_flag obj_grid obj_grid (obj_grid_ save_state)) look_up_ save_state (sound_array, setup_music)
+                              0 t_log (SEQ.empty) 60)
+    result <- showFrame p_bind uniform (p_mt_matrix, p_light_buffer) (p_f_table0, p_f_table1) 0 0 0 0 0 state_ref w_grid f_grid obj_grid look_up_
+                        camera_to_clip (array (0, 5) [(i, (0, [])) | i <- [0..5]])
     free p_mt_matrix
     free p_f_table0
     free p_f_table1
     free p_light_buffer
     killThread tid      
-    startGame control_ref uniform p_bind c conf_reg ((head (fst result)) + 1) u v w g f mag_r mag_j (snd result) sound_array frustumScale0 r_gen
+    startGame control_ref uniform p_bind c conf_reg ((head (fst result)) + 1) u v w g f mag_r mag_j (snd result) sound_array camera_to_clip r_gen
   else if mode == 2 then do
     choice <- runMenu mainMenuText [] (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref}) (-0.75) (-0.75) 1 0 0 ps0_init 1
-    if choice == 1 then startGame control_ref uniform p_bind c conf_reg 0 u v w g f mag_r mag_j save_state sound_array frustumScale0 r_gen
+    if choice == 1 then startGame control_ref uniform p_bind c conf_reg 0 u v w g f mag_r mag_j save_state sound_array camera_to_clip r_gen
     else if choice == 2 then do
-      contents <- bracket (openFile "save_log.log" ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nsave_log file size: " ++ show (length contents)); return contents)
-      state_choice <- runMenu (genLoadMenu (tail (splitOn "\n" contents)) [] 1) [] (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref}) (-0.75) (-0.75) 1 0 0 ps0_init 1
-      loaded_state <- loadSavedGame 0 (tail (splitOn "\n" contents)) [] 1 state_choice (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref}) w_grid f_grid obj_grid conf_reg
-      if isNothing loaded_state == True then startGame control_ref uniform p_bind c conf_reg 2 u v w g f mag_r mag_j def_save_state sound_array frustumScale0 r_gen
-      else startGame control_ref uniform p_bind c conf_reg 1 u v w g f mag_r mag_j (fromJust loaded_state) sound_array frustumScale0 r_gen
+      contents <- bracket (openFile "save_log.log" ReadMode) (hClose) (\h -> do c <- hGetContents h; putStr ("\nsave_log size: " ++ show (length c)); return c)
+      state_choice <- runMenu (genLoadMenu (tail (splitOn "\n" contents)) [] 1) [] (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref})
+                              (-0.75) (-0.75) 1 0 0 ps0_init 1
+      loaded_state <- loadSavedGame 0 (tail (splitOn "\n" contents)) [] 1 state_choice (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref})
+                                    w_grid f_grid obj_grid conf_reg
+      if isNothing loaded_state == True then startGame control_ref uniform p_bind c conf_reg 2 u v w g f mag_r mag_j def_save_state sound_array
+                                                       camera_to_clip r_gen
+      else startGame control_ref uniform p_bind c conf_reg 1 u v w g f mag_r mag_j (fromJust loaded_state) sound_array camera_to_clip r_gen
     else exitSuccess
   else if mode == 3 then do
-    if is_set save_state == True then startGame control_ref uniform p_bind c conf_reg 1 u v w g f mag_r mag_j save_state sound_array frustumScale0 r_gen
-    else startGame control_ref uniform p_bind c conf_reg 0 u v w g f mag_r mag_j save_state sound_array frustumScale0 r_gen
+    if is_set save_state == True then startGame control_ref uniform p_bind c conf_reg 1 u v w g f mag_r mag_j save_state sound_array camera_to_clip r_gen
+    else startGame control_ref uniform p_bind c conf_reg 0 u v w g f mag_r mag_j save_state sound_array camera_to_clip r_gen
   else if mode == 4 then exitSuccess
   else if mode == 5 then do
-    saveArrayDiff0 0 ([], []) (wrappedSaveArrayDiff1 (genArrayDiff (-3) 0 0 u_limit v_limit w_grid (w_grid_ save_state) SEQ.empty)) (wrappedSaveArrayDiff1 (genArrayDiff 0 0 0 ((div (u_limit + 1) 2) - 1) ((div (v_limit + 1) 2) - 1) f_grid (f_grid_ save_state) SEQ.empty)) (wrappedSaveArrayDiff1 (genArrayDiff 0 0 0 u_limit v_limit obj_grid (obj_grid_ save_state) SEQ.empty)) (labelPlayStateEncoding (encode (s0_ save_state))) (labelPlayStateEncoding (encode (s1_ save_state))) conf_reg (s0_ save_state)
-    startGame control_ref uniform p_bind c conf_reg 1 u v w g f mag_r mag_j save_state sound_array frustumScale0 r_gen
+    saveArrayDiff0 0 ([], []) (wrappedSaveArrayDiff1 (genArrayDiff (-3) 0 0 u_limit v_limit w_grid (w_grid_ save_state) SEQ.empty))
+                   (wrappedSaveArrayDiff1 (genArrayDiff 0 0 0 ((div (u_limit + 1) 2) - 1) ((div (v_limit + 1) 2) - 1) f_grid (f_grid_ save_state) SEQ.empty))
+                   (wrappedSaveArrayDiff1 (genArrayDiff 0 0 0 u_limit v_limit obj_grid (obj_grid_ save_state) SEQ.empty))
+                   (labelPlayStateEncoding (encode (s0_ save_state))) (labelPlayStateEncoding (encode (s1_ save_state))) conf_reg (s0_ save_state)
+    startGame control_ref uniform p_bind c conf_reg 1 u v w g f mag_r mag_j save_state sound_array camera_to_clip r_gen
   else if mode == 6 then do
     updConfigFile conf_reg (map_transit_string save_state) False
     h <- openFile "save_log.log" WriteMode
@@ -365,7 +393,10 @@ genLoadMenu [] acc c =
   if acc == [] then no_game_states_header
   else load_game_menu_header ++ acc
 genLoadMenu ((y0:y1:y2:y3:y4:y5:y6:y7:y8:y9:y10:y11:y12:y13:y14:y15:y16:ys):xs) acc c =
-  if y0 == '_' then genLoadMenu xs (acc ++ [(c, game_state_text ++ [c + 53] ++ game_time_text ++ [(read [y11] + 53), (read [y12] + 53), 69, (read [y13] + 53), (read [y14] + 53), 69, (read [y15] + 53), (read [y16] + 53)])]) (c + 1)
+  let state_choice = [(c, game_state_text ++ [c + 53] ++ game_time_text ++ [(read [y11] + 53), (read [y12] + 53), 69, (read [y13] + 53), (read [y14] + 53), 69
+                     , (read [y15] + 53), (read [y16] + 53)])]
+  in
+  if y0 == '_' then genLoadMenu xs (acc ++ state_choice) (c + 1)
   else genLoadMenu xs acc c
 
 -- Constants used to fix the types decoded from save game files.
@@ -377,7 +408,7 @@ def_obj_grid_ = ((0, 0, 0), def_obj_grid) :: ((Int, Int, Int), (Int, [Int]))
 decodeSequence :: Binary a => Int -> a -> LBS.ByteString -> SEQ.Seq a -> SEQ.Seq a
 decodeSequence c def bs diff_seq =
   let result = decodeOrFail bs
-      tested_result = if (isLeft result) == True then error ("\ndecode_sequence: " ++ third_ (fromLeft (LBS.empty, 0, "def") result) ++ "\nblock offset: " ++ show c)
+      tested_result = if (isLeft result) == True then error ("\ndecode_sequence: " ++ third_ (fromLeft (LBS.empty, 0, "def") result) ++ "\noffset: " ++ show c)
                       else fromRight (LBS.empty, 0, def) result
   in
   if LBS.length bs == 0 then diff_seq
@@ -389,12 +420,21 @@ procWGridUpd (x SEQ.:<| xs) w_grid = (fst x, (w_grid ! (fst x)) {obj = snd x}) :
 
 loadGameStateFile :: Int -> LBS.ByteString -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> SEQ.Seq ((Int, Int, Int), Maybe Obj_place) -> SEQ.Seq ((Int, Int, Int), Floor_grid) -> SEQ.Seq ((Int, Int, Int), (Int, [Int])) -> Play_state0 -> Play_state1 -> Game_state
 loadGameStateFile c bs w_grid f_grid obj_grid w_grid_upd f_grid_upd obj_grid_upd s0 s1 =
-  if c == 0 then loadGameStateFile (c + 1) (LBS.drop (8 + fromIntegral ((decode (LBS.take 8 bs)) :: Int)) bs) w_grid f_grid obj_grid (decodeSequence 0 def_obj_place_ (LBS.take (fromIntegral ((decode (LBS.take 8 bs)) :: Int)) (LBS.drop 8 bs)) SEQ.empty) f_grid_upd obj_grid_upd s0 s1
-  else if c == 1 then loadGameStateFile (c + 1) (LBS.drop (8 + fromIntegral ((decode (LBS.take 8 bs)) :: Int)) bs) w_grid f_grid obj_grid w_grid_upd (decodeSequence 0 def_f_grid_ (LBS.take (fromIntegral ((decode (LBS.take 8 bs)) :: Int)) (LBS.drop 8 bs)) SEQ.empty) obj_grid_upd  s0 s1
-  else if c == 2 then loadGameStateFile (c + 1) (LBS.drop (8 + fromIntegral ((decode (LBS.take 8 bs)) :: Int)) bs) w_grid f_grid obj_grid w_grid_upd f_grid_upd (decodeSequence 0 def_obj_grid_ (LBS.take (fromIntegral ((decode (LBS.take 8 bs)) :: Int)) (LBS.drop 8 bs)) SEQ.empty)  s0 s1
-  else if c == 3 then loadGameStateFile (c + 1) (LBS.drop (8 + fromIntegral ((decode (LBS.take 8 bs)) :: Int)) bs) w_grid f_grid obj_grid w_grid_upd f_grid_upd obj_grid_upd ((decode (LBS.take (fromIntegral ((decode (LBS.take 8 bs)) :: Int)) (LBS.drop 8 bs))) :: Play_state0) s1
-  else if c == 4 then loadGameStateFile (c + 1) LBS.empty w_grid f_grid obj_grid w_grid_upd f_grid_upd obj_grid_upd s0 ((decode (LBS.take (fromIntegral ((decode (LBS.take 8 bs)) :: Int)) (LBS.drop 8 bs))) :: Play_state1)
-  else Game_state {is_set = False, w_grid_ = w_grid // (procWGridUpd w_grid_upd w_grid), f_grid_ = f_grid // (FOLD.toList f_grid_upd), obj_grid_ = obj_grid // (FOLD.toList obj_grid_upd), s0_ = s0, s1_ = s1}
+  if c == 0 then loadGameStateFile (c + 1) (LBS.drop (8 + fromIntegral ((decode (LBS.take 8 bs)) :: Int)) bs) w_grid f_grid obj_grid
+                                   (decodeSequence 0 def_obj_place_ (LBS.take (fromIntegral ((decode (LBS.take 8 bs)) :: Int)) (LBS.drop 8 bs)) SEQ.empty)
+                                   f_grid_upd obj_grid_upd s0 s1
+  else if c == 1 then loadGameStateFile (c + 1) (LBS.drop (8 + fromIntegral ((decode (LBS.take 8 bs)) :: Int)) bs) w_grid f_grid obj_grid w_grid_upd
+                                        (decodeSequence 0 def_f_grid_ (LBS.take (fromIntegral ((decode (LBS.take 8 bs)) :: Int)) (LBS.drop 8 bs)) SEQ.empty)
+                                        obj_grid_upd  s0 s1
+  else if c == 2 then loadGameStateFile (c + 1) (LBS.drop (8 + fromIntegral ((decode (LBS.take 8 bs)) :: Int)) bs) w_grid f_grid obj_grid w_grid_upd f_grid_upd
+                                        (decodeSequence 0 def_obj_grid_ (LBS.take (fromIntegral ((decode (LBS.take 8 bs)) :: Int)) (LBS.drop 8 bs)) SEQ.empty)
+                                        s0 s1
+  else if c == 3 then loadGameStateFile (c + 1) (LBS.drop (8 + fromIntegral ((decode (LBS.take 8 bs)) :: Int)) bs) w_grid f_grid obj_grid w_grid_upd f_grid_upd
+                                        obj_grid_upd ((decode (LBS.take (fromIntegral ((decode (LBS.take 8 bs)) :: Int)) (LBS.drop 8 bs))) :: Play_state0) s1
+  else if c == 4 then loadGameStateFile (c + 1) LBS.empty w_grid f_grid obj_grid w_grid_upd f_grid_upd obj_grid_upd s0
+                                        ((decode (LBS.take (fromIntegral ((decode (LBS.take 8 bs)) :: Int)) (LBS.drop 8 bs))) :: Play_state1)
+  else Game_state {is_set = False, w_grid_ = w_grid // (procWGridUpd w_grid_upd w_grid), f_grid_ = f_grid // (FOLD.toList f_grid_upd),
+                   obj_grid_ = obj_grid // (FOLD.toList obj_grid_upd), s0_ = s0, s1_ = s1}
 
 -- If an error occurs while attempting to open a save game file the user is informed through the menu system.
 loaderError :: SomeException -> Io_box -> IO LBS.ByteString
@@ -415,11 +455,14 @@ loadSavedGame 1 [] chosen_file c choice box w_grid f_grid obj_grid conf_reg = do
   if LBS.length contents == 0 then return Nothing
   else return (Just (loadGameStateFile 0 contents w_grid f_grid obj_grid SEQ.Empty SEQ.Empty SEQ.Empty ps0_init ps1_init))
 
--- Sequential saves of the same game produce a sequence of save game files up to a preset maximum.  The automation of this feature is done in the two functions below.
+-- Sequential saves of the same game produce a sequence of save game files up to a preset maximum.
+-- The automation of this feature is done in the two functions below.
 addTimeStamp :: [[Char]] -> Play_state0 -> Int -> Int -> [Char]
 addTimeStamp [] s0 save_slot i = []
 addTimeStamp ((y0:y1:y2:y3:y4:y5:y6:y7:y8:y9:y10:y11:y12:y13:y14:y15:y16:ys):xs) s0 save_slot i =
-  if i == save_slot then ['_', y1, y2, y3, y4, y5, y6, y7, y8, y9, y10] ++ showGameTime (mod (fst__ (gameClock s0)) 1440000) [] False ++ "\n" ++ addTimeStamp xs s0 save_slot (i + 1)
+  let file_name = ['_', y1, y2, y3, y4, y5, y6, y7, y8, y9, y10]
+  in
+  if i == save_slot then file_name ++ showGameTime (mod (fst__ (gameClock s0)) 1440000) [] False ++ "\n" ++ addTimeStamp xs s0 save_slot (i + 1)
   else [y0, y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16] ++ "\n" ++ addTimeStamp xs s0 save_slot (i + 1)
 
 selectSaveFile :: [[Char]] -> Play_state0 -> Int -> ([Char], [Char])
@@ -430,8 +473,8 @@ selectSaveFile file_list s0 limit =
   else (take 9 (tail ((file_list, 633) !! i)), show (i + 1) ++ "\n" ++ init (addTimeStamp (tail file_list) s0 i 1))
 
 -- This class and the four other functions below deal with generating a save game file.
--- The Serialise_diff class is used so that the Obj_place type gets extracted from Wall_grid.  This is done because the rest of the Wall_grid structure is not exposed to the
--- GPLC interpreter and so cannot change during game play.
+-- The Serialise_diff class is used so that the Obj_place type gets extracted from Wall_grid.  This is done because the rest of the Wall_grid structure is
+-- not exposed to the GPLC interpreter and so cannot change during game play.
 class Serialise_diff a where
   save_diff :: ((Int, Int, Int), a) -> LBS.ByteString
 
@@ -445,15 +488,21 @@ instance Serialise_diff (Int, [Int]) where
   save_diff ((w, u, v), x) = LBS.append (encode (w, u, v)) (encode x)
 
 saveArrayDiff0 :: Int -> ([Char], [Char]) -> LBS.ByteString -> LBS.ByteString -> LBS.ByteString -> LBS.ByteString -> LBS.ByteString -> Array Int [Char] -> Play_state0 -> IO ()
-saveArrayDiff0 mode (save_file, save_log) w_grid_bstring f_grid_bstring obj_grid_bstring s0_bstring s1_bstring conf_reg s0 = do
+saveArrayDiff0 mode (save_file, save_log) w_grid_bstring f_grid_bstring obj_grid_bstring s0_bstring s1_bstring conf_reg s0 =
+  let block0 = LBS.append (LBS.drop 8 w_grid_bstring)
+      block1 = LBS.append (LBS.drop 8 f_grid_bstring)
+      block2 = LBS.append (LBS.drop 8 obj_grid_bstring)
+      block3 = LBS.append s0_bstring
+  in
   if mode == 0 then do
-    contents <- bracket (openFile "save_log.log" ReadMode) (hClose) (\h -> do contents <- hGetContents h; putStr ("\nsave_log file size: " ++ show (length contents)); return contents)
-    saveArrayDiff0 1 (selectSaveFile (splitOn "\n" contents) s0 ((length (splitOn "\n" contents)) - 1)) w_grid_bstring f_grid_bstring obj_grid_bstring s0_bstring s1_bstring conf_reg s0
+    contents <- bracket (openFile "save_log.log" ReadMode) (hClose) (\h -> do c <- hGetContents h; putStr ("\nsave_log size: " ++ show (length c)); return c)
+    saveArrayDiff0 1 (selectSaveFile (splitOn "\n" contents) s0 ((length (splitOn "\n" contents)) - 1)) w_grid_bstring f_grid_bstring obj_grid_bstring
+                   s0_bstring s1_bstring conf_reg s0
   else do
     h0 <- openFile "save_log.log" WriteMode
     hPutStr h0 save_log
     hClose h0
-    LBS.writeFile ((cfg conf_reg 0 "game_save_path") ++ save_file) (LBS.append (LBS.append (LBS.append (LBS.append (LBS.drop 8 w_grid_bstring) (LBS.drop 8 f_grid_bstring)) (LBS.drop 8 obj_grid_bstring)) s0_bstring) s1_bstring)
+    LBS.writeFile (cfg conf_reg 0 "game_save_path" ++ save_file) (block0 $ block1 $ block2 $ block3 $ s1_bstring)
     putStr ("\n\nGame saved as: " ++ (cfg conf_reg 0 "game_save_path") ++ save_file)
 
 wrappedSaveArrayDiff1 :: Serialise_diff a => SEQ.Seq ((Int, Int, Int), a) -> LBS.ByteString
@@ -625,11 +674,13 @@ bindTexture (x:xs) p_bind w h offset = do
   glTexParameteri GL_TEXTURE_2D GL_TEXTURE_MAG_FILTER (fromIntegral GL_NEAREST)
   bindTexture xs p_bind w h (offset + 1)
 
--- This function manages the rendering of all environmental models and in game messages.  It recurses once per frame rendered and is the central branching point of the rendering thread.
+-- This function manages the rendering of all environmental models and in game messages.
+-- It recurses once per frame rendered and is the central branching point of the rendering thread.
 showFrame :: (UArray Int Word32, Int) -> UArray Int Int32 -> (Ptr GLfloat, Ptr GLfloat) -> (Ptr Int, Ptr Int) -> Float -> Float -> Float -> Int -> Int -> MVar (Play_state0, Array (Int, Int, Int) Wall_grid, Game_state) -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> UArray (Int, Int) Float -> Matrix Float -> Array Int (Int, [Int]) -> IO ([Int], Game_state)
 showFrame p_bind uniform (p_mt_matrix, p_light_buffer) filter_table u v w a a' state_ref w_grid f_grid obj_grid lookUp camera_to_clip msg_queue =
   let survey0 = multiSurvey (modAngle a (-92)) 183 u v (truncate u) (truncate v) w_grid f_grid obj_grid lookUp 2 0 [] []
-      survey1 = multiSurvey (modAngle (modAngle a' a) 222) 183 (fst view_circle') (snd view_circle') (truncate (fst view_circle')) (truncate (snd view_circle')) w_grid f_grid obj_grid lookUp 2 0 [] []
+      survey1 = multiSurvey (modAngle (modAngle a' a) 222) 183 (fst view_circle') (snd view_circle') (truncate (fst view_circle')) (truncate (snd view_circle'))
+                            w_grid f_grid obj_grid lookUp 2 0 [] []
       view_circle' = viewCircle u v 2 (modAngle a a') lookUp
       world_to_clip0 = multStd camera_to_clip (worldToCamera (-u) (-v) (-w) a lookUp)
       world_to_clip1 = multStd camera_to_clip (worldToCamera (- (fst view_circle')) (- (snd view_circle')) (-w) (modAngle (modAngle a' a) 314) lookUp)
