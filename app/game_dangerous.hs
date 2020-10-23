@@ -141,7 +141,8 @@ setupGame comp_env_map conf_reg (Size w h) control_ref =
   glDepthFunc GL_LEQUAL
   glDepthRange 0 1
   glEnable GL_DEPTH_CLAMP
-  contents0 <- bracket (openFile (cfg' "shader_file") ReadMode) (hClose) (\h -> do c <- hGetContents h; putStr ("\nshader file size: " ++ show (length c)); return c)
+  contents0 <- bracket (openFile (cfg' "shader_file") ReadMode) (hClose)
+                       (\h -> do c <- hGetContents h; putStr ("\nshader file size: " ++ show (length c)); return c)
   p_gl_program <- mallocBytes (7 * gluint)
   makeGlProgram (tail (splitOn "#" contents0)) p_gl_program 0
   uniform <- findGlUniform [m0, m1, m2, lm0, lm1, lm2, lm3, lm4, lm5, "t", "mode", m0, m1, m2, lm0, lm1, lm2, lm3, lm4, lm5, "t", "mode", "tex_unit0", m0, m1
@@ -674,6 +675,13 @@ bindTexture (x:xs) p_bind w h offset = do
   glTexParameteri GL_TEXTURE_2D GL_TEXTURE_MAG_FILTER (fromIntegral GL_NEAREST)
   bindTexture xs p_bind w h (offset + 1)
 
+-- This function determines the number of vectors in either component of the mobile_lights field of Play_state0, which is used in certain calls
+-- to OpenGL functions in showFrame.
+detBufferLen :: Integral a => Play_state0 -> Int -> a -> a
+detBufferLen s0 mode component_size =
+  if mode == 0 then div (fromIntegral (length (fst (mobile_lights s0)))) component_size
+  else div (fromIntegral (length (snd (mobile_lights s0)))) component_size
+
 -- This function manages the rendering of all environmental models and in game messages.
 -- It recurses once per frame rendered and is the central branching point of the rendering thread.
 showFrame :: (UArray Int Word32, Int) -> UArray Int Int32 -> (Ptr GLfloat, Ptr GLfloat) -> (Ptr Int, Ptr Int) -> Float -> Float -> Float -> Int -> Int -> MVar (Play_state0, Array (Int, Int, Int) Wall_grid, Game_state) -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> UArray (Int, Int) Float -> Matrix Float -> Array Int (Int, [Int]) -> IO ([Int], Game_state)
@@ -701,31 +709,33 @@ showFrame p_bind uniform (p_mt_matrix, p_light_buffer) filter_table u v w a a' s
     glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 7)))
     if mobile_lights (fst__ p_state) == ([], []) then glUniform1i (coerce (uniform ! 56)) (fromIntegral 2)
     else do
-      glUniform1i (coerce (uniform ! 56)) ((div (fromIntegral (length (fst (mobile_lights (fst__ p_state))))) 4) + 2)
-      glUniform4fv (coerce (uniform ! 54)) (fromIntegral (div (length (fst (mobile_lights (fst__ p_state)))) 4)) p_light_buffer
-      glUniform3fv (coerce (uniform ! 55)) (fromIntegral (div (length (snd (mobile_lights (fst__ p_state)))) 3)) (plusPtr p_light_buffer (glfloat * length (fst (mobile_lights (fst__ p_state)))))
+      glUniform1i (coerce (uniform ! 56)) ((detBufferLen (fst__ p_state) 0 4) + 2)
+      glUniform4fv (coerce (uniform ! 54)) (detBufferLen (fst__ p_state) 0 4) p_light_buffer
+      glUniform3fv (coerce (uniform ! 55)) (detBufferLen (fst__ p_state) 0 3) (plusPtr p_light_buffer (glfloat * length (fst (mobile_lights (fst__ p_state)))))
     glUniform1i (coerce (uniform ! 9)) (fromIntegral (mod (fst__ (gameClock (fst__ p_state))) 240))
     glUniformMatrix4fv (coerce (uniform ! 1)) 1 1 (castPtr p_mt_matrix)
     glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 6)))
     if mobile_lights (fst__ p_state) == ([], []) then glUniform1i (coerce (uniform ! 59)) (fromIntegral 2)
     else do
-      glUniform1i (coerce (uniform ! 59)) ((div (fromIntegral (length (fst (mobile_lights (fst__ p_state))))) 4) + 2)
-      glUniform4fv (coerce (uniform ! 57)) (fromIntegral (div (length (fst (mobile_lights (fst__ p_state)))) 4)) p_light_buffer
-      glUniform3fv (coerce (uniform ! 58)) (fromIntegral (div (length (snd (mobile_lights (fst__ p_state)))) 3)) (plusPtr p_light_buffer (glfloat * length (fst (mobile_lights (fst__ p_state)))))
+      glUniform1i (coerce (uniform ! 59)) ((detBufferLen (fst__ p_state) 0 4) + 2)
+      glUniform4fv (coerce (uniform ! 57)) (detBufferLen (fst__ p_state) 0 4) p_light_buffer
+      glUniform3fv (coerce (uniform ! 58)) (detBufferLen (fst__ p_state) 0 3) (plusPtr p_light_buffer (glfloat * length (fst (mobile_lights (fst__ p_state)))))
     glUniform1i (coerce (uniform ! 20)) (fromIntegral (mod (fst__ (gameClock (fst__ p_state))) 240))
     glUniformMatrix4fv (coerce (uniform ! 12)) 1 1 (castPtr p_mt_matrix)
   else do
     loadArray ([3, 3, 3, 1] ++ fst (mobile_lights (fst__ p_state)) ++ [coerce u, coerce v, coerce w] ++ snd (mobile_lights (fst__ p_state))) p_light_buffer 0
     glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 5)))
-    glUniform1i (coerce (uniform ! 62)) ((div (fromIntegral (length (fst (mobile_lights (fst__ p_state))))) 4) + 1)
-    glUniform4fv (coerce (uniform ! 60)) ((fromIntegral (div (length (fst (mobile_lights (fst__ p_state)))) 4)) + 1) p_light_buffer
-    glUniform3fv (coerce (uniform ! 61)) ((fromIntegral (div (length (snd (mobile_lights (fst__ p_state)))) 3)) + 1) (plusPtr p_light_buffer (glfloat * length (fst (mobile_lights (fst__ p_state))) + 16))
+    glUniform1i (coerce (uniform ! 62)) ((detBufferLen (fst__ p_state) 0 4) + 1)
+    glUniform4fv (coerce (uniform ! 60)) ((detBufferLen (fst__ p_state) 0 4) + 1) p_light_buffer
+    glUniform3fv (coerce (uniform ! 61)) ((detBufferLen (fst__ p_state) 0 3) + 1)
+                 (plusPtr p_light_buffer (glfloat * length (fst (mobile_lights (fst__ p_state))) + 16))
     glUniformMatrix4fv (coerce (uniform ! 24)) 1 1 (castPtr p_mt_matrix)
     glUniform1i (coerce (uniform ! 27)) (fromIntegral (torch_t_limit (fst__ p_state) - (fst__ (gameClock (fst__ p_state)) - torch_t0 (fst__ p_state))))
     glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 4)))
-    glUniform1i (coerce (uniform ! 65)) ((div (fromIntegral (length (fst (mobile_lights (fst__ p_state))))) 4) + 1)
-    glUniform4fv (coerce (uniform ! 63)) ((fromIntegral (div (length (fst (mobile_lights (fst__ p_state)))) 4)) + 1) p_light_buffer
-    glUniform3fv (coerce (uniform ! 64)) ((fromIntegral (div (length (snd (mobile_lights (fst__ p_state)))) 3)) + 1) (plusPtr p_light_buffer (glfloat * length (fst (mobile_lights (fst__ p_state))) + 16))
+    glUniform1i (coerce (uniform ! 65)) ((detBufferLen (fst__ p_state) 0 4) + 1)
+    glUniform4fv (coerce (uniform ! 63)) ((detBufferLen (fst__ p_state) 0 4) + 1) p_light_buffer
+    glUniform3fv (coerce (uniform ! 64)) ((detBufferLen (fst__ p_state) 0 3) + 1)
+                 (plusPtr p_light_buffer (glfloat * length (fst (mobile_lights (fst__ p_state))) + 16))
     glUniformMatrix4fv (coerce (uniform ! 30)) 1 1 (castPtr p_mt_matrix)
     glUniform1i (coerce (uniform ! 33)) (fromIntegral (torch_t_limit (fst__ p_state) - (fst__ (gameClock (fst__ p_state)) - torch_t0 (fst__ p_state))))
   glBindVertexArray (unsafeCoerce ((fst p_bind) ! 0))
@@ -746,10 +756,11 @@ showFrame p_bind uniform (p_mt_matrix, p_light_buffer) filter_table u v w a a' s
     return ([2], third_ p_state)
   else do
     swapBuffers
-    showFrame p_bind uniform (p_mt_matrix, p_light_buffer) filter_table (pos_u (fst__ p_state)) (pos_v (fst__ p_state)) (pos_w (fst__ p_state)) (angle (fst__ p_state)) (view_angle (fst__ p_state)) state_ref (snd__ p_state) f_grid obj_grid lookUp camera_to_clip (snd msg_residue)
+    showFrame p_bind uniform (p_mt_matrix, p_light_buffer) filter_table (pos_u (fst__ p_state)) (pos_v (fst__ p_state)) (pos_w (fst__ p_state))
+              (angle (fst__ p_state)) (view_angle (fst__ p_state)) state_ref (snd__ p_state) f_grid obj_grid lookUp camera_to_clip (snd msg_residue)
 
---These two functions iterate through the message queue received from the game logic thread.  They manage the appearance and expiry of on screen messages and detect special event messages,
---such as are received when the user opts to return to the main menu.
+-- These two functions iterate through the message queue received from the game logic thread.  They manage the appearance and expiry of on screen messages
+-- and detect special event messages, such as are received when the user opts to return to the main menu.
 handleMessage1 :: [(Int, [Int])] -> Array Int (Int, [Int]) -> Int -> Int -> (Int, Array Int (Int, [Int]))
 handleMessage1 [] msg_queue i0 i1 = (0, msg_queue)
 handleMessage1 (x:xs) msg_queue i0 i1 =
