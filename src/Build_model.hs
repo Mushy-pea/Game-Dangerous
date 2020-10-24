@@ -65,20 +65,24 @@ gluint_ = 0 :: GLuint; gluint = sizeOf gluint_
 glint_ = 0 :: GLint; glint = sizeOf glint_
 glushort_ = 0 :: GLushort; glushort = sizeOf glushort_
 int__ = 0 :: Int; int_ = sizeOf int__
-ptr_size = 8 :: Int -- Corresponds to the 8 byte pointers used on the Windows x86_64 platform.  This value should be changed to 4 if compiling for systems with 4 byte pointers
+ptr_size = 8 :: Int -- Corresponds to the 8 byte pointers used on the Windows x86_64 platform.
 
 -- Data types that store information about the environment and game state, as well as an exception type.
 -- There are also a number of default and initial values for these types.
-data Wall_grid = Wall_grid {u1 :: Bool, u2 :: Bool, v1 :: Bool, v2 :: Bool, u1_bound :: Float, u2_bound :: Float, v1_bound :: Float, v2_bound :: Float, w_level :: Float,  wall_flag :: [Int], texture :: [Int], obj :: Maybe Obj_place} deriving (Eq, Show)
+data Wall_grid = Wall_grid {u1 :: Bool, u2 :: Bool, v1 :: Bool, v2 :: Bool, u1_bound :: Float, u2_bound :: Float, v1_bound :: Float, v2_bound :: Float,
+w_level :: Float,  wall_flag :: [Int], texture :: [Int], obj :: Maybe Obj_place} deriving (Eq, Show)
 
 data Object = Object {ident :: Int, att_offset :: Int, num_tex :: Int, tex_w :: GLsizei, tex_h :: GLsizei, behaviours :: [Int]} deriving (Show)
 
-data Wall_place = Wall_place {rotate :: GLint, translate_u :: Float, translate_v :: Float, translate_w :: Float, wall_flag_ :: Int, texture_ :: Int, isNull :: Bool} deriving (Show)
+data Wall_place = Wall_place {rotate :: GLint, translate_u :: Float, translate_v :: Float, translate_w :: Float, wall_flag_ :: Int,
+texture_ :: Int, isNull :: Bool} deriving (Show)
 
-data Obj_place = Obj_place {ident_ :: Int, u__ :: Float, v__ :: Float, w__ :: Float, rotation :: [Int], rotate_ :: Bool, phase :: Float, texture__ :: Int, num_elem :: CInt, obj_flag :: Int} deriving (Eq, Show)
+data Obj_place = Obj_place {ident_ :: Int, u__ :: Float, v__ :: Float, w__ :: Float, rotation :: [Int], rotate_ :: Bool, phase :: Float, texture__ :: Int,
+num_elem :: CInt, obj_flag :: Int} deriving (Eq, Show)
 
 instance Binary Obj_place where
-  put Obj_place {ident_ = a, u__ = b, v__ = c, w__ = d, texture__ = e, num_elem = f, obj_flag = g} = put a >> put b >> put c >> put d >> put e >> (put ((fromIntegral f) :: Int)) >> put g
+  put Obj_place {ident_ = a, u__ = b, v__ = c, w__ = d, texture__ = e, num_elem = f, obj_flag = g} =
+    put a >> put b >> put c >> put d >> put e >> (put ((fromIntegral f) :: Int)) >> put g
 
   get = do a <- get
            b <- get
@@ -87,9 +91,11 @@ instance Binary Obj_place where
            e <- get
            f <- get :: Get Int
            g <- get
-           return (Obj_place {ident_ = a, u__ = b, v__ = c, w__ = d, rotation = [], rotate_ = False, phase = 0, texture__ = e, num_elem = (fromIntegral f) :: CInt, obj_flag = g})
+           return (Obj_place {ident_ = a, u__ = b, v__ = c, w__ = d, rotation = [], rotate_ = False, phase = 0, texture__ = e,
+                   num_elem = (fromIntegral f) :: CInt, obj_flag = g})
 
-data Ray_hit = U1 | U2 | V1 | V2 | Corner0 | Corner1 | Corner2 | Corner3 | U1_hit | U2_hit | V1_hit | V2_hit | Corner0_hit | Corner1_hit | Corner2_hit | Corner3_hit | Object_hit | Ramp_found deriving (Eq)
+data Ray_hit = U1 | U2 | V1 | V2 | Corner0 | Corner1 | Corner2 | Corner3 | U1_hit | U2_hit | V1_hit | V2_hit | Corner0_hit | Corner1_hit | Corner2_hit |
+               Corner3_hit | Object_hit | Ramp_found deriving (Eq)
 
 data Terrain = Flat | Positive_u | Negative_u | Positive_v | Negative_v | Open deriving (Eq, Show, Read)
 
@@ -123,11 +129,13 @@ instance Binary Floor_grid where
            d <- get
            return (Floor_grid {w_ = a, surface = b, local_up_ramp = c, local_down_ramp = d})
 
-data Play_state0 = Play_state0 {pos_u :: Float, pos_v :: Float, pos_w :: Float, vel :: [Float], angle :: Int, angle_ :: Float, message_ :: [(Int, [Int])], rend_mode :: Int, view_mode :: Int, view_angle :: Int,
-gameClock :: (Int, Float, Int), torch_t0 :: Int, torch_t_limit :: Int, on_screen_metrics :: Int, prob_seq :: UArray Int Int, mobile_lights :: ([Float], [Float])} deriving (Eq, Show)
+data Play_state0 = Play_state0 {pos_u :: Float, pos_v :: Float, pos_w :: Float, vel :: [Float], angle :: Int, angle_ :: Float, message_ :: [(Int, [Int])],
+rend_mode :: Int, view_mode :: Int, view_angle :: Int, gameClock :: (Int, Float, Int), torch_t0 :: Int, torch_t_limit :: Int, on_screen_metrics :: Int,
+prob_seq :: UArray Int Int, mobile_lights :: ([Float], [Float])} deriving (Eq, Show)
 
 instance Binary Play_state0 where
-  put Play_state0 {pos_u = a, pos_v = b, pos_w = c, vel = d, angle = e, angle_ = f, rend_mode = g, view_mode = h, view_angle = i, gameClock = j, torch_t0 = k, torch_t_limit = l} = put a >> put b >> put c >> put d >> put e >> put f >> put g >> put h >> put i >> put j >> put k >> put l
+  put Play_state0 {pos_u = a, pos_v = b, pos_w = c, vel = d, angle = e, angle_ = f, rend_mode = g, view_mode = h, view_angle = i, gameClock = j, torch_t0 = k, torch_t_limit = l} =
+    put a >> put b >> put c >> put d >> put e >> put f >> put g >> put h >> put i >> put j >> put k >> put l
 
   get = do a <- get
            b <- get
@@ -141,13 +149,16 @@ instance Binary Play_state0 where
            j <- get
            k <- get
            l <- get
-           return (Play_state0 {pos_u = a, pos_v = b, pos_w = c, vel = d, angle = e, angle_ = f, message_ = [], rend_mode = g, view_mode = h, view_angle = i, gameClock = j, torch_t0 = k, torch_t_limit = l, on_screen_metrics = 0, prob_seq = def_prob_seq, mobile_lights = ([], [])})
+           return (Play_state0 {pos_u = a, pos_v = b, pos_w = c, vel = d, angle = e, angle_ = f, message_ = [], rend_mode = g, view_mode = h, view_angle = i,
+                   gameClock = j, torch_t0 = k, torch_t_limit = l, on_screen_metrics = 0, prob_seq = def_prob_seq, mobile_lights = ([], [])})
 
-data Play_state1 = Play_state1 {health :: Int, ammo :: Int, gems :: Int, torches :: Int, keys :: [Int], region :: [Int], difficulty :: ([Char], Int, Int, Int), sig_q :: [Int], next_sig_q :: [Int],
-message :: [Int], state_chg :: Int, verbose_mode :: Bool, npc_states :: Array Int NPC_state, story_state :: Int} deriving (Eq, Show)
+data Play_state1 = Play_state1 {health :: Int, ammo :: Int, gems :: Int, torches :: Int, keys :: [Int], region :: [Int], difficulty :: ([Char], Int, Int, Int),
+sig_q :: [Int], next_sig_q :: [Int], message :: [Int], state_chg :: Int, verbose_mode :: Bool, npc_states :: Array Int NPC_state,
+story_state :: Int} deriving (Eq, Show)
 
 instance Binary Play_state1 where
-  put Play_state1 {health = a, ammo = b, gems = c, torches = d, keys = e, region = f, difficulty = g, sig_q = h, message = i, state_chg = j, npc_states = k} = put a >> put b >> put c >> put d >> put e >> put f >> put g >> put h >> put i >> put j >> put k
+  put Play_state1 {health = a, ammo = b, gems = c, torches = d, keys = e, region = f, difficulty = g, sig_q = h, message = i, state_chg = j, npc_states = k} =
+    put a >> put b >> put c >> put d >> put e >> put f >> put g >> put h >> put i >> put j >> put k
 
   get = do a <- get
            b <- get
@@ -160,15 +171,18 @@ instance Binary Play_state1 where
            i <- get
            j <- get
            k <- get
-           return Play_state1 {health = a, ammo = b, gems = c, torches = d, keys = e, region = f, difficulty = g, sig_q = h, next_sig_q = [], message = i, state_chg = j, verbose_mode = False, npc_states = k}
+           return Play_state1 {health = a, ammo = b, gems = c, torches = d, keys = e, region = f, difficulty = g, sig_q = h, next_sig_q = [], message = i,
+                  state_chg = j, verbose_mode = False, npc_states = k}
 
-data NPC_state = NPC_state {npc_type :: Int, c_health :: Int, ticks_left0 :: Int, ticks_left1 :: Int, node_locations :: [Int], fg_position :: (Float, Float, Float), dir_vector :: (Float, Float), direction :: Int,
-lastDir :: Int, dir_list :: [Int], node_num :: Int, end_node :: Int, head_index :: Int, reversed :: Bool, target_u' :: Int, target_v' :: Int, target_w' :: Int, speed :: Float, avoid_dist :: Int, attack_mode :: Bool,
+data NPC_state = NPC_state {npc_type :: Int, c_health :: Int, ticks_left0 :: Int, ticks_left1 :: Int, node_locations :: [Int],
+fg_position :: (Float, Float, Float), dir_vector :: (Float, Float), direction :: Int, lastDir :: Int, dir_list :: [Int], node_num :: Int, end_node :: Int,
+head_index :: Int, reversed :: Bool, target_u' :: Int, target_v' :: Int, target_w' :: Int, speed :: Float, avoid_dist :: Int, attack_mode :: Bool,
 finalAppr :: Bool, fire_prob :: Int, fireball_state :: [(Int, Int)]} deriving (Eq, Show)
 
 instance Binary NPC_state where
   put NPC_state {npc_type = a, c_health = b, ticks_left0 = c, ticks_left1 = d, node_locations = e, fg_position = f, dir_vector = g, direction = h, lastDir = i, dir_list = j, node_num = k, end_node = l, head_index = m, reversed = n, target_u' = o, target_v' = p, target_w' = q, speed = r, avoid_dist = s, attack_mode = t, finalAppr = u, fire_prob = v, fireball_state = w} =
-    put a >> put b >> put c >> put d >> put e >> put f >> put g >> put h >> put i >> put j >> put k >> put l >> put m >> put n >> put o >> put p >> put q >> put r >> put s >> put t >> put u >> put v >> put w
+    put a >> put b >> put c >> put d >> put e >> put f >> put g >> put h >> put i >> put j >> put k >> put l >> put m >> put n >> put o >> put p >> put q >>
+    put r >> put s >> put t >> put u >> put v >> put w
 
   get = do a <- get
            b <- get
@@ -193,20 +207,29 @@ instance Binary NPC_state where
            u <- get
            v <- get
            w <- get
-           return (NPC_state {npc_type = a, c_health = b, ticks_left0 = c, ticks_left1 = d, node_locations = e, fg_position = f, dir_vector = g, direction = h, lastDir = i, dir_list = j, node_num = k, end_node = l, head_index = m, reversed = n, target_u' = o, target_v' = p, target_w' = q, speed = r, avoid_dist = s, attack_mode = t, finalAppr = u, fire_prob = v, fireball_state = w})
+           return (NPC_state {npc_type = a, c_health = b, ticks_left0 = c, ticks_left1 = d, node_locations = e, fg_position = f, dir_vector = g, direction = h,
+                   lastDir = i, dir_list = j, node_num = k, end_node = l, head_index = m, reversed = n, target_u' = o, target_v' = p, target_w' = q, speed = r,
+                   avoid_dist = s, attack_mode = t, finalAppr = u, fire_prob = v, fireball_state = w})
 
-data Game_state = Game_state {is_set :: Bool, w_grid_ :: Array (Int, Int, Int) Wall_grid, f_grid_ :: Array (Int, Int, Int) Floor_grid, obj_grid_ :: Array (Int, Int, Int) (Int, [Int]), s0_ :: Play_state0, s1_ :: Play_state1, map_transit_string :: ([Char], [Char])}
+data Game_state = Game_state {is_set :: Bool, w_grid_ :: Array (Int, Int, Int) Wall_grid, f_grid_ :: Array (Int, Int, Int) Floor_grid,
+                  obj_grid_ :: Array (Int, Int, Int) (Int, [Int]), s0_ :: Play_state0, s1_ :: Play_state1, map_transit_string :: ([Char], [Char])}
 
 data Io_box = Io_box {uniform_ :: UArray Int Int32, p_bind_ :: (UArray Int Word32, Int), control_ :: IORef Int}
 
-data EngineError = Invalid_wall_flag | Invalid_obj_flag | Invalid_GPLC_opcode | Invalid_conf_reg_field | Invalid_GPLC_op_argument | Invalid_map_element | NPC_feature_not_implemented deriving (Show)
+data EngineError = Invalid_wall_flag | Invalid_obj_flag | Invalid_GPLC_opcode | Invalid_conf_reg_field | Invalid_GPLC_op_argument | Invalid_map_element |
+                   NPC_feature_not_implemented deriving (Show)
 
 instance Exception EngineError
 
-ps0_init = Play_state0 {pos_u = 0, pos_v = 0, pos_w = 0, vel = [0, 0, 0], angle = 0, angle_ = 0, message_ = [], rend_mode = 0, view_mode = 0, view_angle = 0, gameClock = (1, 1, 1), torch_t0 = 1, torch_t_limit = 0, on_screen_metrics = 0, prob_seq = def_prob_seq, mobile_lights = ([], [])}
-ps1_init = Play_state1 {health = 100, ammo = 0, gems = 0, torches = 0, keys = [63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63], region = [19,46,41,44,27,33,31,63,28,27,51,63,4], difficulty = ("Plenty of danger please", 6, 10, 14), sig_q = [], next_sig_q = [], message = [], state_chg = 0, verbose_mode = False, npc_states = empty_npc_array, story_state = 0}
+ps0_init = Play_state0 {pos_u = 0, pos_v = 0, pos_w = 0, vel = [0, 0, 0], angle = 0, angle_ = 0, message_ = [], rend_mode = 0, view_mode = 0, view_angle = 0,
+gameClock = (1, 1, 1), torch_t0 = 1, torch_t_limit = 0, on_screen_metrics = 0, prob_seq = def_prob_seq, mobile_lights = ([], [])}
 
-def_w_grid = Wall_grid {u1 = False, u2 = False, v1 = False, v2 = False, u1_bound = 0, u2_bound = 0, v1_bound = 0, v2_bound = 0, w_level = 0,  wall_flag = [], texture = [], obj = Nothing}
+ps1_init = Play_state1 {health = 100, ammo = 0, gems = 0, torches = 0, keys = [63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63],
+region = [19,46,41,44,27,33,31,63,28,27,51,63,4], difficulty = ("Plenty of danger please", 6, 10, 14), sig_q = [], next_sig_q = [], message = [], state_chg = 0,
+verbose_mode = False, npc_states = empty_npc_array, story_state = 0}
+
+def_w_grid = Wall_grid {u1 = False, u2 = False, v1 = False, v2 = False, u1_bound = 0, u2_bound = 0, v1_bound = 0, v2_bound = 0, w_level = 0,  wall_flag = [],
+texture = [], obj = Nothing}
 
 defWGridArr :: Array (Int, Int, Int) Wall_grid
 defWGridArr = array ((-1, 0, 0), (-3, 99, 99)) [((w, u, v), def_w_grid) | w <- [(-1)..(-3)], u <- [0..99], v <- [0..99]]
@@ -220,7 +243,10 @@ defObjGridArr :: Array (Int, Int, Int) (Int, [Int])
 defObjGridArr = array ((0, 0, 0), (2, 99, 99)) [((w, u, v), def_obj_grid) | w <- [0..2], u <- [0..99], v <- [0..99]] :: Array (Int, Int, Int) (Int, [Int])
 
 def_obj_place = Obj_place {ident_ = 0, u__ = 0, v__ = 0, w__ = 0, rotation = [], rotate_ = False, phase = 0, texture__ = 0, num_elem = 0, obj_flag = 0}
-w_grid_flag = Wall_grid {u1 = True, u2 = True, v1 = True, v2 = True, u1_bound = 0, u2_bound = 0, v1_bound = 0, v2_bound = 0, w_level = 0,  wall_flag = [], texture = [], obj = Just def_obj_place}
+
+w_grid_flag = Wall_grid {u1 = True, u2 = True, v1 = True, v2 = True, u1_bound = 0, u2_bound = 0, v1_bound = 0, v2_bound = 0, w_level = 0,  wall_flag = [],
+texture = [], obj = Just def_obj_place}
+
 f_grid_flag = Floor_grid {w_ = 3, surface = Flat, local_up_ramp = (0, 0), local_down_ramp = (0, 0)}
 obj_grid_flag = (5, []) :: (Int, [Int])
 
@@ -228,15 +254,16 @@ def_save_state = Game_state {is_set = False, w_grid_ = defWGridArr, f_grid_ = de
 def_wall_place = Wall_place {rotate = 0, translate_u = 0, translate_v = 0, translate_w = 0, wall_flag_ = 0, texture_ = 0, isNull = True}
 def_prob_seq = array (0, 239) [(i, 0) | i <- [0..239]]
 
-def_npc_state = NPC_state {npc_type = 0, c_health = 0, ticks_left0 = 40, ticks_left1 = 0, node_locations = [], fg_position = (0, 0, 0), dir_vector = (0, 0), direction = 0, lastDir = 0,
-dir_list = [], node_num = 0, end_node = 0, head_index = 0, reversed = False, target_u' = 0, target_v' = 0, target_w' = 0, speed = 0, avoid_dist = 0, attack_mode = False, finalAppr = False, fire_prob = 0, fireball_state = []}
+def_npc_state = NPC_state {npc_type = 0, c_health = 0, ticks_left0 = 40, ticks_left1 = 0, node_locations = [], fg_position = (0, 0, 0), dir_vector = (0, 0),
+direction = 0, lastDir = 0, dir_list = [], node_num = 0, end_node = 0, head_index = 0, reversed = False, target_u' = 0, target_v' = 0, target_w' = 0, speed = 0,
+avoid_dist = 0, attack_mode = False, finalAppr = False, fire_prob = 0, fireball_state = []}
 
 empty_npc_array = array (0, 127) [(i, def_npc_state) | i <- [0..127]]
 
 def_save_log = "1\n*save0.sav_000000\n*save1.sav_000000\n*save2.sav_000000\n*save3.sav_000000\n*save4.sav_000000\n*save5.sav_000000"
 
--- The implementation of the environmental ceiling is simple and usea a single model that is rendered in every frame.  The Obj_place value for this model has therefore been hard coded and is added directly to
--- the [Obj_place] taken by Main.show_object, as there is no requirement for the ray tracer to be involved.
+-- The implementation of the environmental ceiling is simple and usea a single model that is rendered in every frame.  The Obj_place value for this model has
+-- therefore been hard coded and is added directly to the [Obj_place] taken by Main.show_object, as there is no requirement for the ray tracer to be involved.
 ceiling_model = Obj_place {ident_ = 1044, u__ = 0, v__ = 0, w__ = 0, rotation = [], rotate_ = False, phase = 0, texture__ = 1, num_elem = 36, obj_flag = 0}
 
 -- This list is used to sequence centipede NPC animation.
@@ -255,7 +282,7 @@ instance Flag Obj_place where
 -- Deafult values used in the perspective transformation.
 zNear = 0.5 :: Float; zFar = 100 :: Float
 
--- Used in preference to nullPtr as this value is explicitly defined as zero.  The type of 0 must be changed to Word32 if compiling for systems with 32 bit pointers.
+-- Used in preference to nullPtr as this value is explicitly defined as zero.
 zero_ptr = (unsafeCoerce (0 :: Word64) :: Ptr a)
 
 -- These functions process vertex and map data, which is either loaded into GPU memory or held in the (CPU memory) environment map respectively.
@@ -324,8 +351,8 @@ modAngle a b =
 
 mod_angle' a b = b
 
--- This function was introduced as the transition to variable frame rate management was made.  It handles updates to a floating point representation of angle, which allows
--- for fine grain frame rate dependent changes to the player angle to be made.
+-- This function was introduced as the transition to variable frame rate management was made.  It handles updates to a floating point representation of angle,
+-- which allows for fine grain frame rate dependent changes to the player angle to be made.
 modAngle_ :: Float -> Float -> Bool -> Float
 modAngle_ a f_rate clockwise =
   if clockwise == True then
@@ -335,8 +362,9 @@ modAngle_ a f_rate clockwise =
     if a + 5 > 200 * pi then 5 - (200 * pi - a)
     else a + 5
 
--- These functions implement a ray tracing algorhythm, which is part of the visible surface determination (VSD) system and is used for line of sight checks by the non - player character logic.
--- The Ray_test class exists so that the ray tracer can conveniently provide differing functionality when called from the VSD system or game logic.
+-- These functions implement a ray tracing algorhythm, which is part of the visible surface determination (VSD) system and is used for line of sight checks by
+-- the non - player character logic.  The Ray_test class exists so that the ray tracer can conveniently provide differing functionality when called from the
+-- VSD system or game logic.
 fBlock :: Int -> Int -> Int -> Terrain -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> Int
 fBlock w u v f_target0 f_grid obj_grid =
   let f_target1 = surface (f_grid ! (w - 1, div u 2, div v 2))
@@ -522,33 +550,65 @@ rayTrace0 :: Ray_test a => Float -> Float -> Int -> Bool -> Bool -> Int -> Int -
 {-# SPECIALISE rayTrace0 :: Float -> Float -> Int -> Bool -> Bool -> Int -> Int -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) Wall_grid -> UArray (Int, Int) Float -> Int -> [Obj_place] -> Int -> Int -> Int -> Int -> (Wall_place, [Obj_place], Int) #-}
 rayTrace0 u v a u_positive v_positive u_block v_block w_grid f_grid grid lookUp w_block acc target_u target_v seek_mode c =
   let grid_i = w_grid ! (w_block, u_block, v_block)
-      result = intersect (rayTrace1 u v (u1_bound grid_i) (u2_bound grid_i) (v1_bound grid_i) (v2_bound grid_i) a u_positive v_positive lookUp) grid f_grid u v w_block u_block v_block seek_mode c
+      result = intersect (rayTrace1 u v (u1_bound grid_i) (u2_bound grid_i) (v1_bound grid_i) (v2_bound grid_i) a u_positive v_positive lookUp) grid f_grid u v
+                         w_block u_block v_block seek_mode c
       found = scan_cube grid w_block u_block v_block ++ acc
   in
   if seek_mode == 1 && c == 2 then (def_wall_place, [], 0)
   else if seek_mode > 1 && u_block == target_u && v_block == target_v then (def_wall_place, [], 0)
-  else if fst result == U1 && v_positive == True then rayTrace0 (u1_bound grid_i) (v + (lookUp ! (3, a)) * (u - u1_bound grid_i)) a u_positive v_positive (u_block - 1) v_block w_grid f_grid grid lookUp w_block found target_u target_v seek_mode (c + 1)
-  else if fst result == U1 && v_positive == False then rayTrace0 (u1_bound grid_i) (v - (lookUp ! (3, a)) * (u - u1_bound grid_i)) a u_positive v_positive (u_block - 1) v_block w_grid f_grid grid lookUp w_block found target_u target_v seek_mode (c + 1)
-  else if fst result == U2 && v_positive == True then rayTrace0 (u2_bound grid_i) (v + (lookUp ! (3, a)) * ((u2_bound grid_i) - u)) a u_positive v_positive (u_block + 1) v_block w_grid f_grid grid lookUp w_block found target_u target_v seek_mode (c + 1)
-  else if fst result == U2 && v_positive == False then rayTrace0 (u2_bound grid_i) (v - (lookUp ! (3, a)) * ((u2_bound grid_i) - u)) a u_positive v_positive (u_block + 1) v_block w_grid f_grid grid lookUp w_block found target_u target_v seek_mode (c + 1)
-  else if fst result == V1 && u_positive == True then rayTrace0 (u + (1 / lookUp ! (3, a)) * (v - v1_bound grid_i)) (v1_bound grid_i) a u_positive v_positive u_block (v_block - 1) w_grid f_grid grid lookUp w_block found target_u target_v seek_mode (c + 1)
-  else if fst result == V1 && u_positive == False then rayTrace0 (u - (1 / lookUp ! (3, a)) * (v - v1_bound grid_i)) (v1_bound grid_i) a u_positive v_positive u_block (v_block - 1) w_grid f_grid grid lookUp w_block found target_u target_v seek_mode (c + 1)
-  else if fst result == V2 && u_positive == True then rayTrace0 (u + (1 / lookUp ! (3, a)) * ((v2_bound grid_i) - v)) (v2_bound grid_i) a u_positive v_positive u_block (v_block + 1) w_grid f_grid grid lookUp w_block found target_u target_v seek_mode (c + 1)
-  else if fst result == V2 && u_positive == False then rayTrace0 (u - (1 / lookUp ! (3, a)) * ((v2_bound grid_i) - v)) (v2_bound grid_i) a u_positive v_positive u_block (v_block + 1) w_grid f_grid grid lookUp w_block found target_u target_v seek_mode (c + 1)
-  else if fst result == Corner0 then rayTrace0 (u1_bound grid_i) (v2_bound grid_i) a u_positive v_positive (u_block - 1) (v_block + 1) w_grid f_grid grid lookUp w_block found target_u target_v seek_mode (c + 1)
-  else if fst result == Corner1 then rayTrace0 (u2_bound grid_i) (v2_bound grid_i) a u_positive v_positive (u_block + 1) (v_block + 1) w_grid f_grid grid lookUp w_block found target_u target_v seek_mode (c + 1)
-  else if fst result == Corner2 then rayTrace0 (u2_bound grid_i) (v1_bound grid_i) a u_positive v_positive (u_block + 1) (v_block - 1) w_grid f_grid grid lookUp w_block found target_u target_v seek_mode (c + 1)
-  else if fst result == U1_hit then (Wall_place {rotate = 0, translate_u = u1_bound grid_i, translate_v = v1_bound grid_i, translate_w = w_level grid_i, wall_flag_ = ((wall_flag grid_i), 74) !! 3, texture_ = ((texture grid_i), 75) !! 3, isNull = False}, found, 0)
-  else if fst result == U2_hit then (Wall_place {rotate = 1, translate_u = u2_bound grid_i, translate_v = v1_bound grid_i, translate_w = w_level grid_i, wall_flag_ = ((wall_flag grid_i), 76) !! 1, texture_ = ((texture grid_i), 77) !! 1, isNull = False}, found, 0)
-  else if fst result == V1_hit then (Wall_place {rotate = 2, translate_u = u1_bound grid_i, translate_v = v1_bound grid_i, translate_w = w_level grid_i, wall_flag_ = ((wall_flag grid_i), 78) !! 2, texture_ = ((texture grid_i), 79) !! 2, isNull = False}, found, 0)
-  else if fst result == V2_hit then (Wall_place {rotate = 3, translate_u = u1_bound grid_i, translate_v = v2_bound grid_i, translate_w = w_level grid_i, wall_flag_ = ((wall_flag grid_i), 80) !! 0, texture_ = ((texture grid_i), 81) !! 0, isNull = False}, found, 0)
-  else if fst result == Corner0_hit then (Wall_place {rotate = 3, translate_u = u1_bound grid_i, translate_v = v2_bound grid_i, translate_w = w_level grid_i, wall_flag_ = ((wall_flag grid_i), 82) !! 0, texture_ = ((texture grid_i), 83) !! 0, isNull = False}, found, 0)
-  else if fst result == Corner1_hit then (Wall_place {rotate = 1, translate_u = u2_bound grid_i, translate_v = v1_bound grid_i, translate_w = w_level grid_i, wall_flag_ = ((wall_flag grid_i), 84) !! 1, texture_ = ((texture grid_i), 85) !! 1, isNull = False}, found, 0)
-  else if fst result == Corner2_hit then (Wall_place {rotate = 2, translate_u = u1_bound grid_i, translate_v = v1_bound grid_i, translate_w = w_level grid_i, wall_flag_ = ((wall_flag grid_i), 86) !! 2, texture_ = ((texture grid_i), 87) !! 2, isNull = False}, found, 0)
-  else if fst result == Corner3_hit then (Wall_place {rotate = 0, translate_u = u1_bound grid_i, translate_v = v1_bound grid_i, translate_w = w_level grid_i, wall_flag_ = ((wall_flag grid_i), 88) !! 3, texture_ = ((texture grid_i), 89) !! 3, isNull = False}, found, 0)
+  else if fst result == U1 && v_positive == True then rayTrace0 (u1_bound grid_i) (v + (lookUp ! (3, a)) * (u - u1_bound grid_i)) a u_positive v_positive
+                                                                (u_block - 1) v_block w_grid f_grid grid lookUp w_block found target_u target_v seek_mode
+                                                                (c + 1)
+  else if fst result == U1 && v_positive == False then rayTrace0 (u1_bound grid_i) (v - (lookUp ! (3, a)) * (u - u1_bound grid_i)) a u_positive v_positive
+                                                                 (u_block - 1) v_block w_grid f_grid grid lookUp w_block found target_u target_v seek_mode
+                                                                 (c + 1)
+  else if fst result == U2 && v_positive == True then rayTrace0 (u2_bound grid_i) (v + (lookUp ! (3, a)) * ((u2_bound grid_i) - u)) a u_positive v_positive
+                                                                (u_block + 1) v_block w_grid f_grid grid lookUp w_block found target_u target_v seek_mode
+                                                                (c + 1)
+  else if fst result == U2 && v_positive == False then rayTrace0 (u2_bound grid_i) (v - (lookUp ! (3, a)) * ((u2_bound grid_i) - u)) a u_positive v_positive
+                                                                 (u_block + 1) v_block w_grid f_grid grid lookUp w_block found target_u target_v seek_mode
+                                                                 (c + 1)
+  else if fst result == V1 && u_positive == True then rayTrace0 (u + (1 / lookUp ! (3, a)) * (v - v1_bound grid_i)) (v1_bound grid_i) a u_positive v_positive
+                                                                u_block (v_block - 1) w_grid f_grid grid lookUp w_block found target_u target_v seek_mode
+                                                                (c + 1)
+  else if fst result == V1 && u_positive == False then rayTrace0 (u - (1 / lookUp ! (3, a)) * (v - v1_bound grid_i)) (v1_bound grid_i) a u_positive v_positive
+                                                                 u_block (v_block - 1) w_grid f_grid grid lookUp w_block found target_u target_v seek_mode
+                                                                 (c + 1)
+  else if fst result == V2 && u_positive == True then rayTrace0 (u + (1 / lookUp ! (3, a)) * ((v2_bound grid_i) - v)) (v2_bound grid_i) a u_positive v_positive
+                                                                u_block (v_block + 1) w_grid f_grid grid lookUp w_block found target_u target_v seek_mode
+                                                                (c + 1)
+  else if fst result == V2 && u_positive == False then rayTrace0 (u - (1 / lookUp ! (3, a)) * ((v2_bound grid_i) - v)) (v2_bound grid_i) a u_positive v_positive
+                                                                 u_block (v_block + 1) w_grid f_grid grid lookUp w_block found target_u target_v seek_mode
+                                                                 (c + 1)
+  else if fst result == Corner0 then rayTrace0 (u1_bound grid_i) (v2_bound grid_i) a u_positive v_positive (u_block - 1) (v_block + 1) w_grid f_grid grid lookUp
+                                               w_block found target_u target_v seek_mode (c + 1)
+  else if fst result == Corner1 then rayTrace0 (u2_bound grid_i) (v2_bound grid_i) a u_positive v_positive (u_block + 1) (v_block + 1) w_grid f_grid grid lookUp
+                                               w_block found target_u target_v seek_mode (c + 1)
+  else if fst result == Corner2 then rayTrace0 (u2_bound grid_i) (v1_bound grid_i) a u_positive v_positive (u_block + 1) (v_block - 1) w_grid f_grid grid lookUp
+                                               w_block found target_u target_v seek_mode (c + 1)
+  else if fst result == U1_hit then (Wall_place {rotate = 0, translate_u = u1_bound grid_i, translate_v = v1_bound grid_i, translate_w = w_level grid_i,
+                                                 wall_flag_ = ((wall_flag grid_i), 74) !! 3, texture_ = ((texture grid_i), 75) !! 3, isNull = False}, found, 0)
+  else if fst result == U2_hit then (Wall_place {rotate = 1, translate_u = u2_bound grid_i, translate_v = v1_bound grid_i, translate_w = w_level grid_i,
+                                                 wall_flag_ = ((wall_flag grid_i), 76) !! 1, texture_ = ((texture grid_i), 77) !! 1, isNull = False}, found, 0)
+  else if fst result == V1_hit then (Wall_place {rotate = 2, translate_u = u1_bound grid_i, translate_v = v1_bound grid_i, translate_w = w_level grid_i,
+                                                 wall_flag_ = ((wall_flag grid_i), 78) !! 2, texture_ = ((texture grid_i), 79) !! 2, isNull = False}, found, 0)
+  else if fst result == V2_hit then (Wall_place {rotate = 3, translate_u = u1_bound grid_i, translate_v = v2_bound grid_i, translate_w = w_level grid_i,
+                                                 wall_flag_ = ((wall_flag grid_i), 80) !! 0, texture_ = ((texture grid_i), 81) !! 0, isNull = False}, found, 0)
+  else if fst result == Corner0_hit then (Wall_place {rotate = 3, translate_u = u1_bound grid_i, translate_v = v2_bound grid_i, translate_w = w_level grid_i,
+                                          wall_flag_ = ((wall_flag grid_i), 82) !! 0, texture_ = ((texture grid_i), 83) !! 0, isNull = False}, found, 0)
+  else if fst result == Corner1_hit then (Wall_place {rotate = 1, translate_u = u2_bound grid_i, translate_v = v1_bound grid_i, translate_w = w_level grid_i,
+                                                      wall_flag_ = ((wall_flag grid_i), 84) !! 1, texture_ = ((texture grid_i), 85) !! 1, isNull = False},
+                                         found, 0)
+  else if fst result == Corner2_hit then (Wall_place {rotate = 2, translate_u = u1_bound grid_i, translate_v = v1_bound grid_i, translate_w = w_level grid_i,
+                                                      wall_flag_ = ((wall_flag grid_i), 86) !! 2, texture_ = ((texture grid_i), 87) !! 2, isNull = False},
+                                         found, 0)
+  else if fst result == Corner3_hit then (Wall_place {rotate = 0, translate_u = u1_bound grid_i, translate_v = v1_bound grid_i, translate_w = w_level grid_i,
+                                                      wall_flag_ = ((wall_flag grid_i), 88) !! 3, texture_ = ((texture grid_i), 89) !! 3, isNull = False},
+                                         found, 0)
   else if fst result == Object_hit then (def_wall_place, [], c)
   else if fst result == Ramp_found then (def_wall_place, [], snd result)
-  else rayTrace0 (u1_bound grid_i) (v1_bound grid_i) a u_positive v_positive (u_block - 1) (v_block - 1) w_grid f_grid grid lookUp w_block found target_u target_v seek_mode (c + 1)
+  else rayTrace0 (u1_bound grid_i) (v1_bound grid_i) a u_positive v_positive (u_block - 1) (v_block - 1) w_grid f_grid grid lookUp w_block found target_u
+                 target_v seek_mode (c + 1)
 
 procAngle :: Int -> (Int, Bool, Bool)
 {-# INLINE procAngle #-}
@@ -558,7 +618,8 @@ procAngle a =
   else if a < 472 then (a - 314, False, False)
   else (157 - (a - 471), True, False)
 
--- These two functions handle the tracing of rays over the range of the field of view, returning a list of the wall sections that border the visible region and a list of any objects visible within that region.
+-- These two functions handle the tracing of rays over the range of the field of view, returning a list of the wall sections that border the visible region and
+-- a list of any objects visible within that region.
 surveyView :: Int -> Int -> Int -> Float -> Float -> Int -> Int -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> UArray (Int, Int) Float -> Int -> [Wall_place] -> [Obj_place] -> ([Wall_place], [Obj_place])
 surveyView a da limit u v u_block v_block w_grid f_grid lookUp w_block acc0 acc1 =
   let proc_angle_ = procAngle a
@@ -574,8 +635,8 @@ multiSurvey a a_limit u v u_block v_block w_grid f_grid obj_grid lookUp w_limit 
   if w_block > w_limit then (acc0, acc1)
   else multiSurvey a a_limit u v u_block v_block w_grid f_grid obj_grid lookUp w_limit (w_block + 1) (acc0 ++ fst survey) (acc1 ++ snd survey)
 
--- This function filters the output of the ray tracer to avoid multiple rendering.  It has been implemented using direct memory access because I couldn't find a way to write this algorhythm using an array
--- form of the flag table, which didn't appear to result in the array being re - computed every frame (leading to disasterous performance).
+-- This function filters the output of the ray tracer to avoid multiple rendering.  It has been implemented using direct memory access because of the
+-- performance critical role of this logic.
 filterSurv :: Flag a => [a] -> [a] -> Ptr Int -> Int -> IO [a]
 filterSurv [] acc p_table game_t = return acc
 filterSurv (x:xs) acc p_table game_t = do
@@ -594,8 +655,14 @@ loadGrid1 i =
 loadGrid0 :: [[Char]] -> [Wall_grid]
 loadGrid0 [] = []
 loadGrid0 (x0:x1:x2:x3:x4:x5:x6:x7:x8:x9:x10:x11:x12:x13:x14:x15:x16:x17:xs) =
-  if (read x17 :: Int) == 0 then Wall_grid {u1 = loadGrid1 x0, u2 = loadGrid1 x1, v1 = loadGrid1 x2, v2 = loadGrid1 x3, u1_bound = read x4, u2_bound = read x5, v1_bound = read x6, v2_bound = read x7, w_level = read x8, wall_flag = procInts [x9, x10, x11, x12], texture = procInts [x13, x14, x15, x16], obj = Nothing} : loadGrid0 xs
-  else Wall_grid {u1 = loadGrid1 x0, u2 = loadGrid1 x1, v1 = loadGrid1 x2, v2 = loadGrid1 x3, u1_bound = read x4, u2_bound = read x5, v1_bound = read x6, v2_bound = read x7, w_level = read x8, wall_flag = procInts [x9, x10, x11, x12], texture = procInts [x13, x14, x15, x16], obj =  Just Obj_place {ident_ = read ((xs, 90) !! 0), u__ = read ((xs, 91) !! 1), v__ = read ((xs, 92) !! 2), w__ = read ((xs, 93) !! 3), rotation = procInts (take 3 (drop 4 xs)), rotate_ = loadGrid1 ((xs, 94) !! 7), phase = read ((xs, 95) !! 8), texture__ = read ((xs, 96) !! 9), num_elem = read ((xs, 97) !! 10), obj_flag = read ((xs, 98) !! 11)}} : loadGrid0 (drop 12 xs)
+  if (read x17 :: Int) == 0 then Wall_grid {u1 = loadGrid1 x0, u2 = loadGrid1 x1, v1 = loadGrid1 x2, v2 = loadGrid1 x3, u1_bound = read x4, u2_bound = read x5,
+                                            v1_bound = read x6, v2_bound = read x7, w_level = read x8, wall_flag = procInts [x9, x10, x11, x12],
+                                            texture = procInts [x13, x14, x15, x16], obj = Nothing} : loadGrid0 xs
+  else Wall_grid {u1 = loadGrid1 x0, u2 = loadGrid1 x1, v1 = loadGrid1 x2, v2 = loadGrid1 x3, u1_bound = read x4, u2_bound = read x5, v1_bound = read x6,
+                  v2_bound = read x7, w_level = read x8, wall_flag = procInts [x9, x10, x11, x12], texture = procInts [x13, x14, x15, x16],
+                  obj =  Just Obj_place {ident_ = read ((xs, 90) !! 0), u__ = read ((xs, 91) !! 1), v__ = read ((xs, 92) !! 2), w__ = read ((xs, 93) !! 3),
+                  rotation = procInts (take 3 (drop 4 xs)), rotate_ = loadGrid1 ((xs, 94) !! 7), phase = read ((xs, 95) !! 8), texture__ = read ((xs, 96) !! 9),
+                  num_elem = read ((xs, 97) !! 10), obj_flag = read ((xs, 98) !! 11)}} : loadGrid0 (drop 12 xs)
 
 sortGrid1 :: [[Char]] -> [[Wall_grid]]
 sortGrid1 [] = []
@@ -609,19 +676,25 @@ makeArray2 :: Int -> Int -> Int
 makeArray2 i0 i1 = (i1 - i0)
 
 makeArray1 :: [[[a]]] -> Int -> Int -> Int -> Array (Int, Int, Int) a
-makeArray1 grid u_max v_max w_max = array ((0, 0, 0), (w_max, u_max, v_max)) [((w, u, v), ((((((grid, 613) !! w), 614) !! u), 615) !! v)) |w <- [0..w_max], u <- [0..u_max], v <- [0..v_max]]
+makeArray1 grid u_max v_max w_max = array ((0, 0, 0), (w_max, u_max, v_max))
+                                          [((w, u, v), ((((((grid, 613) !! w), 614) !! u), 615) !! v)) |w <- [0..w_max], u <- [0..u_max], v <- [0..v_max]]
 
 makeArray0 :: [[[a]]] -> Int -> Int -> Int -> Array (Int, Int, Int) a
-makeArray0 grid u_max v_max w_max = array ((-w_max - 1, 0, 0), (w_max, u_max, v_max)) [((w, u, v), ((((((grid, 616) !! (makeArray2 (-w_max - 1) w)), 617) !! u), 618) !! v)) |w <- [-w_max - 1..w_max], u <- [0..u_max], v <- [0..v_max]]
+makeArray0 grid u_max v_max w_max = array ((-w_max - 1, 0, 0), (w_max, u_max, v_max))
+                                          [((w, u, v), ((((((grid, 616) !! (makeArray2 (-w_max - 1) w)), 617) !! u), 618) !! v)) |w <- [-w_max - 1..w_max], u <- [0..u_max], v <- [0..v_max]]
 
 loadFloor2 :: [[Char]] -> [Floor_grid]
 loadFloor2 [] = []
 loadFloor2 (x0:x1:x2:x3:x4:x5:xs) =
   if x1 == "0" then Floor_grid {w_ = read x0, surface = Flat, local_up_ramp = (read x2, read x3), local_down_ramp = (read x4, read x5)} : loadFloor2 xs
-  else if x1 == "1" then Floor_grid {w_ = read x0, surface = Positive_u, local_up_ramp = (read x2, read x3), local_down_ramp = (read x4, read x5)} : loadFloor2 xs
-  else if x1 == "2" then Floor_grid {w_ = read x0, surface = Negative_u, local_up_ramp = (read x2, read x3), local_down_ramp = (read x4, read x5)} : loadFloor2 xs
-  else if x1 == "3" then Floor_grid {w_ = read x0, surface = Positive_v, local_up_ramp = (read x2, read x3), local_down_ramp = (read x4, read x5)} : loadFloor2 xs
-  else if x1 == "4" then Floor_grid {w_ = read x0, surface = Negative_v, local_up_ramp = (read x2, read x3), local_down_ramp = (read x4, read x5)} : loadFloor2 xs
+  else if x1 == "1" then Floor_grid {w_ = read x0, surface = Positive_u, local_up_ramp = (read x2, read x3), local_down_ramp = (read x4, read x5)}
+                         : loadFloor2 xs
+  else if x1 == "2" then Floor_grid {w_ = read x0, surface = Negative_u, local_up_ramp = (read x2, read x3), local_down_ramp = (read x4, read x5)}
+                         : loadFloor2 xs
+  else if x1 == "3" then Floor_grid {w_ = read x0, surface = Positive_v, local_up_ramp = (read x2, read x3), local_down_ramp = (read x4, read x5)}
+                         : loadFloor2 xs
+  else if x1 == "4" then Floor_grid {w_ = read x0, surface = Negative_v, local_up_ramp = (read x2, read x3), local_down_ramp = (read x4, read x5)}
+                         : loadFloor2 xs
   else Floor_grid {w_ = read x0, surface = Open, local_up_ramp = (read x2, read x3), local_down_ramp = (read x4, read x5)} : loadFloor2 xs
 
 loadFloor1 :: [[Char]] -> [[Floor_grid]]
@@ -649,13 +722,16 @@ loadObjGrid [] = []
 loadObjGrid (x0:x1:x2:x3:x4:xs) = ((read x0, read x1, read x2), (read x3, procInts (take (read x4) xs))) : loadObjGrid (drop (read x4) xs)
 
 emptyWGrid :: Int -> Int -> Int -> Array (Int, Int, Int) Wall_grid
-emptyWGrid u_max v_max w_max = array ((0, 0, 0), (w_max, u_max, v_max)) [((w, u, v), Wall_grid {u1 = False, u2 = False, v1 = False, v2 = False, u1_bound = 0, u2_bound = 0, v1_bound = 0, v2_bound = 0, w_level = 0,  wall_flag = [], texture = [], obj = Nothing}) | w <- [0..w_max], u <- [0..u_max], v <- [0..v_max]]
+emptyWGrid u_max v_max w_max = array ((0, 0, 0), (w_max, u_max, v_max))
+                                     [((w, u, v), Wall_grid {u1 = False, u2 = False, v1 = False, v2 = False, u1_bound = 0, u2_bound = 0, v1_bound = 0, v2_bound = 0, w_level = 0,  wall_flag = [], texture = [], obj = Nothing}) | w <- [0..w_max], u <- [0..u_max], v <- [0..v_max]]
 
 buildTable1 :: [[Char]] -> Array (Int, Int, Int) Wall_grid -> Int -> Array (Int, Int, Int) Wall_grid
 buildTable1 [] w_grid c = w_grid
 buildTable1 (x0:x1:x2:x3:x4:x5:x6:x7:x8:x9:x10:x11:x12:x13:xs) w_grid c =
   if c > 37499 then throw Invalid_obj_flag
-  else buildTable1 xs (w_grid // [((read x0, read x1, read x2), Wall_grid {u1 = False, u2 = False, v1 = False, v2 = False, u1_bound = 0, u2_bound = 0, v1_bound = 0, v2_bound = 0, w_level = 0,  wall_flag = [], texture = [], obj = Just Obj_place {ident_ = read x3, u__ = read x4, v__ = read x5, w__ = read x6, rotation = procInts [x7, x8, x9], rotate_ = loadGrid1 x10, phase = read x11, texture__ = read x12, num_elem = read x13, obj_flag = c}})]) (c + 1)
+  else buildTable1 xs (w_grid // [((read x0, read x1, read x2), def_w_grid {obj = Just Obj_place {ident_ = read x3, u__ = read x4, v__ = read x5, w__ = read x6,
+                                                                            rotation = procInts [x7, x8, x9], rotate_ = loadGrid1 x10, phase = read x11,
+                                                                            texture__ = read x12, num_elem = read x13, obj_flag = c}})]) (c + 1)
 
 buildTable0 :: [Wall_grid] -> Int -> Int -> Int -> [[[Wall_grid]]]
 buildTable0 w_grid u_max v_max w_max = reverse (map (splitEvery (v_max + 1)) (splitEvery ((u_max + 1) * (v_max + 1)) w_grid))
@@ -701,7 +777,8 @@ checkMapLayer w u v u_limit v_limit grid flag =
     if grid ! (w, u, v) == flag then throw Invalid_map_element
     else checkMapLayer w u (v + 1) u_limit v_limit grid flag
 
--- This function determines the differential between an original map state array (Wall_grid, Floor_grid or Obj_grid) and a newer map state.  It is part of the implementation of the game state saving system.
+-- This function determines the differential between an original map state array (Wall_grid, Floor_grid or Obj_grid) and a newer map state.  It is part of the
+-- implementation of the game state saving system.
 genArrayDiff :: Eq a => Int -> Int -> Int -> Int -> Int -> Array (Int, Int, Int) a -> Array (Int, Int, Int) a -> SEQ.Seq ((Int, Int, Int), a) -> SEQ.Seq ((Int, Int, Int), a)
 genArrayDiff w u v u_limit v_limit arr0 arr1 acc =
   if w == 2 && u > u_limit then acc
