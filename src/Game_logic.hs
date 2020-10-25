@@ -130,7 +130,8 @@ boundCheck block axis ((a, b, c), (w_max, u_max, v_max)) =
   else if axis == 1 && block > v_max then False
   else True
 
--- These three functions perform GPLC conditional expression folding, evaluating conditional op - codes at the start of a GPLC program run to yield unconditional code.
+-- These three functions perform GPLC conditional expression folding, evaluating conditional op - codes at the start of a GPLC program run
+-- to yield unconditional code.
 onSignal :: [Int] -> [Int] -> Int -> [Int]
 onSignal [] code sig = []
 onSignal (x0:x1:x2:xs) code sig =
@@ -150,29 +151,46 @@ if1 v arg0 arg1 code0 code1 d_list =
 
 if0 :: [Int] -> [Int] -> [Int]
 if0 [] d_list = []
-if0 code d_list =
-  if (code, 112) !! 0 == 1 then if0 (if1 ((code, 113) !! 1) ((code, 114) !! 2) ((code, 115) !! 3) (take ((code, 116) !! 4) (drop 6 code)) (take ((code, 117) !! 5) (drop (6 + (code, 118) !! 4) code)) d_list) d_list
+if0 (x0:x1:x2:x3:x4:x5:xs) d_list =
+  let code = (x0:x1:x2:x3:x4:x5:xs)
+  in
+  if x0 == 1 then if0 (if1 x1 x2 x3 (take x4 (drop 6 code)) (take x5 (drop (6 + x4) code)) d_list) d_list
   else code
 
 -- The remaining GPLC op - codes are implemented here.  The GPLC specification document explains their functions in the context of a game logic virtual machine.
 chgState :: [Int] -> (Int, Int, Int) -> (Int, Int, Int) -> Array (Int, Int, Int) Wall_grid -> UArray Int Int -> [((Int, Int, Int), Wall_grid)] -> [Int] -> ([((Int, Int, Int), Wall_grid)], [Int])
 chgState (2:x1:x2:x3:x4:x5:x6:x7:x8:x9:xs) (i0, i1, i2) (i3, i4, i5) w_grid update w_grid_upd d_list =
-  if (d_list, 119) !! x1 == 0 then chgState xs (x4, x5, x6) (x7, x8, x9) w_grid (update // [(0, (d_list, 120) !! x2), (1, (d_list, 121) !! x3)]) w_grid_upd d_list
-  else if (d_list, 122) !! x1 == 1 then chgState xs (x4, x5, x6) (x7, x8, x9) w_grid (update // [(2, (d_list, 123) !! x2), (3, (d_list, 124) !! x3)]) w_grid_upd d_list
-  else if (d_list, 125) !! x1 == 2 then chgState xs (x4, x5, x6) (x7, x8, x9) w_grid (update // [(4, (d_list, 126) !! x2), (5, (d_list, 127) !! x3)]) w_grid_upd d_list
-  else if (d_list, 128) !! x1 == 3 then chgState xs (x4, x5, x6) (x7, x8, x9) w_grid (update // [(6, (d_list, 129) !! x2), (7, (d_list, 130) !! x3)]) w_grid_upd d_list
-  else if (d_list, 131) !! x1 == 9 then chgState xs (x4, x5, x6) (x7, x8, x9) w_grid (update // [(8, (d_list, 132) !! x2), (9, (d_list, 133) !! x3)]) w_grid_upd d_list
-  else if (d_list, 134) !! x1 == 10 then chgState xs (x4, x5, x6) (x7, x8, x9) w_grid (update // [(10, (d_list, 135) !! x2), (11, (d_list, 136) !! x3)]) w_grid_upd d_list
-  else if (d_list, 137) !! x1 == 11 then chgState xs (x4, x5, x6) (x7, x8, x9) w_grid (update // [(12, (d_list, 138) !! x2), (13, (d_list, 139) !! x3)]) w_grid_upd d_list
+  if (d_list, 119) !! x1 == 0 then
+    chgState xs (x4, x5, x6) (x7, x8, x9) w_grid (update // [(0, (d_list, 120) !! x2), (1, (d_list, 121) !! x3)]) w_grid_upd d_list
+  else if (d_list, 122) !! x1 == 1 then
+    chgState xs (x4, x5, x6) (x7, x8, x9) w_grid (update // [(2, (d_list, 123) !! x2), (3, (d_list, 124) !! x3)]) w_grid_upd d_list
+  else if (d_list, 125) !! x1 == 2 then
+    chgState xs (x4, x5, x6) (x7, x8, x9) w_grid (update // [(4, (d_list, 126) !! x2), (5, (d_list, 127) !! x3)]) w_grid_upd d_list
+  else if (d_list, 128) !! x1 == 3 then
+    chgState xs (x4, x5, x6) (x7, x8, x9) w_grid (update // [(6, (d_list, 129) !! x2), (7, (d_list, 130) !! x3)]) w_grid_upd d_list
+  else if (d_list, 131) !! x1 == 9 then
+    chgState xs (x4, x5, x6) (x7, x8, x9) w_grid (update // [(8, (d_list, 132) !! x2), (9, (d_list, 133) !! x3)]) w_grid_upd d_list
+  else if (d_list, 134) !! x1 == 10 then
+    chgState xs (x4, x5, x6) (x7, x8, x9) w_grid (update // [(10, (d_list, 135) !! x2), (11, (d_list, 136) !! x3)]) w_grid_upd d_list
+  else if (d_list, 137) !! x1 == 11 then
+    chgState xs (x4, x5, x6) (x7, x8, x9) w_grid (update // [(12, (d_list, 138) !! x2), (13, (d_list, 139) !! x3)]) w_grid_upd d_list
   else throw Invalid_GPLC_op_argument
 chgState code (i0, i1, i2) (i3, i4, i5) w_grid update w_grid_upd d_list =
   let source = ((d_list, 140) !! i0, (d_list, 141) !! i1, (d_list, 142) !! i2)
       dest = ((d_list, 143) !! i3, (d_list, 144) !! i4, (d_list, 145) !! i5)
       grid_i = fromJust (obj (w_grid ! source))
       grid_i' = (obj (w_grid ! source))
+      ident_' = upd (update ! 0) (ident_ grid_i) (update ! 1)
+      u__' = upd (update ! 2) (u__ grid_i) (intToFloat (update ! 3))
+      v__' = upd (update ! 4) (v__ grid_i) (intToFloat (update ! 5))
+      w__' = upd (update ! 6) (w__ grid_i) (intToFloat (update ! 7))
+      texture__' = upd (update ! 8) (texture__ grid_i) (update ! 9)
+      num_elem' = upd (update ! 10) (num_elem grid_i) (fromIntegral (update ! 11))
+      obj_flag' = upd (update ! 12) (obj_flag grid_i) (update ! 13)
   in 
   if isNothing grid_i' == True then (w_grid_upd, code)
-  else ((dest, (w_grid ! source) {obj = Just (grid_i {ident_ = upd (update ! 0) (ident_ grid_i) (update ! 1), u__ = upd (update ! 2) (u__ grid_i) (intToFloat (update ! 3)), v__ = upd (update ! 4) (v__ grid_i) (intToFloat (update ! 5)), w__ = upd (update ! 6) (w__ grid_i) (intToFloat (update ! 7)), texture__ = upd (update ! 8) (texture__ grid_i) (update ! 9), num_elem = upd (update ! 10) (num_elem grid_i) (fromIntegral (update ! 11)), obj_flag = upd (update ! 12) (obj_flag grid_i) (update ! 13)})}) : w_grid_upd, code)
+  else ((dest, (w_grid ! source) {obj = Just (grid_i {ident_ = ident_', u__ = u__', v__ = v__', w__ = w__', texture__ = texture__', num_elem = num_elem',
+                                                      obj_flag = obj_flag'})}) : w_grid_upd, code)
 
 chgGrid :: Int -> (Int, Int, Int) -> (Int, Int, Int) -> Array (Int, Int, Int) Wall_grid -> Wall_grid -> [((Int, Int, Int), Wall_grid)] -> [Int] -> [((Int, Int, Int), Wall_grid)]
 chgGrid mode (i0, i1, i2) (i3, i4, i5) w_grid def w_grid_upd d_list =
@@ -196,7 +214,8 @@ chgFloor :: Int -> Int -> Int -> (Int, Int, Int) -> Array (Int, Int, Int) Floor_
 chgFloor state_val abs v (i0, i1, i2) grid d_list =
   let index = ((d_list, 162) !! i0, (d_list, 163) !! i1, (d_list, 164) !! i2)
   in
-  if (d_list, 165) !! state_val == 0 then grid // [(index, (grid ! index) {w_ = upd ((d_list, 166) !! abs) (w_ (grid ! index)) (intToFloat ((d_list, 167) !! v))})]
+  if (d_list, 165) !! state_val == 0 then
+    grid // [(index, (grid ! index) {w_ = upd ((d_list, 166) !! abs) (w_ (grid ! index)) (intToFloat ((d_list, 167) !! v))})]
   else grid // [(index, (grid ! index) {surface = int_to_surface ((d_list, 168) !! v)})]
 
 chgValue :: Int -> Int -> Int -> (Int, Int, Int) -> [Int] -> Array (Int, Int, Int) (Int, [Int]) -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> [((Int, Int, Int), (Int, [(Int, Int)]))]
@@ -204,17 +223,15 @@ chgValue val abs v (i0, i1, i2) d_list obj_grid obj_grid_upd =
   let target = obj_grid ! ((d_list, 169) !! i0, (d_list, 170) !! i1, (d_list, 171) !! i2)
   in
   if val == 536870910 then (((d_list, 172) !! i0, (d_list, 173) !! i1, (d_list, 174) !! i2), (fst target, [(0, v)])) : obj_grid_upd
-  else (((d_list, 175) !! i0, (d_list, 176) !! i1, (d_list, 177) !! i2), (fst target, [(val, upd ((d_list, 178) !! abs) (((snd target), 179) !! val) ((d_list, 180) !! v))])) : obj_grid_upd
+  else (((d_list, 175) !! i0, (d_list, 176) !! i1, (d_list, 177) !! i2),
+       (fst target, [(val, upd ((d_list, 178) !! abs) (((snd target), 179) !! val) ((d_list, 180) !! v))])) : obj_grid_upd
 
 chgPs0 :: Int -> Int -> Int -> [Int] -> Play_state0 -> Play_state0
 chgPs0 state_val abs v d_list s0 =
-  if (d_list, 181) !! state_val == 0 then s0 {pos_u = upd ((d_list, 182) !! abs) (pos_u s0) (intToFloat ((d_list, 183) !! v))}
-  else if (d_list, 184) !! state_val == 1 then s0 {pos_v = upd ((d_list, 185) !! abs) (pos_v s0) (intToFloat ((d_list, 186) !! v))}
-  else if (d_list, 187) !! state_val == 2 then s0 {pos_w = upd ((d_list, 188) !! abs) (pos_w s0) (intToFloat ((d_list, 189) !! v))}
-  else if (d_list, 190) !! state_val == 3 then s0 {vel = [upd ((d_list, 191) !! abs) (((vel s0), 192) !! 0) (intToFloat ((d_list, 193) !! v)), upd ((d_list, 194) !! abs) (((vel s0), 195) !! 1) (intToFloat ((d_list, 196) !! (v + 1))), upd ((d_list, 197) !! abs) (((vel s0), 198) !! 2) (intToFloat ((d_list, 199) !! (v + 2)))]}
-  else if (d_list, 200) !! state_val == 4 then s0 {rend_mode = (d_list, 201) !! v}
+  if (d_list, 200) !! state_val == 4 then s0 {rend_mode = (d_list, 201) !! v}
   else if (d_list, 202) !! state_val == 5 then s0 {torch_t0 = (d_list, 203) !! v}
-  else s0 {torch_t_limit = (d_list, 204) !! v}
+  else if (d_list, 639) !! state_val == 6 then s0 {torch_t_limit = (d_list, 204) !! v}
+  else error ("\nchg_ps0: Invalid value passed for argument state_val: " ++ show ((d_list, 640) !! state_val))
 
 chgPs1 :: Int -> Int -> Int -> [Int] -> Play_state1 -> Play_state1
 chgPs1 state_val abs v d_list s =
@@ -222,7 +239,8 @@ chgPs1 state_val abs v d_list s =
   else if (d_list, 208) !! state_val == 1 then s {ammo = upd ((d_list, 209) !! abs) (ammo s) ((d_list, 210) !! v), state_chg = 2}
   else if (d_list, 211) !! state_val == 2 then s {gems = upd ((d_list, 212) !! abs) (gems s) ((d_list, 213) !! v), state_chg = 3}
   else if (d_list, 214) !! state_val == 3 then s {torches = upd ((d_list, 215) !! abs) (torches s) ((d_list, 216) !! v), state_chg = 4}
-  else if (d_list, 217) !! state_val == 4 then s {keys = (take ((d_list, 218) !! abs) (keys s)) ++ [(d_list, 219) !! v] ++ drop (((d_list, 220) !! abs) + 1) (keys s), state_chg = 5}
+  else if (d_list, 217) !! state_val == 4 then
+    s {keys = (take ((d_list, 218) !! abs) (keys s)) ++ [(d_list, 219) !! v] ++ drop (((d_list, 220) !! abs) + 1) (keys s), state_chg = 5}
   else if (d_list, 221) !! state_val == 5 then s {difficulty = ("Hey, not too risky!", 6, 8, 10)}
   else if (d_list, 222) !! state_val == 6 then s {difficulty = ("Plenty of danger please.", 6, 10, 14)}
   else if (d_list, 223) !! state_val == 7 then s {difficulty = ("Ultra danger.", 10, 15, 20)}
@@ -247,8 +265,18 @@ copyPs0 offset (i0, i1, i2) s0 obj_grid obj_grid_upd d_list =
 copyPs1 :: Int -> (Int, Int, Int) -> Play_state1 -> Array (Int, Int, Int) (Int, [Int]) -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> [Int] -> [((Int, Int, Int), (Int, [(Int, Int)]))]
 copyPs1 offset (i0, i1, i2) s1 obj_grid obj_grid_upd d_list =
   let target = obj_grid ! ((d_list, 233) !! i0, (d_list, 234) !! i1, (d_list, 235) !! i2)
+      v0 = (offset, health s1)
+      v1 = (offset + 1, ammo s1)
+      v2 = (offset + 2, gems s1)
+      v3 = (offset + 3, torches s1)
+      v4 = (offset + 4, ((keys s1), 239) !! 0)
+      v5 = (offset + 5, ((keys s1), 240) !! 1)
+      v6 = (offset + 6, ((keys s1), 241) !! 2)
+      v7 = (offset + 7, ((keys s1), 242) !! 3)
+      v8 = (offset + 8, ((keys s1), 243) !! 4)
+      v9 = (offset + 9, ((keys s1), 244) !! 5)
   in
-  (((d_list, 236) !! i0, (d_list, 237) !! i1, (d_list, 238) !! i2), (fst target, [(offset, health s1), (offset + 1, ammo s1), (offset + 2, gems s1), (offset + 3, torches s1), (offset + 4, ((keys s1), 239) !! 0), (offset + 5, ((keys s1), 240) !! 1), (offset + 6, ((keys s1), 241) !! 2), (offset + 7, ((keys s1), 242) !! 3), (offset + 8, ((keys s1), 243) !! 4), (offset + 9, ((keys s1), 244) !! 5)])) : obj_grid_upd
+  (((d_list, 236) !! i0, (d_list, 237) !! i1, (d_list, 238) !! i2), (fst target, [v0, v1, v2, v3, v4, v5, v6, v7, v8, v9])) : obj_grid_upd
 
 objType :: Int -> Int -> Int -> Array (Int, Int, Int) (Int, [Int]) -> Int
 objType w u v obj_grid =
@@ -280,7 +308,8 @@ copyLstate offset (i0, i1, i2) (i3, i4, i5) w_grid obj_grid obj_grid_upd d_list 
       c6 = (offset + 6, objType w u'' v' obj_grid)
       c7 = (offset + 7, objType w u' v'' obj_grid)
       c8 = (offset + 8, objType w u'' v'' obj_grid)
-  in (((d_list, 267) !! i0, (d_list, 268) !! i1, (d_list, 269) !! i2), (fst target, [c0, c1, c2, c3, c4, c5, c6, c7, c8, w_conf_u1, w_conf_u2, w_conf_v1, w_conf_v2])) : obj_grid_upd
+  in (((d_list, 267) !! i0, (d_list, 268) !! i1, (d_list, 269) !! i2),
+     (fst target, [c0, c1, c2, c3, c4, c5, c6, c7, c8, w_conf_u1, w_conf_u2, w_conf_v1, w_conf_v2])) : obj_grid_upd
 
 chgObjType :: Int -> (Int, Int, Int) -> [Int] -> Array (Int, Int, Int) (Int, [Int]) -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> [((Int, Int, Int), (Int, [(Int, Int)]))]
 chgObjType v (i0, i1, i2) d_list obj_grid obj_grid_upd =
@@ -289,7 +318,8 @@ chgObjType v (i0, i1, i2) d_list obj_grid obj_grid_upd =
   (((d_list, 273) !! i0, (d_list, 274) !! i1, (d_list, 275) !! i2), ((d_list, 276) !! v, [])) : obj_grid_upd
 
 passMsg :: Int -> [Int] -> Play_state1 -> [Int] -> ([Int], Play_state1)
-passMsg len msg s d_list = (drop ((d_list, 277) !! len) msg, s {message = message s ++ [head msg] ++ [((d_list, 278) !! len) - 1] ++ take (((d_list, 279) !! len) - 1) (tail msg)})
+passMsg len msg s d_list = (drop ((d_list, 277) !! len) msg,
+                            s {message = message s ++ [head msg] ++ [((d_list, 278) !! len) - 1] ++ take (((d_list, 279) !! len) - 1) (tail msg)})
 
 sendSignal :: Int -> Int -> (Int, Int, Int) -> Array (Int, Int, Int) (Int, [Int]) -> Play_state1 -> [Int] -> (Array (Int, Int, Int) (Int, [Int]), Play_state1)
 sendSignal 0 sig (i0, i1, i2) obj_grid s1 d_list =
@@ -412,7 +442,8 @@ binaryDice :: Int -> Int -> (Int, Int, Int) -> Int -> Play_state0 -> Array (Int,
 binaryDice prob diff (i0, i1, i2) offset s0 obj_grid obj_grid_upd d_list =
   let target = obj_grid ! ((d_list, 323) !! i0, (d_list, 324) !! i1, (d_list, 325) !! i2)
   in
-  if (prob_seq s0) ! (mod (fst__ (gameClock s0) + ((d_list, 326) !! diff)) 240) < (d_list, 327) !! prob then (((d_list, 328) !! i0, (d_list, 329) !! i1, (d_list, 330) !! i2), (fst target, [(offset, 1)])) : obj_grid_upd
+  if (prob_seq s0) ! (mod (fst__ (gameClock s0) + ((d_list, 326) !! diff)) 240) < (d_list, 327) !! prob then
+    (((d_list, 328) !! i0, (d_list, 329) !! i1, (d_list, 330) !! i2), (fst target, [(offset, 1)])) : obj_grid_upd
   else (((d_list, 331) !! i0, (d_list, 332) !! i1, (d_list, 333) !! i2), (fst target, [(offset, 0)])) : obj_grid_upd
 
 binaryDice_ :: Int -> Play_state0 -> Bool
@@ -420,9 +451,9 @@ binaryDice_ prob s0 =
   if (prob_seq s0) ! (mod (fst__ (gameClock s0)) 240) < prob then True
   else False  
 
--- The GPLC op - codes init_npc, npc_damage, npc_decision, npcMove and cpedeMove form the entry point for scripts to drive non - player character (NPC) behaviour.
--- As these op - codes are responsible for more complex state changes than the others, their entry point functions call a substantial number of supporting functions.
--- There are two NPC behavioural models, namely type 1 and type 2 (also known as centipedes).
+-- The GPLC op - codes init_npc, npc_damage, npc_decision, npcMove and cpedeMove form the entry point for scripts to drive non - player character (NPC)
+-- behaviour.  As these op - codes are responsible for more complex state changes than the others, their entry point functions call a substantial number of
+-- supporting functions.  There are two NPC behavioural models, namely type 1 and type 2 (also known as centipedes).
 initNpc :: Int -> Int -> Play_state1 -> [Int] -> Play_state1
 initNpc offset i s1 d_list =
   let char_state = (npc_states s1) ! i
@@ -455,12 +486,12 @@ detRandTarget s0 u_bound v_bound =
 -- The NPC path finding is based around line of sight checks, which use the Obj_grid ( (Int, [Int]) ) instance of the ray tracer.
 chkLineSight :: Int -> Int -> Int -> Int -> Int -> (Float, Float) -> Int -> Int -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> UArray (Int, Int) Float -> Int
 chkLineSight mode a w_block u_block v_block (fg_u, fg_v) target_u target_v w_grid f_grid obj_grid lookUp =
-  let proc_angle_ = procAngle a
+  let a' = procAngle a
   in
-  third_ (rayTrace0 fg_u fg_v (fst__ proc_angle_) (snd__ proc_angle_) (third_ proc_angle_) u_block v_block w_grid f_grid obj_grid lookUp w_block [] target_u target_v mode 1)
+  third_ (rayTrace0 fg_u fg_v (fst__ a') (snd__ a') (third_ a') u_block v_block w_grid f_grid obj_grid lookUp w_block [] target_u target_v mode 1)
 
--- Type 1 NPCs can move in 8 directions and type 2 in a subset of 4 of these.  This function maps these directions (encoded as 1 - 8) to centiradians, which is the
--- angle representation used elsewhere in the engine.
+-- Type 1 NPCs can move in 8 directions and type 2 in a subset of 4 of these.  This function maps these directions (encoded as 1 - 8) to centiradians,
+-- which is the angle representation used elsewhere in the engine.
 npcDirTable :: Bool -> Int -> Int
 npcDirTable shift_flag dir =
   if shift_flag == True then truncate (78.54 * fromIntegral (dir - 1)) + 6
@@ -498,7 +529,7 @@ quantiseAngle a =
   else if a < 550 then (477, 7)
   else (556, 8)
 
--- Type 2 (centipede) NPCs can't reverse so that they don't trample their own tails (but see the explanation of cpedeHeadSwap below as it relates to this issue).
+-- Type 2 (centipede) NPCs can't reverse so that they don't trample their own tails.
 -- This function is involved in implementing that restriction.
 cpede_reverse 1 = 5
 cpede_reverse 3 = 7
@@ -544,11 +575,12 @@ cpedeDecision 0 choice i target_u target_v w u v w_grid f_grid obj_grid s0 s1 lo
     else cpedeDecision 1 7 i target_u target_v w u v w_grid f_grid obj_grid s0 s1 lookUp
 cpedeDecision 1 choice i target_u target_v w u v w_grid f_grid obj_grid s0 s1 lookUp =
   let char_state = (npc_states s1) ! i
-      line_sight = chkLineSight 2 (npcDirTable False choice) w u v ((fromIntegral u) + 0.5, (fromIntegral v) + 0.5) target_u target_v w_grid f_grid obj_grid lookUp
+      u_v' = ((fromIntegral u) + 0.5, (fromIntegral v) + 0.5)
+      line_sight = chkLineSight 2 (npcDirTable False choice) w u v u_v' target_u target_v w_grid f_grid obj_grid lookUp
   in
   if line_sight == 0 then (choice, True && attack_mode char_state)
   else if line_sight > avoid_dist char_state then (choice, False)
-  else (anotherDir False (delete (cpede_reverse choice) (delete choice [1, 3, 5, 7])) 2 w u v ((fromIntegral u) + 0.5, (fromIntegral v) + 0.5) w_grid f_grid obj_grid lookUp s0, False)
+  else (anotherDir False (delete (cpede_reverse choice) (delete choice [1, 3, 5, 7])) 2 w u v u_v' w_grid f_grid obj_grid lookUp s0, False)
 
 -- Updates the list of centipede segment directions so that the tail follows the direction the head has taken.
 updDirList :: Int -> [Int] -> [Int]
@@ -578,8 +610,10 @@ shiftFireballPos dir u v =
 npcDecision :: Int -> Int -> Int -> Int -> Int -> Int -> [Int] -> [Int] -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> Play_state0 -> Play_state1 -> UArray (Int, Int) Float -> ([((Int, Int, Int), (Int, [(Int, Int)]))], Play_state1)
 npcDecision 0 flag offset target_w target_u target_v d_list (w:u:v:xs) w_grid f_grid obj_grid obj_grid_upd s0 s1 lookUp =
   let char_state = (npc_states s1) ! ((d_list, 352) !! 8)
-      s1' = \t0 t1 w' u' v' -> s1 {npc_states = (npc_states s1) // [((d_list, 353) !! 8, char_state {ticks_left0 = t0, ticks_left1 = t1, target_w' = w', target_u' = u', target_v' = v'})]}
-      s1'' = \t1 u' v' f -> s1 {npc_states = (npc_states s1) // [((d_list, 354) !! 8, char_state {ticks_left1 = t1, target_u' = u', target_v' = v', finalAppr = f})]}
+      s1' = \t0 t1 w' u' v' -> s1 {npc_states = (npc_states s1) // [((d_list, 353) !! 8, char_state {ticks_left0 = t0, ticks_left1 = t1, target_w' = w',
+                                                                                                     target_u' = u', target_v' = v'})]}
+      s1'' = \t1 u' v' f -> s1 {npc_states = (npc_states s1) // [((d_list, 354) !! 8, char_state {ticks_left1 = t1, target_u' = u', target_v' = v',
+                                                                                                  finalAppr = f})]}
       rand_target = detRandTarget s0 (snd__ (snd (bounds w_grid))) (third_ (snd (bounds w_grid)))
       fg_pos = fg_position char_state
   in
