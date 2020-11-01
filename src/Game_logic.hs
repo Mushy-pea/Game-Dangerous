@@ -151,10 +151,9 @@ if1 v arg0 arg1 code0 code1 d_list =
 
 if0 :: [Int] -> [Int] -> [Int]
 if0 [] d_list = []
-if0 (x0:x1:x2:x3:x4:x5:xs) d_list =
-  let code = (x0:x1:x2:x3:x4:x5:xs)
-  in
-  if x0 == 1 then if0 (if1 x1 x2 x3 (take x4 (drop 6 code)) (take x5 (drop (6 + x4) code)) d_list) d_list
+if0 code d_list =
+  if (code, 112) !! 0 == 1 then
+    if0 (if1 ((code, 113) !! 1) ((code, 114) !! 2) ((code, 115) !! 3) (take ((code, 116) !! 4) (drop 6 code)) (take ((code, 117) !! 5) (drop (6 + (code, 118) !! 4) code)) d_list) d_list
   else code
 
 -- The remaining GPLC op - codes are implemented here.  The GPLC specification document explains their functions in the context of a game logic virtual machine.
