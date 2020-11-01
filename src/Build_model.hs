@@ -285,6 +285,10 @@ zNear = 0.5 :: Float; zFar = 100 :: Float
 -- Used in preference to nullPtr as this value is explicitly defined as zero.
 zero_ptr = (unsafeCoerce (0 :: Word64) :: Ptr a)
 
+n = Nothing
+
+j x = Just x
+
 -- These functions process vertex and map data, which is either loaded into GPU memory or held in the (CPU memory) environment map respectively.
 procFloats :: [[Char]] -> [Float]
 procFloats [] = []

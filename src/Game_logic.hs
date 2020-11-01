@@ -607,67 +607,96 @@ shiftFireballPos dir u v =
   else if dir == 7 then (u, v - 1.1)
   else (u + 1.1, v - 1.1)
 
+-- This function is used by npcDecision to update the Play_state1 structure.
+s1' :: Play_state1 -> [Int] -> Maybe Bool -> Maybe Int -> Maybe Int -> Maybe [(Int, Int)] -> Maybe Int -> Maybe Int -> Maybe Int -> Maybe Int -> Maybe Int -> Play_state1
+s1' s1 d_list f d0 d1 fs t0 t1 w u v =
+  let char_state = (npc_states s1) ! ((d_list, 642) !! 8)
+  in
+  s1 {npc_states = (npc_states s1) // [((d_list, 641) !! 8, char_state {finalAppr = fromMaybe (finalAppr char_state) f,
+            direction = fromMaybe (direction char_state) d0, lastDir = fromMaybe (lastDir char_state) d1,
+            fireball_state = fromMaybe (fireball_state char_state) fs, ticks_left0 = fromMaybe (ticks_left0 char_state) t0,
+            ticks_left1 = fromMaybe (ticks_left1 char_state) t1, target_w' = fromMaybe (target_w' char_state) w, target_u' = fromMaybe (target_u' char_state) u,
+            target_v' = fromMaybe (target_v' char_state) v})]}
+
 npcDecision :: Int -> Int -> Int -> Int -> Int -> Int -> [Int] -> [Int] -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> Play_state0 -> Play_state1 -> UArray (Int, Int) Float -> ([((Int, Int, Int), (Int, [(Int, Int)]))], Play_state1)
 npcDecision 0 flag offset target_w target_u target_v d_list (w:u:v:xs) w_grid f_grid obj_grid obj_grid_upd s0 s1 lookUp =
   let char_state = (npc_states s1) ! ((d_list, 352) !! 8)
-      s1' = \t0 t1 w' u' v' -> s1 {npc_states = (npc_states s1) // [((d_list, 353) !! 8, char_state {ticks_left0 = t0, ticks_left1 = t1, target_w' = w',
-                                                                                                     target_u' = u', target_v' = v'})]}
-      s1'' = \t1 u' v' f -> s1 {npc_states = (npc_states s1) // [((d_list, 354) !! 8, char_state {ticks_left1 = t1, target_u' = u', target_v' = v',
-                                                                                                  finalAppr = f})]}
       rand_target = detRandTarget s0 (snd__ (snd (bounds w_grid))) (third_ (snd (bounds w_grid)))
       fg_pos = fg_position char_state
+      tr0 = truncate (pos_w s0)
+      tr1 = truncate (pos_u s0)
+      tr2 = truncate (pos_v s0)
   in
   if npc_type char_state == 2 && ticks_left0 char_state == 0 then
-    if attack_mode char_state == True && (truncate (pos_w s0)) == w then npcDecision 3 1 offset (truncate (pos_w s0)) (truncate (pos_u s0)) (truncate (pos_v s0)) d_list (w:u:v:xs) w_grid f_grid obj_grid obj_grid_upd s0 (s1 {npc_states = (npc_states s1) // [((d_list, 355) !! 8, char_state {finalAppr = True})]}) lookUp
-    else if ticks_left1 char_state == 0 || (u == target_u' char_state && v == target_v' char_state) then npcDecision 3 1 offset w (snd__ rand_target) (third_ rand_target) d_list (w:u:v:xs) w_grid f_grid obj_grid obj_grid_upd s0 (s1'' 1000 (snd__ rand_target) (third_ rand_target) False) lookUp
-    else npcDecision 3 1 offset w (target_u' char_state) (target_v' char_state) d_list (w:u:v:xs) w_grid f_grid obj_grid obj_grid_upd s0 (s1'' ((ticks_left1 char_state) - 1) target_u target_v False) lookUp
+    if attack_mode char_state && tr0 == w then npcDecision 3 1 offset tr0 tr1 tr2 d_list (w:u:v:xs) w_grid f_grid obj_grid obj_grid_upd s0
+                                                           (s1' s1 d_list (j True) n n n n n n n n) lookUp
+    else if ticks_left1 char_state == 0 || (u == target_u' char_state && v == target_v' char_state) then
+      npcDecision 3 1 offset w (snd__ rand_target) (third_ rand_target) d_list (w:u:v:xs) w_grid f_grid obj_grid obj_grid_upd s0
+                  (s1' s1 d_list (j False) n n n n (j 1000) n (j (snd__ rand_target)) (j (third_ rand_target))) lookUp
+    else npcDecision 3 1 offset w (target_u' char_state) (target_v' char_state) d_list (w:u:v:xs) w_grid f_grid obj_grid obj_grid_upd s0
+                     (s1' s1 d_list (j False) n n n n (j ((ticks_left1 char_state) - 1)) n (j target_u) (j target_v)) lookUp
   else if npc_type char_state < 2 && (u /= truncate (snd__ fg_pos + fst (dir_vector char_state)) || v /= truncate (third_ fg_pos + snd (dir_vector char_state))) then
-    if attack_mode char_state == True then npcDecision 1 0 offset (truncate (pos_w s0)) (truncate (pos_u s0)) (truncate (pos_v s0)) d_list (w:u:v:xs) w_grid f_grid obj_grid obj_grid_upd s0 (s1' 0 0 0 0 0) lookUp
-    else if ticks_left1 char_state < 1 || (w == target_w' char_state && u == target_u' char_state && v == target_v' char_state) then npcDecision 1 0 offset (fst__ rand_target) (snd__ rand_target) (third_ rand_target) d_list (w:u:v:xs) w_grid f_grid obj_grid obj_grid_upd s0 (s1' 0 1000 (fst__ rand_target) (snd__ rand_target) (third_ rand_target)) lookUp
-    else npcDecision 1 0 offset (target_w' char_state) (target_u' char_state) (target_v' char_state) d_list (w:u:v:xs) w_grid f_grid obj_grid obj_grid_upd s0 (s1' 0 ((ticks_left1 char_state) - 1) (target_w' char_state) (target_u' char_state) (target_v' char_state)) lookUp
-  else if npc_type char_state < 2 then (obj_grid_upd, s1' 1 ((ticks_left1 char_state) - 1) (target_w' char_state) (target_u' char_state) (target_v' char_state))
-  else (obj_grid_upd, s1' (ticks_left0 char_state) ((ticks_left1 char_state) - 1) (target_w' char_state) (target_u' char_state) (target_v' char_state))
+    if attack_mode char_state == True then npcDecision 1 0 offset (truncate (pos_w s0)) (truncate (pos_u s0)) (truncate (pos_v s0)) d_list (w:u:v:xs) w_grid
+                                                       f_grid obj_grid obj_grid_upd s0 (s1' s1 d_list n n n n (j 0) (j 0) (j 0) (j 0) (j 0)) lookUp
+    else if ticks_left1 char_state < 1 || (w == target_w' char_state && u == target_u' char_state && v == target_v' char_state) then
+      npcDecision 1 0 offset (fst__ rand_target) (snd__ rand_target) (third_ rand_target) d_list (w:u:v:xs) w_grid f_grid obj_grid obj_grid_upd s0
+                  (s1' s1 d_list n n n n (j 0) (j 1000) (j (fst__ rand_target)) (j (snd__ rand_target)) (j (third_ rand_target))) lookUp
+    else npcDecision 1 0 offset (target_w' char_state) (target_u' char_state) (target_v' char_state) d_list (w:u:v:xs) w_grid f_grid obj_grid obj_grid_upd s0
+                     (s1' s1 d_list n n n n (j 0) (j ((ticks_left1 char_state) - 1)) (j (target_w' char_state)) (j (target_u' char_state)) (j (target_v' char_state))) lookUp
+  else if npc_type char_state < 2 then
+    (obj_grid_upd, s1' s1 d_list n n n n (j 1) (j ((ticks_left1 char_state) - 1)) (j (target_w' char_state)) (j (target_u' char_state)) (j (target_v' char_state)))
+  else (obj_grid_upd,
+        s1' s1 d_list n n n n (j (ticks_left0 char_state)) (j ((ticks_left1 char_state) - 1)) (j (target_w' char_state)) (j (target_u' char_state)) (j (target_v' char_state)))
 npcDecision 1 flag offset target_w target_u target_v d_list (w:u:v:xs) w_grid f_grid obj_grid obj_grid_upd s0 s1 lookUp =
   let char_state = (npc_states s1) ! ((d_list, 356) !! 8)
       down_ramp = local_down_ramp (f_grid ! (w, div u 2, div v 2))
       up_ramp = local_up_ramp (f_grid ! (w, div u 2, div v 2))
   in
-  if w == target_w then npcDecision (2 + flag) flag offset target_w target_u target_v d_list (w:u:v:xs) w_grid f_grid obj_grid obj_grid_upd s0 (s1 {npc_states = (npc_states s1) // [((d_list, 357) !! 8, char_state {finalAppr = True})]}) lookUp
-  else if w > target_w then npcDecision (2 + flag) flag offset w ((fst down_ramp) * 2) ((snd down_ramp) * 2) d_list (w:u:v:xs) w_grid f_grid obj_grid obj_grid_upd s0 (s1 {npc_states = (npc_states s1) // [((d_list, 358) !! 8, char_state {finalAppr = False})]}) lookUp
-  else npcDecision (2 + flag) flag offset w ((fst up_ramp) * 2) ((snd up_ramp) * 2) d_list (w:u:v:xs) w_grid f_grid obj_grid obj_grid_upd s0 (s1 {npc_states = (npc_states s1) // [((d_list, 359) !! 8, char_state {finalAppr = False})]}) lookUp
+  if w == target_w then npcDecision (2 + flag) flag offset target_w target_u target_v d_list (w:u:v:xs) w_grid f_grid obj_grid obj_grid_upd s0
+                                    (s1' s1 d_list (j True) n n n n n n n n) lookUp
+  else if w > target_w then npcDecision (2 + flag) flag offset w ((fst down_ramp) * 2) ((snd down_ramp) * 2) d_list (w:u:v:xs) w_grid f_grid obj_grid
+                                        obj_grid_upd s0 (s1' s1 d_list (j False) n n n n n n n n) lookUp
+  else npcDecision (2 + flag) flag offset w ((fst up_ramp) * 2) ((snd up_ramp) * 2) d_list (w:u:v:xs) w_grid f_grid obj_grid obj_grid_upd s0
+                   (s1' s1 d_list (j False) n n n n n n n n) lookUp
 npcDecision 2 flag offset target_w target_u target_v d_list (w:u:v:xs) w_grid f_grid obj_grid obj_grid_upd s0 s1 lookUp =
   let char_state = (npc_states s1) ! ((d_list, 360) !! 8)
       fg_pos = fg_position char_state
       a = vectorToAngle (((fromIntegral target_u) + 0.5) - snd__ fg_pos) (((fromIntegral target_v) + 0.5) - third_ fg_pos)
       qa = quantiseAngle a
       prog = obj_grid ! (w, u, v)
-      line_sight0 = chkLineSight 2 (fst qa) w u v (snd__ (fg_position char_state), third_ (fg_position char_state)) target_u target_v w_grid f_grid obj_grid lookUp
-      line_sight1 = chkLineSight 3 (fst qa) w u v (snd__ (fg_position char_state), third_ (fg_position char_state)) target_u target_v w_grid f_grid obj_grid lookUp
+      line_sight0 = chkLineSight 2 (fst qa) w u v (snd__ (fg_position char_state), third_ (fg_position char_state)) target_u target_v w_grid f_grid obj_grid
+                                 lookUp
+      line_sight1 = chkLineSight 3 (fst qa) w u v (snd__ (fg_position char_state), third_ (fg_position char_state)) target_u target_v w_grid f_grid obj_grid
+                                 lookUp
       another_dir_ = anotherDir True (delete (snd qa) [1..8]) 7 w u v (snd__ fg_pos, third_ fg_pos) w_grid f_grid obj_grid lookUp s0
       fb_pos = shiftFireballPos (snd qa) (snd__ fg_pos) (third_ fg_pos)
   in
-  if finalAppr char_state == True then
+  if finalAppr char_state then
     if line_sight0 > avoid_dist char_state || line_sight0 == 0 then
-      if (prob_seq s0) ! (mod (fst__ (gameClock s0)) 240) < fire_prob char_state && attack_mode char_state == True && npc_type ((npc_states s1) ! 127) /= fst__ (gameClock s0) then
-        (obj_grid_upd, s1 {npc_states = (npc_states s1) // [((d_list, 361) !! 8, char_state {direction = snd qa, lastDir = snd qa, fireball_state = [(offset, 1), (offset + 1, flToInt (fst__ fg_pos)), (offset + 2, flToInt (fst fb_pos)), (offset + 3, flToInt (snd fb_pos)), (offset + 4, a)]}), (127, def_npc_state {npc_type = (fst__ (gameClock s0))})]})
-      else (obj_grid_upd, s1 {npc_states = (npc_states s1) // [((d_list, 362) !! 8, char_state {direction = snd qa, lastDir = snd qa})]})
-    else (obj_grid_upd, s1 {npc_states = (npc_states s1) // [((d_list, 364) !! 8, char_state {direction = another_dir_, lastDir = another_dir_})]})
+      if (prob_seq s0) ! (mod (fst__ (gameClock s0)) 240) < fire_prob char_state && attack_mode char_state && npc_type ((npc_states s1) ! 127) /= fst__ (gameClock s0) then
+        (obj_grid_upd,
+         s1 {npc_states = (npc_states s1) // [((d_list, 361) !! 8, char_state {direction = snd qa, lastDir = snd qa,
+             fireball_state = [(offset, 1), (offset + 1, flToInt (fst__ fg_pos)), (offset + 2, flToInt (fst fb_pos)), (offset + 3, flToInt (snd fb_pos)),
+                               (offset + 4, a)]}), (127, def_npc_state {npc_type = (fst__ (gameClock s0))})]})
+      else (obj_grid_upd, s1' s1 d_list n (j (snd qa)) (j (snd qa)) n n n n n n)
+    else (obj_grid_upd, s1' s1 d_list n (j another_dir_) (j another_dir_) n n n n n n)
   else
-    if line_sight1 < 0 then (obj_grid_upd, s1 {npc_states = (npc_states s1) // [((d_list, 365) !! 8, char_state {direction = line_sight1, lastDir = direction char_state})]})
-    else if line_sight1 == 0 then (obj_grid_upd, s1 {npc_states = (npc_states s1) // [((d_list, 366) !! 8, char_state {direction = snd qa, lastDir = snd qa})]})
-    else if line_sight1 > avoid_dist char_state then (obj_grid_upd, s1 {npc_states = (npc_states s1) // [((d_list, 367) !! 8, char_state {direction = snd qa, lastDir = snd qa})]})
-    else (obj_grid_upd, s1 {npc_states = (npc_states s1) // [((d_list, 368) !! 8, char_state {direction = another_dir_, lastDir = another_dir_})]})
+    if line_sight1 < 0 then (obj_grid_upd, s1' s1 d_list n (j line_sight1) (j (direction char_state)) n n n n n n)
+    else if line_sight1 == 0 then (obj_grid_upd, s1' s1 d_list n (j (snd qa)) (j (snd qa)) n n n n n n)
+    else if line_sight1 > avoid_dist char_state then (obj_grid_upd, s1' s1 d_list n (j (snd qa)) (j (snd qa)) n n n n n n)
+    else (obj_grid_upd, s1' s1 d_list n (j another_dir_) (j another_dir_) n n n n n n)
 npcDecision 3 flag offset target_w target_u target_v d_list (w:u:v:xs) w_grid f_grid obj_grid obj_grid_upd s0 s1 lookUp =
   let char_state = (npc_states s1) ! ((d_list, 369) !! 8)
       choice = cpedeDecision 0 0 ((d_list, 370) !! 8) target_u target_v w u v w_grid f_grid obj_grid s0 s1 lookUp
       prog = obj_grid ! (w, u, v)
       fg_pos = fg_position char_state
   in
-  if snd choice == True then
+  if snd choice then
     if (prob_seq s0) ! (mod (fst__ (gameClock s0)) 240) < fire_prob char_state then
-      (((w, u, v), (fst prog, [(offset, 1), (offset + 1, flToInt (fst__ fg_pos)), (offset + 2, flToInt (snd__ fg_pos)), (offset + 3, flToInt (third_ fg_pos)), (offset + 4, npcDirTable False (fst choice))])) : obj_grid_upd, s1 {npc_states = (npc_states s1) // [((d_list, 371) !! 8, char_state {direction = fst choice})]})
-    else (obj_grid_upd, s1 {npc_states = (npc_states s1) // [((d_list, 372) !! 8, char_state {direction = fst choice})]})
-  else (obj_grid_upd, s1 {npc_states = (npc_states s1) // [((d_list, 373) !! 8, char_state {direction = fst choice})]})
+      (((w, u, v), (fst prog, [(offset, 1), (offset + 1, flToInt (fst__ fg_pos)), (offset + 2, flToInt (snd__ fg_pos)), (offset + 3, flToInt (third_ fg_pos)), (offset + 4, npcDirTable False (fst choice))])) : obj_grid_upd,
+       s1' s1 d_list n (j (fst choice)) n n n n n n n)
+    else (obj_grid_upd, s1' s1 d_list n (j (fst choice)) n n n n n n n)
+  else (obj_grid_upd, s1' s1 d_list n (j (fst choice)) n n n n n n n)
 
 detDirVector :: Int -> Float -> UArray (Int, Int) Float -> (Float, Float)
 detDirVector dir speed lookUp =
