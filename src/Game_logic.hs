@@ -758,11 +758,22 @@ modWGrid w_grid w u v ident_' w__' u__' v__' =
   (w_grid ! (w, u, v)) {obj = Just (o_target {ident_ = fromMaybe (ident_ o_target) ident_', w__ = fromMaybe (w__ o_target) w__',
                         u__ = fromMaybe (u__ o_target) u__', v__ = fromMaybe (v__ o_target) v__'})}
 
+-- This function is used by npcMove to update the Play_state1 structure.
+s1'' :: Play_state1 -> [Int] -> Maybe (Float, Float) -> Maybe (Float, Float, Float) -> Maybe Int -> Maybe [(Int, Int)] -> Maybe [Int] -> Maybe Int -> Maybe [Int] -> Play_state1
+s1'' s1 d_list dir_vector' fg_position' ticks_left0' fireball_state' node_locations' direction' next_sig_q' =
+  let char_state = (npc_states s1) ! ((d_list, 643) !! 8)
+  in
+  s1 {npc_states = (npc_states s1) // [((d_list, 644) !! 8, char_state {dir_vector = fromMaybe (dir_vector char_state) dir_vector',
+      fg_position = fromMaybe (fg_position char_state) fg_position', ticks_left0 = fromMaybe (ticks_left0 char_state) ticks_left0',
+      fireball_state = fromMaybe (fireball_state char_state) fireball_state', node_locations = fromMaybe (node_locations char_state) node_locations',
+      direction = fromMaybe (direction char_state) direction'})], next_sig_q = fromMaybe (next_sig_q s1) next_sig_q'}
+
 npcMove :: Int -> [Int] -> [Int] -> Array (Int, Int, Int) Wall_grid -> [((Int, Int, Int), Wall_grid)] -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> Play_state0 -> Play_state1 -> UArray (Int, Int) Float -> ([((Int, Int, Int), Wall_grid)], [((Int, Int, Int), (Int, [(Int, Int)]))], Play_state1)
 npcMove offset d_list (w:u:v:w1:u1:v1:blocks) w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp =
   let char_state = (npc_states s1) ! ((d_list, 374) !! 8)
-      u' = truncate ((snd__ (fg_position char_state)) + fst dir_vector')
-      v' = truncate ((third_ (fg_position char_state)) + snd dir_vector')
+      fgp = fg_position char_state
+      u' = truncate ((snd__ fgp) + fst dir_vector')
+      v' = truncate ((third_ fgp) + snd dir_vector')
       u'' = \x -> if x == 0 then fst (local_up_ramp (f_grid ! (w, div u 2, div v 2))) * 2
                   else fst (local_down_ramp (f_grid ! (w, div u 2, div v 2))) * 2
       v'' = \x -> if x == 0 then snd (local_up_ramp (f_grid ! (w, div u 2, div v 2))) * 2
@@ -771,13 +782,19 @@ npcMove offset d_list (w:u:v:w1:u1:v1:blocks) w_grid w_grid_upd f_grid obj_grid 
       prog' = \x y -> (fst prog, take offset (snd prog) ++ [x, y] ++ drop (offset + 2) (snd prog))
       ramp_fill' = \dw -> last (rampFill (w + dw) u v (direction char_state) (-2, [(offset, 0)]) (surface (f_grid ! (w, div u 2, div v 2))))
       dir_vector' = detDirVector (lastDir char_state) (speed char_state) lookUp
-      ramp_climb_ = rampClimb (direction char_state) (41 - ticks_left0 char_state) (fg_position char_state)
+      ramp_climb_ = rampClimb (direction char_state) (41 - ticks_left0 char_state) fgp
       conv_ramp_fill0 = convRampFill w u v 1 (direction char_state) (surface (f_grid ! (w, div u 2, div v 2)))
       conv_ramp_fill1 = convRampFill w u v 0 (direction char_state) (surface (f_grid ! (w, div u 2, div v 2)))
-      w_grid' = ((-w - 1, u, v), modWGrid w_grid (-w - 1) u v n n (j (snd__ (fg_position char_state))) (j (third_ (fg_position char_state))))
-      w_grid'' = [((-w - 1, u', v'), modWGrid w_grid (-1) 0 2 (j (charRotation 0 (direction char_state) ((d_list, 375) !! 9))) (j (fst__ (fg_position char_state))) (j (snd__ (fg_position char_state))) (j (third_ (fg_position char_state)))), ((-w - 1, u, v), def_w_grid)]
+      w_grid' = ((-w - 1, u, v), modWGrid w_grid (-w - 1) u v n n (j (snd__ fgp)) (j (third_ fgp)))
+      w_grid'' = [((-w - 1, u', v'), modWGrid w_grid (-1) 0 2 (j (charRotation 0 (direction char_state) ((d_list, 375) !! 9))) (j (fst__ fgp)) (j (snd__ fgp))
+                                              (j (third_ fgp))), ((-w - 1, u, v), def_w_grid)]
       w_grid''' = ((-w - 1, u, v), modWGrid w_grid (-w - 1) u v n (j (fst__ ramp_climb_)) (j (snd__ ramp_climb_)) (j (third_ ramp_climb_)))
-      w_grid_4 = \dw -> ([((-w - 1, u, v), def_w_grid)] ++ drop 4 (rampFill (-w - 1 + dw) u v (direction char_state) (modWGrid w_grid (-w - 1) u v n (j (fst__ ramp_climb_)) (j (snd__ ramp_climb_)) (j (third_ ramp_climb_))) (surface (f_grid ! (w, div u 2, div v 2)))))
+      w_grid_4 = \dw -> ([((-w - 1, u, v), def_w_grid)]
+                          ++ drop 4 (rampFill (-w - 1 + dw) u v (direction char_state) w_grid_5 (surface (f_grid ! (w, div u 2, div v 2)))))
+      w_grid_5 = modWGrid w_grid (-w - 1) u v n (j (fst__ ramp_climb_)) (j (snd__ ramp_climb_)) (j (third_ ramp_climb_))
+      w_grid_6 = modWGrid w_grid (-w - 1) u v (j (charRotation 0 (npc_dir_remap (direction char_state)) ((d_list, 377) !! 9))) n n n
+      s1_1 = s1'' s1 d_list n (j (adjustFgPosition w (u'' 0) (v'' 0) (direction char_state))) (j 41) n (j [w, u'' 0, v'' 0, 0, 0, 0]) n
+                  (j ([129, w, u'' 0, v'' 0] ++ next_sig_q s1))
       damage = detDamage (difficulty s1) s0
   in
   if ticks_left0 char_state == 0 then
@@ -788,28 +805,30 @@ npcMove offset d_list (w:u:v:w1:u1:v1:blocks) w_grid w_grid_upd f_grid obj_grid 
       else (w_grid_upd, obj_grid_upd, s1 {next_sig_q = [129, w, u, v] ++ next_sig_q s1})
     else if direction char_state >= 0 then
       if isNothing (obj (w_grid ! (-w - 1, u', v'))) == True || (u, v) == (u', v') then
-        (w_grid'' ++ w_grid_upd, ((w, u, v), (-2, [])) : ((w, u', v'), (-2, [(offset - 10, w), (offset - 9, u'), (offset - 8, v')] ++ fireball_state char_state)) : obj_grid_upd, s1 {npc_states = (npc_states s1) // [((d_list, 376) !! 8, char_state {dir_vector = dir_vector', fg_position = add_vel_pos (fg_position char_state) dir_vector', node_locations = [w, u', v', 0, 0, 0], ticks_left0 = 1, fireball_state = []})], next_sig_q = [129, w, u', v'] ++ next_sig_q s1})
+        (w_grid'' ++ w_grid_upd,
+         ((w, u, v), (-2, [])) : ((w, u', v'), (-2, [(offset - 10, w), (offset - 9, u'), (offset - 8, v')] ++ fireball_state char_state)) : obj_grid_upd,
+         s1'' s1 d_list (j (dir_vector')) (j (add_vel_pos fgp dir_vector')) (j 1) (j []) (j [w, u', v', 0, 0, 0]) n (j ([129, w, u', v'] ++ next_sig_q s1)))
       else (w_grid_upd, obj_grid_upd, s1 {next_sig_q = [129, w, u, v] ++ next_sig_q s1})
-    else if direction char_state < -4 then ([((-w - 1, u, v), def_w_grid), ((-w - 1, u'' 0, v'' 0), modWGrid w_grid (-w - 1) u v (j (charRotation 0 (npc_dir_remap (direction char_state)) ((d_list, 377) !! 9))) n n n)] ++ w_grid_upd, (take 4 (rampFill w (u'' 0) (v'' 0) (direction char_state) (2, []) (surface (f_grid ! (w, div (u'' 0) 2, div (v'' 0) 2))))) ++ [((w, u, v), (-2, [])), ((w, u'' 0, v'' 0), (-2, [(offset, 1)]))] ++ obj_grid_upd, s1 {npc_states = (npc_states s1) // [((d_list, 378) !! 8, char_state {node_locations = [w, u'' 0, v'' 0, 0, 0, 0], fg_position = adjustFgPosition w (u'' 0) (v'' 0) (direction char_state), ticks_left0 = 41})], next_sig_q = [129, w, u'' 0, v'' 0] ++ next_sig_q s1})
+    else if direction char_state < -4 then ([((-w - 1, u, v), def_w_grid), ((-w - 1, u'' 0, v'' 0), w_grid_6)] ++ w_grid_upd, (take 4 (rampFill w (u'' 0) (v'' 0) (direction char_state) (2, []) (surface (f_grid ! (w, div (u'' 0) 2, div (v'' 0) 2))))) ++ [((w, u, v), (-2, [])), ((w, u'' 0, v'' 0), (-2, [(offset, 1)]))] ++ obj_grid_upd, s1_1)
     else
-      if (w - 1, u', v') == (truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)) then (w_grid_upd, obj_grid_upd, s1 {npc_states = (npc_states s1) // [((d_list, 379) !! 8, char_state {direction = (lastDir char_state)})], next_sig_q = [129, w, u, v] ++ next_sig_q s1})
-      else ([((-w - 1, u, v), def_w_grid), ((-w, (u'' 1), (v'' 1)), modWGrid w_grid (-w - 1) u v (j (charRotation 0 (npc_dir_remap (direction char_state)) ((d_list, 377) !! 9))) n n n)] ++ w_grid_upd, (take 4 (rampFill (w - 1) (u'' 1) (v'' 1) (direction char_state) (2, []) (surface (f_grid ! (w - 1, div (u'' 1) 2, div (v'' 1) 2))))) ++ [((w, u, v), (-2, [])), ((w - 1, u'' 1, v'' 1), (-2, [(offset, 1)]))] ++ obj_grid_upd, s1 {npc_states = (npc_states s1) // [((d_list, 381) !! 8, char_state {node_locations = [w - 1, u'' 1, v'' 1, 0, 0, 0], fg_position = adjustFgPosition w (u'' 1) (v'' 1) (direction char_state), ticks_left0 = 41})], next_sig_q = [129, w - 1, u'' 1, v'' 1] ++ next_sig_q s1})
+      if (w - 1, u', v') == (truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)) then (w_grid_upd, obj_grid_upd, s1'' s1 d_list n n n n n (j (lastDir char_state)) (j ([129, w, u, v] ++ next_sig_q s1)))
+      else ([((-w - 1, u, v), def_w_grid), ((-w, (u'' 1), (v'' 1)), modWGrid w_grid (-w - 1) u v (j (charRotation 0 (npc_dir_remap (direction char_state)) ((d_list, 377) !! 9))) n n n)] ++ w_grid_upd, (take 4 (rampFill (w - 1) (u'' 1) (v'' 1) (direction char_state) (2, []) (surface (f_grid ! (w - 1, div (u'' 1) 2, div (v'' 1) 2))))) ++ [((w, u, v), (-2, [])), ((w - 1, u'' 1, v'' 1), (-2, [(offset, 1)]))] ++ obj_grid_upd, s1'' s1 d_list n (j (adjustFgPosition w (u'' 1) (v'' 1) (direction char_state))) (j 41) n (j [w - 1, u'' 1, v'' 1, 0, 0, 0]) n (j ([129, w - 1, u'' 1, v'' 1] ++ next_sig_q s1)))
   else if ticks_left0 char_state == 1 then
-    if direction char_state >= 0 then (w_grid' : w_grid_upd, obj_grid_upd, s1 {npc_states = (npc_states s1) // [((d_list, 382) !! 8, char_state {fg_position = add_vel_pos (fg_position char_state) (dir_vector char_state)})], next_sig_q = [129, w, u, v] ++ next_sig_q s1})
+    if direction char_state >= 0 then (w_grid' : w_grid_upd, obj_grid_upd, s1'' s1 d_list n (j (add_vel_pos fgp (dir_vector char_state))) n n n n (j ([129, w, u, v] ++ next_sig_q s1)))
     else if direction char_state < -4 then
       if (w + 1, (conv_ramp_fill0, 383) !! 1, (conv_ramp_fill0, 384) !! 2) == (truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)) then (w_grid_upd, obj_grid_upd, s1 {next_sig_q = [129, w, u, v] ++ next_sig_q s1})
       else if fst (obj_grid ! (w + 1, (conv_ramp_fill0, 385) !! 1, (conv_ramp_fill0, 386) !! 2)) > 0 then (w_grid_upd, obj_grid_upd, s1 {next_sig_q = [129, w, u, v] ++ next_sig_q s1})
-      else (w_grid_4 (-1) ++ w_grid_upd, take 4 (rampFill w u v (direction char_state) (0, []) (surface (f_grid ! (w, div u 2, div v 2)))) ++ [((w, u, v), (-2, [])), ramp_fill' 1] ++ obj_grid_upd, s1 {npc_states = (npc_states s1) // [((d_list, 387) !! 8, char_state {node_locations = conv_ramp_fill0 ++ [0, 0, 0], fg_position = ramp_climb_, direction = npc_dir_remap (direction char_state), ticks_left0 = 1})], next_sig_q = [129] ++ conv_ramp_fill0 ++ next_sig_q s1})
+      else (w_grid_4 (-1) ++ w_grid_upd, take 4 (rampFill w u v (direction char_state) (0, []) (surface (f_grid ! (w, div u 2, div v 2)))) ++ [((w, u, v), (-2, [])), ramp_fill' 1] ++ obj_grid_upd, s1'' s1 d_list n (j ramp_climb_) (j 1) n (j (conv_ramp_fill0 ++ [0, 0, 0])) (j (npc_dir_remap (direction char_state))) (j ([129] ++ conv_ramp_fill0 ++ next_sig_q s1)))
     else
       if (w, (conv_ramp_fill1, 388) !! 1, (conv_ramp_fill1, 389) !! 2) == (truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)) then (w_grid_upd, obj_grid_upd, s1 {next_sig_q = [129, w, u, v] ++ next_sig_q s1})
       else if fst (obj_grid ! (w, (conv_ramp_fill1, 390) !! 1, (conv_ramp_fill1, 391) !! 2)) > 0 then (w_grid_upd, obj_grid_upd, s1 {next_sig_q = [129, w, u, v] ++ next_sig_q s1})
-      else (w_grid_4 0 ++ w_grid_upd, take 4 (rampFill w u v (direction char_state) (0, []) (surface (f_grid ! (w, div u 2, div v 2)))) ++ [((w, u, v), (-2, [])), ramp_fill' 0] ++ obj_grid_upd, s1 {npc_states = (npc_states s1) // [((d_list, 392) !! 8, char_state {node_locations = conv_ramp_fill1 ++ [0, 0, 0], fg_position = ramp_climb_, direction = npc_dir_remap (direction char_state), ticks_left0 = 1})], next_sig_q = [129] ++ conv_ramp_fill1 ++ next_sig_q s1})
-  else if ticks_left0 char_state > 1 then (w_grid''' : w_grid_upd, obj_grid_upd, s1 {npc_states = (npc_states s1) // [((d_list, 393) !! 8, char_state {ticks_left0 = ticks_left0 char_state - 1})], next_sig_q = [129, w, u, v] ++ next_sig_q s1})
+      else (w_grid_4 0 ++ w_grid_upd, take 4 (rampFill w u v (direction char_state) (0, []) (surface (f_grid ! (w, div u 2, div v 2)))) ++ [((w, u, v), (-2, [])), ramp_fill' 0] ++ obj_grid_upd, s1'' s1 d_list n (j ramp_climb_) (j 1) n (j (conv_ramp_fill1 ++ [0, 0, 0])) (j (npc_dir_remap (direction char_state))) (j ([129] ++ conv_ramp_fill1 ++ next_sig_q s1)))
+  else if ticks_left0 char_state > 1 then (w_grid''' : w_grid_upd, obj_grid_upd, s1'' s1 d_list n n (j (ticks_left0 char_state - 1)) n n n (j ([129, w, u, v] ++ next_sig_q s1)))
   else throw NPC_feature_not_implemented
 
 -- The centipede NPCs have a modular design whereby a separate GPLC script drives each node, or centipede segment.  Only the head node calls npcDecision but all
--- nodes call cpede_move.  A signal relay is formed in that signals sent by the head propagate along the tail and drive script runs and thereby movement.  The three
--- functions below are to support cpedeMove with segment movement, signal propagation and animation respectively.
+-- nodes call cpede_move.  A signal relay is formed in that signals sent by the head propagate along the tail and drive script runs and thereby movement.
+-- The three functions below are to support cpedeMove with segment movement, signal propagation and animation respectively.
 cpedePos :: Int -> Int -> Int -> Int -> Bool -> ((Int, Int), (Float, Float))
 cpedePos u v dir t reversed =
   let fg_u_base = (fromIntegral u) + 0.5
@@ -834,8 +853,9 @@ animateCpede t n base_id model_id node_num frames =
   if node_num == 0 then ((frames, 394) !! (mod (div t 4) n)) + (7 - (model_id - base_id))
   else 13 - (model_id - base_id)
 
--- cpedeHeadSwap (and the nine functions above it) are intended to allow centipede NPCs to swap their head and tail end nodes, as a way to escape getting stuck if they crawl into a dead end.
--- This imitates the functionality of centipedes in the original ZZT.  However, as of build 8_10 this mechanic is still a work in progress.
+-- cpedeHeadSwap (and the nine functions above it) are intended to allow centipede NPCs to swap their head and tail end nodes, as a way to escape getting stuck
+-- if they crawl into a dead end.
+-- This imitates the functionality of centipedes in the original ZZT.  However, as of build 9_03 this mechanic is still a work in progress.
 reverse_segment [] = []
 reverse_segment (x:xs) = cpede_reverse x : reverse_segment xs
 
