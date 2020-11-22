@@ -1434,7 +1434,7 @@ updatePlay io_box state_ref s0 s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_g
       else do
         updatePlay io_box state_ref (s0_ (s0 {pos_u = (det, 577) !! 0, pos_v = (det, 578) !! 1, pos_w = floor, vel = vel_0, gameClock = snd game_clock'})) link1 False min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid lookUp save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
 
--- These five functions handle events triggered by a call to passMsg within a GPLC program.  These include on screen messages, object interaction menus and sound effects.
+-- This function is used to convert integers to their representation in the engine's message tile reference format.
 convMsg :: Int -> [Int]
 convMsg v =
   if v < 10 then [(mod v 10) + 53]
@@ -1443,6 +1443,7 @@ convMsg v =
 
 char_list = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 ,'.?;:+-=!()<>"
 
+-- These four functions handle events triggered by a call to passMsg within a GPLC program.  These include on screen messages, object interaction menus and sound effects.
 findTile :: [Char] -> Char -> Int -> Int
 findTile [] t i = (i + 1)
 findTile (x:xs) t i =
