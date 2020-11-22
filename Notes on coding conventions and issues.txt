@@ -1,0 +1,28 @@
+Coding conventions used in the Game :: Dangerous project
+
+Author: Steven Tinsley
+
+The Game :: Dangerous code base does not conform to what you might think of as “normal” Haskell coding conventions.  This is because when I started it I hadn't
+familiarised myself with what these were and only fairly recently have.  However, work is currently ongoing (at the time of writing) to bring it closer to
+conforming with at least some of them.  Below I'll lay out the two conventions that I'm now attempting to keep to.
+
+Naming rules
+
+Almost all top level function names use lowerCamelCase as you might expect.  They used snake_case until I converted most using an automation tool (see commits
+7daeef4 and 5e22ca9).  Function arguments, names within let bindings, types and type constructors still use snake_case and this is intended to remain the case.
+
+Line lengths
+
+Line lengths should be kept within 160 characters.  At the time of writing reformatting and refactoring are still in progress to enforce this rule.
+
+The Prelude.(!!) issue
+
+The Prelude.(!!) operator has been hidden in favour of a wrapped version that I've come up with.  This was done because of the amount of time I found myself
+spending tracking down the source of Prelude.(!!): Index too large errors during a phase of development.  See module Index_wrapper for the implementation of it.
+I wrote an automation tool to replace all instances of (!!) with a call to the warapper function of the form shown below.
+
+(x, location) !! i,
+
+where x is a list, location should be a unique integer used to mark the location of failure and i is the index.  The "--current max location" comment in
+Index_wrapper should be updated each time a new wrapped (!!) operator is added so it can be ensured that unique values are always used for location.  In the
+event of conflicts resulting from multiple people contributing, I will take responsibility for resolving these.
