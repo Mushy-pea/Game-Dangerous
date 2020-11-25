@@ -892,9 +892,9 @@ chs0 head_i c_states =
 
 chs1 :: Int -> Array Int NPC_state -> Array Int NPC_state
 chs1 head_i c_states =
-  let node_locations0 = take 3 (node_locations (c_states ! i))
-      node_locations1 = take 3 (node_locations (c_states ! (reverse_node_locs (c_states ! i) i)))
-      u = [(i, (c_states ! i) {node_locations = node_locations0 ++ node_locations1}) | i <- [head_i..head_i + end_node (c_states ! head_i)]]
+  let node_locations0 = \i -> take 3 (node_locations (c_states ! i))
+      node_locations1 = \i -> take 3 (node_locations (c_states ! (reverse_node_locs (c_states ! i) i)))
+      u = [(i, (c_states ! i) {node_locations = node_locations0 i ++ node_locations1 i}) | i <- [head_i..head_i + end_node (c_states ! head_i)]]
   in c_states // u
 
 chs2 :: Int -> Array Int NPC_state -> Array Int NPC_state
@@ -907,11 +907,11 @@ chs3 head_i c_states =
 
 chs4 :: Int -> Array Int NPC_state -> Array Int NPC_state
 chs4 head_i c_states =
-  let tl = updTicksLeft (ticks_left0 (c_states ! i)) (reversed (c_states ! i))
-      u0 = [(i, (c_states ! i) {ticks_left0 = tl}) | i <- [head_i + 1..head_i + end_node (c_states ! head_i)]]
-      u1 = [(i, (c_states ! i) {ticks_left0 = tl}) | i <- [head_i..head_i + end_node (c_states ! head_i) - 1]]
+  let tl = \i -> updTicksLeft (ticks_left0 (c_states ! i)) (reversed (c_states ! i))
+      u0 = [(i, (c_states ! i) {ticks_left0 = tl i}) | i <- [head_i + 1..head_i + end_node (c_states ! head_i)]]
+      u1 = [(i, (c_states ! i) {ticks_left0 = tl i}) | i <- [head_i..head_i + end_node (c_states ! head_i) - 1]]
   in
-  if reversed (c_states ! head_i) == True then char_state_arr // u0
+  if reversed (c_states ! head_i) == True then c_states // u0
   else c_states // u1
 
 chs6 False = 129
