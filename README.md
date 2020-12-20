@@ -27,6 +27,11 @@ having to edit the config.txt file.
 rays at a higher density (while not overloading per thread speed capacity on some systems) and thereby address one of the visual artefact 
 issues seen in game.
 
+Update (as of 19/12/2020): The first phase of refactoring I'm undertaking is to enforce a limit of 160 characters on the existing code base.  This has
+already led to an increase of 9.8% in the total lines in the engine and a number of new functions being written to factor out common functionality.
+This phase is about 66% complete, after which further passes will be made to deal with other issues with the code such as using more user defind types to
+improve readability.  After that I'll move onto stage 2 and a load of bug fixing and correctness testing.
+
 [![Preview unavailable](https://img.youtube.com/vi/gBaIU4U6eQs/default.jpg)](https://youtu.be/gBaIU4U6eQs)
 
 [![Preview unavailable](https://img.youtube.com/vi/oHMakxQZjlk/default.jpg)](https://youtu.be/oHMakxQZjlk)
