@@ -1050,83 +1050,89 @@ runGplc xs d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 2 
   runGplc (tail_ (snd chg_state_)) d_list w_grid (fst chg_state_) f_grid obj_grid obj_grid_upd s0 s1 lookUp (head_ (snd chg_state_))
 runGplc (x0:x1:x2:x3:x4:x5:x6:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 3 = do
   reportState (verbose_mode s1) 2 [] [] (showGplcArgs "chgGrid" [(0, x0), (0, x1), (0, x2), (0, x3), (0, x4), (0, x5), (0, x6)] d_list (-1))
-  runGplc (tail_ xs) d_list w_grid (chgGrid x0 (x1, x2, x3) (x4, x5, x6) w_grid def_w_grid w_grid_upd d_list) f_grid obj_grid obj_grid_upd s0 s1 lookUp (head_ xs)
+  runGplc (tail_ xs) d_list w_grid (chgGrid x0 (x1, x2, x3) (x4, x5, x6) w_grid def_w_grid w_grid_upd d_list) f_grid obj_grid obj_grid_upd s0 s1 lookUp
+          (head_ xs)
 runGplc (x0:x1:x2:x3:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 4 =
   let sig = sendSignal 0 x0 (x1, x2, x3) obj_grid s1 d_list
   in do
   reportState (verbose_mode s1) 2 [] [] (showGplcArgs "send_signal" [(0, x0), (0, x1), (0, x2), (0, x3)] d_list (-1))
   runGplc (tail_ xs) d_list w_grid w_grid_upd f_grid (fst sig) obj_grid_upd s0 (snd sig) lookUp (head_ xs)
 runGplc (x0:x1:x2:x3:x4:x5:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 5 = do
-  reportState (verbose_mode s1) 2 [] [] ("\nchg_value run with arguments " ++ "0: " ++ show x0 ++ " 1: " ++ show ((d_list, 436) !! x1) ++ " 2: " ++ show ((d_list, 437) !! x2) ++ " 3: " ++ show ((d_list, 438) !! x3) ++ " 4: " ++ show ((d_list, 439) !! x4) ++ " 5: " ++ show ((d_list, 440) !! x5))
+  reportState (verbose_mode s1) 2 [] [] (showGplcArgs "chg_value" [(0, x0), (0, x1), (0, x2), (0, x3), (0, x4), (0, x5)] d_list (-1))
   runGplc (tail_ xs) d_list w_grid w_grid_upd f_grid obj_grid (chgValue x0 x1 x2 (x3, x4, x5) d_list obj_grid obj_grid_upd) s0 s1 lookUp (head_ xs)
 runGplc (x0:x1:x2:x3:x4:x5:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 6 = do
-  reportState (verbose_mode s1) 2 [] [] ("\nchg_floor run with arguments " ++ "0: " ++ show ((d_list, 441) !! x0) ++ " 1: " ++ show ((d_list, 442) !! x1) ++ " 2: " ++ show ((d_list, 443) !! x2) ++ " 3: " ++ show ((d_list, 444) !! x3) ++ " 4: " ++ show ((d_list, 445) !! x4) ++ " 5: " ++ show ((d_list, 446) !! x5))
+  reportState (verbose_mode s1) 2 [] [] (showGplcArgs "chg_floor" [(0, x0), (0, x1), (0, x2), (0, x3), (0, x4), (0, x5)] d_list (-1))
   runGplc (tail_ xs) d_list w_grid w_grid_upd (chgFloor x0 x1 x2 (x3, x4, x5) f_grid d_list) obj_grid obj_grid_upd s0 s1 lookUp (head_ xs)
 runGplc (x0:x1:x2:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 7 = do
-  reportState (verbose_mode s1) 2 [] [] ("\nchg_ps1 run with arguments " ++ "0: " ++ show ((d_list, 447) !! x0) ++ " 1: " ++ show ((d_list, 448) !! x1) ++ " 2: " ++ show ((d_list, 449) !! x2))
+  reportState (verbose_mode s1) 2 [] [] (showGplcArgs "chg_ps1" [(0, x0), (0, x1), (0, x2)] d_list (-1))
   runGplc (tail_ xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 (chgPs1 x0 x1 x2 d_list s1) lookUp (head_ xs)
 runGplc (x0:x1:x2:x3:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 8 = do
-  reportState (verbose_mode s1) 2 [] [] ("\nchg_obj_type run with arguments " ++ "0: " ++ show ((d_list, 450) !! x0) ++ " 1: " ++ show ((d_list, 451) !! x1) ++ " 2: " ++ show ((d_list, 452) !! x2) ++ " 3: " ++ show ((d_list, 453) !! x3))
+  reportState (verbose_mode s1) 2 [] [] (showGplcArgs "chg_obj_type" [(0, x0), (0, x1), (0, x2), (0, x3)] d_list (-1))
   runGplc (tail_ xs) d_list w_grid w_grid_upd f_grid obj_grid (chgObjType x0 (x1, x2, x3) d_list obj_grid obj_grid_upd) s0 s1 lookUp (head_ xs)
 runGplc (x0:x1:x2:x3:x4:x5:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 9 = do
-  reportState (verbose_mode s1) 2 [] [] ("\nplace_light run with arguments 0: " ++ show ((d_list, 619) !! x0) ++ " 1: " ++ show ((d_list, 620) !! x1) ++ " 2: " ++ show ((d_list, 621) !! x2) ++ " 3: " ++ show ((d_list, 622) !! x3) ++ " 4: " ++ show ((d_list, 623) !! x4) ++ " 5: " ++ show ((d_list, 624) !! x5))
+  reportState (verbose_mode s1) 2 [] [] (showGplcArgs "place_light" [(0, x0), (0, x1), (0, x2), (0, x3), (0, x4), (0, x5)] d_list (-1))
   runGplc (tail_ xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd (placeLight x0 x1 x2 x3 x4 x5 s0 d_list) s1 lookUp (head_ xs)
 runGplc (x0:x1:x2:x3:x4:x5:x6:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 10 = do
-  reportState (verbose_mode s1) 2 [] [] ("\nchg_grid_ run with arguments " ++ "0: " ++ show ((d_list, 457) !! x0) ++ " 1: " ++ show ((d_list, 458) !! x1) ++ " 2: " ++ show ((d_list, 459) !! x2) ++ " 3: " ++ show ((d_list, 460) !! x3) ++ " 4: " ++ show ((d_list, 461) !! x4) ++ " 5: " ++ show ((d_list, 462) !! x5) ++ " 6: " ++ show ((d_list, 463) !! x6))
+  reportState (verbose_mode s1) 2 [] [] (showGplcArgs "chg_grid_" [(0, x0), (0, x1), (0, x2), (0, x3), (0, x4), (0, x5), (0, x6)] d_list (-1))
   runGplc (tail_ xs) d_list w_grid w_grid_upd f_grid obj_grid (chgGrid_ x0 (x1, x2, x3) (x4, x5, x6) obj_grid_upd d_list) s0 s1 lookUp (head_ xs)
 runGplc (x0:x1:x2:x3:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 11 = do
-  reportState (verbose_mode s1) 2 [] [] ("\ncopy_ps1 run with arguments " ++ "0: " ++ show x0 ++ " 1: " ++ show ((d_list, 464) !! x1) ++ " 2: " ++ show ((d_list, 465) !! x2) ++ " 3: " ++ show ((d_list, 466) !! x3))
+  reportState (verbose_mode s1) 2 [] [] (showGplcArgs "copy_ps1" [(1, x0), (0, x1), (0, x2), (0, x3)] d_list (-1))
   runGplc (tail_ xs) d_list w_grid w_grid_upd f_grid obj_grid (copyPs1 x0 (x1, x2, x3) s1 obj_grid obj_grid_upd d_list) s0 s1 lookUp (head_ xs)
 runGplc (x0:x1:x2:x3:x4:x5:x6:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 12 = do
-  reportState (verbose_mode s1) 2 [] [] ("\ncopy_lstate run with arguments " ++ "0: " ++ show x0 ++ " 1: " ++ show ((d_list, 467) !! x1) ++ " 2: " ++ show ((d_list, 468) !! x2) ++ " 3: " ++ show ((d_list, 469) !! x3) ++ " 4: " ++ show ((d_list, 470) !! x4) ++ " 5: " ++ show ((d_list, 471) !! x5) ++ " 6: " ++ show ((d_list, 472) !! x6))
-  runGplc (tail_ xs) d_list w_grid w_grid_upd f_grid obj_grid (copyLstate x0 (x1, x2, x3) (x4, x5, x6) w_grid obj_grid obj_grid_upd d_list) s0 s1 lookUp (head_ xs)
+  reportState (verbose_mode s1) 2 [] [] (showGplcArgs "copy_lstate" [(1, x0), (0, x1), (0, x2), (0, x3), (0, x4), (0, x5), (0, x6)] d_list (-1))
+  runGplc (tail_ xs) d_list w_grid w_grid_upd f_grid obj_grid (copyLstate x0 (x1, x2, x3) (x4, x5, x6) w_grid obj_grid obj_grid_upd d_list) s0 s1 lookUp
+          (head_ xs)
 runGplc (x:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 13 =
   let pass_msg' = passMsg x xs s1 d_list
   in do
-  reportState (verbose_mode s1) 2 [] [] ("\npass_msg run with arguments " ++ "msg_length: " ++ show ((d_list, 473) !! x) ++ " message data: " ++ show (take ((d_list, 474) !! x) xs))
+  reportState (verbose_mode s1) 2 [] []
+              ("\npass_msg run with arguments " ++ "msg_length: " ++ show ((d_list, 473) !! x) ++ " message data: " ++ show (take ((d_list, 474) !! x) xs))
   runGplc (tail_ (fst pass_msg')) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 (snd pass_msg') lookUp (head_ (fst pass_msg'))
 runGplc (x0:x1:x2:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 14 = do
-  reportState (verbose_mode s1) 2 [] [] ("\nchg_ps0 run with arguments " ++ "0: " ++ show ((d_list, 475) !! x0) ++ " 1: " ++ show ((d_list, 476) !! x1) ++ " 2: " ++ show ((d_list, 477) !! x2))
+  reportState (verbose_mode s1) 2 [] [] (showGplcArgs "chg_ps0" [(0, x0), (0, x1), (0, x2)] d_list (-1))
   runGplc (tail_ xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd (chgPs0 x0 x1 x2 d_list s0) s1 lookUp (head_ xs)
 runGplc (x0:x1:x2:x3:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 15 = do
-  reportState (verbose_mode s1) 2 [] [] ("\ncopy_ps0 run with arguments " ++ "0: " ++ show x0 ++ " 1: " ++ show ((d_list, 478) !! x1) ++ " 2: " ++ show ((d_list, 479) !! x2) ++ " 3: " ++ show ((d_list, 480) !! x3))
+  reportState (verbose_mode s1) 2 [] [] (showGplcArgs "copy_ps0" [(1, x0), (0, x1), (0, x2), (0, x3)] d_list (-1))
   runGplc (tail_ xs) d_list w_grid w_grid_upd f_grid obj_grid (copyPs0 x0 (x1, x2, x3) s0 obj_grid obj_grid_upd d_list) s0 s1 lookUp (head_ xs)
 runGplc (x0:x1:x2:x3:x4:x5:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 16 = do
-  reportState (verbose_mode s1) 2 [] [] ("\nbinary_dice run with arguments " ++ "0: " ++ show ((d_list, 481) !! x0) ++ " 1: " ++ show ((d_list, 482) !! x1) ++ " 2: " ++ show ((d_list, 483) !! x2) ++ " 3: " ++ show ((d_list, 484) !! x3) ++ " 4: " ++ show ((d_list, 485) !! x4) ++ " 5: " ++ show x5)
+  reportState (verbose_mode s1) 2 [] [] (showGplcArgs "binary_dice" [(0, x0), (0, x1), (0, x2), (0, x3), (0, x4), (1, x5)] d_list (-1))
   runGplc (tail_ xs) d_list w_grid w_grid_upd f_grid obj_grid (binaryDice x0 x1 (x2, x3, x4) x5 s0 obj_grid obj_grid_upd d_list) s0 s1 lookUp (head_ xs)
-runGplc (x0:x1:x2:x3:x4:x5:x6:x7:x8:x9:x10:x11:x12:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 17 = do
-  reportState (verbose_mode s1) 2 [] [] ("\nproject_init run with arguments " ++ "0: " ++ show ((d_list, 486) !! x0) ++ " 1: " ++ show ((d_list, 487) !! x1) ++ " 2: " ++ show ((d_list, 488) !! x2) ++ " 3: " ++ show ((d_list, 489) !! x3) ++ "4: " ++ show ((d_list, 490) !! x4) ++ " 5: " ++ show ((d_list, 491) !! x5) ++ " 6: " ++ show ((d_list, 492) !! x6) ++ " 7: " ++ show ((d_list, 493) !! x7) ++ " 8: " ++ show x8)
-  runGplc (tail_ xs) d_list w_grid w_grid_upd f_grid obj_grid (projectInit x0 x1 x2 x3 x4 (x5, x6, x7) (x8, x9, x10) x11 x12 obj_grid obj_grid_upd d_list lookUp) s0 s1 lookUp (head_ xs)
+runGplc (x0:x1:x2:x3:x4:x5:x6:x7:x8:x9:x10:x11:x12:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 17 =
+  let arg_report = [(0, x0), (0, x1), (0, x2), (0, x3), (0, x4), (0, x5), (0, x6), (0, x7), (0, x8), (0, x9), (0, x10), (1, x11), (0, x12)]
+  in do
+  reportState (verbose_mode s1) 2 [] [] (showGplcArgs "project_init" arg_report d_list (-1))
+  runGplc (tail_ xs) d_list w_grid w_grid_upd f_grid obj_grid
+          (projectInit x0 x1 x2 x3 x4 (x5, x6, x7) (x8, x9, x10) x11 x12 obj_grid obj_grid_upd d_list lookUp) s0 s1 lookUp (head_ xs)
 runGplc (x0:x1:x2:x3:x4:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 18 =
   let project_update' = projectUpdate x0 x1 (x2, x3, x4) w_grid w_grid_upd obj_grid obj_grid_upd s0 s1 d_list
   in do
-  reportState (verbose_mode s1) 2 [] [] ("\nproject_update run with arguments " ++ "0: " ++ show x0 ++ " 1: " ++ show x1 ++ " 2: " ++ show ((d_list, 494) !! x2) ++ " 3: " ++ show ((d_list, 495) !! x3) ++ " 4: " ++ show ((d_list, 496) !! x4))
+  reportState (verbose_mode s1) 2 [] [] (showGplcArgs "project_update" [(0, x0), (0, x1), (0, x2), (0, x3), (0, x4)] d_list (-1))
   runGplc (tail_ xs) d_list w_grid (fst__ project_update') f_grid obj_grid (snd__ project_update') s0 (third_ project_update') lookUp (head_ xs)
 runGplc (x0:x1:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 19 = do
-  reportState (verbose_mode s1) 2 [] [] ("\ninit_npc run with arguments " ++ "0: " ++ show ((d_list, 497) !! x0) ++ " 1: " ++ show x1)
+  reportState (verbose_mode s1) 2 [] [] (showGplcArgs "init_npc" [(0, x0), (0, x1)] d_list (-1))
   reportNpcState (verbose_mode s1) s1 ((d_list, 498) !! 8)
   runGplc (tail_ xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 (initNpc x0 x1 s1 d_list) lookUp (head_ xs)
 runGplc (x0:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 20 =
   let npc_decision_ = npcDecision 0 0 x0 0 0 0 d_list (node_locations ((npc_states s1) ! ((d_list, 499) !! 8))) w_grid f_grid obj_grid obj_grid_upd s0 s1 lookUp
   in do
-  reportState (verbose_mode s1) 2 [] [] ("\nnpc_decision run with arguments " ++ "0: " ++ show x0)
+  reportState (verbose_mode s1) 2 [] [] (showGplcArgs "npc_decision" [(0, x0)] d_list (-1))
   reportNpcState (verbose_mode s1) s1 ((d_list, 500) !! 8)
   runGplc (tail_ xs) d_list w_grid w_grid_upd f_grid obj_grid (fst npc_decision_) s0 (snd npc_decision_) lookUp (head_ xs)
 runGplc (x0:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 21 =
   let npc_move_ = npcMove x0 d_list (node_locations ((npc_states s1) ! ((d_list, 501) !! 8))) w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp
   in do
-  reportState (verbose_mode s1) 2 [] [] ("\nnpc_move run with arguments " ++ "0: " ++ show x0)
+  reportState (verbose_mode s1) 2 [] [] (showGplcArgs "npc_move" [(0, x0)] d_list (-1))
   reportNpcState (verbose_mode s1) s1 ((d_list, 502) !! 8)
   runGplc (tail_ xs) d_list w_grid (fst__ npc_move_) f_grid obj_grid (snd__ npc_move_) s0 (third_ npc_move_) lookUp (head_ xs)
 runGplc (x0:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 22 =
   let npc_damage_ = npcDamage x0 (node_locations ((npc_states s1) ! ((d_list, 503) !! 8))) w_grid w_grid_upd obj_grid obj_grid_upd s0 s1 d_list
   in do
-  reportState (verbose_mode s1) 2 [] [] ("\nnpc_damage run...")
+  reportState (verbose_mode s1) 2 [] [] (showGplcArgs "npc_damage" [(1, x0)] d_list (-1))
   runGplc (tail_ xs) d_list w_grid (fst__ npc_damage_) f_grid obj_grid (snd__ npc_damage_) s0 (third_ npc_damage_) lookUp (head_ xs)
 runGplc (x0:x1:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 23 =
   let cpede_move_ = cpedeMove x0 x1 d_list (node_locations ((npc_states s1) ! ((d_list, 504) !! 8))) w_grid w_grid_upd obj_grid obj_grid_upd s0 s1
   in do
-  reportState (verbose_mode s1) 2 [] [] ("\ncpede_move run with arguments " ++ "0: " ++ show x0)
+  reportState (verbose_mode s1) 2 [] [] (showGplcArgs "cpede_move" [(0, x0), (1, x1)] d_list (-1))
   reportNpcState (verbose_mode s1) s1 ((d_list, 505) !! 8)
   runGplc (tail_ xs) d_list w_grid (fst__ cpede_move_) f_grid obj_grid (snd__ cpede_move_) s0 (third_ cpede_move_) lookUp (head_ xs)
 runGplc code d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp c = do
@@ -1149,13 +1155,14 @@ reportNpcState True s1 i = putStr ("\n" ++ show ((npc_states s1) ! i))
 
 gplcError :: [((Int, Int, Int), Wall_grid)] -> Array (Int, Int, Int) Floor_grid -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> Play_state0 -> Play_state1 -> SomeException -> IO ([((Int, Int, Int), Wall_grid)], Array (Int, Int, Int) Floor_grid, [((Int, Int, Int), (Int, [(Int, Int)]))], Play_state0, Play_state1)
 gplcError w_grid_upd f_grid obj_grid_upd s0 s1 e = do
-  putStr ("\nA GPLC program in the map has had a runtime exception and Game :: Dangerous engine is designed to shut down in this case.  Exception thrown: " ++ show e)
+  putStr ("\nA GPLC program has had a runtime exception and Game :: Dangerous engine is designed to shut down in this case.  Exception thrown: " ++ show e)
   putStr "\nPlease see the readme.txt file for details of how to report this bug."
   exitSuccess
   return (w_grid_upd, f_grid, obj_grid_upd, s0, s1)
 
--- These two functions are to fix a major space leak, which occured when an NPC was active but not in view.  This appears to have been caused by an accumulation of pending updates to Wall_grid, delayed
--- due to laziness.  Testing showed that nothing short of forcing the update list elements to normal form was sufficient.
+-- These two functions are to fix a major space leak, which occured when an NPC was active but not in view.  This appears to have been caused by an accumulation
+-- of pending updates to Wall_grid, delayed due to laziness.  Testing showed that nothing short of forcing the update list elements to
+-- normal form was sufficient.
 forceUpdate1 :: ((Int, Int, Int), Wall_grid) -> Int
 forceUpdate1 ((w, u, v), voxel) =
   let c0 = \x -> if x == True then 1
@@ -1163,8 +1170,21 @@ forceUpdate1 ((w, u, v), voxel) =
       c1 = \x -> flToInt x
       c2 = \x -> if x == [] then 0
                  else 1
-      c3 = \x -> ident_ (fromMaybe def_obj_place x) + (c1 (u__ (fromMaybe def_obj_place x))) + (c1 (v__ (fromMaybe def_obj_place x))) + (c1 (w__ (fromMaybe def_obj_place x))) + (c2 (rotation (fromMaybe def_obj_place x))) + (c0 (rotate_ (fromMaybe def_obj_place x))) + (c1 (phase (fromMaybe def_obj_place x))) + (texture__ (fromMaybe def_obj_place x)) + (fromIntegral (num_elem (fromMaybe def_obj_place x))) + obj_flag (fromMaybe def_obj_place x)
-  in w + u + v + (c0 (u1 voxel)) + (c0 (u2 voxel)) + (c0 (v1 voxel)) + (c0 (v2 voxel)) + (c1 (u1_bound voxel)) + (c1 (u2_bound voxel)) + (c1 (v1_bound voxel)) + (c1 (v2_bound voxel)) + (c1 (w_level voxel)) + (c2 (wall_flag voxel)) + (c2 (texture voxel)) + c3 (obj voxel)
+      c3 = ident_ (fromMaybe def_obj_place (obj voxel))
+      c4 = c1 (u__ (fromMaybe def_obj_place (obj voxel)))
+      c5 = c1 (v__ (fromMaybe def_obj_place (obj voxel)))
+      c6 = c1 (w__ (fromMaybe def_obj_place (obj voxel)))
+      c7 = c2 (rotation (fromMaybe def_obj_place (obj voxel)))
+      c8 = c0 (rotate_ (fromMaybe def_obj_place (obj voxel)))
+      c9 = c1 (phase (fromMaybe def_obj_place (obj voxel)))
+      c10 = texture__ (fromMaybe def_obj_place (obj voxel))
+      c11 = fromIntegral (num_elem (fromMaybe def_obj_place (obj voxel)))
+      c12 = obj_flag (fromMaybe def_obj_place (obj voxel))
+      c13 = w + u + v
+      c14 = (c0 (u1 voxel)) + (c0 (u2 voxel)) + (c0 (v1 voxel)) + (c0 (v2 voxel))
+      c15 = (c1 (u1_bound voxel)) + (c1 (u2_bound voxel)) + (c1 (v1_bound voxel)) + (c1 (v2_bound voxel))
+      c16 = (c1 (w_level voxel)) + (c2 (wall_flag voxel)) + (c2 (texture voxel))
+  in c3 + c4 + c5 + c6 + c7 + c8 + c9 + c10 + c11 + c12 + c13 + c14 + c15 + c16
 
 forceUpdate0 :: [((Int, Int, Int), Wall_grid)] -> [((Int, Int, Int), Wall_grid)] -> Int -> IO [((Int, Int, Int), Wall_grid)]
 forceUpdate0 [] acc c = do
@@ -1173,11 +1193,12 @@ forceUpdate0 [] acc c = do
   return acc
 forceUpdate0 (x:xs) acc c = forceUpdate0 xs (x : acc) (c + forceUpdate1 x)
 
--- Due to the complexity characteristics of the array update operator ( // ) it was decided at some point to replace all such operations on Wall_grid and Obj_grid in the GPLC op - code functions with
--- accumulations to lists.  Each element of the respective list would encode for an element update that would be performed by the list being passed to a single ( // ) operation at the end of each game
--- time tick.  This proved fairly simple for Wall_grid, although some updates that previously relied on sequential applications of ( // ) were made to work by making these updates atomic in the op - code
--- functions.  Solving the same problem for Obj_grid was less simple and the solution chosen involves encoding updates in a list of one type and mapping that to the type taken by the ( // ) operation.
--- This mapping is done by the function below.
+-- Due to the complexity characteristics of the array update operator ( // ) it was decided at some point to replace all such operations on Wall_grid and
+-- Obj_grid in the GPLC op - code functions with accumulations to lists.  Each element of the respective list would encode for an element update that would
+-- be performed by the list being passed to a single ( // ) operation at the end of each game time tick.  This proved fairly simple for Wall_grid, although
+-- some updates that previously relied on sequential applications of ( // ) were made to work by making these updates atomic in the op - code
+-- functions.  Solving the same problem for Obj_grid was less simple and the solution chosen involves encoding updates in a list of one type and mapping that to
+-- the type taken by the ( // ) operation.  This mapping is done by the function below.
 atomiseObjGridUpd :: Int -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> [(Int, Int)] -> Array (Int, Int, Int) (Int, [Int]) -> [((Int, Int, Int), (Int, [Int]))]
 atomiseObjGridUpd m [] acc obj_grid = []
 atomiseObjGridUpd m (x:xs) acc obj_grid =
@@ -1198,9 +1219,10 @@ atomiseObjGridUpd m (x:xs) acc obj_grid =
     else if fst x == fst ((xs, 511) !! 0) then atomiseObjGridUpd 1 xs (acc ++ snd (snd x)) obj_grid
     else (fst x, (fst source, new_prog1)) : atomiseObjGridUpd 0 xs [] obj_grid
 
--- These three functions (together with send_signal) implement the signalling system that drives GPLC program runs.  This involves signalling programs in response to player object collisions and handling
--- the signal queue, which allows programs to signal each other.  The phase_flag argument of linkGplc0 is used by updatePlay to limit the speed of the GPLC interpreter to 40 ticks per second,
--- independent of the variable frame rate.  The exception to this limit is if a player object collision needs to be handled, in which case an additional interpreter tick is allowed as a special case.
+-- These three functions (together with send_signal) implement the signalling system that drives GPLC program runs.  This involves signalling programs in
+-- response to player object collisions and handling the signal queue, which allows programs to signal each other.  The phase_flag argument of linkGplc0
+-- is used by updatePlay to limit the speed of the GPLC interpreter to 40 ticks per second, independent of the variable frame rate.  The exception to this
+-- limit is if a player object collision needs to be handled, in which case an additional interpreter tick is allowed as a special case.
 linkGplc0 :: Bool -> [Float] -> [Int] -> Array (Int, Int, Int) Wall_grid -> [((Int, Int, Int), Wall_grid)] -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> Play_state0 -> Play_state1 -> UArray (Int, Int) Float -> Bool -> IO (Array (Int, Int, Int) Wall_grid, Array (Int, Int, Int) Floor_grid, Array (Int, Int, Int) (Int, [Int]), Play_state0, Play_state1)
 linkGplc0 phase_flag (x0:x1:xs) (z0:z1:z2:zs) w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp init_flag =
   let target0 = link_gplc2 x0 (z0, z1, z2)
@@ -1208,25 +1230,32 @@ linkGplc0 phase_flag (x0:x1:xs) (z0:z1:z2:zs) w_grid w_grid_upd f_grid obj_grid 
       prog = (snd (obj_grid ! target1))
       obj_grid' = (sendSignal 1 1 target0 obj_grid s1 [])
       obj_grid'' = obj_grid // [(target1, (fst (obj_grid ! target1), (head__ prog) : (((sig_q s1), 515) !! 0) : drop 2 prog))]
+      show_obj_grid = show (((sig_q s1), 519) !! 1, ((sig_q s1), 520) !! 2, ((sig_q s1), 521) !! 3)
   in do
   if init_flag == True then do
     if (x1 == 1 || x1 == 3) && head (snd (obj_grid ! target0)) == 0 then do
       reportState (verbose_mode s1) 2 [] [] ("\nPlayer starts GPLC program at Obj_grid " ++ show target0)
-      run_gplc' <- catch (runGplc (snd ((fst obj_grid') ! target0)) [] w_grid w_grid_upd f_grid (fst obj_grid') obj_grid_upd s0 s1 lookUp 0) (\e -> gplcError w_grid_upd f_grid obj_grid_upd s0 s1 e)
-      linkGplc0 phase_flag (x0:x1:xs) (z0:z1:z2:zs) w_grid (fst_ run_gplc') (snd_ run_gplc') obj_grid (third run_gplc') (fourth run_gplc') (fifth run_gplc') lookUp False
+      run_gplc' <- catch (runGplc (snd ((fst obj_grid') ! target0)) [] w_grid w_grid_upd f_grid (fst obj_grid') obj_grid_upd s0 s1 lookUp 0)
+                         (\e -> gplcError w_grid_upd f_grid obj_grid_upd s0 s1 e)
+      linkGplc0 phase_flag (x0:x1:xs) (z0:z1:z2:zs) w_grid (fst_ run_gplc') (snd_ run_gplc') obj_grid (third run_gplc') (fourth run_gplc') (fifth run_gplc')
+                lookUp False
     else linkGplc0 phase_flag (x0:x1:xs) (z0:z1:z2:zs) w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp False
   else if phase_flag == True then do
     if sig_q s1 == [] then do
       update <- forceUpdate0 w_grid_upd [] 0
       return (w_grid // update, f_grid, obj_grid // (atomiseObjGridUpd 0 obj_grid_upd [] obj_grid), s0, s1 {sig_q = next_sig_q s1, next_sig_q = []})
     else do
-      reportState ((verbose_mode s1) && sig_q s1 /= []) 2 [] [] ("\n\ngame_t = " ++ show (fst__ (gameClock s0)) ++ "\n----------------\n\nsignal queue: " ++ show (sig_q s1) ++ "\n")
+      reportState ((verbose_mode s1) && sig_q s1 /= []) 2 [] []
+                  ("\n\ngame_t = " ++ show (fst__ (gameClock s0)) ++ "\n----------------\n\nsignal queue: " ++ show (sig_q s1) ++ "\n")
       if fst (obj_grid ! target1) == 1 || fst (obj_grid ! target1) == 3 then do
-        reportState (verbose_mode s1) 2 [] [] ("\nGPLC program run at Obj_grid " ++ show (((sig_q s1), 516) !! 1, ((sig_q s1), 517) !! 2, ((sig_q s1), 518) !! 3))
-        run_gplc' <- catch (runGplc (snd (obj_grid'' ! target1)) [] w_grid w_grid_upd f_grid obj_grid'' obj_grid_upd s0 (s1 {sig_q = drop 4 (sig_q s1)}) lookUp 0) (\e -> gplcError w_grid_upd f_grid obj_grid_upd s0 s1 e)
-        linkGplc0 True (x0:x1:xs) (z0:z1:z2:zs) w_grid (fst_ run_gplc') (snd_ run_gplc') obj_grid (third run_gplc') (fourth run_gplc') (fifth run_gplc') lookUp False
+        reportState (verbose_mode s1) 2 [] []
+                    ("\nGPLC program run at Obj_grid " ++ show (((sig_q s1), 516) !! 1, ((sig_q s1), 517) !! 2, ((sig_q s1), 518) !! 3))
+        run_gplc' <- catch (runGplc (snd (obj_grid'' ! target1)) [] w_grid w_grid_upd f_grid obj_grid'' obj_grid_upd s0 (s1 {sig_q = drop 4 (sig_q s1)}) lookUp 0)
+                           (\e -> gplcError w_grid_upd f_grid obj_grid_upd s0 s1 e)
+        linkGplc0 True (x0:x1:xs) (z0:z1:z2:zs) w_grid (fst_ run_gplc') (snd_ run_gplc') obj_grid (third run_gplc') (fourth run_gplc') (fifth run_gplc') lookUp
+                  False
       else do
-        putStr ("\nSignal addressed to Obj_grid " ++ show (((sig_q s1), 519) !! 1, ((sig_q s1), 520) !! 2, ((sig_q s1), 521) !! 3) ++ " but this element is not set to run programs from.")
+        putStr ("\nSignal addressed to Obj_grid " ++ show_obj_grid ++ " but this element is not set to run programs from.")
         linkGplc0 True (x0:x1:xs) (z0:z1:z2:zs) w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 (s1 {sig_q = drop 4 (sig_q s1)}) lookUp False
   else do
     update <- forceUpdate0 w_grid_upd [] 0
@@ -1253,7 +1282,8 @@ link_gplc2 1 (z0, z1, z2) = (z0, z1 + 1, z2)
 link_gplc2 2 (z0, z1, z2) = (z0, z1, z2 - 1)
 link_gplc2 3 (z0, z1, z2) = (z0, z1 - 1, z2)
 
--- These four functions perform game physics and geometry computations.  These include player collision detection, thrust, friction, gravity and floor surface modelling.
+-- These four functions perform game physics and geometry computations.
+-- These include player collision detection, thrust, friction, gravity and floor surface modelling.
 detectColl :: Int -> (Float, Float) -> (Float, Float) -> Array (Int, Int, Int) (Int, [Int]) -> Array (Int, Int, Int) Wall_grid -> [Float]
 detectColl w_block (u, v) (step_u, step_v) obj_grid w_grid =
   let u' = u + step_u
@@ -1329,10 +1359,12 @@ updateVel (x:xs) (y:ys) (z:zs) f_rate f =
 -- Used to generate the sequence of message tile references that represent the pause screen text.
 pauseText :: [Char] -> Play_state1 -> ([Char], Int, Int, Int) -> [(Int, [Int])]
 pauseText (x0:x1:x2:x3:x4:x5:xs) s1 (diff, a, b, c) =
-  [(0, msg9), (0, []), (0, msg1 ++ convMsg (health s1)), (0, msg2 ++ convMsg (ammo s1)), (0, msg3 ++ convMsg (gems s1)), (0, msg4 ++ convMsg (torches s1)), (0, msg5 ++ take 6 (keys s1)), (0, msg30 ++ drop 6 (keys s1)), (0, msg6 ++ region s1), (0, convMsg_ ("Difficulty: " ++ diff)), (0, convMsg_ ("Time: " ++ [x0, x1, ':', x2, x3, ':', x4, x5])), (0, []), (1, msg10), (2, msg17), (3, msg11), (4, msg12)]
+  [(0, msg9), (0, []), (0, msg1 ++ convMsg (health s1)), (0, msg2 ++ convMsg (ammo s1)), (0, msg3 ++ convMsg (gems s1)), (0, msg4 ++ convMsg (torches s1))
+  , (0, msg5 ++ take 6 (keys s1)), (0, msg30 ++ drop 6 (keys s1)), (0, msg6 ++ region s1), (0, convMsg_ ("Difficulty: " ++ diff))
+  , (0, convMsg_ ("Time: " ++ [x0, x1, ':', x2, x3, ':', x4, x5])), (0, []), (1, msg10), (2, msg17), (3, msg11), (4, msg12)]
 
--- This function ensures that all signals sent to NPC GPLC programs are run before any others.  This is done to fix a corner case problem that occured when an NPC and projectile
--- tried to enter the same voxel in the same tick.
+-- This function ensures that all signals sent to NPC GPLC programs are run before any others.  This is done to fix a corner case problem that occured when an
+-- NPC and projectile tried to enter the same voxel in the same tick.
 prioritiseNpcs :: [Int] -> [Int] -> [Int] -> [Int]
 prioritiseNpcs [] acc0 acc1 = acc0 ++ acc1
 prioritiseNpcs (x0:x1:x2:x3:xs) acc0 acc1 =
@@ -1342,14 +1374,17 @@ prioritiseNpcs (x0:x1:x2:x3:xs) acc0 acc1 =
 -- This function handles preemptive ceiling collision detection (i.e. stops the player jumping if there is a ceiling directly above).
 jumpAllowed :: Array (Int, Int, Int) Floor_grid -> Play_state0 -> Bool
 jumpAllowed f_grid s0 =
+  let f_grid_voxel0 = f_grid ! (truncate (pos_w s0) + 1, div (truncate (pos_u s0)) 2, div (truncate (pos_v s0)) 2)
+      f_grid_voxel1 = f_grid ! (truncate (pos_w s0), div (truncate (pos_u s0)) 2, div (truncate (pos_v s0)) 2)
+  in
   if truncate (pos_w s0) == 2 then False
   else
-    if surface (f_grid ! (truncate (pos_w s0) + 1, div (truncate (pos_u s0)) 2, div (truncate (pos_v s0)) 2)) == Open || surface (f_grid ! (truncate (pos_w s0), div (truncate (pos_u s0)) 2, div (truncate (pos_v s0)) 2)) /= Flat then True
+    if surface f_grid_voxel0 == Open || surface f_grid_voxel1 /= Flat then True
     else False
 
--- The frames per second (FPS) measurements made here are used to drive the optional on screen FPS report and to scale player movement rates in real time, to allow for a variable frame rate
--- with consistent game play speed.  It is intended that the engine will be limited to ~60 FPS (set via the "min_frame_t" field of the conf_reg array) with movement scaling applied
--- between 40 - 60 FPS.  Below 40 FPS game play slow down will be seen.
+-- The frames per second (FPS) measurements made here are used to drive the optional on screen FPS report and to scale player movement rates in real time,
+-- to allow for a variable frame rate with consistent game play speed.  It is intended that the engine will be limited to ~60 FPS
+-- (set via the "min_frame_t" field of the conf_reg array) with movement scaling applied between 40 - 60 FPS.  Below 40 FPS game play slow down will be seen.
 determineFps :: SEQ.Seq Integer -> Integer -> (Float, [Int], SEQ.Seq Integer)
 determineFps t_seq t_current =
   let frame_rate0 = 1000000000 / (fromIntegral (t_current - SEQ.index t_seq 0) / 40)
