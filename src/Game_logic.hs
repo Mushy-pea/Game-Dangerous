@@ -349,6 +349,27 @@ projectInit u v w a vel (i0, i1, i2) (i3, i4, i5) offset obj_flag obj_grid obj_g
       v11 = (offset + 24, ((d_list, 631) !! w))
   in (source, (-3, [])) : (dest, (-3, [v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11])) : obj_grid_upd
 
+-- This function tests if a projectile has collided with a wall, object or the player when it crosses into another voxel.
+-- It is called from projectUpdate and replaces what were a set of separate tests in a previous version.
+detectProjectColl :: Int -> Int -> Int -> Int -> UArray Int Bool -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) (Int, [Int]) -> Play_state0 -> Int
+detectProjectColl intersection w_block u_block' v_block' wall_struct w_grid obj_grid s0 =
+  let no_collision = 0
+      wall_collision = 1
+      object_collision = 2
+      player_collision = 3
+  in
+  if wall_struct ! intersection == True then wall_collision
+  else if fst (obj_grid ! (w_block, u_block', v_block')) > 0 && fst (obj_grid ! (w_block, u_block', v_block')) < 4 then object_collision
+  else if (truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)) == (w_block, u_block', v_block') then player_collision
+  else no_collision
+
+-- This function either reduces the players health or causes player character death, depending on the player's current health, the difficulty level and
+-- a pseudorandomised damage amount.
+playerDamage :: Play_state0 -> Play_state1 -> Play_state1
+playerDamage s0 s1 =
+  if health s1 - detDamage (difficulty s1) s0 <= 0 then s1 {health = 0, state_chg = 1, message = 0 : msg27}
+  else s1 {health = health s1 - detDamage (difficulty s1) s0, state_chg = 1, message = 0 : msg25}
+
 projectUpdate :: Int -> Int -> (Int, Int, Int) -> Array (Int, Int, Int) Wall_grid -> [((Int, Int, Int), Wall_grid)] -> Array (Int, Int, Int) (Int, [Int]) -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> Play_state0 -> Play_state1 -> [Int] -> ([((Int, Int, Int), Wall_grid)], [((Int, Int, Int), (Int, [(Int, Int)]))], Play_state1)
 projectUpdate p_state p_state' (i0, i1, i2) w_grid w_grid_upd obj_grid obj_grid_upd s0 s1 d_list =
   let location = ((d_list, 307) !! i0, (d_list, 308) !! i1, (d_list, 309) !! i2)
@@ -366,69 +387,57 @@ projectUpdate p_state p_state' (i0, i1, i2) w_grid w_grid_upd obj_grid obj_grid_
       w_block = (d_list, 314) !! (p_state + 2)
       w_block_ = (- w_block) - 1
       index = (w_block, u_block, v_block)
+      index_ = (w_block_, u_block, v_block)
       grid_i = fromJust (obj (w_grid ! index))
       grid_i' = (obj (w_grid ! index))
       s1_ = \index -> snd (subI 8 obj_grid index (i0, i1, i2) s1)
+      detectProjectColl_ = \intersection -> detectProjectColl intersection w_block_ u_block' v_block' wall_struct w_grid obj_grid s0
+      wall_struct = array (0, 7) [(0, u2 (w_grid ! index_)), (1, u2 (w_grid ! index_)), (2, v2 (w_grid ! index_)), (3, v2 (w_grid ! index_))
+                                 , (4, u1 (w_grid ! index_)), (5, u1 (w_grid ! index_)), (6, v1 (w_grid ! index_)), (7, v1 (w_grid ! index_))]
   in
   if isNothing grid_i' == True then ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 1)])) : obj_grid_upd, s1)
   else if ident_ grid_i /= 128 then (w_grid_upd, (location, (fst target, [(p_state' + 8, 2), (p_state' + 9, w_block_), (p_state' + 10, u_block), (p_state' + 11, v_block)])) : obj_grid_upd, s1)
   else if u_block' == u_block && v_block' == v_block then ((index, (w_grid ! index) {obj = Just (grid_i {u__ = u__ grid_i + intToFloat vel_u, v__ = v__ grid_i + intToFloat vel_v})}) : w_grid_upd, (location, (fst target, [(p_state', u'), (p_state' + 1, v')])) : obj_grid_upd, s1_ (w_block_, u_block, v_block))
-  else if u_block' == u_block && v_block' == v_block + 1 then
-    if v2 (w_grid ! (w_block_, u_block, v_block)) == True then ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 1)])) : obj_grid_upd, s1)
-    else if fst (fst (subI 0 obj_grid (w_block_, u_block, v_block + 1) (i0, i1, i2) s1)) > 0 && fst (fst (subI 0 obj_grid (w_block_, u_block, v_block + 1) (i0, i1, i2) s1)) < 4 then ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 2), (p_state' + 9, w_block_), (p_state' + 10, u_block), (p_state' + 11, v_block + 1)])) : obj_grid_upd, s1_ (w_block_, u_block, v_block + 1))
-    else if (truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)) == (w_block_, u_block, v_block + 1) && (d_list, 315) !! i0 /= 0 then
-      if health s1 - detDamage (difficulty s1) s0 <= 0 then (w_grid_upd, obj_grid_upd, s1 {health = 0, state_chg = 1, message = 0 : msg27})
-      else ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 1)])) : obj_grid_upd, s1 {health = health s1 - detDamage (difficulty s1) s0, state_chg = 1, message = 0 : msg25})
-    else ([((w_block, u_block, v_block + 1), (w_grid ! index) {obj = Just (grid_i {u__ = u__ grid_i + intToFloat vel_u, v__ = v__ grid_i + intToFloat vel_v})}), (index, def_w_grid)] ++ w_grid_upd, (location, (fst target, [(p_state', u'), (p_state' + 1, v')])) : obj_grid_upd, s1)
   else if u_block' == u_block + 1 && v_block' == v_block then
-    if u2 (w_grid ! (w_block_, u_block, v_block)) == True then ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 1)])) : obj_grid_upd, s1)
-    else if fst (fst (subI 1 obj_grid (w_block_, u_block + 1, v_block) (i0, i1, i2) s1)) > 0 && fst (fst (subI 1 obj_grid (w_block_, u_block + 1, v_block) (i0, i1, i2) s1)) < 4 then ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 2), (p_state' + 9, w_block_), (p_state' + 10, u_block + 1), (p_state' + 11, v_block)])) : obj_grid_upd, s1_ (w_block_, u_block + 1, v_block))
-    else if (truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)) == (w_block_, u_block + 1, v_block) && (d_list, 316) !! i0 /= 0 then
-      if health s1 - detDamage (difficulty s1) s0 <= 0 then (w_grid_upd, obj_grid_upd, s1 {health = 0, state_chg = 1, message = 0 : msg27})
-      else ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 1)])) : obj_grid_upd, s1 {health = health s1 - detDamage (difficulty s1) s0, state_chg = 1, message = 0 : msg25})
+    if detectProjectColl_ 0 == 1 then ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 1)])) : obj_grid_upd, s1)
+    else if detectProjectColl_ 0 == 2 then ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 2), (p_state' + 9, w_block_), (p_state' + 10, u_block + 1), (p_state' + 11, v_block)])) : obj_grid_upd, s1_ (w_block_, u_block + 1, v_block))
+    else if detectProjectColl_ 0 == 3 then (w_grid_upd, obj_grid_upd, playerDamage s0 s1)
+    else ([((w_block, u_block + 1, v_block), (w_grid ! index) {obj = Just (grid_i {u__ = u__ grid_i + intToFloat vel_u, v__ = v__ grid_i + intToFloat vel_v})}), (index, def_w_grid)] ++ w_grid_upd, (location, (fst target, [(p_state', u'), (p_state' + 1, v')])) : obj_grid_upd, s1)
+  else if u_block' == u_block + 1 && v_block' == v_block + 1 then
+    if detectProjectColl_ 1 == 1 then ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 1)])) : obj_grid_upd, s1)
+    else if detectProjectColl_ 1 == 2 then ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 2), (p_state' + 9, w_block_), (p_state' + 10, u_block + 1), (p_state' + 11, v_block)])) : obj_grid_upd, s1_ (w_block_, u_block + 1, v_block))
+    else if detectProjectColl_ 1 == 3 then (w_grid_upd, obj_grid_upd, playerDamage s0 s1)
+    else ([((w_block, u_block + 1, v_block), (w_grid ! index) {obj = Just (grid_i {u__ = u__ grid_i + intToFloat vel_u, v__ = v__ grid_i + intToFloat vel_v})}), (index, def_w_grid)] ++ w_grid_upd, (location, (fst target, [(p_state', u'), (p_state' + 1, v')])) : obj_grid_upd, s1)
+  else if u_block' == u_block && v_block' == v_block + 1 then
+    if detectProjectColl_ 2 == 1 then ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 1)])) : obj_grid_upd, s1)
+    else if detectProjectColl_ 2 == 2 then ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 2), (p_state' + 9, w_block_), (p_state' + 10, u_block + 1), (p_state' + 11, v_block)])) : obj_grid_upd, s1_ (w_block_, u_block + 1, v_block))
+    else if detectProjectColl_ 2 == 3 then (w_grid_upd, obj_grid_upd, playerDamage s0 s1)
+    else ([((w_block, u_block + 1, v_block), (w_grid ! index) {obj = Just (grid_i {u__ = u__ grid_i + intToFloat vel_u, v__ = v__ grid_i + intToFloat vel_v})}), (index, def_w_grid)] ++ w_grid_upd, (location, (fst target, [(p_state', u'), (p_state' + 1, v')])) : obj_grid_upd, s1)
+  else if u_block' == u_block - 1 && v_block' == v_block + 1 then
+    if detectProjectColl_ 3 == 1 then ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 1)])) : obj_grid_upd, s1)
+    else if detectProjectColl_ 3 == 2 then ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 2), (p_state' + 9, w_block_), (p_state' + 10, u_block + 1), (p_state' + 11, v_block)])) : obj_grid_upd, s1_ (w_block_, u_block + 1, v_block))
+    else if detectProjectColl_ 3 == 3 then (w_grid_upd, obj_grid_upd, playerDamage s0 s1)
+    else ([((w_block, u_block + 1, v_block), (w_grid ! index) {obj = Just (grid_i {u__ = u__ grid_i + intToFloat vel_u, v__ = v__ grid_i + intToFloat vel_v})}), (index, def_w_grid)] ++ w_grid_upd, (location, (fst target, [(p_state', u'), (p_state' + 1, v')])) : obj_grid_upd, s1)
+  else if u_block' == u_block - 1 && v_block' == v_block then
+    if detectProjectColl_ 4 == 1 then ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 1)])) : obj_grid_upd, s1)
+    else if detectProjectColl_ 4 == 2 then ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 2), (p_state' + 9, w_block_), (p_state' + 10, u_block + 1), (p_state' + 11, v_block)])) : obj_grid_upd, s1_ (w_block_, u_block + 1, v_block))
+    else if detectProjectColl_ 4 == 3 then (w_grid_upd, obj_grid_upd, playerDamage s0 s1)
+    else ([((w_block, u_block + 1, v_block), (w_grid ! index) {obj = Just (grid_i {u__ = u__ grid_i + intToFloat vel_u, v__ = v__ grid_i + intToFloat vel_v})}), (index, def_w_grid)] ++ w_grid_upd, (location, (fst target, [(p_state', u'), (p_state' + 1, v')])) : obj_grid_upd, s1)
+  else if u_block' == u_block - 1 && v_block' == v_block - 1 then
+    if detectProjectColl_ 5 == 1 then ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 1)])) : obj_grid_upd, s1)
+    else if detectProjectColl_ 5 == 2 then ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 2), (p_state' + 9, w_block_), (p_state' + 10, u_block + 1), (p_state' + 11, v_block)])) : obj_grid_upd, s1_ (w_block_, u_block + 1, v_block))
+    else if detectProjectColl_ 5 == 3 then (w_grid_upd, obj_grid_upd, playerDamage s0 s1)
     else ([((w_block, u_block + 1, v_block), (w_grid ! index) {obj = Just (grid_i {u__ = u__ grid_i + intToFloat vel_u, v__ = v__ grid_i + intToFloat vel_v})}), (index, def_w_grid)] ++ w_grid_upd, (location, (fst target, [(p_state', u'), (p_state' + 1, v')])) : obj_grid_upd, s1)
   else if u_block' == u_block && v_block' == v_block - 1 then
-    if v1 (w_grid ! (w_block_, u_block, v_block)) == True then ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 1)])) : obj_grid_upd, s1)
-    else if fst (fst (subI 2 obj_grid (w_block_, u_block, v_block - 1) (i0, i1, i2) s1)) > 0 && fst (fst (subI 2 obj_grid (w_block_, u_block, v_block - 1) (i0, i1, i2) s1)) < 4 then ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 2), (p_state' + 9, w_block_), (p_state' + 10, u_block), (p_state' + 11, v_block - 1)])) : obj_grid_upd, s1_ (w_block_, u_block, v_block - 1))
-    else if (truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)) == (w_block_, u_block, v_block - 1) && (d_list, 317) !! i0 /= 0 then
-      if health s1 - detDamage (difficulty s1) s0 <= 0 then (w_grid_upd, obj_grid_upd, s1 {health = 0, state_chg = 1, message = 0 : msg27})
-      else ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 1)])) : obj_grid_upd, s1 {health = health s1 - detDamage (difficulty s1) s0, state_chg = 1, message = 0 : msg25})
-    else ([((w_block, u_block, v_block - 1), (w_grid ! index) {obj = Just (grid_i {u__ = u__ grid_i + intToFloat vel_u, v__ = v__ grid_i + intToFloat vel_v})}), (index, def_w_grid)] ++ w_grid_upd, (location, (fst target, [(p_state', u'), (p_state' + 1, v')])) : obj_grid_upd, s1)
-  else if u_block' == u_block - 1 && v_block' == v_block then
-    if u1 (w_grid ! (w_block_, u_block, v_block)) == True then ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 1)])) : obj_grid_upd, s1)
-    else if fst (fst (subI 3 obj_grid (w_block_, u_block - 1, v_block) (i0, i1, i2) s1)) > 0 && fst (fst (subI 3 obj_grid (w_block_, u_block - 1, v_block) (i0, i1, i2) s1)) < 4 then ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 2), (p_state' + 9, w_block_), (p_state' + 10, u_block - 1), (p_state' + 11, v_block)])) : obj_grid_upd, s1_ (w_block_, u_block - 1, v_block))
-    else if (truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)) == (w_block_, u_block - 1, v_block) && (d_list, 318) !! i0 /= 0 then
-      if health s1 - detDamage (difficulty s1) s0 <= 0 then (w_grid_upd, obj_grid_upd, s1 {health = 0, state_chg = 1, message = 0 : msg27})
-      else ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 1)])) : obj_grid_upd, s1 {health = health s1 - detDamage (difficulty s1) s0, state_chg = 1, message = 0 : msg25})
-    else ([((w_block, u_block - 1, v_block), (w_grid ! index) {obj = Just (grid_i {u__ = u__ grid_i + intToFloat vel_u, v__ = v__ grid_i + intToFloat vel_v})}), (index, def_w_grid)] ++ w_grid_upd, (location, (fst target, [(p_state', u'), (p_state' + 1, v')])) : obj_grid_upd, s1)
-  else if u_block' == u_block + 1 && v_block' == v_block + 1 then
-    if u2 (w_grid ! (w_block_, u_block, v_block)) == True then ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 1)])) : obj_grid_upd, s1)
-    else if fst (fst (subI 4 obj_grid (w_block_, u_block + 1, v_block + 1) (i0, i1, i2) s1)) > 0 && fst (fst (subI 4 obj_grid (w_block_, u_block + 1, v_block + 1) (i0, i1, i2) s1)) < 4 then ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 2), (p_state' + 9, w_block_), (p_state' + 10, u_block + 1), (p_state' + 11, v_block + 1)])) : obj_grid_upd, s1_ (w_block_, u_block + 1, v_block + 1))
-    else if (truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)) == (w_block_, u_block + 1, v_block + 1) && (d_list, 319) !! i0 /= 0 then
-      if health s1 - detDamage (difficulty s1) s0 <= 0 then (w_grid_upd, obj_grid_upd, s1 {health = 0, state_chg = 1, message = 0 : msg27})
-      else ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 1)])) : obj_grid_upd, s1 {health = health s1 - detDamage (difficulty s1) s0, state_chg = 1, message = 0 : msg25})
-    else ([((w_block, u_block + 1, v_block + 1), (w_grid ! index) {obj = Just (grid_i {u__ = u__ grid_i + intToFloat vel_u, v__ = v__ grid_i + intToFloat vel_v})}), (index, def_w_grid)] ++ w_grid_upd, (location, (fst target, [(p_state', u'), (p_state' + 1, v')])) : obj_grid_upd, s1)
-  else if u_block' == u_block + 1 && v_block' == v_block - 1 then
-    if v1 (w_grid ! (w_block_, u_block, v_block)) == True then ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 1)])) : obj_grid_upd, s1)
-    else if fst (fst (subI 5 obj_grid (w_block_, u_block + 1, v_block - 1) (i0, i1, i2) s1)) > 0 && fst (fst (subI 5 obj_grid (w_block_, u_block + 1, v_block - 1) (i0, i1, i2) s1)) < 4 then ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 2), (p_state' + 9, w_block_), (p_state' + 10, u_block + 1), (p_state' + 11, v_block - 1)])) : obj_grid_upd, s1_ (w_block_, u_block + 1, v_block - 1))
-    else if (truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)) == (w_block_, u_block + 1, v_block - 1) && (d_list, 320) !! i0 /= 0 then
-      if health s1 - detDamage (difficulty s1) s0 <= 0 then (w_grid_upd, obj_grid_upd, s1 {health = 0, state_chg = 1, message = 0 : msg27})
-      else ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 1)])) : obj_grid_upd, s1 {health = health s1 - detDamage (difficulty s1) s0, state_chg = 1, message = 0 : msg25})
-    else ([((w_block, u_block + 1, v_block - 1), (w_grid ! index) {obj = Just (grid_i {u__ = u__ grid_i + intToFloat vel_u, v__ = v__ grid_i + intToFloat vel_v})}), (index, def_w_grid)] ++ w_grid_upd, (location, (fst target, [(p_state', u'), (p_state' + 1, v')])) : obj_grid_upd, s1)
-  else if u_block' == u_block - 1 && v_block' == v_block - 1 then
-    if u1 (w_grid ! (w_block_, u_block, v_block)) == True then ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 1)])) : obj_grid_upd, s1)
-    else if fst (fst (subI 6 obj_grid (w_block_, u_block - 1, v_block - 1) (i0, i1, i2) s1)) > 0 && fst (fst (subI 6 obj_grid (w_block_, u_block - 1, v_block - 1) (i0, i1, i2) s1)) < 4 then ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 2), (p_state' + 9, w_block_), (p_state' + 10, u_block - 1), (p_state' + 11, v_block - 1)])) : obj_grid_upd, s1_ (w_block_, u_block - 1, v_block - 1))
-    else if (truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)) == (w_block_, u_block - 1, v_block - 1) && (d_list, 321) !! i0 /= 0 then
-      if health s1 - detDamage (difficulty s1) s0 <= 0 then (w_grid_upd, obj_grid_upd, s1 {health = 0, state_chg = 1, message = 0 : msg27})
-      else ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 1)])) : obj_grid_upd, s1 {health = health s1 - detDamage (difficulty s1) s0, state_chg = 1, message = 0 : msg25})
-    else ([((w_block, u_block - 1, v_block - 1), (w_grid ! index) {obj = Just (grid_i {u__ = u__ grid_i + intToFloat vel_u, v__ = v__ grid_i + intToFloat vel_v})}), (index, def_w_grid)] ++ w_grid_upd, (location, (fst target, [(p_state', u'), (p_state' + 1, v')])) : obj_grid_upd, s1)
+    if detectProjectColl_ 6 == 1 then ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 1)])) : obj_grid_upd, s1)
+    else if detectProjectColl_ 6 == 2 then ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 2), (p_state' + 9, w_block_), (p_state' + 10, u_block + 1), (p_state' + 11, v_block)])) : obj_grid_upd, s1_ (w_block_, u_block + 1, v_block))
+    else if detectProjectColl_ 6 == 3 then (w_grid_upd, obj_grid_upd, playerDamage s0 s1)
+    else ([((w_block, u_block + 1, v_block), (w_grid ! index) {obj = Just (grid_i {u__ = u__ grid_i + intToFloat vel_u, v__ = v__ grid_i + intToFloat vel_v})}), (index, def_w_grid)] ++ w_grid_upd, (location, (fst target, [(p_state', u'), (p_state' + 1, v')])) : obj_grid_upd, s1)
   else
-    if v2 (w_grid ! (w_block_, u_block, v_block)) == True then ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 1)])) : obj_grid_upd, s1)
-    else if fst (fst (subI 7 obj_grid (w_block_, u_block - 1, v_block + 1) (i0, i1, i2) s1)) > 0 && fst (fst (subI 7 obj_grid (w_block_, u_block - 1, v_block + 1) (i0, i1, i2) s1)) < 4 then ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 2), (p_state' + 9, w_block_), (p_state' + 10, u_block - 1), (p_state' + 11, v_block + 1)])) : obj_grid_upd, s1_ (w_block_, u_block - 1, v_block + 1))
-    else if (truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)) == (w_block_, u_block - 1, v_block + 1) && (d_list, 322) !! i0 /= 0 then
-      if health s1 - detDamage (difficulty s1) s0 <= 0 then (w_grid_upd, obj_grid_upd, s1 {health = 0, state_chg = 1, message = 0 : msg27})
-      else ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 1)])) : obj_grid_upd, s1 {health = health s1 - detDamage (difficulty s1) s0, state_chg = 1, message = 0 : msg25})
-    else ([((w_block, u_block - 1, v_block + 1), (w_grid ! index) {obj = Just (grid_i {u__ = u__ grid_i + intToFloat vel_u, v__ = v__ grid_i + intToFloat vel_v})}), (index, def_w_grid)] ++ w_grid_upd, (location, (fst target, [(p_state', u'), (p_state' + 1, v')])) : obj_grid_upd, s1)
+    if detectProjectColl_ 7 == 1 then ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 1)])) : obj_grid_upd, s1)
+    else if detectProjectColl_ 7 == 2 then ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 2), (p_state' + 9, w_block_), (p_state' + 10, u_block + 1), (p_state' + 11, v_block)])) : obj_grid_upd, s1_ (w_block_, u_block + 1, v_block))
+    else if detectProjectColl_ 7 == 3 then (w_grid_upd, obj_grid_upd, playerDamage s0 s1)
+    else ([((w_block, u_block + 1, v_block), (w_grid ! index) {obj = Just (grid_i {u__ = u__ grid_i + intToFloat vel_u, v__ = v__ grid_i + intToFloat vel_v})}), (index, def_w_grid)] ++ w_grid_upd, (location, (fst target, [(p_state', u'), (p_state' + 1, v')])) : obj_grid_upd, s1)
 
 -- Called from project_update, npcMove and npc_damage.  Used to determine the damage taken by the player and non - player characters from adverse events.
 detDamage :: ([Char], Int, Int, Int) -> Play_state0 -> Int
