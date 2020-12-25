@@ -350,7 +350,6 @@ projectInit u v w a vel (i0, i1, i2) (i3, i4, i5) offset obj_flag obj_grid obj_g
   in (source, (-3, [])) : (dest, (-3, [v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11])) : obj_grid_upd
 
 -- This function tests if a projectile has collided with a wall, object or the player when it crosses into another voxel.
--- It is called from projectUpdate and replaces what were a set of separate tests in a previous version.
 detectProjectColl :: Int -> Int -> Int -> Int -> UArray Int Bool -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) (Int, [Int]) -> Play_state0 -> Int
 detectProjectColl intersection w_block u_block' v_block' wall_struct w_grid obj_grid s0 =
   let no_collision = 0
@@ -363,13 +362,33 @@ detectProjectColl intersection w_block u_block' v_block' wall_struct w_grid obj_
   else if (truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)) == (w_block, u_block', v_block') then player_collision
   else no_collision
 
--- This function either reduces the players health or causes player character death, depending on the player's current health, the difficulty level and
--- a pseudorandomised damage amount.
-playerDamage :: Play_state0 -> Play_state1 -> Play_state1
-playerDamage s0 s1 =
-  if health s1 - detDamage (difficulty s1) s0 <= 0 then s1 {health = 0, state_chg = 1, message = 0 : msg27}
-  else s1 {health = health s1 - detDamage (difficulty s1) s0, state_chg = 1, message = 0 : msg25}
+-- This function checks which voxel a projectile has crossed into and then calls detectProjectColl to test which kinf of collision (if any)
+-- has occured as a result.
+projectUpdate1 :: Int -> Int -> Int -> Int -> Int -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) (Int, [Int]) -> Play_state0 -> Int
+projectUpdate1 w_block u_block v_block u_block' v_block' w_grid obj_grid s0 =
+  let index = (w_block, u_block, v_block)
+      wall_struct = array (0, 7) [(0, u2 (w_grid ! index)), (1, u2 (w_grid ! index)), (2, v2 (w_grid ! index)), (3, v2 (w_grid ! index))
+                                 , (4, u1 (w_grid ! index)), (5, u1 (w_grid ! index)), (6, v1 (w_grid ! index)), (7, v1 (w_grid ! index))]
+  in
+  if u_block' == u_block + 1 && v_block' == v_block then
+    detectProjectColl 0 w_block u_block' v_block' wall_struct w_grid obj_grid s0
+  else if u_block' == u_block + 1 && v_block' == v_block + 1 then
+    detectProjectColl 1 w_block u_block' v_block' wall_struct w_grid obj_grid s0
+  else if u_block' == u_block && v_block' == v_block + 1 then
+    detectProjectColl 2 w_block u_block' v_block' wall_struct w_grid obj_grid s0
+  else if u_block' == u_block - 1 && v_block' == v_block + 1 then
+    detectProjectColl 3 w_block u_block' v_block' wall_struct w_grid obj_grid s0
+  else if u_block' == u_block - 1 && v_block' == v_block then
+    detectProjectColl 4 w_block u_block' v_block' wall_struct w_grid obj_grid s0
+  else if u_block' == u_block - 1 && v_block' == v_block - 1 then
+    detectProjectColl 5 w_block u_block' v_block' wall_struct w_grid obj_grid s0
+  else if u_block' == u_block && v_block' == v_block - 1 then
+    detectProjectColl 6 w_block u_block' v_block' wall_struct w_grid obj_grid s0
+  else
+    detectProjectColl 7 w_block u_block' v_block' wall_struct w_grid obj_grid s0
 
+-- This function is the entry point for the implementation of the project_update op - code.  The rest of the required logic
+-- is handled by the two functions above.
 projectUpdate0 :: Int -> Int -> (Int, Int, Int) -> Array (Int, Int, Int) Wall_grid -> [((Int, Int, Int), Wall_grid)] -> Array (Int, Int, Int) (Int, [Int]) -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> Play_state0 -> Play_state1 -> [Int] -> ([((Int, Int, Int), Wall_grid)], [((Int, Int, Int), (Int, [(Int, Int)]))], Play_state1)
 projectUpdate0 p_state p_state' (i0, i1, i2) w_grid w_grid_upd obj_grid obj_grid_upd s0 s1 d_list =
   let location = ((d_list, 307) !! i0, (d_list, 308) !! i1, (d_list, 309) !! i2)
@@ -391,29 +410,18 @@ projectUpdate0 p_state p_state' (i0, i1, i2) w_grid w_grid_upd obj_grid obj_grid
       grid_i = fromJust (obj (w_grid ! index))
       grid_i' = (obj (w_grid ! index))
       s1_ = \index -> snd (subI 8 obj_grid index (i0, i1, i2) s1)
-      detectProjectColl_ = \intersection -> detectProjectColl intersection w_block_ u_block' v_block' wall_struct w_grid obj_grid s0
-      wall_struct = array (0, 7) [(0, u2 (w_grid ! index_)), (1, u2 (w_grid ! index_)), (2, v2 (w_grid ! index_)), (3, v2 (w_grid ! index_))
-                                 , (4, u1 (w_grid ! index_)), (5, u1 (w_grid ! index_)), (6, v1 (w_grid ! index_)), (7, v1 (w_grid ! index_))]
+      collision = projectUpdate1 w_block_ u_block v_block u_block' v_block' w_grid obj_grid s0
   in
   if isNothing grid_i' == True then ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 1)])) : obj_grid_upd, s1)
   else if ident_ grid_i /= 128 then (w_grid_upd, (location, (fst target, [(p_state' + 8, 2), (p_state' + 9, w_block_), (p_state' + 10, u_block), (p_state' + 11, v_block)])) : obj_grid_upd, s1)
   else if u_block' == u_block && v_block' == v_block then ((index, (w_grid ! index) {obj = Just (grid_i {u__ = u__ grid_i + intToFloat vel_u, v__ = v__ grid_i + intToFloat vel_v})}) : w_grid_upd, (location, (fst target, [(p_state', u'), (p_state' + 1, v')])) : obj_grid_upd, s1_ (w_block_, u_block, v_block))
-  else if u_block' == u_block + 1 && v_block' == v_block then
-
-  else if u_block' == u_block + 1 && v_block' == v_block + 1 then
-
-  else if u_block' == u_block && v_block' == v_block + 1 then
-
-  else if u_block' == u_block - 1 && v_block' == v_block + 1 then
-
-  else if u_block' == u_block - 1 && v_block' == v_block then
-
-  else if u_block' == u_block - 1 && v_block' == v_block - 1 then
-
-  else if u_block' == u_block && v_block' == v_block - 1 then
-
   else
-
+    if collision == 1 then ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 1)])) : obj_grid_upd, s1)
+    else if collision == 2 then ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 2), (p_state' + 9, w_block_), (p_state' + 10, u_block'), (p_state' + 11, v_block')])) : obj_grid_upd, s1_ (w_block_, u_block, v_block'))
+    else if collision == 3 && (d_list, 315) !! i0 /= 0 then
+      if health s1 - detDamage (difficulty s1) s0 <= 0 then (w_grid_upd, obj_grid_upd, s1 {health = 0, state_chg = 1, message = 0 : msg27})
+      else ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 1)])) : obj_grid_upd, s1 {health = health s1 - detDamage (difficulty s1) s0, state_chg = 1, message = 0 : msg25})
+    else ([((w_block, u_block', v_block'), (w_grid ! index) {obj = Just (grid_i {u__ = u__ grid_i + intToFloat vel_u, v__ = v__ grid_i + intToFloat vel_v})}), (index, def_w_grid)] ++ w_grid_upd, (location, (fst target, [(p_state', u'), (p_state' + 1, v')])) : obj_grid_upd, s1)
 
 -- Called from project_update, npcMove and npc_damage.  Used to determine the damage taken by the player and non - player characters from adverse events.
 detDamage :: ([Char], Int, Int, Int) -> Play_state0 -> Int
@@ -1089,7 +1097,7 @@ runGplc (x0:x1:x2:x3:x4:x5:x6:x7:x8:x9:x10:x11:x12:xs) d_list w_grid w_grid_upd 
   runGplc (tail_ xs) d_list w_grid w_grid_upd f_grid obj_grid
           (projectInit x0 x1 x2 x3 x4 (x5, x6, x7) (x8, x9, x10) x11 x12 obj_grid obj_grid_upd d_list lookUp) s0 s1 lookUp (head_ xs)
 runGplc (x0:x1:x2:x3:x4:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 18 =
-  let project_update' = projectUpdate x0 x1 (x2, x3, x4) w_grid w_grid_upd obj_grid obj_grid_upd s0 s1 d_list
+  let project_update' = projectUpdate0 x0 x1 (x2, x3, x4) w_grid w_grid_upd obj_grid obj_grid_upd s0 s1 d_list
   in do
   reportState (verbose_mode s1) 2 [] [] (showGplcArgs "project_update" [(0, x0), (0, x1), (0, x2), (0, x3), (0, x4)] d_list (-1))
   runGplc (tail_ xs) d_list w_grid (fst__ project_update') f_grid obj_grid (snd__ project_update') s0 (third_ project_update') lookUp (head_ xs)
