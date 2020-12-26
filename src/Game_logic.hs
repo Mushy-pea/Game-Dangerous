@@ -370,22 +370,14 @@ projectUpdate1 w_block u_block v_block u_block' v_block' w_grid obj_grid s0 =
       wall_struct = array (0, 7) [(0, u2 (w_grid ! index)), (1, u2 (w_grid ! index)), (2, v2 (w_grid ! index)), (3, v2 (w_grid ! index))
                                  , (4, u1 (w_grid ! index)), (5, u1 (w_grid ! index)), (6, v1 (w_grid ! index)), (7, v1 (w_grid ! index))]
   in
-  if u_block' == u_block + 1 && v_block' == v_block then
-    detectProjectColl 0 w_block u_block' v_block' wall_struct w_grid obj_grid s0
-  else if u_block' == u_block + 1 && v_block' == v_block + 1 then
-    detectProjectColl 1 w_block u_block' v_block' wall_struct w_grid obj_grid s0
-  else if u_block' == u_block && v_block' == v_block + 1 then
-    detectProjectColl 2 w_block u_block' v_block' wall_struct w_grid obj_grid s0
-  else if u_block' == u_block - 1 && v_block' == v_block + 1 then
-    detectProjectColl 3 w_block u_block' v_block' wall_struct w_grid obj_grid s0
-  else if u_block' == u_block - 1 && v_block' == v_block then
-    detectProjectColl 4 w_block u_block' v_block' wall_struct w_grid obj_grid s0
-  else if u_block' == u_block - 1 && v_block' == v_block - 1 then
-    detectProjectColl 5 w_block u_block' v_block' wall_struct w_grid obj_grid s0
-  else if u_block' == u_block && v_block' == v_block - 1 then
-    detectProjectColl 6 w_block u_block' v_block' wall_struct w_grid obj_grid s0
-  else
-    detectProjectColl 7 w_block u_block' v_block' wall_struct w_grid obj_grid s0
+  if u_block' == u_block + 1 && v_block' == v_block then detectProjectColl 0 w_block u_block' v_block' wall_struct w_grid obj_grid s0
+  else if u_block' == u_block + 1 && v_block' == v_block + 1 then detectProjectColl 1 w_block u_block' v_block' wall_struct w_grid obj_grid s0
+  else if u_block' == u_block && v_block' == v_block + 1 then detectProjectColl 2 w_block u_block' v_block' wall_struct w_grid obj_grid s0
+  else if u_block' == u_block - 1 && v_block' == v_block + 1 then detectProjectColl 3 w_block u_block' v_block' wall_struct w_grid obj_grid s0
+  else if u_block' == u_block - 1 && v_block' == v_block then detectProjectColl 4 w_block u_block' v_block' wall_struct w_grid obj_grid s0
+  else if u_block' == u_block - 1 && v_block' == v_block - 1 then detectProjectColl 5 w_block u_block' v_block' wall_struct w_grid obj_grid s0
+  else if u_block' == u_block && v_block' == v_block - 1 then detectProjectColl 6 w_block u_block' v_block' wall_struct w_grid obj_grid s0
+  else detectProjectColl 7 w_block u_block' v_block' wall_struct w_grid obj_grid s0
 
 -- This function is the entry point for the implementation of the project_update op - code.  The rest of the required logic
 -- is handled by the two functions above.
@@ -407,21 +399,31 @@ projectUpdate0 p_state p_state' (i0, i1, i2) w_grid w_grid_upd obj_grid obj_grid
       w_block_ = (- w_block) - 1
       index = (w_block, u_block, v_block)
       index_ = (w_block_, u_block, v_block)
+      index' = (w_block, u_block', v_block')
       grid_i = fromJust (obj (w_grid ! index))
       grid_i' = (obj (w_grid ! index))
       s1_ = \index -> snd (subI 8 obj_grid index (i0, i1, i2) s1)
       collision = projectUpdate1 w_block_ u_block v_block u_block' v_block' w_grid obj_grid s0
+      itf = \x -> intToFloat x
   in
   if isNothing grid_i' == True then ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 1)])) : obj_grid_upd, s1)
-  else if ident_ grid_i /= 128 then (w_grid_upd, (location, (fst target, [(p_state' + 8, 2), (p_state' + 9, w_block_), (p_state' + 10, u_block), (p_state' + 11, v_block)])) : obj_grid_upd, s1)
-  else if u_block' == u_block && v_block' == v_block then ((index, (w_grid ! index) {obj = Just (grid_i {u__ = u__ grid_i + intToFloat vel_u, v__ = v__ grid_i + intToFloat vel_v})}) : w_grid_upd, (location, (fst target, [(p_state', u'), (p_state' + 1, v')])) : obj_grid_upd, s1_ (w_block_, u_block, v_block))
+  else if ident_ grid_i /= 128 then
+    (w_grid_upd, (location, (fst target, [(p_state' + 8, 2), (p_state' + 9, w_block_), (p_state' + 10, u_block), (p_state' + 11, v_block)])) : obj_grid_upd, s1)
+  else if u_block' == u_block && v_block' == v_block then
+    ((index, (w_grid ! index) {obj = Just (grid_i {u__ = u__ grid_i + intToFloat vel_u, v__ = v__ grid_i + intToFloat vel_v})}) : w_grid_upd,
+     (location, (fst target, [(p_state', u'), (p_state' + 1, v')])) : obj_grid_upd, s1_ (w_block_, u_block, v_block))
   else
     if collision == 1 then ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 1)])) : obj_grid_upd, s1)
-    else if collision == 2 then ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 2), (p_state' + 9, w_block_), (p_state' + 10, u_block'), (p_state' + 11, v_block')])) : obj_grid_upd, s1_ (w_block_, u_block, v_block'))
+    else if collision == 2 then
+      ((index, def_w_grid) : w_grid_upd,
+       (location, (fst target, [(p_state' + 8, 2), (p_state' + 9, w_block_), (p_state' + 10, u_block'), (p_state' + 11, v_block')])) : obj_grid_upd,
+       s1_ (w_block_, u_block, v_block'))
     else if collision == 3 && (d_list, 315) !! i0 /= 0 then
       if health s1 - detDamage (difficulty s1) s0 <= 0 then (w_grid_upd, obj_grid_upd, s1 {health = 0, state_chg = 1, message = 0 : msg27})
-      else ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 1)])) : obj_grid_upd, s1 {health = health s1 - detDamage (difficulty s1) s0, state_chg = 1, message = 0 : msg25})
-    else ([((w_block, u_block', v_block'), (w_grid ! index) {obj = Just (grid_i {u__ = u__ grid_i + intToFloat vel_u, v__ = v__ grid_i + intToFloat vel_v})}), (index, def_w_grid)] ++ w_grid_upd, (location, (fst target, [(p_state', u'), (p_state' + 1, v')])) : obj_grid_upd, s1)
+      else ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 1)])) : obj_grid_upd,
+            s1 {health = health s1 - detDamage (difficulty s1) s0, state_chg = 1, message = 0 : msg25})
+    else ([(index', (w_grid ! index) {obj = Just (grid_i {u__ = u__ grid_i + itf vel_u, v__ = v__ grid_i + itf vel_v})}), (index, def_w_grid)] ++ w_grid_upd,
+          (location, (fst target, [(p_state', u'), (p_state' + 1, v')])) : obj_grid_upd, s1)
 
 -- Called from project_update, npcMove and npc_damage.  Used to determine the damage taken by the player and non - player characters from adverse events.
 detDamage :: ([Char], Int, Int, Int) -> Play_state0 -> Int
