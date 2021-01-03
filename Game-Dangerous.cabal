@@ -15,8 +15,7 @@ library
     Encode_status,
     Game_logic,
     Game_sound,
-    Index_wrapper,
-    Handle_input
+    Index_wrapper
   build-depends:
     base >=4.12 && <4.16,
     matrix >=0.3,
