@@ -27,10 +27,9 @@ having to edit the config.txt file.
 rays at a higher density (while not overloading per thread speed capacity on some systems) and thereby address one of the visual artefact 
 issues seen in game.
 
-Update (as of 19/12/2020): The first phase of refactoring I'm undertaking is to enforce a line length limit of 160 characters on the existing code base.  This has
-already led to an increase of 9.8% in the total lines in the engine and a number of new functions being written to factor out common functionality.
-This phase is about 66% complete, after which further passes will be made to deal with other issues with the code such as using more user defind types to
-improve readability.  After that I'll move onto stage 2 and a load of bug fixing and correctness testing.
+Update (as of 08/01/2021): I've found the visual glitch mentioned in commit 8b03695 occurs on three different platforms (Windows native,
+Debian on Hyper V VM (software rendering), PopOS native).  I've now prioritised fixing this.  For some reason an arcane "fix" of moving the
+window in certain ways reliably stops the problem on Windows, but I'm not sure if this tells me anything useful about the origin.
 
 [![Preview unavailable](https://img.youtube.com/vi/gBaIU4U6eQs/default.jpg)](https://youtu.be/gBaIU4U6eQs)
 
