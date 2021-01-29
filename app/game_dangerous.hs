@@ -106,8 +106,7 @@ getInput ref key_set key pos = do
 -- This is the callback that GLUT calls when it detects a window repaint is necessary.  This should only happen when the window is first opened, the user moves
 -- or resizes the window, or it is overlapped by another window.  For standard frame rendering, showFrame and runMenu repaint the rendered area of the window.
 repaintWindow :: IO ()
-repaintWindow = do
-  swapBuffers
+repaintWindow = return ()
 
 -- This function initialises the OpenAL context, decompresses the map file, manages the compilation of GLSL shaders, loading of 3D models, loading of the
 -- light map and loading of sound effects.
@@ -332,7 +331,7 @@ startGame control_ref uniform p_bind c conf_reg mode u v w g f mag_r mag_j save_
     p_light_buffer <- mallocBytes (glfloat * 35)
     state_ref <- newEmptyMVar
     t_log <- newEmptyMVar
-    windowPosition $= Position 50 50
+--    windowPosition $= Position 50 50
     tid <- forkIO (updatePlay (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref}) state_ref
                               (selectState mode lock_flag s0 (fst unlocked_state) (s0_ save_state))
                               (selectState mode lock_flag s1 (snd unlocked_state) (s1_ save_state)) False (read (cfg' "min_frame_t")) (g, f, mag_r, mag_j)
@@ -740,13 +739,13 @@ showFrame p_bind uniform (p_mt_matrix, p_light_buffer) filter_table u v w a a' s
     glUniform1i (coerce (uniform ! 33)) (fromIntegral (torch_t_limit (fst__ p_state) - (fst__ (gameClock (fst__ p_state)) - torch_t0 (fst__ p_state))))
   glBindVertexArray (unsafeCoerce ((fst p_bind) ! 0))
   if view_mode (fst__ p_state) == 0 then do
-    filtered_surv0 <- filterSurv (fst survey0) [] (fst filter_table) (third_ (gameClock (fst__ p_state)))
-    filtered_surv1 <- filterSurv (snd survey0) [] (snd filter_table) (third_ (gameClock (fst__ p_state)))
+    filtered_surv0 <- filterSurv 0 (fst survey0) [] (fst filter_table) (third_ (gameClock (fst__ p_state)))
+    filtered_surv1 <- filterSurv 1 (snd survey0) [] (snd filter_table) (third_ (gameClock (fst__ p_state)))
     showWalls filtered_surv0 uniform p_bind (plusPtr p_mt_matrix (glfloat * 16)) u v w a lookUp (rend_mode (fst__ p_state))
     showObject (ceiling_model : filtered_surv1) uniform p_bind (plusPtr p_mt_matrix (glfloat * 48)) u v w a lookUp (rend_mode (fst__ p_state))
   else do
-    filtered_surv0 <- filterSurv (fst survey1) [] (fst filter_table) (third_ (gameClock (fst__ p_state)))
-    filtered_surv1 <- filterSurv (snd survey1) [] (snd filter_table) (third_ (gameClock (fst__ p_state)))
+    filtered_surv0 <- filterSurv 0 (fst survey1) [] (fst filter_table) (third_ (gameClock (fst__ p_state)))
+    filtered_surv1 <- filterSurv 1 (snd survey1) [] (snd filter_table) (third_ (gameClock (fst__ p_state)))
     showWalls filtered_surv0 uniform p_bind (plusPtr p_mt_matrix (glfloat * 16)) u v w a lookUp (rend_mode (fst__ p_state))
     showObject (ceiling_model : filtered_surv1) uniform p_bind (plusPtr p_mt_matrix (glfloat * 48)) u v w a lookUp (rend_mode (fst__ p_state))
   msg_residue <- handleMessage0 (handleMessage1 (message_ (fst__ p_state)) msg_queue 0 3) uniform p_bind 0

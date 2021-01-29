@@ -641,14 +641,17 @@ multiSurvey a a_limit u v u_block v_block w_grid f_grid obj_grid lookUp w_limit 
 
 -- This function filters the output of the ray tracer to avoid multiple rendering.  It has been implemented using direct memory access because of the
 -- performance critical role of this logic.
-filterSurv :: Flag a => [a] -> [a] -> Ptr Int -> Int -> IO [a]
-filterSurv [] acc p_table game_t = return acc
-filterSurv (x:xs) acc p_table game_t = do
-  test <- peekElemOff p_table (theFlag x)
-  if test == game_t then filterSurv xs acc p_table game_t
+filterSurv :: Flag a => Int -> [a] -> [a] -> Ptr Int -> Int -> IO [a]
+filterSurv mode [] acc p_table game_t = return acc
+filterSurv mode (x:xs) acc p_table game_t = do
+  if mode == 0 && (theFlag x > 119999 || theFlag x < 0) then error ("\nfilterSurv: wall_flag_ value out of range: " ++ show (theFlag x))
+  else if mode == 1 && (theFlag x > 37499 || theFlag x < 0) then error ("\nfilterSurv: obj_flag value out of range: " ++ show (theFlag x))
   else do
-    pokeElemOff p_table (theFlag x) game_t
-    filterSurv xs (acc ++ [x]) p_table game_t
+    test <- peekElemOff p_table (theFlag x)
+    if test == game_t then filterSurv mode xs acc p_table game_t
+    else do
+      pokeElemOff p_table (theFlag x) game_t
+      filterSurv mode xs (acc ++ [x]) p_table game_t
 
 -- These functions process the wall and floor grid data from the level map file before it is used to form the environment map.
 loadGrid1 :: [Char] -> Bool
