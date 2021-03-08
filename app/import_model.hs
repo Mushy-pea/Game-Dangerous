@@ -21,145 +21,146 @@ data Loader = Loader {tex_image :: [Char], mod_descrip :: [Char], data_layout ::
 blank_model = Model {vertex = [], tex_coord = [], normal = [], face = []}
 blank_loader = Loader {tex_image = [], mod_descrip = [], data_layout = []}
 
-sub_i :: Int -> [a] -> Int -> a
-sub_i location ls i =
+subI :: Int -> [a] -> Int -> a
+subI location ls i =
   if i >= length ls then error ("List index too large.  location: " ++ show location ++ " index: " ++ show i ++ " max: " ++ show ((length ls) - 1))
   else ls !! i
 
 init_ :: [a] -> [a]
 init_ x = take ((length x) - 2) x
 
-show_ints :: [Int] -> [Char]
-show_ints [] = []
-show_ints (x:xs) = (show x) ++ ", " ++ show_ints xs
+showInts :: [Int] -> [Char]
+showInts [] = []
+showInts (x:xs) = (show x) ++ ", " ++ showInts xs
 
-drop_double :: Eq a => [a] -> a -> a -> [a]
-drop_double [] t0 t1 = []
-drop_double (x:xs) t0 t1 =
-  if x == t0 && x == t1 then drop_double xs t0 x
-  else x : drop_double xs t0 x
+dropDouble :: Eq a => [a] -> a -> a -> [a]
+dropDouble [] t0 t1 = []
+dropDouble (x:xs) t0 t1 =
+  if x == t0 && x == t1 then dropDouble xs t0 x
+  else x : dropDouble xs t0 x
 
 concat_ :: Int -> [[Char]] -> [Char]
 concat_ 0 x = (intercalate ", " x)
 concat_ 1 x = (intercalate ", " x) ++ ", 1"
 
 -- These two functions are used to generate the indices needed for element drawing
-face_index :: Int -> Int -> [Int]
-face_index order 0 =
+faceIndex :: Int -> Int -> [Int]
+faceIndex order 0 =
   if order < 4 then [1, 2, 3]
   else if order < 5 then [1, 2, 4, 2, 3, 4]
-  else [1, 2, 4, 2, 3, 4] ++ face_index order 3
-face_index order n =
+  else [1, 2, 4, 2, 3, 4] ++ faceIndex order 3
+faceIndex order n =
   if n > (order - 2) then []
-  else [n + 1, n + 2, 1] ++ face_index order (n + 1)
+  else [n + 1, n + 2, 1] ++ faceIndex order (n + 1)
 
-gen_indices :: [[Char]] -> Int -> Int -> Int -> [Char] -> ([Char], Int)
-gen_indices [] mode n num_i acc = (acc, num_i)
-gen_indices (x:xs) mode n num_i acc =
+genIndices :: [[Char]] -> Int -> Int -> Int -> [Char] -> ([Char], Int)
+genIndices [] mode n num_i acc = (acc, num_i)
+genIndices (x:xs) mode n num_i acc =
   let order = ((length (splitOneOf " /" x)) - 1)
-      test = (sub_i 0 (splitOn " " x) 0)
-      f_ind0 = face_index (div order 2) 0
-      f_ind1 = face_index (div order 3) 0
+      test = (subI 0 (splitOn " " x) 0)
+      f_ind0 = faceIndex (div order 2) 0
+      f_ind1 = faceIndex (div order 3) 0
   in
-  if test == "usemtl" then gen_indices xs mode n num_i acc
-  else if test == "v" then gen_indices xs mode n num_i acc
-  else if test == "vn" then gen_indices xs mode n num_i acc
-  else if test == "vt" then gen_indices xs mode n num_i acc
-  else if mode == 0 then gen_indices xs mode (n + (div order 2)) (num_i + length f_ind0) (acc ++ show_ints (map (+ (n - 2)) f_ind0))
-  else gen_indices xs mode (n + (div order 3)) (num_i + length f_ind1) (acc ++ show_ints (map (+ (n - 2)) f_ind1))
+  if test == "usemtl" then genIndices xs mode n num_i acc
+  else if test == "v" then genIndices xs mode n num_i acc
+  else if test == "vn" then genIndices xs mode n num_i acc
+  else if test == "vt" then genIndices xs mode n num_i acc
+  else if mode == 0 then genIndices xs mode (n + (div order 2)) (num_i + length f_ind0) (acc ++ showInts (map (+ (n - 2)) f_ind0))
+  else genIndices xs mode (n + (div order 3)) (num_i + length f_ind1) (acc ++ showInts (map (+ (n - 2)) f_ind1))
 
 -- These two functions deal with reading vertex attribute data from the OBJ file and transforming this into the form used by the engine for rendering
-get_vert :: [[Char]] -> Int -> Int -> Model -> Model
-get_vert [] phase mode model = model
-get_vert (x:xs) 0 mode model =
-  if x == "v" then get_vert (drop 3 xs) 0 mode (model {vertex = (vertex model) ++ take 3 xs})
-  else if x == "vt" then get_vert (drop 2 xs) 0 mode (model {tex_coord = (tex_coord model) ++ take 2 xs})
-  else if x == "vn" then get_vert (drop 3 xs) 0 mode (model {normal = (normal model) ++ take 3 xs})
-  else if x == "usemtl" then get_vert (drop 1 xs) 0 mode model
-  else get_vert xs 1 mode model
-get_vert (x:xs) 1 mode model =
-  if x == "usemtl" then get_vert (drop 1 xs) 1 mode model
-  else if x == "f" then get_vert xs 1 mode model
-  else get_vert xs 1 mode (model {face = (face model) ++ [read x]})
+getVert :: [[Char]] -> Int -> Int -> Model -> Model
+getVert [] phase mode model = model
+getVert (x:xs) 0 mode model =
+  if x == "v" then getVert (drop 3 xs) 0 mode (model {vertex = (vertex model) ++ take 3 xs})
+  else if x == "vt" then getVert (drop 2 xs) 0 mode (model {tex_coord = (tex_coord model) ++ take 2 xs})
+  else if x == "vn" then getVert (drop 3 xs) 0 mode (model {normal = (normal model) ++ take 3 xs})
+  else if x == "usemtl" then getVert (drop 1 xs) 0 mode model
+  else getVert xs 1 mode model
+getVert (x:xs) 1 mode model =
+  if x == "usemtl" then getVert (drop 1 xs) 1 mode model
+  else if x == "f" then getVert xs 1 mode model
+  else getVert xs 1 mode (model {face = (face model) ++ [read x]})
 
-get_colour :: [[Char]] -> [Material]
-get_colour [] = []
-get_colour (x0:x1:x2:x3:xs) = Material {mat_name = x0, colour = [x1, x2, x3]} : get_colour xs
+getColour :: [[Char]] -> [Material]
+getColour [] = []
+getColour (x0:x1:x2:x3:xs) = Material {mat_name = x0, colour = [x1, x2, x3]} : getColour xs
 
-check_attrib :: [[Char]] -> Int -> [[Char]]
-check_attrib [] i = ["e"] ++ [show i]
-check_attrib attrib i = attrib
+checkAttrib :: [[Char]] -> Int -> [[Char]]
+checkAttrib [] i = ["e"] ++ [show i]
+checkAttrib attrib i = attrib
 
-place_vert :: Model -> Int -> [Char] -> [Char] -> [Char] -> [Char] -> Int -> ([Char], Int)
-place_vert model mode vert_acc tex_acc norm_acc col_attrib c =
-  let face_vert = (((sub_i 1 (face model) 0)) * 3) - 3
-      face_tex = (((sub_i 2 (face model) 1)) * 2) - 2
-      face_norm = (((sub_i 3 (face model) 2)) * 3) - 3
-      face_norm' = (((sub_i 4 (face model) 1)) * 3) - 3
+placeVert :: Model -> Int -> [Char] -> [Char] -> [Char] -> [Char] -> Int -> ([Char], Int)
+placeVert model mode vert_acc tex_acc norm_acc col_attrib c =
+  let face_vert = (((subI 1 (face model) 0)) * 3) - 3
+      face_tex = (((subI 2 (face model) 1)) * 2) - 2
+      face_norm = (((subI 3 (face model) 2)) * 3) - 3
+      face_norm' = (((subI 4 (face model) 1)) * 3) - 3
   in
   if face model == [] then (init_ (vert_acc ++ col_attrib ++ tex_acc ++ norm_acc), c)
-  else if mode == 0 then place_vert (model {face = drop 2 (face model)}) mode (vert_acc ++ concat_ 1 (check_attrib (take 3 (drop face_vert (vertex model))) face_vert) ++ ", ") tex_acc (norm_acc ++ concat_ 0 (check_attrib (take 3 (drop face_norm' (normal model))) face_norm') ++ ", ") col_attrib (c + 1)
-  else place_vert (model {face = drop 3 (face model)}) mode (vert_acc ++ concat_ 1 (check_attrib (take 3 (drop face_vert (vertex model))) face_vert) ++ ", ") (tex_acc ++ concat_ 0 (check_attrib (take 2 (drop face_tex (tex_coord model))) face_tex) ++ ", ") (norm_acc ++ concat_ 0 (check_attrib (take 3 (drop face_norm (normal model))) face_norm) ++ ", ") col_attrib (c + 1)
+  else if mode == 0 then placeVert (model {face = drop 2 (face model)}) mode (vert_acc ++ concat_ 1 (checkAttrib (take 3 (drop face_vert (vertex model))) face_vert) ++ ", ") tex_acc (norm_acc ++ concat_ 0 (checkAttrib (take 3 (drop face_norm' (normal model))) face_norm') ++ ", ") col_attrib (c + 1)
+  else placeVert (model {face = drop 3 (face model)}) mode (vert_acc ++ concat_ 1 (checkAttrib (take 3 (drop face_vert (vertex model))) face_vert) ++ ", ") (tex_acc ++ concat_ 0 (checkAttrib (take 2 (drop face_tex (tex_coord model))) face_tex) ++ ", ") (norm_acc ++ concat_ 0 (checkAttrib (take 3 (drop face_norm (normal model))) face_norm) ++ ", ") col_attrib (c + 1)
 
-add_colour1 :: [Material] -> [Char] -> [Char]
-add_colour1 [] query = []
-add_colour1 (x:xs) query =
+addColour1 :: [Material] -> [Char] -> [Char]
+addColour1 [] query = []
+addColour1 (x:xs) query =
   if mat_name x == query then concat_ 0 (colour x)
-  else add_colour1 xs query
+  else addColour1 xs query
 
-add_colour0 :: [[Char]] -> [Material] -> [Char] -> [Char]
-add_colour0 [] mat col = []
-add_colour0 (x:xs) mat col =
-  if x == "usemtl" then add_colour0 (drop 1 xs) mat (add_colour1 mat ((sub_i 5 xs 0)))
-  else if x == "v" then add_colour0 (drop 3 xs) mat col
-  else if x == "vt" then add_colour0 (drop 2 xs) mat col
-  else if x == "vn" then add_colour0 (drop 3 xs) mat col
-  else if x == "f" then add_colour0 xs mat col
-  else col ++ ", " ++ add_colour0 xs mat col
+addColour0 :: [[Char]] -> [Material] -> [Char] -> [Char]
+addColour0 [] mat col = []
+addColour0 (x:xs) mat col =
+  if x == "usemtl" then addColour0 (drop 1 xs) mat (addColour1 mat ((subI 5 xs 0)))
+  else if x == "v" then addColour0 (drop 3 xs) mat col
+  else if x == "vt" then addColour0 (drop 2 xs) mat col
+  else if x == "vn" then addColour0 (drop 3 xs) mat col
+  else if x == "f" then addColour0 xs mat col
+  else col ++ ", " ++ addColour0 xs mat col
 
-num_elem :: Int -> Int -> Int
-num_elem 0 c = 11 * c
-num_elem 1 c = 9 * c
+numElem :: Int -> Int -> Int
+numElem 0 c = 11 * c
+numElem 1 c = 9 * c
 
-num_ind :: Int -> Int
-num_ind f =
+numInd :: Int -> Int
+numInd f =
   if f < 4 then 3
   else 3 + (f - 3) * 3
 
-det_mode :: Int -> Int
-det_mode num_tex =
+detMode :: Int -> Int
+detMode num_tex =
   if num_tex > 0 then 1
   else 0
 
-proc_mod_descrip :: [[Char]] -> [Char]
-proc_mod_descrip [] = []
-proc_mod_descrip (x0:x1:x2:x3:x4:x5:xs) = x0 ++ ", " ++ x1 ++ ", " ++ x2 ++ ", " ++ x3 ++ ", " ++ x4 ++ ", " ++ x5 ++ "&" ++ proc_mod_descrip xs
+procModDescrip :: [[Char]] -> [Char]
+procModDescrip [] = []
+procModDescrip (x0:x1:x2:x3:x4:x5:xs) = x0 ++ ", " ++ x1 ++ ", " ++ x2 ++ ", " ++ x3 ++ ", " ++ x4 ++ ", " ++ x5 ++ "&" ++ procModDescrip xs
 
 main = do
   args <- getArgs
-  h0 <- openFile ((sub_i 6 args 0)) ReadMode
-  h1 <- openFile ((sub_i 7 args 1)) ReadMode
-  h2 <- openFile ((sub_i 8 args 2)) WriteMode
+  h0 <- openFile ((subI 6 args 0)) ReadMode
+  h1 <- openFile ((subI 7 args 1)) ReadMode
+  h2 <- openFile ((subI 8 args 2)) WriteMode
   contents0 <- hGetContents h0
   contents1 <- hGetContents h1
-  unroll_data (splitOn "\n~\n" contents0) (splitOn "\n~\n" contents1) h2 blank_loader [] [] 0 0 0
+  unrollData (splitOn "\n~\n" contents0) (splitOn "\n~\n" contents1) h2 blank_loader [] [] 0 0 0
   hClose h0
   hClose h1
   hClose h2
 
-unroll_data :: [[Char]] -> [[Char]] -> Handle -> Loader -> [Char] -> [Char] -> Int -> Int -> Int -> IO ()
-unroll_data [] _ h2 load_acc vert_acc ind_acc e_count i_count mat_count = hPutStr h2 (init_ (tex_image load_acc) ++ "~" ++ init (proc_mod_descrip (init (splitOn ", " (mod_descrip load_acc)))) ++ "~" ++ init_ (data_layout load_acc) ++ "~" ++ init_ vert_acc ++ "~" ++ init_ ind_acc)
-unroll_data (x0:x1:xs) mat h2 load_acc vert_acc ind_acc e_count i_count mat_count =
-  let mode = det_mode (read ((sub_i 9 (splitOn ", " x0) 1)))
-      col_attrib = add_colour0 (splitOneOf "\n /" (drop_double x1 '/' 'x')) (get_colour (splitOneOf "\n " ((sub_i 10 mat mat_count)))) []
-      pl_vert0 = place_vert (get_vert (splitOneOf "\n /" (drop_double x1 '/' 'x')) 0 mode blank_model) mode [] [] [] col_attrib 0
-      pl_vert1 = place_vert (get_vert (splitOneOf "\n /" (drop_double x1 '/' 'x')) 0 mode blank_model) mode [] [] [] [] 0
+unrollData :: [[Char]] -> [[Char]] -> Handle -> Loader -> [Char] -> [Char] -> Int -> Int -> Int -> IO ()
+unrollData [] _ h2 load_acc vert_acc ind_acc e_count i_count mat_count = hPutStr h2 (init_ (tex_image load_acc) ++ "~" ++ init (procModDescrip (init (splitOn ", " (mod_descrip load_acc)))) ++ "~" ++ init_ (data_layout load_acc) ++ "~" ++ init_ vert_acc ++ "~" ++ init_ ind_acc)
+unrollData (x0:x1:xs) mat h2 load_acc vert_acc ind_acc e_count i_count mat_count =
+  let mode = detMode (read ((subI 9 (splitOn ", " x0) 1)))
+      col_attrib = addColour0 (splitOneOf "\n /" (dropDouble x1 '/' 'x')) (getColour (splitOneOf "\n " ((subI 10 mat mat_count)))) []
+      pl_vert0 = placeVert (getVert (splitOneOf "\n /" (dropDouble x1 '/' 'x')) 0 mode blank_model) mode [] [] [] col_attrib 0
+      pl_vert1 = placeVert (getVert (splitOneOf "\n /" (dropDouble x1 '/' 'x')) 0 mode blank_model) mode [] [] [] [] 0
       vertices0 = fst pl_vert0
       vertices1 = fst pl_vert1
-      indices = gen_indices (splitOn "\n" (drop_double x1 '/' 'x')) mode 1 0 []
+      indices = genIndices (splitOn "\n" (dropDouble x1 '/' 'x')) mode 1 0 []
       m_data = (splitOn ", " x0)
-      l_data0 = load_acc {mod_descrip = mod_descrip load_acc ++ ((sub_i 11 m_data 0)) ++ ", " ++ show (snd pl_vert0) ++ ", " ++ concat_ 0 (drop 1 m_data) ++ ", ", data_layout = data_layout load_acc ++ show_ints [e_count, num_elem 0 (snd pl_vert0), i_count, snd indices]}
-      l_data1 = load_acc {tex_image = tex_image load_acc ++ (concat_ 0 (drop 5 (splitOn ", " x0))) ++ ", ",mod_descrip = mod_descrip load_acc ++ ((sub_i 12 m_data 0)) ++ ", " ++ show (snd pl_vert0) ++ ", " ++ (concat_ 0 (take 4 (drop 1 m_data))) ++ ", ", data_layout = data_layout load_acc ++ show_ints [e_count, num_elem 1 (snd pl_vert1), i_count, snd indices]}
+      l_data0 = load_acc {mod_descrip = mod_descrip load_acc ++ ((subI 11 m_data 0)) ++ ", " ++ show (snd pl_vert0) ++ ", " ++ concat_ 0 (drop 1 m_data) ++ ", ", data_layout = data_layout load_acc ++ showInts [e_count, numElem 0 (snd pl_vert0), i_count, snd indices]}
+      l_data1 = load_acc {tex_image = tex_image load_acc ++ (concat_ 0 (drop 5 (splitOn ", " x0))) ++ ", ",mod_descrip = mod_descrip load_acc ++ ((subI 12 m_data 0)) ++ ", " ++ show (snd pl_vert0) ++ ", " ++ (concat_ 0 (take 4 (drop 1 m_data))) ++ ", ", data_layout = data_layout load_acc ++ showInts [e_count, numElem 1 (snd pl_vert1), i_count, snd indices]}
   in do
-  if mode == 0 then unroll_data xs mat h2 l_data0 (vert_acc ++ fst pl_vert0 ++ ", ") (ind_acc ++ fst indices) (e_count + num_elem 0 (snd pl_vert0)) (i_count + snd indices) (mat_count + 1)
-  else unroll_data xs mat h2 l_data1 (vert_acc ++ fst pl_vert1 ++ ", ") (ind_acc ++ fst indices) (e_count + num_elem 1 (snd pl_vert1)) (i_count + snd indices) mat_count
+  if mode == 0 then unrollData xs mat h2 l_data0 (vert_acc ++ fst pl_vert0 ++ ", ") (ind_acc ++ fst indices) (e_count + numElem 0 (snd pl_vert0)) (i_count + snd indices) (mat_count + 1)
+  else unrollData xs mat h2 l_data1 (vert_acc ++ fst pl_vert1 ++ ", ") (ind_acc ++ fst indices) (e_count + numElem 1 (snd pl_vert1)) (i_count + snd indices) mat_count
+

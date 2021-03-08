@@ -1,8 +1,8 @@
 cabal-version:       >=1.10
 name:                Game-Dangerous
-version:             0.1.0.0
-author:              Samuel Schlesinger
-maintainer:          samuel@simspace.com
+version:             0.9.0.0
+author:              Steven Tinsley
+maintainer:          steven.tinsley81@gmail.com
 build-type:          Simple
 extra-source-files:  README.md
 
@@ -60,29 +60,6 @@ executable game-dangerous
 
 executable convert-message
   main-is:             conv_msg.hs
-  hs-source-dirs: app
-  build-depends:
-    base >=4.12 && <4.16,
-    matrix >=0.3,
-    split >=0.2,
-    StateVar >=1.2,
-    OpenAL >=1.7,
-    ObjectName >=1.1,
-    bytestring >=0.10,
-    OpenGL >=3.0,
-    array >=0.5,
-    OpenGLRaw >=3.3,
-    containers >=0.6,
-    binary >= 0.8,
-    GLURaw >=2.0,
-    clock >=0.8,
-    GLUT >=2.7,
-    random >=1.2,
-    Game-Dangerous
-  default-language:    Haskell2010
-
-executable assemble-gplc
-  main-is:             assm_gplc.hs
   hs-source-dirs: app
   build-depends:
     base >=4.12 && <4.16,

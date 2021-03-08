@@ -15,8 +15,8 @@ import Data.Array.IArray
 import Data.Array.Unboxed
 import Control.Exception
 
-sub_i :: Int -> [a] -> Int -> a
-sub_i location ls i =
+subI :: Int -> [a] -> Int -> a
+subI location ls i =
   if i >= length ls then error ("List index too large.  location: " ++ show location ++ " index: " ++ show i ++ " max: " ++ show ((length ls) - 1))
   else ls !! i
 
@@ -32,40 +32,40 @@ blank_loader = Loader {tex_image = [], mod_descrip = [], data_layout = []}
 init_ :: [a] -> [a]
 init_ x = take ((length x) - 2) x
 
-show_ints :: [Int] -> [Char]
-show_ints [] = []
-show_ints (x:xs) = (show x) ++ ", " ++ show_ints xs
+showInts :: [Int] -> [Char]
+showInts [] = []
+showInts (x:xs) = (show x) ++ ", " ++ showInts xs
 
-drop_double :: Eq a => [a] -> a -> a -> [a]
-drop_double [] t0 t1 = []
-drop_double (x:xs) t0 t1 =
-  if x == t0 && x == t1 then drop_double xs t0 x
-  else x : drop_double xs t0 x
+dropDouble :: Eq a => [a] -> a -> a -> [a]
+dropDouble [] t0 t1 = []
+dropDouble (x:xs) t0 t1 =
+  if x == t0 && x == t1 then dropDouble xs t0 x
+  else x : dropDouble xs t0 x
 
 concat_ :: Int -> [[Char]] -> [Char]
 concat_ 0 x = (intercalate ", " x)
 concat_ 1 x = (intercalate ", " x) ++ ", 1"
 
 -- These functions are used to optionally apply rotations to a model before the data is unrolled.
-make_table :: Int -> Float -> [Float]
-make_table 0 a =
+makeTable :: Int -> Float -> [Float]
+makeTable 0 a =
   if a > 6.29 then []
-  else a : make_table 0 (a + 0.01)
-make_table 1 a =
+  else a : makeTable 0 (a + 0.01)
+makeTable 1 a =
   if a > 6.29 then []
-  else sin a : make_table 1 (a + 0.01)
-make_table 2 a =
+  else sin a : makeTable 1 (a + 0.01)
+makeTable 2 a =
   if a > 6.29 then []
-  else cos a : make_table 2 (a + 0.01)
-make_table 3 a =
+  else cos a : makeTable 2 (a + 0.01)
+makeTable 3 a =
   if a > 6.29 then []
-  else tan a : make_table 3 (a + 0.01)
+  else tan a : makeTable 3 (a + 0.01)
 
-look_up :: [[Float]] -> UArray (Int, Int) Float
-look_up a = array ((0, 0), (3, 628)) [((x, y), realToFrac ((a !! x) !! y)) | x <- [0..3], y <- [0..628]]
+lookUp :: [[Float]] -> UArray (Int, Int) Float
+lookUp a = array ((0, 0), (3, 628)) [((x, y), realToFrac ((a !! x) !! y)) | x <- [0..3], y <- [0..628]]
 
-rotation_w :: Int -> UArray (Int, Int) Float -> Matrix Float
-rotation_w a look_up = fromList 4 4 [look_up ! (2, a), - look_up ! (1, a), 0, 0, look_up ! (1, a), look_up ! (2, a), 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]
+rotationW :: Int -> UArray (Int, Int) Float -> Matrix Float
+rotationW a look_up = fromList 4 4 [look_up ! (2, a), - look_up ! (1, a), 0, 0, look_up ! (1, a), look_up ! (2, a), 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]
 
 translation :: Floating a => a -> a -> a -> Matrix a
 translation u v w = fromList 4 4 [1, 0, 0, u, 0, 1, 0, v, 0, 0, 1, w, 0, 0, 0, 1]
@@ -74,160 +74,159 @@ transform :: Floating a => [Matrix a] -> Matrix a -> [Matrix a]
 transform [] mat = []
 transform (v:vs) mat = (multStd mat v) : transform vs mat
 
-conv_to_vector :: Int -> Model -> [Matrix Float] -> [Matrix Float] -> ([Matrix Float], [Matrix Float])
-conv_to_vector 0 model vert_acc norm_acc =
-  if vertex model == [] then conv_to_vector 1 model vert_acc norm_acc
-  else conv_to_vector 0 (model {vertex = drop 3 (vertex model)}) (vert_acc ++ [fromList 4 1 [read ((sub_i 3 (vertex model) 0)), read ((sub_i 4 (vertex model) 1)), read ((sub_i 5 (vertex model) 2)), 1]]) norm_acc
-conv_to_vector 1 model vert_acc norm_acc =
+convToVector :: Int -> Model -> [Matrix Float] -> [Matrix Float] -> ([Matrix Float], [Matrix Float])
+convToVector 0 model vert_acc norm_acc =
+  if vertex model == [] then convToVector 1 model vert_acc norm_acc
+  else convToVector 0 (model {vertex = drop 3 (vertex model)}) (vert_acc ++ [fromList 4 1 [read ((subI 3 (vertex model) 0)), read ((subI 4 (vertex model) 1)), read ((subI 5 (vertex model) 2)), 1]]) norm_acc
+convToVector 1 model vert_acc norm_acc =
   if normal model == [] then (vert_acc, norm_acc)
-  else conv_to_vector 1 (model {normal = drop 3 (normal model)}) vert_acc (norm_acc ++ [fromList 4 1 [read ((sub_i 6 (normal model) 0)), read ((sub_i 7 (normal model) 1)), read ((sub_i 8 (normal model) 2)), 1]])
+  else convToVector 1 (model {normal = drop 3 (normal model)}) vert_acc (norm_acc ++ [fromList 4 1 [read ((subI 6 (normal model) 0)), read ((subI 7 (normal model) 1)), read ((subI 8 (normal model) 2)), 1]])
 
-conv_to_model :: [Matrix Float] -> [[Char]]
-conv_to_model [] = []
-conv_to_model (x:xs) =
+convToModel :: [Matrix Float] -> [[Char]]
+convToModel [] = []
+convToModel (x:xs) =
   let ls = toList x
-  in [show ((sub_i 9 ls 0)), show ((sub_i 10 ls 1)), show ((sub_i 11 ls 2))] ++ conv_to_model xs
+  in [show ((subI 9 ls 0)), show ((subI 10 ls 1)), show ((subI 11 ls 2))] ++ convToModel xs
 
-rotate_model :: Model -> Int -> Int -> UArray (Int, Int) Float -> [Model]
-rotate_model model a da look_up =
-  let vector_form = conv_to_vector 0 model [] []
+rotateModel :: Model -> Int -> Int -> UArray (Int, Int) Float -> [Model]
+rotateModel model a da look_up =
+  let vector_form = convToVector 0 model [] []
   in
   if a > 553 then []
-  else model {vertex = conv_to_model (transform (fst vector_form) (rotation_w a look_up)), normal = conv_to_model (transform (snd vector_form) (rotation_w a look_up))} : rotate_model model (a + da) da look_up
+  else model {vertex = convToModel (transform (fst vector_form) (rotationW a look_up)), normal = convToModel (transform (snd vector_form) (rotationW a look_up))} : rotateModel model (a + da) da look_up
 
-translate_model :: Model -> Float -> Float -> Float -> Model
-translate_model model u v w =
-  let vector_form = conv_to_vector 0 model [] []
-  in model {vertex = conv_to_model (transform (fst vector_form) (translation u v w))}
+translateModel :: Model -> Float -> Float -> Float -> Model
+translateModel model u v w =
+  let vector_form = convToVector 0 model [] []
+  in model {vertex = convToModel (transform (fst vector_form) (translation u v w))}
 
-model_to_obj2 :: [Int] -> [Char]
-model_to_obj2 [] = "\n"
-model_to_obj2 (x0:x1:x2:xs) = " " ++ show x0 ++ "/" ++ show x1 ++ "/" ++ show x2 ++ model_to_obj2 xs
+modelToObj2 :: [Int] -> [Char]
+modelToObj2 [] = "\n"
+modelToObj2 (x0:x1:x2:xs) = " " ++ show x0 ++ "/" ++ show x1 ++ "/" ++ show x2 ++ modelToObj2 xs
 
-model_to_obj1 :: Int -> Int -> Model -> [Char]
-model_to_obj1 0 face_order model =
-  if vertex model == [] then model_to_obj1 1 face_order model
-  else "v " ++ ((sub_i 13 (vertex model) 0)) ++ " " ++ ((sub_i 14 (vertex model) 1)) ++ " " ++ ((sub_i 15 (vertex model) 2)) ++ "\n" ++ model_to_obj1 0 face_order (model {vertex = drop 3 (vertex model)})
-model_to_obj1 1 face_order model =
-  if tex_coord model == [] then model_to_obj1 2 face_order model
-  else "vt " ++ ((sub_i 16 (tex_coord model) 0)) ++ " " ++ ((sub_i 17 (tex_coord model) 1)) ++ "\n" ++ model_to_obj1 1 face_order (model {tex_coord = drop 2 (tex_coord model)})
-model_to_obj1 2 face_order model =
+modelToObj1 :: Int -> Int -> Model -> [Char]
+modelToObj1 0 face_order model =
+  if vertex model == [] then modelToObj1 1 face_order model
+  else "v " ++ ((subI 13 (vertex model) 0)) ++ " " ++ ((subI 14 (vertex model) 1)) ++ " " ++ ((subI 15 (vertex model) 2)) ++ "\n" ++ modelToObj1 0 face_order (model {vertex = drop 3 (vertex model)})
+modelToObj1 1 face_order model =
+  if tex_coord model == [] then modelToObj1 2 face_order model
+  else "vt " ++ ((subI 16 (tex_coord model) 0)) ++ " " ++ ((subI 17 (tex_coord model) 1)) ++ "\n" ++ modelToObj1 1 face_order (model {tex_coord = drop 2 (tex_coord model)})
+modelToObj1 2 face_order model =
   if normal model == [] then []
-  else "vn " ++ ((sub_i 18 (normal model) 0)) ++ " " ++ ((sub_i 19 (normal model) 1)) ++ " " ++ ((sub_i 20 (normal model) 2)) ++ "\n" ++ model_to_obj1 2 face_order (model {normal = drop 3 (normal model)})
+  else "vn " ++ ((subI 18 (normal model) 0)) ++ " " ++ ((subI 19 (normal model) 1)) ++ " " ++ ((subI 20 (normal model) 2)) ++ "\n" ++ modelToObj1 2 face_order (model {normal = drop 3 (normal model)})
 
-model_to_obj0 :: [Model] -> [[Char]] -> Int -> [[Char]]
-model_to_obj0 [] _ face_order = []
-model_to_obj0 (x:xs) (y:ys) face_order = y : init (model_to_obj1 0 face_order x) : model_to_obj0 xs ys face_order
+modelToObj0 :: [Model] -> [[Char]] -> Int -> [[Char]]
+modelToObj0 [] _ face_order = []
+modelToObj0 (x:xs) (y:ys) face_order = y : init (modelToObj1 0 face_order x) : modelToObj0 xs ys face_order
 
 -- These two functions are used to generate the indices needed for element drawing.
-face_index :: Int -> Int -> [Int]
-face_index order 0 =
+faceIndex :: Int -> Int -> [Int]
+faceIndex order 0 =
   if order < 4 then [1, 2, 3]
   else if order < 5 then [1, 2, 4, 2, 3, 4]
-  else [1, 2, 4, 2, 3, 4] ++ face_index order 3
-face_index order n =
+  else [1, 2, 4, 2, 3, 4] ++ faceIndex order 3
+faceIndex order n =
   if n > (order - 2) then []
-  else [n + 1, n + 2, 1] ++ face_index order (n + 1)
+  else [n + 1, n + 2, 1] ++ faceIndex order (n + 1)
 
-gen_indices :: [[Char]] -> Int -> Int -> Int -> [Char] -> ([Char], Int)
-gen_indices [] mode n num_i acc = (acc, num_i)
-gen_indices (x:xs) mode n num_i acc =
+genIndices :: [[Char]] -> Int -> Int -> Int -> [Char] -> ([Char], Int)
+genIndices [] mode n num_i acc = (acc, num_i)
+genIndices (x:xs) mode n num_i acc =
   let order = ((length (splitOneOf " /" x)) - 1)
-      test = (sub_i 28 (splitOn " " x) 0)
-      f_ind0 = face_index (div order 2) 0
-      f_ind1 = face_index (div order 3) 0
+      test = (subI 28 (splitOn " " x) 0)
+      f_ind0 = faceIndex (div order 2) 0
+      f_ind1 = faceIndex (div order 3) 0
   in
-  if test == "usemtl" then gen_indices xs mode n num_i acc
-  else if test == "v" then gen_indices xs mode n num_i acc
-  else if test == "vn" then gen_indices xs mode n num_i acc
-  else if test == "vt" then gen_indices xs mode n num_i acc
-  else if mode == 0 then gen_indices xs mode (n + (div order 2)) (num_i + length f_ind0) (acc ++ show_ints (map (+ (n - 2)) f_ind0))
-  else gen_indices xs mode (n + (div order 3)) (num_i + length f_ind1) (acc ++ show_ints (map (+ (n - 2)) f_ind1))
+  if test == "usemtl" then genIndices xs mode n num_i acc
+  else if test == "v" then genIndices xs mode n num_i acc
+  else if test == "vn" then genIndices xs mode n num_i acc
+  else if test == "vt" then genIndices xs mode n num_i acc
+  else if mode == 0 then genIndices xs mode (n + (div order 2)) (num_i + length f_ind0) (acc ++ showInts (map (+ (n - 2)) f_ind0))
+  else genIndices xs mode (n + (div order 3)) (num_i + length f_ind1) (acc ++ showInts (map (+ (n - 2)) f_ind1))
 
 -- These two functions deal with reading vertex attribute data from the OBJ file and transforming this into the form used by the engine for rendering.
-get_vert :: [[Char]] -> Int -> Int -> Model -> Model
-get_vert [] phase mode model = model
-get_vert (x:xs) 0 mode model =
-  if x == "v" then get_vert (drop 3 xs) 0 mode (model {vertex = (vertex model) ++ take 3 xs})
-  else if x == "vt" then get_vert (drop 2 xs) 0 mode (model {tex_coord = (tex_coord model) ++ take 2 xs})
-  else if x == "vn" then get_vert (drop 3 xs) 0 mode (model {normal = (normal model) ++ take 3 xs})
-  else if x == "usemtl" then get_vert (drop 1 xs) 0 mode model
-  else get_vert xs 1 mode model
-get_vert (x:xs) 1 mode model =
-  if x == "usemtl" then get_vert (drop 1 xs) 1 mode model
-  else if x == "f" then get_vert xs 1 mode model
-  else get_vert xs 1 mode (model {face = (face model) ++ [read x]})
+getVert :: [[Char]] -> Int -> Int -> Model -> Model
+getVert [] phase mode model = model
+getVert (x:xs) 0 mode model =
+  if x == "v" then getVert (drop 3 xs) 0 mode (model {vertex = (vertex model) ++ take 3 xs})
+  else if x == "vt" then getVert (drop 2 xs) 0 mode (model {tex_coord = (tex_coord model) ++ take 2 xs})
+  else if x == "vn" then getVert (drop 3 xs) 0 mode (model {normal = (normal model) ++ take 3 xs})
+  else if x == "usemtl" then getVert (drop 1 xs) 0 mode model
+  else getVert xs 1 mode model
+getVert (x:xs) 1 mode model =
+  if x == "usemtl" then getVert (drop 1 xs) 1 mode model
+  else if x == "f" then getVert xs 1 mode model
+  else getVert xs 1 mode (model {face = (face model) ++ [read x]})
 
-get_colour :: [[Char]] -> [Material]
-get_colour [] = []
-get_colour (x0:x1:x2:x3:xs) = Material {mat_name = x0, colour = [x1, x2, x3]} : get_colour xs
+getColour :: [[Char]] -> [Material]
+getColour [] = []
+getColour (x0:x1:x2:x3:xs) = Material {mat_name = x0, colour = [x1, x2, x3]} : getColour xs
 
-check_attrib :: [[Char]] -> Int -> [[Char]]
-check_attrib [] i = ["e"] ++ [show i]
-check_attrib attrib i = attrib
+checkAttrib :: [[Char]] -> Int -> [[Char]]
+checkAttrib [] i = ["e"] ++ [show i]
+checkAttrib attrib i = attrib
 
-place_vert :: Model -> Int -> [Char] -> [Char] -> [Char] -> [Char] -> Int -> ([Char], Int)
-place_vert model mode vert_acc tex_acc norm_acc col_attrib c =
-  let face_vert = ((sub_i 29 (face model) 0)) * 3 - 3
-      face_tex = ((sub_i 30 (face model) 1)) * 2 - 2
-      face_norm = ((sub_i 31 (face model) 2)) * 3 - 3
-      face_norm' = ((sub_i 32 (face model) 1)) * 3 - 3
+placeVert :: Model -> Int -> [Char] -> [Char] -> [Char] -> [Char] -> Int -> ([Char], Int)
+placeVert model mode vert_acc tex_acc norm_acc col_attrib c =
+  let face_vert = ((subI 29 (face model) 0)) * 3 - 3
+      face_tex = ((subI 30 (face model) 1)) * 2 - 2
+      face_norm = ((subI 31 (face model) 2)) * 3 - 3
+      face_norm' = ((subI 32 (face model) 1)) * 3 - 3
   in
   if face model == [] then (init_ (vert_acc ++ col_attrib ++ tex_acc ++ norm_acc), c)
-  else if mode == 0 then place_vert (model {face = drop 2 (face model)}) mode (vert_acc ++ concat_ 1 (check_attrib (take 3 (drop face_vert (vertex model))) face_vert) ++ ", ") tex_acc (norm_acc ++ concat_ 0 (check_attrib (take 3 (drop face_norm' (normal model))) face_norm') ++ ", ") col_attrib (c + 1)
-  else place_vert (model {face = drop 3 (face model)}) mode (vert_acc ++ concat_ 1 (check_attrib (take 3 (drop face_vert (vertex model))) face_vert) ++ ", ") (tex_acc ++ concat_ 0 (check_attrib (take 2 (drop face_tex (tex_coord model))) face_tex) ++ ", ") (norm_acc ++ concat_ 0 (check_attrib (take 3 (drop face_norm (normal model))) face_norm) ++ ", ") col_attrib (c + 1)
+  else if mode == 0 then placeVert (model {face = drop 2 (face model)}) mode (vert_acc ++ concat_ 1 (checkAttrib (take 3 (drop face_vert (vertex model))) face_vert) ++ ", ") tex_acc (norm_acc ++ concat_ 0 (checkAttrib (take 3 (drop face_norm' (normal model))) face_norm') ++ ", ") col_attrib (c + 1)
+  else placeVert (model {face = drop 3 (face model)}) mode (vert_acc ++ concat_ 1 (checkAttrib (take 3 (drop face_vert (vertex model))) face_vert) ++ ", ") (tex_acc ++ concat_ 0 (checkAttrib (take 2 (drop face_tex (tex_coord model))) face_tex) ++ ", ") (norm_acc ++ concat_ 0 (checkAttrib (take 3 (drop face_norm (normal model))) face_norm) ++ ", ") col_attrib (c + 1)
 
-add_colour1 :: [Material] -> [Char] -> [Char]
-add_colour1 [] query = []
-add_colour1 (x:xs) query =
+addColour1 :: [Material] -> [Char] -> [Char]
+addColour1 [] query = []
+addColour1 (x:xs) query =
   if mat_name x == query then concat_ 0 (colour x)
-  else add_colour1 xs query
+  else addColour1 xs query
 
-add_colour0 :: [[Char]] -> [Material] -> [Char] -> [Char]
-add_colour0 [] mat col = []
-add_colour0 (x:xs) mat col =
-  if x == "usemtl" then add_colour0 (drop 1 xs) mat (add_colour1 mat ((sub_i 33 xs 0)))
-  else if x == "v" then add_colour0 (drop 3 xs) mat col
-  else if x == "vt" then add_colour0 (drop 2 xs) mat col
-  else if x == "vn" then add_colour0 (drop 3 xs) mat col
-  else if x == "f" then add_colour0 xs mat col
-  else col ++ ", " ++ add_colour0 xs mat col
+addColour0 :: [[Char]] -> [Material] -> [Char] -> [Char]
+addColour0 [] mat col = []
+addColour0 (x:xs) mat col =
+  if x == "usemtl" then addColour0 (drop 1 xs) mat (addColour1 mat ((subI 33 xs 0)))
+  else if x == "v" then addColour0 (drop 3 xs) mat col
+  else if x == "vt" then addColour0 (drop 2 xs) mat col
+  else if x == "vn" then addColour0 (drop 3 xs) mat col
+  else if x == "f" then addColour0 xs mat col
+  else col ++ ", " ++ addColour0 xs mat col
 
-num_elem :: Int -> Int -> Int
-num_elem 0 c = 11 * c
-num_elem 1 c = 9 * c
+numElem :: Int -> Int -> Int
+numElem 0 c = 11 * c
+numElem 1 c = 9 * c
 
-num_ind :: Int -> Int
-num_ind f =
+numInd :: Int -> Int
+numInd f =
   if f < 4 then 3
   else 3 + (f - 3) * 3
 
-det_mode :: Int -> Int
-det_mode num_tex =
+detMode :: Int -> Int
+detMode num_tex =
   if num_tex > 0 then 1
   else 0
 
-prep_meta_data :: [[Char]] -> Int -> [[Char]]
-prep_meta_data (x0:x1:x2:x3:x4:x5:xs) 16 = []
-prep_meta_data (x0:x1:x2:x3:x4:x5:xs) c = (show ((read x0) + c) ++ x1 ++ x2 ++ x3 ++ x4 ++ x5) : prep_meta_data (x0:x1:x2:x3:x4:x5:xs) (c + 2)
+prepMetaData :: [[Char]] -> Int -> [[Char]]
+prepMetaData (x0:x1:x2:x3:x4:x5:xs) 16 = []
+prepMetaData (x0:x1:x2:x3:x4:x5:xs) c = (show ((read x0) + c) ++ x1 ++ x2 ++ x3 ++ x4 ++ x5) : prepMetaData (x0:x1:x2:x3:x4:x5:xs) (c + 2)
 
-proc_data :: Int -> Int -> Float -> Float -> Float -> [Char] -> [Char] -> UArray (Int, Int) Float -> [Char]
-proc_data mode da u v w meta_data vert_data look_up =
-  let meta_data' = prep_meta_data (splitOn ", " meta_data) 0
-      model = get_vert (splitOneOf "\n /" (drop_double vert_data '/' 'x')) 0 0 blank_model
-      rotated_set = model : rotate_model model da da look_up
-      translated_model = translate_model model u v w
+procData :: Int -> Int -> Float -> Float -> Float -> [Char] -> [Char] -> UArray (Int, Int) Float -> [Char]
+procData mode da u v w meta_data vert_data lookUp =
+  let meta_data' = prepMetaData (splitOn ", " meta_data) 0
+      model = getVert (splitOneOf "\n /" (dropDouble vert_data '/' 'x')) 0 0 blank_model
+      rotated_set = model : rotateModel model da da lookUp
+      translated_model = translateModel model u v w
   in
-  if mode == 0 then intercalate "\n~\n" (model_to_obj0 [translated_model] meta_data' 0)
-  else intercalate "\n~\n" (model_to_obj0 rotated_set meta_data' 0)
+  if mode == 0 then intercalate "\n~\n" (modelToObj0 [translated_model] meta_data' 0)
+  else intercalate "\n~\n" (modelToObj0 rotated_set meta_data' 0)
 
 main = do
   args <- getArgs
-  h0 <- openFile ((sub_i 21 args 0)) ReadMode
-  h1 <- openFile ((sub_i 22 args 1)) WriteMode
+  h0 <- openFile ((subI 21 args 0)) ReadMode
+  h1 <- openFile ((subI 22 args 1)) WriteMode
   contents <- hGetContents h0
-  hPutStr h1 (proc_data (read ((sub_i 34 args 2))) (read ((sub_i 38 args 3))) (read ((sub_i 35 args 4))) (read ((sub_i 36 args 5))) (read ((sub_i 37 args 6))) ((sub_i 23 (splitOn "\n~\n" contents) 0)) ((sub_i 24 (splitOn "\n~\n" contents) 1)) (look_up [make_table 0 0, make_table 1 0, make_table 2 0, make_table 3 0]))
+  hPutStr h1 (procData (read ((subI 34 args 2))) (read ((subI 38 args 3))) (read ((subI 35 args 4))) (read ((subI 36 args 5))) (read ((subI 37 args 6))) ((subI 23 (splitOn "\n~\n" contents) 0)) ((subI 24 (splitOn "\n~\n" contents) 1)) (lookUp [makeTable 0 0, makeTable 1 0, makeTable 2 0, makeTable 3 0]))
   hClose h0
   hClose h1
-
-
+  

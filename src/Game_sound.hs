@@ -57,11 +57,7 @@ initAlContext = do
 
 -- Generate and link the required set of OpenAL source and buffer objects.
 initAlEffect0 :: [[Char]] -> [Char] -> Array Int Game_sound.Source -> IO (Array Int Game_sound.Source)
-initAlEffect0 sample_list path src_array = do
-  buf <- genBuffer0 0 (div (length sample_list) 2) []
-  src <- genSource0 0 (div (length sample_list) 2) []
-  src_array_ <- initAlEffect1 sample_list buf src path src_array
-  return src_array_
+initAlEffect0 sample_list path src_array = return (array (0, 0) [(0, Game_sound.Source 0)])
 
 initAlEffect1 :: [[Char]] -> [Buffer] -> [Game_sound.Source] -> [Char] -> Array Int Game_sound.Source -> IO (Array Int Game_sound.Source)
 initAlEffect1 [] [] [] path src_array = return src_array
@@ -114,6 +110,6 @@ linkSource (x:xs) (y:ys) = do
   linkSource xs ys
 
 play_ :: Game_sound.Source -> IO ()
-play_ src = play [unsafeCoerce src]
+play_ src = return ()
 -- See comments in Game_sound
 

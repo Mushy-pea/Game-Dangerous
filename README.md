@@ -31,6 +31,15 @@ Update (as of 08/01/2021): I've found the visual glitch mentioned in commit 8b03
 Debian on Hyper V VM (software rendering), PopOS native).  I've now prioritised fixing this.  For some reason an arcane "fix" of moving the
 window in certain ways reliably stops the problem on Windows, but I'm not sure if this tells me anything useful about the origin.
 
+Additional credits: Samuel Schlesinger has become the second contributor to the Game :: Dangerous project by making the engine and
+development tools into a Cabal project.  Nice one!
+
+The in game music bundled with release 3 has kindly been made available for free by Kevin MacLeod under the following license:
+
+Lightless Dawn Kevin MacLeod (incompetech.com)
+Licensed under Creative Commons: By Attribution 3.0 License
+http://creativecommons.org/licenses/by/3.0/
+
 [![Preview unavailable](https://img.youtube.com/vi/gBaIU4U6eQs/default.jpg)](https://youtu.be/gBaIU4U6eQs)
 
 [![Preview unavailable](https://img.youtube.com/vi/oHMakxQZjlk/default.jpg)](https://youtu.be/oHMakxQZjlk)
