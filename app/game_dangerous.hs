@@ -741,13 +741,13 @@ showFrame p_bind uniform (p_mt_matrix, p_light_buffer) filter_table u v w a a' s
   if view_mode (fst__ p_state) == 0 then do
     filtered_surv0 <- filterSurv 0 (fst survey0) [] (fst filter_table) (third_ (gameClock (fst__ p_state)))
     filtered_surv1 <- filterSurv 1 (snd survey0) [] (snd filter_table) (third_ (gameClock (fst__ p_state)))
-    showWalls filtered_surv0 uniform p_bind (plusPtr p_mt_matrix (glfloat * 16)) u v w a lookUp (rend_mode (fst__ p_state))
-    showObject (ceiling_model : filtered_surv1) uniform p_bind (plusPtr p_mt_matrix (glfloat * 48)) u v w a lookUp (rend_mode (fst__ p_state))
+    showWalls filtered_surv0 uniform p_bind (plusPtr p_mt_matrix (glfloat * 16)) u v w lookUp (rend_mode (fst__ p_state))
+    showObjects (ceiling_model : filtered_surv1) uniform p_bind (plusPtr p_mt_matrix (glfloat * 48)) u v w lookUp (rend_mode (fst__ p_state))
   else do
     filtered_surv0 <- filterSurv 0 (fst survey1) [] (fst filter_table) (third_ (gameClock (fst__ p_state)))
     filtered_surv1 <- filterSurv 1 (snd survey1) [] (snd filter_table) (third_ (gameClock (fst__ p_state)))
-    showWalls filtered_surv0 uniform p_bind (plusPtr p_mt_matrix (glfloat * 16)) u v w a lookUp (rend_mode (fst__ p_state))
-    showObject (ceiling_model : filtered_surv1) uniform p_bind (plusPtr p_mt_matrix (glfloat * 48)) u v w a lookUp (rend_mode (fst__ p_state))
+    showWalls filtered_surv0 uniform p_bind (plusPtr p_mt_matrix (glfloat * 16)) u v w lookUp (rend_mode (fst__ p_state))
+    showObjects (ceiling_model : filtered_surv1) uniform p_bind (plusPtr p_mt_matrix (glfloat * 48)) u v w lookUp (rend_mode (fst__ p_state))
   msg_residue <- handleMessage0 (handleMessage1 (message_ (fst__ p_state)) msg_queue 0 3) uniform p_bind 0
   if fst msg_residue == 1 || fst msg_residue == 3 || fst msg_residue == 4 || fst msg_residue == 5 then return ([fst msg_residue], third_ p_state)
   else if fst msg_residue == 2 then do
@@ -789,57 +789,60 @@ handleMessage0 msg_queue uniform p_bind i =
   else handleMessage0 msg_queue uniform p_bind (i + 1)
 
 -- These three functions pass transformation matrices to the shaders and make the GL draw calls that render models.
-showWalls :: [Wall_place] -> UArray Int Int32 -> (UArray Int Word32, Int) -> Ptr GLfloat -> Float -> Float -> Float -> Int -> UArray (Int, Int) Float -> Int -> IO ()
-showWalls [] uniform p_bind p_mt_matrix u v w a lookUp mode = return ()
-showWalls (x:xs) uniform p_bind p_mt_matrix u v w a lookUp mode = do
-  if isNull x == False then do
-    loadArray (toList (modelToWorld (translate_u x) (translate_v x) (translate_w x) 0 False lookUp)) (castPtr p_mt_matrix) 0
-    if texture_ x == 0 && mode == 0 then do
-      glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 7)))
-      glUniformMatrix4fv (coerce (uniform ! 0)) 1 1 p_mt_matrix
-    else if texture_ x > 0 && texture_ x < (snd p_bind) && mode == 0 then do
-      glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 6)))
-      glBindTexture GL_TEXTURE_2D (unsafeCoerce ((fst p_bind) ! texture_ x))
-      glUniformMatrix4fv (coerce (uniform ! 11)) 1 1 p_mt_matrix
-    else if texture_ x == 0 && mode == 1 then do
-      glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 5)))
-      glUniformMatrix4fv (coerce (uniform ! 23)) 1 1 p_mt_matrix
-    else if texture_ x > 0 && texture_ x < (snd p_bind) && mode == 1 then do
-      glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 4)))
-      glBindTexture GL_TEXTURE_2D (unsafeCoerce ((fst p_bind) ! texture_ x))
-      glUniformMatrix4fv (coerce (uniform ! 29)) 1 1 p_mt_matrix
-    else do
-      putStr "\nshow_walls: Invalid wall_place texture reference in map..."
-      showWalls xs uniform p_bind p_mt_matrix u v w a lookUp mode
-    if Build_model.rotate x < 2 then glDrawElements GL_TRIANGLES 36 GL_UNSIGNED_SHORT (plusPtr zero_ptr (glushort * 36))
-    else glDrawElements GL_TRIANGLES 36 GL_UNSIGNED_SHORT zero_ptr
-    showWalls xs uniform p_bind p_mt_matrix u v w a lookUp mode
-  else showWalls xs uniform p_bind p_mt_matrix u v w a lookUp mode
+showWalls :: [Wall_place] -> UArray Int Int32 -> (UArray Int Word32, Int) -> Ptr GLfloat -> Float -> Float -> Float -> UArray (Int, Int) Float -> Int -> IO ()
+showWalls [] uniform p_bind p_mt_matrix u v w lookUp mode = return ()
+showWalls (x:xs) uniform p_bind p_mt_matrix u v w lookUp mode = do
+  loadArray (toList (modelToWorld (translate_u x) (translate_v x) (translate_w x) 0 False lookUp)) (castPtr p_mt_matrix) 0
+  loadArray (toList (worldToModel (translate_u x) (translate_v x) (translate_w x) 0 False lookUp)) (castPtr p_mt_matrix) 16
+  loadArray (toList (rotationW 0 lookUp)) (castPtr p_mt_matrix) 32
+  glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 2)))
+  glUniformMatrix4fv (coerce (uniform ! 39)) 1 1 p_mt_matrix
+  glUniformMatrix4fv (coerce (uniform ! 41)) 1 1 (plusPtr p_mt_matrix (glfloat * 16))
+  glUniformMatrix4fv (coerce (uniform ! 42)) 1 1 (plusPtr p_mt_matrix (glfloat * 32))
+  glBindTexture GL_TEXTURE_2D (unsafeCoerce ((fst p_bind) ! texture_ x))
+  if Build_model.rotate x < 2 then glDrawElements GL_TRIANGLES 36 GL_UNSIGNED_SHORT (plusPtr zero_ptr (glushort * 36))
+  else glDrawElements GL_TRIANGLES 36 GL_UNSIGNED_SHORT zero_ptr
+  showWalls xs uniform p_bind p_mt_matrix u v w lookUp mode
 
-showObject :: [Obj_place] -> UArray Int Int32 -> (UArray Int Word32, Int) -> Ptr GLfloat -> Float -> Float -> Float -> Int -> UArray (Int, Int) Float -> Int -> IO ()
-showObject [] uniform p_bind p_mt_matrix u v w a lookUp mode = return ()
-showObject (x:xs) uniform p_bind p_mt_matrix u v w a lookUp mode = do
+showObjects :: [Obj_place] -> UArray Int Int32 -> (UArray Int Word32, Int) -> Ptr GLfloat -> Float -> Float -> Float -> UArray (Int, Int) Float -> Int -> IO ()
+showObjects [] uniform p_bind p_mt_matrix u v w lookUp mode = return ()
+showObjects (x:xs) uniform p_bind p_mt_matrix u v w lookUp mode = do
   loadArray (toList (modelToWorld (u__ x) (v__ x) (w__ x) 0 False lookUp)) (castPtr p_mt_matrix) 0
-  if ident_ x < (snd p_bind) && texture__ x == 0 && mode == 0 then do
-    glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 7)))
-    glUniformMatrix4fv (coerce (uniform ! 0)) 1 1 p_mt_matrix
-  else if (ident_ x) + (texture__ x) < snd p_bind && texture__ x > 0 && mode == 0 then do
-    glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 6)))
-    glUniformMatrix4fv (coerce (uniform ! 11)) 1 1 p_mt_matrix
-    glBindTexture GL_TEXTURE_2D (unsafeCoerce ((fst p_bind) ! ((ident_ x) + (texture__ x))))
-  else if ident_ x < (snd p_bind) && texture__ x == 0 && mode == 1 then do
-    glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 5)))
-    glUniformMatrix4fv (coerce (uniform ! 23)) 1 1 p_mt_matrix
-  else if (ident_ x) + (texture__ x) < snd p_bind && texture__ x > 0 && mode == 1 then do
-    glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 4)))
-    glUniformMatrix4fv (coerce (uniform ! 29)) 1 1 p_mt_matrix
-    glBindTexture GL_TEXTURE_2D (unsafeCoerce ((fst p_bind) ! ((ident_ x) + (texture__ x))))
-  else do
-    putStr "\nshow_object: Invalid obj_place object or texture reference in map..."
-    showObject xs uniform p_bind p_mt_matrix u v w a lookUp mode
+  loadArray (toList (worldToModel (u__ x) (v__ x) (w__ x) 0 False lookUp)) (castPtr p_mt_matrix) 16
+  loadArray (toList (rotationW 0 lookUp)) (castPtr p_mt_matrix) 32  
+  glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 2)))
+  glUniformMatrix4fv (coerce (uniform ! 39)) 1 1 p_mt_matrix
+  glUniformMatrix4fv (coerce (uniform ! 41)) 1 1 (plusPtr p_mt_matrix (glfloat * 16))
+  glUniformMatrix4fv (coerce (uniform ! 42)) 1 1 (plusPtr p_mt_matrix (glfloat * 32))
   glBindVertexArray (unsafeCoerce ((fst p_bind) ! (ident_ x)))
+  glBindTexture GL_TEXTURE_2D (unsafeCoerce ((fst p_bind) ! ((ident_ x) + (texture__ x))))
   glDrawElements GL_TRIANGLES (coerce (num_elem x)) GL_UNSIGNED_SHORT zero_ptr
-  showObject xs uniform p_bind p_mt_matrix u v w a lookUp mode
+  showObjects xs uniform p_bind p_mt_matrix u v w lookUp mode
+
+--showObjects :: [Obj_place] -> UArray Int Int32 -> (UArray Int Word32, Int) -> Ptr GLfloat -> Float -> Float -> Float -> UArray (Int, Int) Float -> Int -> IO ()
+--showObjects [] uniform p_bind p_mt_matrix u v w lookUp mode = return ()
+--showObjects (x:xs) uniform p_bind p_mt_matrix u v w lookUp mode = do
+--  loadArray (toList (modelToWorld (u__ x) (v__ x) (w__ x) 0 False lookUp)) (castPtr p_mt_matrix) 0
+--  if ident_ x < (snd p_bind) && texture__ x == 0 && mode == 0 then do
+--    glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 7)))
+--    glUniformMatrix4fv (coerce (uniform ! 0)) 1 1 p_mt_matrix
+--  else if (ident_ x) + (texture__ x) < snd p_bind && texture__ x > 0 && mode == 0 then do
+--    glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 6)))
+--    glUniformMatrix4fv (coerce (uniform ! 11)) 1 1 p_mt_matrix
+--    glBindTexture GL_TEXTURE_2D (unsafeCoerce ((fst p_bind) ! ((ident_ x) + (texture__ x))))
+--  else if ident_ x < (snd p_bind) && texture__ x == 0 && mode == 1 then do
+--    glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 5)))
+--    glUniformMatrix4fv (coerce (uniform ! 23)) 1 1 p_mt_matrix
+--  else if (ident_ x) + (texture__ x) < snd p_bind && texture__ x > 0 && mode == 1 then do
+--    glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 4)))
+--    glUniformMatrix4fv (coerce (uniform ! 29)) 1 1 p_mt_matrix
+--    glBindTexture GL_TEXTURE_2D (unsafeCoerce ((fst p_bind) ! ((ident_ x) + (texture__ x))))
+--  else do
+--    putStr "\nshow_object: Invalid obj_place object or texture reference in map..."
+--    showObjects xs uniform p_bind p_mt_matrix u v w a lookUp mode
+--  glBindVertexArray (unsafeCoerce ((fst p_bind) ! (ident_ x)))
+--  glDrawElements GL_TRIANGLES (coerce (num_elem x)) GL_UNSIGNED_SHORT zero_ptr
+--  showObjects xs uniform p_bind p_mt_matrix u v w a lookUp mode
 
 showPlayer :: UArray Int Int32 -> (UArray Int Word32, Int) -> Ptr GLfloat -> Float -> Float -> Float -> Int -> UArray (Int, Int) Float -> Int -> IO ()
 showPlayer uniform p_bind p_mt_matrix u v w a lookUp mode = do
@@ -857,3 +860,4 @@ showPlayer uniform p_bind p_mt_matrix u v w a lookUp mode = do
   glBindVertexArray (unsafeCoerce ((fst p_bind) ! 1024))
   glBindTexture GL_TEXTURE_2D (unsafeCoerce ((fst p_bind) ! 1025))
   glDrawElements GL_TRIANGLES 36 GL_UNSIGNED_SHORT zero_ptr
+
