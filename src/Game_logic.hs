@@ -1716,3 +1716,4 @@ showText (m:ms) mode base uniform p_bind x y p_tt_matrix = do
     glBindTexture GL_TEXTURE_2D (unsafeCoerce ((fst p_bind) ! (base + m)))
     glDrawElements GL_TRIANGLES 6 GL_UNSIGNED_SHORT zero_ptr
     showText ms mode base uniform p_bind (x + 0.04) y p_tt_matrix
+
