@@ -12,7 +12,8 @@ import Data.Array.IArray
 import Data.Maybe
 import Build_model
 
--- These five functions were originally written for a previous unpublished game project called Maze Game.  They are used to convert numbers from hexadecimal to binary form.
+-- These five functions were originally written for a previous unpublished game project called Maze Game.
+-- They are used to convert numbers from hexadecimal to binary form.
 decimalBinary :: Integer -> Integer -> [Int]
 decimalBinary d_num factor = if (d_num - factor) < 0 then 0 : decimalBinary d_num (div factor 2)
                               else if (d_num - factor) == 0 then [1]
@@ -160,4 +161,5 @@ encodeStateValues s0 s1 =
       time_block = pad (decimalBinary (fromIntegral (div (fst__ (gameClock s0)) 40)) (2 ^ 15)) [] 15 0
       story_state_block = pad (decimalBinary (fromIntegral ((story_state s1) + 20480)) (2 ^ 15)) [] 15 0
   in health_block ++ ammo_block ++ gems_block ++ torches_block ++ keys_block ++ difficulty_block ++ time_block ++ story_state_block
+
 

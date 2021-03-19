@@ -152,3 +152,4 @@ procMap pre_map u_max v_max w_max =
       w_grid = gridSetup0 (concat [gridSetup1 ((pre_map, 605) !! (w + 1)) (gridSetup2 (next_c * w) (next_c * w) 0 0 0 u_max v_max) (loadObject (splitOn ", " (filter1 ((pre_map, 606) !! 0)))) 0 0 w v_max ((u_max + 1) * (v_max + 1) * w * 4) | w <- [0..w_max]]) 0 0 0 u_max v_max w_max empty
   in (toList w_grid ++ floor, [])
 
+

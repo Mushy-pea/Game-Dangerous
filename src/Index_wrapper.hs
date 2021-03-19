@@ -5,13 +5,22 @@ module Index_wrapper where
 
 import qualified Prelude as PREL
 
+errString0 = "List index too large.  location: "
+errString1 = " index: "
+errString2 = " max: "
+
 -- This function is a wrapper for the list index (!!) function, which shows where an index too large exception has happened.
 (!!) :: ([a], PREL.Int) -> PREL.Int -> a
 (ls, location) !! i =
-  if i PREL.>= PREL.length ls then PREL.error ("List index too large.  location: " PREL.++ PREL.show location PREL.++ " index: " PREL.++ PREL.show i PREL.++ " max: " PREL.++ PREL.show ((PREL.length ls) PREL.- 1))
+  if i PREL.>= PREL.length ls then
+    PREL.error (errString0 PREL.++ PREL.show location PREL.++ errString1 PREL.++ PREL.show i PREL.++ errString2 PREL.++ PREL.show ((PREL.length ls) PREL.- 1))
   else ls PREL.!! i
 
--- The commenting out of these two functions can be inverted to switch off the debugging provided by the index wrapper system and save most of the runtime overhead.
 --(ls, location) !! i = ls PREL.!! i
 
+-- The commenting out of the above two functions can be inverted to switch off the debugging provided by the index wrapper system
+-- and save the runtime overhead.
+
 -- current max location: 648
+
+
