@@ -6,7 +6,7 @@
 module Main where
 
 import Prelude hiding ((!!))
-import Index_wrapper
+import Index_wrapper0
 import System.IO
 import Foreign
 import Foreign.C.String

@@ -11,7 +11,7 @@
 module Build_model where
 
 import Prelude hiding ((!!))
-import Index_wrapper
+import Index_wrapper0
 import Data.Word
 import Data.List.Split
 import Data.Matrix hiding ((!))

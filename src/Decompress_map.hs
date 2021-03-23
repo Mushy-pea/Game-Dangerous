@@ -9,7 +9,7 @@
 module Decompress_map where
 
 import Prelude hiding ((!!))
-import Index_wrapper
+import Index_wrapper0
 import Data.Maybe
 import Data.List.Split
 import Data.Sequence hiding (take, length)
