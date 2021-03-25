@@ -49,15 +49,22 @@ instance Storable Game_sound.Source where
 initAlContext :: IO ()
 initAlContext = do
   def <- get defaultDeviceSpecifier
+  putStr ("\nAudio device: " ++ fromJust def)
   audio_dev <- openDevice def
-  if isNothing audio_dev == True then error "\nFailed to initialise an OpenAL context..."
+  if isNothing audio_dev == True then putStr "\nWarning: Failed to open an audio device."
   else return ()
   context <- createContext (fromJust audio_dev) []
+  if isNothing context == True then putStr "\nWarning: Failed to create an OpenAL context."
+  else return ()
   currentContext $= context
 
 -- Generate and link the required set of OpenAL source and buffer objects.
 initAlEffect0 :: [[Char]] -> [Char] -> Array Int Game_sound.Source -> IO (Array Int Game_sound.Source)
-initAlEffect0 sample_list path src_array = return (array (0, 0) [(0, Game_sound.Source 0)])
+initAlEffect0 sample_list path src_array = do
+  buf <- genBuffer0 0 (div (length sample_list) 2) []
+  src <- genSource0 0 (div (length sample_list) 2) []
+  src_array_ <- initAlEffect1 (init sample_list) buf src path src_array
+  return src_array_
 
 initAlEffect1 :: [[Char]] -> [Buffer] -> [Game_sound.Source] -> [Char] -> Array Int Game_sound.Source -> IO (Array Int Game_sound.Source)
 initAlEffect1 [] [] [] path src_array = return src_array
@@ -110,6 +117,6 @@ linkSource (x:xs) (y:ys) = do
   linkSource xs ys
 
 play_ :: Game_sound.Source -> IO ()
-play_ src = return ()
+play_ src = play [unsafeCoerce src]
 
 
