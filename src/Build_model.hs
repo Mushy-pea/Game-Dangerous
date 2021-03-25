@@ -550,8 +550,11 @@ rayTrace1 u v u1_bound u2_bound v1_bound v2_bound a False False lookUp =
   else if (v - v1_bound) / (u - u1_bound) > lookUp ! (3, a) then U1
   else V1
 
-rayTrace0 :: Ray_test a => Float -> Float -> Int -> Bool -> Bool -> Int -> Int -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) a -> UArray (Int, Int) Float -> Int -> [Obj_place] -> Int -> Int -> Int -> Int -> (Wall_place, [Obj_place], Int)
-{-# SPECIALISE rayTrace0 :: Float -> Float -> Int -> Bool -> Bool -> Int -> Int -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) Wall_grid -> UArray (Int, Int) Float -> Int -> [Obj_place] -> Int -> Int -> Int -> Int -> (Wall_place, [Obj_place], Int) #-}
+rayTrace0 :: Ray_test a => Float -> Float -> Int -> Bool -> Bool -> Int -> Int -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid
+             -> Array (Int, Int, Int) a -> UArray (Int, Int) Float -> Int -> [Obj_place] -> Int -> Int -> Int -> Int -> (Wall_place, [Obj_place], Int)
+{-# SPECIALISE rayTrace0 :: Float -> Float -> Int -> Bool -> Bool -> Int -> Int -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid
+                            -> Array (Int, Int, Int) Wall_grid -> UArray (Int, Int) Float -> Int -> [Obj_place] -> Int -> Int -> Int -> Int
+                            -> (Wall_place, [Obj_place], Int) #-}
 rayTrace0 u v a u_positive v_positive u_block v_block w_grid f_grid grid lookUp w_block acc target_u target_v seek_mode c =
   let grid_i = w_grid ! (w_block, u_block, v_block)
       result = intersect (rayTrace1 u v (u1_bound grid_i) (u2_bound grid_i) (v1_bound grid_i) (v2_bound grid_i) a u_positive v_positive lookUp) grid f_grid u v
@@ -624,7 +627,8 @@ procAngle a =
 
 -- These two functions handle the tracing of rays over the range of the field of view, returning a list of the wall sections that border the visible region and
 -- a list of any objects visible within that region.
-surveyView :: Int -> Int -> Int -> Float -> Float -> Int -> Int -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> UArray (Int, Int) Float -> Int -> [Wall_place] -> [Obj_place] -> ([Wall_place], [Obj_place])
+surveyView :: Int -> Int -> Int -> Float -> Float -> Int -> Int -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid
+              -> UArray (Int, Int) Float -> Int -> [Wall_place] -> [Obj_place] -> ([Wall_place], [Obj_place])
 surveyView a da limit u v u_block v_block w_grid f_grid lookUp w_block acc0 acc1 =
   let proc_angle_ = procAngle a
       ray = rayTrace0 u v (fst__ proc_angle_) (snd__ proc_angle_) (third_ proc_angle_) u_block v_block w_grid f_grid w_grid lookUp w_block [] 0 0 0 0
@@ -632,7 +636,8 @@ surveyView a da limit u v u_block v_block w_grid f_grid lookUp w_block acc0 acc1
   if da > limit then (acc0, acc1)
   else surveyView (modAngle a 2) (da + 2) limit u v u_block v_block w_grid f_grid lookUp w_block (acc0 ++ [fst__ ray]) (acc1 ++ snd__ ray)
 
-multiSurvey :: Int -> Int -> Float -> Float -> Int -> Int -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> UArray (Int, Int) Float -> Int -> Int -> [Wall_place] -> [Obj_place] -> ([Wall_place], [Obj_place])
+multiSurvey :: Int -> Int -> Float -> Float -> Int -> Int -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid
+               -> Array (Int, Int, Int) (Int, [Int]) -> UArray (Int, Int) Float -> Int -> Int -> [Wall_place] -> [Obj_place] -> ([Wall_place], [Obj_place])
 multiSurvey a a_limit u v u_block v_block w_grid f_grid obj_grid lookUp w_limit w_block acc0 acc1 =
   let survey = (surveyView a 0 a_limit u v u_block v_block w_grid f_grid lookUp w_block [] [])
   in
@@ -786,7 +791,8 @@ checkMapLayer w u v u_limit v_limit grid flag =
 
 -- This function determines the differential between an original map state array (Wall_grid, Floor_grid or Obj_grid) and a newer map state.  It is part of the
 -- implementation of the game state saving system.
-genArrayDiff :: Eq a => Int -> Int -> Int -> Int -> Int -> Array (Int, Int, Int) a -> Array (Int, Int, Int) a -> SEQ.Seq ((Int, Int, Int), a) -> SEQ.Seq ((Int, Int, Int), a)
+genArrayDiff :: Eq a => Int -> Int -> Int -> Int -> Int -> Array (Int, Int, Int) a -> Array (Int, Int, Int) a -> SEQ.Seq ((Int, Int, Int), a)
+                -> SEQ.Seq ((Int, Int, Int), a)
 genArrayDiff w u v u_limit v_limit arr0 arr1 acc =
   if w == 2 && u > u_limit then acc
   else if u > u_limit then genArrayDiff (w + 1) 0 0 u_limit v_limit arr0 arr1 acc

@@ -282,7 +282,8 @@ cameraToClip frustumScale0 frustumScale1 =
   y [frustumScale0, 0, 0, 0, 0, frustumScale1, 0, 0, 0, 0, ((zFar + zNear) / (zNear - zFar)), ((2 * zFar * zNear) / (zNear - zFar)), 0, 0, -1, 0]
 
 -- This function initialises the game logic thread each time a new game is started and handles user input from the main menu.
-startGame :: RandomGen g => IORef Int -> UArray Int Int32 -> (UArray Int Word32, Int) -> [Char] -> Array Int [Char] -> Int -> Float -> Float -> Float -> Float -> Float -> Float -> Float -> Game_state -> Array Int Source -> Matrix Float -> g -> IO ()
+startGame :: RandomGen g => IORef Int -> UArray Int Int32 -> (UArray Int Word32, Int) -> [Char] -> Array Int [Char] -> Int -> Float -> Float -> Float -> Float
+             -> Float -> Float -> Float -> Game_state -> Array Int Source -> Matrix Float -> g -> IO ()
 startGame control_ref uniform p_bind c conf_reg mode u v w g f mag_r mag_j save_state sound_array camera_to_clip r_gen =
   let u_limit = (read (((splitOn "~" c), 56) !! 8))
       v_limit = (read (((splitOn "~" c), 57) !! 9))
@@ -378,7 +379,7 @@ startGame control_ref uniform p_bind c conf_reg mode u v w g f mag_r mag_j save_
     exitSuccess
   else return ()
 
--- Used to updata the engine's configuration file when a map transit event occurs, such that the targetted map will be loaded the next time the engine is run.
+-- Used to update the engine's configuration file when a map transit event occurs, such that the targetted map will be loaded the next time the engine is run.
 updConfigFile :: Array Int [Char] -> ([Char], [Char]) -> Bool -> IO ()
 updConfigFile conf_reg (map_file, map_unlock_code) ready_flag = do
   if ready_flag == False then updConfigFile (updateCfg conf_reg "map_file" map_file 0) (map_file, map_unlock_code) True
@@ -418,7 +419,9 @@ procWGridUpd :: SEQ.Seq ((Int, Int, Int), Maybe Obj_place) -> Array (Int, Int, I
 procWGridUpd SEQ.Empty w_grid = []
 procWGridUpd (x SEQ.:<| xs) w_grid = (fst x, (w_grid ! (fst x)) {obj = snd x}) : procWGridUpd xs w_grid
 
-loadGameStateFile :: Int -> LBS.ByteString -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> SEQ.Seq ((Int, Int, Int), Maybe Obj_place) -> SEQ.Seq ((Int, Int, Int), Floor_grid) -> SEQ.Seq ((Int, Int, Int), (Int, [Int])) -> Play_state0 -> Play_state1 -> Game_state
+loadGameStateFile :: Int -> LBS.ByteString -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int])
+                     -> SEQ.Seq ((Int, Int, Int), Maybe Obj_place) -> SEQ.Seq ((Int, Int, Int), Floor_grid) -> SEQ.Seq ((Int, Int, Int), (Int, [Int]))
+                     -> Play_state0 -> Play_state1 -> Game_state
 loadGameStateFile c bs w_grid f_grid obj_grid w_grid_upd f_grid_upd obj_grid_upd s0 s1 =
   if c == 0 then loadGameStateFile (c + 1) (LBS.drop (8 + fromIntegral ((decode (LBS.take 8 bs)) :: Int)) bs) w_grid f_grid obj_grid
                                    (decodeSequence 0 def_obj_place_ (LBS.take (fromIntegral ((decode (LBS.take 8 bs)) :: Int)) (LBS.drop 8 bs)) SEQ.empty)
@@ -444,7 +447,8 @@ loaderError x box = do
   return LBS.empty
 
 -- This function is the entry point to the game state saving logic and handles user input from the load game menu.
-loadSavedGame :: Int -> [[Char]] -> [Char] -> Int -> Int -> Io_box -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> Array Int [Char] -> IO (Maybe Game_state)
+loadSavedGame :: Int -> [[Char]] -> [Char] -> Int -> Int -> Io_box -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid
+                 -> Array (Int, Int, Int) (Int, [Int]) -> Array Int [Char] -> IO (Maybe Game_state)
 loadSavedGame 0 [] chosen_file c choice box w_grid f_grid obj_grid conf_reg = error "\nload_saved_game: encountered an unexpected log file structure."
 loadSavedGame 0 ((y0:y1:y2:y3:y4:y5:y6:y7:y8:y9:y10:y11:y12:y13:y14:y15:y16:ys):xs) chosen_file c choice box w_grid f_grid obj_grid conf_reg = do
   if choice == 7 then return Nothing
@@ -487,7 +491,8 @@ instance Serialise_diff Floor_grid where
 instance Serialise_diff (Int, [Int]) where
   save_diff ((w, u, v), x) = LBS.append (encode (w, u, v)) (encode x)
 
-saveArrayDiff0 :: Int -> ([Char], [Char]) -> LBS.ByteString -> LBS.ByteString -> LBS.ByteString -> LBS.ByteString -> LBS.ByteString -> Array Int [Char] -> Play_state0 -> IO ()
+saveArrayDiff0 :: Int -> ([Char], [Char]) -> LBS.ByteString -> LBS.ByteString -> LBS.ByteString -> LBS.ByteString -> LBS.ByteString -> Array Int [Char]
+                  -> Play_state0 -> IO ()
 saveArrayDiff0 mode (save_file, save_log) w_grid_bstring f_grid_bstring obj_grid_bstring s0_bstring s1_bstring conf_reg s0 =
   let block0 = LBS.append (LBS.drop 8 w_grid_bstring)
       block1 = LBS.append (LBS.drop 8 f_grid_bstring)
@@ -683,7 +688,9 @@ detBufferLen s0 mode component_size =
 
 -- This function manages the rendering of all environmental models and in game messages.
 -- It recurses once per frame rendered and is the central branching point of the rendering thread.
-showFrame :: (UArray Int Word32, Int) -> UArray Int Int32 -> (Ptr GLfloat, Ptr GLfloat) -> (Ptr Int, Ptr Int) -> Float -> Float -> Float -> Int -> Int -> MVar (Play_state0, Array (Int, Int, Int) Wall_grid, Game_state) -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> UArray (Int, Int) Float -> Matrix Float -> Array Int (Int, [Int]) -> IO ([Int], Game_state)
+showFrame :: (UArray Int Word32, Int) -> UArray Int Int32 -> (Ptr GLfloat, Ptr GLfloat) -> (Ptr Int, Ptr Int) -> Float -> Float -> Float -> Int -> Int
+             -> MVar (Play_state0, Array (Int, Int, Int) Wall_grid, Game_state) -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid
+             -> Array (Int, Int, Int) (Int, [Int]) -> UArray (Int, Int) Float -> Matrix Float -> Array Int (Int, [Int]) -> IO ([Int], Game_state)
 showFrame p_bind uniform (p_mt_matrix, p_light_buffer) filter_table u v w a a' state_ref w_grid f_grid obj_grid lookUp camera_to_clip msg_queue =
   let survey0 = multiSurvey (modAngle a (-92)) 183 u v (truncate u) (truncate v) w_grid f_grid obj_grid lookUp 2 0 [] []
       survey1 = multiSurvey (modAngle (modAngle a' a) 222) 183 (fst view_circle') (snd view_circle') (truncate (fst view_circle')) (truncate (snd view_circle'))
@@ -789,7 +796,8 @@ handleMessage0 msg_queue uniform p_bind i =
   else handleMessage0 msg_queue uniform p_bind (i + 1)
 
 -- These three functions pass transformation matrices to the shaders and make the GL draw calls that render models.
-showWalls :: [Wall_place] -> UArray Int Int32 -> (UArray Int Word32, Int) -> Ptr GLfloat -> Float -> Float -> Float -> Int -> UArray (Int, Int) Float -> Int -> IO ()
+showWalls :: [Wall_place] -> UArray Int Int32 -> (UArray Int Word32, Int) -> Ptr GLfloat -> Float -> Float -> Float -> Int -> UArray (Int, Int) Float -> Int
+             -> IO ()
 showWalls [] uniform p_bind p_mt_matrix u v w a lookUp mode = return ()
 showWalls (x:xs) uniform p_bind p_mt_matrix u v w a lookUp mode = do
   if isNull x == False then do
@@ -816,7 +824,8 @@ showWalls (x:xs) uniform p_bind p_mt_matrix u v w a lookUp mode = do
     showWalls xs uniform p_bind p_mt_matrix u v w a lookUp mode
   else showWalls xs uniform p_bind p_mt_matrix u v w a lookUp mode
 
-showObject :: [Obj_place] -> UArray Int Int32 -> (UArray Int Word32, Int) -> Ptr GLfloat -> Float -> Float -> Float -> Int -> UArray (Int, Int) Float -> Int -> IO ()
+showObject :: [Obj_place] -> UArray Int Int32 -> (UArray Int Word32, Int) -> Ptr GLfloat -> Float -> Float -> Float -> Int -> UArray (Int, Int) Float -> Int
+              -> IO ()
 showObject [] uniform p_bind p_mt_matrix u v w a lookUp mode = return ()
 showObject (x:xs) uniform p_bind p_mt_matrix u v w a lookUp mode = do
   loadArray (toList (modelToWorld (u__ x) (v__ x) (w__ x) 0 False lookUp)) (castPtr p_mt_matrix) 0
