@@ -1654,10 +1654,12 @@ updatePlay io_box state_ref s0 s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_g
 
 -- This function is used to convert integers to their representation in the engine's message tile reference format.
 convMsg :: Int -> [Int]
-convMsg v =
-  if v < 10 then [(mod v 10) + 53]
-  else if v < 100 then [(div v 10) + 53, (mod v 10) + 53]
-  else [(div v 100) + 53, (div (v - 100) 10) + 53, (mod v 10) + 53]
+convMsg v0 =
+  let v1 = mod v0 100
+  in
+  if v0 < 10 then [(mod v0 10) + 53]
+  else if v0 < 100 then [(div v0 10) + 53, (mod v0 10) + 53]
+  else [(div v0 100) + 53, (div v1 10) + 53, (mod v1 10) + 53]
 
 char_list = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 ,'.?;:+-=!()<>"
 

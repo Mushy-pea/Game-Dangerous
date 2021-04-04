@@ -252,7 +252,7 @@ vec4 totalLight = attenuation[0] * adjust * cosAngleIncidence[0] * mobileLightIn
 
 for (int n = 1; n < numLights; n++)
 {
-  totalLight = totalLight + (attenuation[n] * cosAngleIncidence[n] * mobileLightIntensities[n] * diffColour)
+  totalLight = totalLight + (attenuation[n] * cosAngleIncidence[n] * mobileLightIntensities[n] * diffColour);
 }
 
 outputColour = pow(totalLight, gamma);
@@ -321,7 +321,7 @@ vec4 totalLight = attenuation[0] * adjust * cosAngleIncidence[0] * mobileLightIn
 
 for (int n = 1; n < numLights; n++)
 {
-  totalLight = totalLight + (attenuation[n] * cosAngleIncidence[n] * mobileLightIntensities[n] * diffColour)
+  totalLight = totalLight + (attenuation[n] * cosAngleIncidence[n] * mobileLightIntensities[n] * diffColour);
 }
 
 outputColour = pow(totalLight, gamma);
