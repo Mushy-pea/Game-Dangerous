@@ -1251,8 +1251,10 @@ atomiseObjGridUpd m [] acc obj_grid = []
 atomiseObjGridUpd m (x:xs) acc obj_grid =
   let source = (obj_grid ! (fst x))
       prog = snd source
-      new_prog0 = elems ((listArray (0, (length prog) - 1) prog :: UArray Int Int) // (snd (snd ((xs, 506) !! (0 :: Int)))))
-      new_prog1 = elems ((listArray (0, (length prog) - 1) prog :: UArray Int Int) // (acc ++ snd (snd x)))
+      new_prog0 = if length prog > 0 then elems ((listArray (0, (length prog) - 1) prog :: UArray Int Int) // (snd (snd ((xs, 506) !! (0 :: Int)))))
+                  else []
+      new_prog1 = if length prog > 0 then elems ((listArray (0, (length prog) - 1) prog :: UArray Int Int) // (acc ++ snd (snd x)))
+                  else []
   in
   if m == 0 then
     if fst (snd x) >= 0 then atomiseObjGridUpd 1 (x:xs) acc obj_grid
