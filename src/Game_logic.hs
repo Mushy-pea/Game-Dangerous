@@ -1687,6 +1687,7 @@ procMsg0 (x0:x1:xs) s0 s1 io_box sound_array =
   let signal_ = (head (splitOn [-1] (take x1 xs)))
       map_unlock_code = binaryToHex (listArray (0, 127) (encodeStateValues s0 s1)) 0
   in do
+  putStr ("\n\nprocMsg0: message list: " ++ show (x0 : x1 : take x1 xs))
   if x0 == -5 then return (s0, s1, ("map" ++ show ((xs, 636) !! (0 :: Int)) ++ ".dan", map_unlock_code))
   else if x0 < 0 then return (s0 {message_ = message_ s0 ++ [(x0, take x1 xs)]}, s1, ([], []))
   else if x0 == 0 && state_chg s1 == 1 && health s1 <= 0 then do
@@ -1700,7 +1701,7 @@ procMsg0 (x0:x1:xs) s0 s1 io_box sound_array =
                                                      io_box sound_array
   else if x0 == 0 && state_chg s1 == 4 then procMsg0 (drop x1 xs) (s0 {message_ = message_ s0 ++ [(600, x0 : take x1 xs ++ msg4 ++ convMsg (torches s1))]}) s1
                                                      io_box sound_array
-  else if x0 == 0 && state_chg s1 == 0 then procMsg0 (drop x1 xs) (s0 {message_ = message_ s0 ++ [(600, x0 : take x1 xs)]}) s1 io_box sound_array
+  else if x0 == 0 then procMsg0 (drop x1 xs) (s0 {message_ = message_ s0 ++ [(600, x0 : take x1 xs)]}) s1 io_box sound_array
   else if x0 == 2 then do
     if ((xs, 582) !! (0 :: Int)) == 0 then return ()
     else play_ (sound_array ! (((xs, 583) !! (0 :: Int)) - 1))
