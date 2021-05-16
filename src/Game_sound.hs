@@ -63,7 +63,7 @@ initAlEffect0 :: [[Char]] -> [Char] -> Array Int Game_sound.Source -> IO (Array 
 initAlEffect0 sample_list path src_array = do
   buf <- genBuffer0 0 (div (length sample_list) 2) []
   src <- genSource0 0 (div (length sample_list) 2) []
-  src_array_ <- initAlEffect1 (init sample_list) buf src path src_array
+  src_array_ <- initAlEffect1 sample_list buf src path src_array
   return src_array_
 
 initAlEffect1 :: [[Char]] -> [Buffer] -> [Game_sound.Source] -> [Char] -> Array Int Game_sound.Source -> IO (Array Int Game_sound.Source)

@@ -42,14 +42,20 @@ import Game_logic
 import Game_sound
 import Encode_status
 
+-- This function processes text from input files to return a result that is independent on whether the file has the Windows or Unix end of file format.
+tailFile :: [Char] -> [Char]
+tailFile contents =
+  if last (splitOn "\n" contents) == [] then init contents
+  else contents
+
 main = do
   args <- getArgs
   if length args == 0 then do
     contents <- bracket (openFile "config.txt" ReadMode) (hClose) (\h -> do c <- hGetContents h; putStr ("\ncfg file size: " ++ show (length c)); return c)
-    openWindow (listArray (0, 87) (splitOneOf "=\n" contents))
+    openWindow (listArray (0, 87) (splitOneOf "=\n" (tailFile contents)))
   else do
     contents <- bracket (openFile ((args, 1) !! 0) ReadMode) (hClose) (\h -> do c <- hGetContents h; putStr ("\ncfg file size: " ++ show (length c)); return c)
-    openWindow (listArray (0, 87) (splitOneOf "=\n" contents))
+    openWindow (listArray (0, 87) (splitOneOf "=\n" (tailFile contents)))
 
 -- This function initialises the GLUT runtime system, which in turn is used to initialise a window and OpenGL context.
 openWindow :: Array Int [Char] -> IO ()
@@ -81,7 +87,7 @@ openWindow conf_reg =
   keyboardCallback $= (Just (getInput control_ref key_set))
   contents <- bracket (openFile filePath ReadMode) (hClose) (\h -> do c <- hGetContents h; putStr ("\nmap file size: " ++ show (length c)); return c)
   screen_res <- readIORef screenRes
-  setupGame contents conf_reg screen_res control_ref
+  setupGame (tailFile contents) conf_reg screen_res control_ref
 
 -- This is the callback that GLUT calls each time mainLoopEvent has been called and there is keyboard input in the window message queue.
 getInput :: IORef Int -> Array Int Char -> Char -> Position -> IO ()
@@ -143,7 +149,7 @@ setupGame comp_env_map conf_reg (Size w h) control_ref =
   contents0 <- bracket (openFile (cfg' "shader_file") ReadMode) (hClose)
                        (\h -> do c <- hGetContents h; putStr ("\nshader file size: " ++ show (length c)); return c)
   p_gl_program <- mallocBytes (7 * gluint)
-  makeGlProgram (tail (splitOn "#" contents0)) p_gl_program 0
+  makeGlProgram (tail (splitOn "#" (tailFile contents0))) p_gl_program 0
   uniform <- findGlUniform [m0, m1, m2, lm0, lm1, lm2, lm3, lm4, lm5, "t", "mode", m0, m1, m2, lm0, lm1, lm2, lm3, lm4, lm5, "t", "mode", "tex_unit0", m0, m1
                            , m2, "worldTorchPos", "timer", "mode", m0, m1, m2, "worldTorchPos", "timer", "mode", "tex_unit0", "tt_matrix", "tex_unit0", "mode"
                            , m0, m1, m2, "normal_transf", lm0, lm1, lm2, lm3, lm4, lm5, "tex_unit0", "t", m0, m1, "tex_unit0", dl0, dl1, dl2, dl0, dl1, dl2
@@ -167,12 +173,12 @@ setupGame comp_env_map conf_reg (Size w h) control_ref =
   p_lmap_int1 <- callocBytes (glfloat * 300)
   p_lmap_t0 <- callocBytes (glfloat * 240)
   p_lmap_t1 <- callocBytes (glfloat * 240)
-  loadArray (take 300 (procFloats (splitOn ", " (((splitOn "\n~\n" contents1), 13) !! 0)))) p_lmap_pos0 0
-  loadArray (take 300 (procFloats (splitOn ", " (((splitOn "\n~\n" contents1), 14) !! 1)))) p_lmap_pos1 0
-  loadArray (take 300 (procFloats (splitOn ", " (((splitOn "\n~\n" contents1), 15) !! 2)))) p_lmap_int0 0
-  loadArray (take 300 (procFloats (splitOn ", " (((splitOn "\n~\n" contents1), 16) !! 3)))) p_lmap_int1 0
-  loadArray (take 240 (procFloats (splitOn ", " (((splitOn "\n~\n" contents1), 17) !! 4)))) p_lmap_t0 0
-  loadArray (take 240 (procFloats (splitOn ", " (((splitOn "\n~\n" contents1), 18) !! 5)))) p_lmap_t1 0
+  loadArray (take 300 (procFloats (splitOn ", " (((splitOn "\n~\n" (tailFile contents1)), 13) !! 0)))) p_lmap_pos0 0
+  loadArray (take 300 (procFloats (splitOn ", " (((splitOn "\n~\n" (tailFile contents1)), 14) !! 1)))) p_lmap_pos1 0
+  loadArray (take 300 (procFloats (splitOn ", " (((splitOn "\n~\n" (tailFile contents1)), 15) !! 2)))) p_lmap_int0 0
+  loadArray (take 300 (procFloats (splitOn ", " (((splitOn "\n~\n" (tailFile contents1)), 16) !! 3)))) p_lmap_int1 0
+  loadArray (take 240 (procFloats (splitOn ", " (((splitOn "\n~\n" (tailFile contents1)), 17) !! 4)))) p_lmap_t0 0
+  loadArray (take 240 (procFloats (splitOn ", " (((splitOn "\n~\n" (tailFile contents1)), 18) !! 5)))) p_lmap_t1 0
   glUseProgram gl_program0
   glUniform3fv (fromIntegral ((uniform, 19) !! 3)) 100 (castPtr p_lmap_pos0)
   glUniform3fv (fromIntegral ((uniform, 20) !! 4)) 100 (castPtr p_lmap_pos1)
@@ -219,8 +225,8 @@ setupGame comp_env_map conf_reg (Size w h) control_ref =
   initAlContext
   contents2 <- bracket (openFile ((cfg' "sound_data_dir") ++ (last (splitOn ", " (mc 8)))) ReadMode) (hClose)
                        (\h -> do c <- hGetContents h; putStr ("\nsound map size: " ++ show (length c)); return c)
-  sound_array <- initAlEffect0 (splitOneOf "\n " contents2) (cfg' "sound_data_dir")
-                               (array (0, (div (length (splitOneOf "\n " contents2)) 2) - 1) [(x, Source 0) | x <- [0..(div (length (splitOneOf "\n " contents2)) 2) - 1]])
+  sound_array <- initAlEffect0 (splitOneOf "\n " (tailFile contents2)) (cfg' "sound_data_dir")
+                               (array (0, (div (length (splitOneOf "\n " (tailFile contents2))) 2) - 1) [(x, Source 0) | x <- [0..(div (length (splitOneOf "\n " (tailFile contents2))) 2) - 1]])
   r_gen <- getStdGen
   startGame control_ref (listArray (0, 65) uniform) (p_bind_, p_bind_limit + 1) env_map conf_reg (-1) (read (cfg' "init_u")) (read (cfg' "init_v"))
             (read (cfg' "init_w")) (read (cfg' "gravity")) (read (cfg' "friction")) (read (cfg' "run_power")) (read (cfg' "jump_power"))
@@ -230,14 +236,14 @@ setupGame comp_env_map conf_reg (Size w h) control_ref =
 loadModFile :: [[Char]] -> [Char] -> Ptr GLuint -> IO ()
 loadModFile [] path p_bind = return ()
 loadModFile (x:xs) path p_bind =
-  let md = \mod_data i -> ((splitOn "~" mod_data), 638) !! i
+  let md = \mod_data i -> ((splitOn "~" (tailFile mod_data)), 638) !! i
   in do
   h <- openFile (path ++ x) ReadMode
   mod_data <- hGetContents h
   if md mod_data 0 == [] then setupObject (loadObject0 (splitOn "&" (md mod_data 1))) (procMarker (procInts (splitOn ", " (md mod_data 2))))
                                           (procFloats (splitOn ", " (md mod_data 3))) (procElements (splitOn ", " (md mod_data 4))) [] p_bind
   else do
-    bs_tex <- loadBitmap0 (splitOn ", " (((splitOn "~" mod_data), 50) !! 0)) (loadObject0 (splitOn "&" (((splitOn "~" mod_data), 51) !! 1))) path [] 1
+    bs_tex <- loadBitmap0 (splitOn ", " (((splitOn "~" (tailFile mod_data)), 50) !! 0)) (loadObject0 (splitOn "&" (((splitOn "~" (tailFile mod_data)), 51) !! 1))) path [] 1
     setupObject (loadObject0 (splitOn "&" (md mod_data 1))) (procMarker (procInts (splitOn ", " (md mod_data 2)))) (procFloats (splitOn ", " (md mod_data 3)))
                 (procElements (splitOn ", " (md mod_data 4))) bs_tex p_bind
   hClose h
@@ -352,9 +358,9 @@ startGame control_ref uniform p_bind c conf_reg mode u v w g f mag_r mag_j save_
     if choice == 1 then startGame control_ref uniform p_bind c conf_reg 0 u v w g f mag_r mag_j save_state sound_array camera_to_clip r_gen
     else if choice == 2 then do
       contents <- bracket (openFile "save_log.log" ReadMode) (hClose) (\h -> do c <- hGetContents h; putStr ("\nsave_log size: " ++ show (length c)); return c)
-      state_choice <- runMenu (genLoadMenu (tail (splitOn "\n" contents)) [] 1) [] (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref})
+      state_choice <- runMenu (genLoadMenu (tail (splitOn "\n" (tailFile contents))) [] 1) [] (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref})
                               (-0.75) (-0.75) 1 0 0 ps0_init 1
-      loaded_state <- loadSavedGame 0 (tail (splitOn "\n" contents)) [] 1 state_choice (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref})
+      loaded_state <- loadSavedGame 0 (tail (splitOn "\n" (tailFile contents))) [] 1 state_choice (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref})
                                     w_grid f_grid obj_grid conf_reg
       if isNothing loaded_state == True then startGame control_ref uniform p_bind c conf_reg 2 u v w g f mag_r mag_j def_save_state sound_array
                                                        camera_to_clip r_gen
@@ -501,7 +507,7 @@ saveArrayDiff0 mode (save_file, save_log) w_grid_bstring f_grid_bstring obj_grid
   in
   if mode == 0 then do
     contents <- bracket (openFile "save_log.log" ReadMode) (hClose) (\h -> do c <- hGetContents h; putStr ("\nsave_log size: " ++ show (length c)); return c)
-    saveArrayDiff0 1 (selectSaveFile (splitOn "\n" contents) s0 ((length (splitOn "\n" contents)) - 1)) w_grid_bstring f_grid_bstring obj_grid_bstring
+    saveArrayDiff0 1 (selectSaveFile (splitOn "\n" (tailFile contents)) s0 ((length (splitOn "\n" (tailFile contents))) - 1)) w_grid_bstring f_grid_bstring obj_grid_bstring
                    s0_bstring s1_bstring conf_reg s0
   else do
     h0 <- openFile "save_log.log" WriteMode

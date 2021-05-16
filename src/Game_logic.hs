@@ -1429,10 +1429,9 @@ jumpAllowed f_grid s0 =
   let f_grid_voxel0 = f_grid ! (truncate (pos_w s0) + 1, div (truncate (pos_u s0)) 2, div (truncate (pos_v s0)) 2)
       f_grid_voxel1 = f_grid ! (truncate (pos_w s0), div (truncate (pos_u s0)) 2, div (truncate (pos_v s0)) 2)
   in
-  if truncate (pos_w s0) == 2 then False
-  else
-    if surface f_grid_voxel0 == Open || surface f_grid_voxel1 /= Flat then True
-    else False
+  if truncate (pos_w s0) == 2 then True
+  else if surface f_grid_voxel0 == Open || surface f_grid_voxel1 /= Flat then True
+  else False
 
 -- The frames per second (FPS) measurements made here are used to drive the optional on screen FPS report and to scale player movement rates in real time,
 -- to allow for a variable frame rate with consistent game play speed.  It is intended that the engine will be limited to ~60 FPS
