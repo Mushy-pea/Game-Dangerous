@@ -338,10 +338,11 @@ startGame control_ref uniform p_bind c conf_reg mode u v w g f mag_r mag_j save_
     p_light_buffer <- mallocBytes (glfloat * 35)
     state_ref <- newEmptyMVar
     t_log <- newEmptyMVar
---    windowPosition $= Position 50 50
     tid <- forkIO (updatePlay (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref}) state_ref
-                              (selectState mode lock_flag s0 (fst unlocked_state) (s0_ save_state))
-                              (selectState mode lock_flag s1 (snd unlocked_state) (s1_ save_state)) False (read (cfg' "min_frame_t")) (g, f, mag_r, mag_j)
+                              (selectState mode lock_flag s0 (fst unlocked_state)
+                                           ((s0_ save_state) {on_screen_metrics = selectMetricMode (cfg' "on_screen_metrics")}))
+                              (selectState mode lock_flag s1 (snd unlocked_state) ((s1_ save_state) {verbose_mode = selectVerboseMode (cfg' "verbose_mode")}))
+                              False (read (cfg' "min_frame_t")) (g, f, mag_r, mag_j)
                               (selectState mode lock_flag w_grid w_grid (w_grid_ save_state)) (selectState mode lock_flag f_grid f_grid (f_grid_ save_state))
                               (selectState mode lock_flag obj_grid obj_grid (obj_grid_ save_state)) look_up_ save_state (sound_array, setup_music)
                               0 t_log (SEQ.empty) 60)
