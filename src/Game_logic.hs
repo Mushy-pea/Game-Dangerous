@@ -1392,14 +1392,14 @@ floorSurf u v w f_grid =
     if surface f_tile1 == Positive_u then (w_ f_tile1) + (mod' u 2) / 2 + 0.1
     else if surface f_tile1 == Negative_u then 1 - ((w_ f_tile1) + (mod' u 2) / 2) + 0.1
     else if surface f_tile1 == Positive_v then (w_ f_tile1) + (mod' v 2) / 2 + 0.1
-    else if surface f_tile1 == Negative_v then 1 - ((w_ f_tile1) + (mod' v 2) / 2) + 0.1
+    else if surface f_tile1 == Negative_v then 3 - ((w_ f_tile1) + (mod' v 2) / 2) + 0.1
     else if surface f_tile1 == Flat then w_ f_tile1 + 0.1
     else 0
   else
     if surface f_tile0 == Positive_u then (w_ f_tile0) + (mod' u 2) / 2 + 0.1
     else if surface f_tile0 == Negative_u then 1 - ((w_ f_tile0) + (mod' u 2) / 2) + 0.1
     else if surface f_tile0 == Positive_v then (w_ f_tile0) + (mod' v 2) / 2 + 0.1
-    else if surface f_tile0 == Negative_v then 1 - ((w_ f_tile0) + (mod' v 2) / 2) + 0.1
+    else if surface f_tile0 == Negative_v then 3 - ((w_ f_tile0) + (mod' v 2) / 2) + 0.1
     else w_ f_tile0 + 0.1
 
 updateVel :: [Float] -> [Float] -> [Float] -> Float -> Float -> [Float]
