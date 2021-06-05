@@ -1390,16 +1390,16 @@ floorSurf u v w f_grid =
   in
   if surface f_tile0 == Open then
     if surface f_tile1 == Positive_u then (w_ f_tile1) + (mod' u 2) / 2 + 0.1
-    else if surface f_tile1 == Negative_u then 1 - ((w_ f_tile1) + (mod' u 2) / 2) + 0.1
+    else if surface f_tile1 == Negative_u then 1.1 + (w_ f_tile1) - (mod' u 2) / 2
     else if surface f_tile1 == Positive_v then (w_ f_tile1) + (mod' v 2) / 2 + 0.1
-    else if surface f_tile1 == Negative_v then 3 - ((w_ f_tile1) + (mod' v 2) / 2) + 0.1
+    else if surface f_tile1 == Negative_v then 1.1 + (w_ f_tile1) - (mod' v 2) / 2
     else if surface f_tile1 == Flat then w_ f_tile1 + 0.1
     else 0
   else
     if surface f_tile0 == Positive_u then (w_ f_tile0) + (mod' u 2) / 2 + 0.1
-    else if surface f_tile0 == Negative_u then 1 - ((w_ f_tile0) + (mod' u 2) / 2) + 0.1
+    else if surface f_tile0 == Negative_u then 1.1 + (w_ f_tile0) - (mod' u 2) / 2
     else if surface f_tile0 == Positive_v then (w_ f_tile0) + (mod' v 2) / 2 + 0.1
-    else if surface f_tile0 == Negative_v then 3 - ((w_ f_tile0) + (mod' v 2) / 2) + 0.1
+    else if surface f_tile0 == Negative_v then 1.1 + (w_ f_tile0) - (mod' v 2) / 2
     else w_ f_tile0 + 0.1
 
 updateVel :: [Float] -> [Float] -> [Float] -> Float -> Float -> [Float]
@@ -1686,7 +1686,6 @@ procMsg0 (x0:x1:xs) s0 s1 io_box sound_array =
   let signal_ = (head (splitOn [-1] (take x1 xs)))
       map_unlock_code = binaryToHex (listArray (0, 127) (encodeStateValues s0 s1)) 0
   in do
-  putStr ("\n\nprocMsg0: message list: " ++ show (x0 : x1 : take x1 xs))
   if x0 == -5 then return (s0, s1, ("map" ++ show ((xs, 636) !! (0 :: Int)) ++ ".dan", map_unlock_code))
   else if x0 < 0 then return (s0 {message_ = message_ s0 ++ [(x0, take x1 xs)]}, s1, ([], []))
   else if x0 == 0 && state_chg s1 == 1 && health s1 <= 0 then do
