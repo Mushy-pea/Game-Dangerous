@@ -1,21 +1,19 @@
 # Game :: Dangerous (a tribute to ZZT)
 
-## A project update as of 23/03/2021
+## A project update as of 13/06/2021
 
-Work continues to get the game engine and tools to a point where I believe it's ready to build a proper game package with.  The remaining tasks
-are as follows.
+Release 4 of the project is being made today.  Since release 3 a raft of bug fixes have been made and the packaged demo map is now completable
+and contains all its intended features.  No further changes are planned to the map or scripting language specifications so future versions
+of the engine should remain backwardly compatible with this map.  There is further work planned on the engine (as detailed below) and
+the quality of the packaged map is admittedly only at proof of concept level.  However, for developers interested in the project on a technical level
+it provides a demonstration of most of the engine's core features.  It may also be useful as a baseline for getting play tester feedback on the core
+game mechanics.  Below are the remaining tasks I intend to complete before turning my attention to developing a production package of game content.
 
-1.  Fixing the bugs I know about and carrying out correctness testing on the game logic.  The latter point will involve ensuring the 
-specification for the engine's GPLC scripting language is correct with reference to the compiler and the engine.  I also intend to carry
-out unit testing for each of the GPLC instructions.  Please note that the current implementation of the GPLC compiler is written in C# and
-held in the repository Mushy-pea/Game-Dangerous-editor.  The file Mushy-pea/Game-Dangerous/app/assm_gplc.hs is the initial prototype I 
-wrote in Haskell and is now considered legacy.  I fancied a bit of language variety, you know?
-
-2.  Adding a small number of quality of life features that would likely be expected for even a free game released on a gaming focussed
+1.  Adding a small number of quality of life features that would likely be expected for even a free game released on a gaming focussed
 platform such as itch.io.  For one thing I intend to make a loader for the application, mainly so that users can change settings without
 having to edit the config.txt file.
 
-3.  I may decide to add parallelism to parts of the rendering engine.  The motivation would be to allow the ray casting algorithm to cast
+2.  I may decide to add parallelism to parts of the rendering engine.  The motivation would be to allow the ray casting algorithm to cast
 rays at a higher density (while not overloading per thread speed capacity on some systems) and thereby address one of the visual artefact 
 issues seen in game.
 
