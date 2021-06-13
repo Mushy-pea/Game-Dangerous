@@ -1383,8 +1383,8 @@ thrust dir a force lookUp =
   else if dir == 5 then transform [force / 40, 0, 0, 1] (rotationW (modAngle a 314) lookUp)
   else transform [force / 40, 0, 0, 1] (rotationW (modAngle a 157) lookUp)
 
-floorSurf :: Float -> Float -> Float -> Array (Int, Int, Int) Floor_grid -> Float
-floorSurf u v w f_grid =
+floorSurf1 :: Float -> Float -> Float -> Array (Int, Int, Int) Floor_grid -> Float
+floorSurf1 u v w f_grid =
   let f_tile0 = f_grid ! (truncate w, truncate (u / 2), truncate (v / 2))
       f_tile1 = f_grid ! ((truncate w) - 1, truncate (u / 2), truncate (v / 2))
   in
@@ -1401,6 +1401,13 @@ floorSurf u v w f_grid =
     else if surface f_tile0 == Positive_v then (w_ f_tile0) + (mod' v 2) / 2 + 0.1
     else if surface f_tile0 == Negative_v then 1.1 + (w_ f_tile0) - (mod' v 2) / 2
     else w_ f_tile0 + 0.1
+
+floorSurf0 :: Float -> Float -> Float -> Array (Int, Int, Int) Floor_grid -> Float
+floorSurf0 u v w f_grid =
+  let floorSurf1_ = floorSurf1 u v w f_grid
+  in
+  if floorSurf1_ > 2.1 then 2.1
+  else floorSurf1_
 
 updateVel :: [Float] -> [Float] -> [Float] -> Float -> Float -> [Float]
 updateVel [] _ _ f_rate f = []
@@ -1518,7 +1525,7 @@ updatePlay :: Io_box -> MVar (Play_state0, Array (Int, Int, Int) Wall_grid, Game
 updatePlay io_box state_ref s0 s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid lookUp save_state sound_array t_last t_log t_seq f_rate =
   let det = detectColl (truncate (pos_w s0)) (pos_u s0, pos_v s0) (((vel s0), 522) !! (0 :: Int) / f_rate, ((vel s0), 523) !! (1 :: Int) / f_rate)
                        obj_grid w_grid
-      pos_w0 = floorSurf ((det, 524) !! (0 :: Int)) ((det, 525) !! (1 :: Int)) (pos_w s0) f_grid
+      pos_w0 = floorSurf0 ((det, 524) !! (0 :: Int)) ((det, 525) !! (1 :: Int)) (pos_w s0) f_grid
       pos_w1 = (pos_w s0 + (((vel s0), 648) !! (2 :: Int)) / f_rate)
       floor = pos_w0
       vel0 = updateVel (vel s0) [0, 0, 0] ((drop 2 det) ++ [0]) f_rate f
