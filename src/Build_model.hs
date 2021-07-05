@@ -131,7 +131,7 @@ instance Binary Floor_grid where
 
 data Play_state0 = Play_state0 {pos_u :: Float, pos_v :: Float, pos_w :: Float, vel :: [Float], angle :: Int, angle_ :: Float, message_ :: [(Int, [Int])],
 rend_mode :: Int, view_mode :: Int, view_angle :: Int, gameClock :: (Int, Float, Int), torch_t0 :: Int, torch_t_limit :: Int, on_screen_metrics :: Int,
-prob_seq :: UArray Int Int, mobile_lights :: ([Float], [Float])} deriving (Eq, Show)
+prob_seq :: UArray Int Int, mobile_lights :: ([Float], [Float]), control_key :: Int} deriving (Eq, Show)
 
 instance Binary Play_state0 where
   put Play_state0 {pos_u = a, pos_v = b, pos_w = c, vel = d, angle = e, angle_ = f, rend_mode = g, view_mode = h, view_angle = i, gameClock = j, torch_t0 = k, torch_t_limit = l} =
@@ -221,8 +221,11 @@ data EngineError = Invalid_wall_flag | Invalid_obj_flag | Invalid_GPLC_opcode | 
 
 instance Exception EngineError
 
+-- This type is used in the implementation of the replay system.
+data Frame_record = Frame_record {pos_u_r :: Float, pos_v_r :: Float, pos_w_r :: Float, view_mode_r :: Int, control_key_r :: Int} deriving Show
+
 ps0_init = Play_state0 {pos_u = 0, pos_v = 0, pos_w = 0, vel = [0, 0, 0], angle = 0, angle_ = 0, message_ = [], rend_mode = 0, view_mode = 0, view_angle = 0,
-gameClock = (1, 1, 1), torch_t0 = 1, torch_t_limit = 0, on_screen_metrics = 0, prob_seq = def_prob_seq, mobile_lights = ([], [])}
+gameClock = (1, 1, 1), torch_t0 = 1, torch_t_limit = 0, on_screen_metrics = 0, prob_seq = def_prob_seq, mobile_lights = ([], []), control_key = 0}
 
 ps1_init = Play_state1 {health = 100, ammo = 0, gems = 0, torches = 0, keys = [63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63],
 region = [19,46,41,44,27,33,31,63,28,27,51,63,4], difficulty = ("Plenty of danger please", 6, 10, 14), sig_q = [], next_sig_q = [], message = [], state_chg = 0,
@@ -268,6 +271,15 @@ ceiling_model = Obj_place {ident_ = 1044, u__ = 0, v__ = 0, w__ = 0, rotation = 
 
 -- This list is used to sequence centipede NPC animation.
 cpede_frames = [0, 1, 2, 3, 4, 5, 4, 3, 2, 1, 0] :: [Int]
+
+-- This function is part of the implementation of the replay system.
+showFrameRecords :: SEQ.Seq Frame_record -> Int -> Int -> [Char]
+showFrameRecords frame_seq i limit =
+  let this_record = SEQ.index frame_seq i
+  in
+  if i > limit then []
+  else show (pos_u_r this_record) ++ ", " ++ show (pos_v_r this_record) ++ ", " ++ show (pos_w_r this_record) ++ ", " ++ show (view_mode_r this_record)
+       ++ ", " ++ show (control_key_r this_record) ++ ", " ++ showFrameRecords frame_seq (i + 1) limit
 
 -- This class is used in functions that filter the result of the ray tracer to avoid multiple rendering.
 class Flag a where

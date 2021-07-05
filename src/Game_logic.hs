@@ -122,10 +122,6 @@ tail_ ls = tail ls
 head__ [] = error "Invalid Obj_grid structure detected."
 head__ ls = head ls
 
-showInts :: [Int] -> [Char]
-showInts [] = []
-showInts (x:xs) = (show x) ++ ", " ++ showInts xs
-
 boundCheck :: Int -> Int -> ((Int, Int, Int), (Int, Int, Int)) -> Bool
 boundCheck block axis ((a, b, c), (w_max, u_max, v_max)) =
   if axis == 0 && block > u_max then False
@@ -1604,55 +1600,55 @@ updatePlay io_box state_ref s0 s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_g
       updatePlay io_box state_ref (s0_ s0) s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid lookUp save_state sound_array t'' t_log
                  (third_ (det_fps t'')) (fst__ (det_fps t''))
     else do
-      putMVar state_ref (fst__ event, w_grid, save_state)
+      putMVar state_ref ((fst__ event) {control_key = control}, w_grid, save_state)
       updatePlay io_box state_ref (s0_ (fst__ event)) (snd__ event) in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid lookUp save_state
                  sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
   else
     if in_flight == False then
       if (pos_w s0) - floor > 0.02 then do
-        putMVar state_ref (s0, w_grid, save_state)
+        putMVar state_ref (s0 {control_key = control}, w_grid, save_state)
         updatePlay io_box state_ref (s0'_ 0 control (s0_ (fourth link0)) 0) (fifth link0) True min_frame_t (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0)
                    (third link0) lookUp save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
       else if control > 2 && control < 7 then do
-        putMVar state_ref (s0, w_grid, save_state)
+        putMVar state_ref (s0 {control_key = control}, w_grid, save_state)
         updatePlay io_box state_ref (s0'_ 0 control (s0_ (fourth link0)) 1) (fifth link0) False min_frame_t (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0)
                    (third link0) lookUp save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
       else if control == 7 then do
-        putMVar state_ref (s0, w_grid, save_state)
+        putMVar state_ref (s0 {control_key = control}, w_grid, save_state)
         updatePlay io_box state_ref (s0'_ 0 control (s0_ (fourth link0)) 2) (fifth link0) False min_frame_t (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0)
                    (third link0) lookUp save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
       else if control == 8 then do
-        putMVar state_ref (s0, w_grid, save_state)
+        putMVar state_ref (s0 {control_key = control}, w_grid, save_state)
         updatePlay io_box state_ref (s0'_ 0 control (s0_ (fourth link0)) 3) (fifth link0) False min_frame_t (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0)
                    (third link0) lookUp save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
       else if control == 9 && jumpAllowed f_grid s0 == True then do
-        putMVar state_ref (s0, w_grid, save_state)
+        putMVar state_ref (s0 {control_key = control}, w_grid, save_state)
         updatePlay io_box state_ref (s0'_ 0 control (s0_ (fourth link0)) 4) (fifth link0) False min_frame_t (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0)
                    (third link0) lookUp save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
       else if control == 13 then do
-        putMVar state_ref (s0, w_grid, save_state)
+        putMVar state_ref (s0 {control_key = control}, w_grid, save_state)
         updatePlay io_box state_ref (s0'_ 0 control (s0_ (fourth link0)) 5) ((fifth link0) {sig_q = sig_q s1 ++ [0, 0, 1]}) False min_frame_t
                    (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (fst (sendSignal 1 (GPLC_int 1) (GPLC_int 0, GPLC_int 0, GPLC_int 1) (third link0) s1 []))
                    lookUp save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
       else do
-        putMVar state_ref (s0, w_grid, save_state)
+        putMVar state_ref (s0 {control_key = control}, w_grid, save_state)
         updatePlay io_box state_ref (s0'_ 0 control (s0_ (fourth link0)) 6) (fifth link0) False min_frame_t (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0)
                    (third link0) lookUp save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
     else if in_flight == True && (pos_w s0) > floor then
       if control == 7 then do
-        putMVar state_ref (s0, w_grid, save_state)
+        putMVar state_ref (s0 {control_key = control}, w_grid, save_state)
         updatePlay io_box state_ref (s0'_ 0 control (s0_ (fourth link0)) 7) (fifth link0) True min_frame_t (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0)
                    (third link0) lookUp save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
       else if control == 8 then do
-        putMVar state_ref (s0, w_grid, save_state)
+        putMVar state_ref (s0 {control_key = control}, w_grid, save_state)
         updatePlay io_box state_ref (s0'_ 0 control (s0_ (fourth link0)) 8) (fifth link0) True min_frame_t (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0)
                    (third link0) lookUp save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
       else do
-        putMVar state_ref (s0, w_grid, save_state)
+        putMVar state_ref (s0 {control_key = control}, w_grid, save_state)
         updatePlay io_box state_ref (s0'_ 0 control (s0_ (fourth link0)) 9) (fifth link0) True min_frame_t (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0)
                    (third link0) lookUp save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
     else do
-      putMVar state_ref (s0, w_grid, save_state)
+      putMVar state_ref (s0 {control_key = control}, w_grid, save_state)
       if ((vel s0), 574) !! (2 :: Int) < -4 then do
         updatePlay io_box state_ref (s0'_ 0 control (s0_ s0) 10) link1_ False min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid lookUp save_state
                    sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
