@@ -221,8 +221,19 @@ data EngineError = Invalid_wall_flag | Invalid_obj_flag | Invalid_GPLC_opcode | 
 
 instance Exception EngineError
 
--- This type is used in the implementation of the replay system.
-data Frame_record = Frame_record {pos_u_r :: Float, pos_v_r :: Float, pos_w_r :: Float, view_mode_r :: Int, control_key_r :: Int} deriving Show
+-- The Frame_record type is used in the implementation of the replay system.
+data Frame_record = Frame_record {pos_u_r :: Float, pos_v_r :: Float, pos_w_r :: Float, control_key_r :: Int, game_t_r :: Int} deriving Show
+
+instance Binary Frame_record where
+  put Frame_record {pos_u_r = a, pos_v_r = b, pos_w_r = c, control_key_r = d, game_t_r = e} =
+    put a >> put b >> put c >> put d >> put e
+  
+  get = do a <- get
+           b <- get
+           c <- get
+           d <- get
+           e <- get
+           return Frame_record {pos_u_r = a, pos_v_r = b, pos_w_r = c, control_key_r = d, game_t_r = e}  
 
 ps0_init = Play_state0 {pos_u = 0, pos_v = 0, pos_w = 0, vel = [0, 0, 0], angle = 0, angle_ = 0, message_ = [], rend_mode = 0, view_mode = 0, view_angle = 0,
 gameClock = (1, 1, 1), torch_t0 = 1, torch_t_limit = 0, on_screen_metrics = 0, prob_seq = def_prob_seq, mobile_lights = ([], []), control_key = 0}
@@ -271,15 +282,6 @@ ceiling_model = Obj_place {ident_ = 1044, u__ = 0, v__ = 0, w__ = 0, rotation = 
 
 -- This list is used to sequence centipede NPC animation.
 cpede_frames = [0, 1, 2, 3, 4, 5, 4, 3, 2, 1, 0] :: [Int]
-
--- This function is part of the implementation of the replay system.
-showFrameRecords :: SEQ.Seq Frame_record -> Int -> Int -> [Char]
-showFrameRecords frame_seq i limit =
-  let this_record = SEQ.index frame_seq i
-  in
-  if i > limit then []
-  else show (pos_u_r this_record) ++ ", " ++ show (pos_v_r this_record) ++ ", " ++ show (pos_w_r this_record) ++ ", " ++ show (view_mode_r this_record)
-       ++ ", " ++ show (control_key_r this_record) ++ ", " ++ showFrameRecords frame_seq (i + 1) limit
 
 -- This class is used in functions that filter the result of the ray tracer to avoid multiple rendering.
 class Flag a where

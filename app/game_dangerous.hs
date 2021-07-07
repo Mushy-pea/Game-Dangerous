@@ -338,7 +338,7 @@ startGame control_ref uniform p_bind c conf_reg mode u v w g f mag_r mag_j save_
     p_light_buffer <- mallocBytes (glfloat * 35)
     state_ref <- newEmptyMVar
     t_log <- newEmptyMVar
-    tid <- forkIO (updatePlay (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref}) state_ref
+    tid <- forkIO (updatePlayWrapper0 (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref}) state_ref
                               (selectState mode lock_flag s0 (fst unlocked_state)
                                            ((s0_ save_state) {on_screen_metrics = selectMetricMode (cfg' "on_screen_metrics")}))
                               (selectState mode lock_flag s1 (snd unlocked_state) ((s1_ save_state) {verbose_mode = selectVerboseMode (cfg' "verbose_mode")}))
@@ -353,10 +353,8 @@ startGame control_ref uniform p_bind c conf_reg mode u v w g f mag_r mag_j save_
     free p_f_table1
     free p_light_buffer
     killThread tid
-    h <- openFile "benchmark_log.txt" WriteMode
-    hPutStr h (showFrameRecords (third_ result) 0 ((SEQ.length (third_ result)) - 1))
-    hClose h
-    startGame control_ref uniform p_bind c conf_reg ((head (fst__ result)) + 1) u v w g f mag_r mag_j (snd__ result) sound_array camera_to_clip r_gen
+    LBS.writeFile "replay_log.log" (saveFrameRecords (third_ result) LBS.empty 0 ((SEQ.length (third_ result)) - 1))
+    startGame control_ref uniform p_bind c conf_reg ((fst__ result) + 1) u v w g f mag_r mag_j (snd__ result) sound_array camera_to_clip r_gen
   else if mode == 2 then do
     choice <- runMenu mainMenuText [] (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref}) (-0.75) (-0.75) 1 0 0 ps0_init 1
     if choice == 1 then startGame control_ref uniform p_bind c conf_reg 0 u v w g f mag_r mag_j save_state sound_array camera_to_clip r_gen
@@ -511,8 +509,8 @@ saveArrayDiff0 mode (save_file, save_log) w_grid_bstring f_grid_bstring obj_grid
   in
   if mode == 0 then do
     contents <- bracket (openFile "save_log.log" ReadMode) (hClose) (\h -> do c <- hGetContents h; putStr ("\nsave_log size: " ++ show (length c)); return c)
-    saveArrayDiff0 1 (selectSaveFile (splitOn "\n" (tailFile contents)) s0 ((length (splitOn "\n" (tailFile contents))) - 1)) w_grid_bstring f_grid_bstring obj_grid_bstring
-                   s0_bstring s1_bstring conf_reg s0
+    saveArrayDiff0 1 (selectSaveFile (splitOn "\n" (tailFile contents)) s0 ((length (splitOn "\n" (tailFile contents))) - 1)) w_grid_bstring f_grid_bstring
+                   obj_grid_bstring s0_bstring s1_bstring conf_reg s0
   else do
     h0 <- openFile "save_log.log" WriteMode
     hPutStr h0 save_log
@@ -533,6 +531,13 @@ saveArrayDiff1 diff_seq diff_bytestring i limit =
 labelPlayStateEncoding :: LBS.ByteString -> LBS.ByteString
 labelPlayStateEncoding x = LBS.append (encode (fromIntegral (LBS.length x) :: Int)) x
 
+-- This function is part of the implementation of the replay system and handles the encoding of the
+-- frame_seq structure into a ByteString.
+saveFrameRecords :: SEQ.Seq Frame_record -> LBS.ByteString -> Int -> Int -> LBS.ByteString
+saveFrameRecords frame_seq bstring i limit =
+  if i > limit then bstring
+  else saveFrameRecords frame_seq (LBS.append bstring (encode (SEQ.index frame_seq i))) (i + 1) limit
+
 -- Find the uniform locations of GLSL uniform variables.
 findGlUniform :: [[Char]] -> [Int] -> Ptr GLuint -> [Int32] -> IO [Int32]
 findGlUniform [] [] p_gl_program acc = return acc
@@ -543,7 +548,7 @@ findGlUniform (x:xs) (y:ys) p_gl_program acc = do
   free query
   findGlUniform xs ys p_gl_program (acc ++ [fromIntegral uniform])
 
--- These four functions deal with the compilation of the GLSL shaders and linking of the shader program.
+-- These four functions deal with the compilation of the GLSL shaders and linking of the shader programs.
 makeGlProgram :: [[Char]] -> Ptr GLuint -> Int -> IO ()
 makeGlProgram [] p_prog i = return ()
 makeGlProgram (x0:x1:xs) p_prog i = do
@@ -701,7 +706,7 @@ detBufferLen s0 mode component_size =
 showFrame :: (UArray Int Word32, Int) -> UArray Int Int32 -> (Ptr GLfloat, Ptr GLfloat) -> (Ptr Int, Ptr Int) -> Float -> Float -> Float -> Int -> Int
              -> MVar (Play_state0, Array (Int, Int, Int) Wall_grid, Game_state) -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid
              -> Array (Int, Int, Int) (Int, [Int]) -> UArray (Int, Int) Float -> Matrix Float -> Array Int (Int, [Int]) -> SEQ.Seq Frame_record
-             -> IO ([Int], Game_state, SEQ.Seq Frame_record)
+             -> IO (Int, Game_state, SEQ.Seq Frame_record)
 showFrame p_bind uniform (p_mt_matrix, p_light_buffer) filter_table u v w a a' state_ref w_grid f_grid obj_grid lookUp camera_to_clip msg_queue frame_seq =
   let survey0 = multiSurvey (modAngle a (-92)) 183 u v (truncate u) (truncate v) w_grid f_grid obj_grid lookUp 2 0 [] []
       survey1 = multiSurvey (modAngle (modAngle a' a) 222) 183 (fst view_circle') (snd view_circle') (truncate (fst view_circle')) (truncate (snd view_circle'))
@@ -767,17 +772,17 @@ showFrame p_bind uniform (p_mt_matrix, p_light_buffer) filter_table u v w a a' s
     showWalls filtered_surv0 uniform p_bind (plusPtr p_mt_matrix (glfloat * 16)) u v w a lookUp (rend_mode (fst__ p_state))
     showObject (ceiling_model : filtered_surv1) uniform p_bind (plusPtr p_mt_matrix (glfloat * 48)) u v w a lookUp (rend_mode (fst__ p_state))
   msg_residue <- handleMessage0 (handleMessage1 (message_ (fst__ p_state)) msg_queue 0 3) uniform p_bind 0
-  if fst msg_residue == 1 || fst msg_residue == 3 || fst msg_residue == 4 || fst msg_residue == 5 then return ([fst msg_residue], third_ p_state, frame_seq)
+  if fst msg_residue == 1 || fst msg_residue == 3 || fst msg_residue == 4 || fst msg_residue == 5 then
+    return (fst msg_residue, third_ p_state, frame_seq)
   else if fst msg_residue == 2 then do
     threadDelay 5000000
-    return ([2], third_ p_state, frame_seq)
-  else if SEQ.length frame_seq == 10800 then return ([1], third_ p_state, frame_seq)
+    return (2, third_ p_state, frame_seq)
   else do
     swapBuffers
     showFrame p_bind uniform (p_mt_matrix, p_light_buffer) filter_table (pos_u (fst__ p_state)) (pos_v (fst__ p_state)) (pos_w (fst__ p_state))
               (angle (fst__ p_state)) (view_angle (fst__ p_state)) state_ref (snd__ p_state) f_grid obj_grid lookUp camera_to_clip (snd msg_residue)
-              (frame_seq SEQ.>< SEQ.singleton Frame_record {pos_u_r = pos_u (fst__ p_state), pos_v_r = pos_v (fst__ p_state), pos_w_r = pos_w (fst__ p_state),
-              view_mode_r = view_mode (fst__ p_state), control_key_r = control_key (fst__ p_state)})
+              (SEQ.take 10800 (SEQ.singleton Frame_record {pos_u_r = pos_u (fst__ p_state), pos_v_r = pos_v (fst__ p_state), pos_w_r = pos_w (fst__ p_state),
+              control_key_r = control_key (fst__ p_state), game_t_r = fst__ (gameClock (fst__ p_state))} SEQ.>< frame_seq))
 
 -- These two functions iterate through the message queue received from the game logic thread.  They manage the appearance and expiry of on screen messages
 -- and detect special event messages, such as are received when the user opts to return to the main menu.

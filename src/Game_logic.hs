@@ -1514,6 +1514,22 @@ s0' pos_uv pos_w0 pos_w1 vel0 vel1 angle' game_clock' mag_r mag_j f_rate f look_
                      gameClock = game_clock'}
   | otherwise = s0 {pos_u = (pos_uv, 548) !! (0 :: Int), pos_v = (pos_uv, 549) !! (1 :: Int), pos_w = pos_w0, vel = vel0, gameClock = game_clock'}
 
+-- updatePlay is called from Main.startGame through the two wrapper functions below.  This means that if an exception occurs
+-- within the game logic thread control is returned to the rendering thread, allowing the replay system to save debugging log information.
+updatePlayWrapper0 :: Io_box -> MVar (Play_state0, Array (Int, Int, Int) Wall_grid, Game_state) -> Play_state0 -> Play_state1 -> Bool -> Integer
+                      -> (Float, Float, Float, Float) -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid
+                      -> Array (Int, Int, Int) (Int, [Int]) -> UArray (Int, Int) Float -> Game_state -> (Array Int Source, Int) -> Integer -> MVar Integer
+                      -> SEQ.Seq Integer -> Float -> IO ()
+updatePlayWrapper0 io_box state_ref s0 s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid lookUp save_state sound_array
+                   t_last t_log t_seq f_rate =
+  catch (updatePlay io_box state_ref s0 s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid lookUp save_state sound_array t_last t_log t_seq f_rate)
+        (\e -> updatePlayWrapper1 state_ref e)
+
+updatePlayWrapper1 :: MVar (Play_state0, Array (Int, Int, Int) Wall_grid, Game_state) -> SomeException -> IO ()
+updatePlayWrapper1 state_ref e = do
+  putStr ("\n\nGame logic thread exception: " ++ show e)
+  putMVar state_ref (ps0_init {message_ = [(-3, [])]}, defWGridArr, def_save_state)
+
 -- This function recurses once for each recursion of showFrame (and rendering of that frame) and is the central branching point of the game logic thread.
 updatePlay :: Io_box -> MVar (Play_state0, Array (Int, Int, Int) Wall_grid, Game_state) -> Play_state0 -> Play_state1 -> Bool -> Integer
               -> (Float, Float, Float, Float) -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int])
