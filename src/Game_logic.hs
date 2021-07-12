@@ -1543,7 +1543,7 @@ updatePlay io_box state_ref s0 s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_g
       vel0 = updateVel (vel s0) [0, 0, 0] ((drop 2 det) ++ [0]) f_rate f
       vel1 = updateVel (vel s0) [0, 0, g] ((drop 2 det) ++ [0]) f_rate 0
       game_clock' = updateGameClock (gameClock s0) (f_rate * 1.25)
-      s0_ = \x -> x {message_ = [], mobile_lights = ([], [])}
+      s0_ = \x -> x {message_ = []}
       angle' = modAngle_ (angle_ s0) f_rate
       det_fps = \t_current -> determineFps t_seq t_current
       s0'_ = s0' det pos_w0 pos_w1 vel0 vel1 angle' (snd game_clock') mag_r mag_j f_rate f lookUp t_seq
@@ -1593,20 +1593,24 @@ updatePlay io_box state_ref s0 s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_g
       putMVar state_ref (s0 {message_ = [(-3, [])]}, w_grid, save_state)
       updatePlay io_box state_ref (s0_ s0) s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid lookUp save_state sound_array t'' t_log
                  (third_ (det_fps t'')) (fst__ (det_fps t''))
-  else if control == 10 then
+  else if control == 10 then do
+    putMVar state_ref (s0 {control_key = 10}, w_grid, save_state)
     updatePlay io_box state_ref (s0_ (fourth link0)) ((fifth link0) {sig_q = sig_q s1 ++ [2, 0, 0, 0]}) in_flight min_frame_t (g, f, mag_r, mag_j) (fst_ link0)
                (snd_ link0) (third link0) lookUp save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
   else if control == 11 then do
+    putMVar state_ref (s0 {control_key = 11}, w_grid, save_state)
     if view_mode s0 == 0 then
       updatePlay io_box state_ref (s0_ ((fourth link0) {view_mode = 1})) (fifth link0) in_flight min_frame_t (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0)
                  (third link0) lookUp save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
     else
       updatePlay io_box state_ref (s0_ ((fourth link0) {view_mode = 0})) (fifth link0) in_flight min_frame_t (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0)
                  (third link0) lookUp save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
-  else if control == 12 then
+  else if control == 12 then do
+    putMVar state_ref (s0 {control_key = 12}, w_grid, save_state)
     updatePlay io_box state_ref (s0_ ((fourth link0) {view_angle = modAngle (view_angle s0) 5})) (fifth link0) in_flight min_frame_t (g, f, mag_r, mag_j)
                (fst_ link0) (snd_ link0) (third link0) lookUp save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
-  else if control == 13 then
+  else if control == 13 then do
+    putMVar state_ref (s0 {control_key = 13}, w_grid, save_state)
     updatePlay io_box state_ref (s0_ (fourth link0)) ((fifth link0) {sig_q = sig_q s1 ++ [2, 0, 0, 1]}) in_flight min_frame_t (g, f, mag_r, mag_j) (fst_ link0)
                (snd_ link0) (third link0) lookUp save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
   else if message s1 /= [] then do
@@ -1616,7 +1620,7 @@ updatePlay io_box state_ref s0 s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_g
       updatePlay io_box state_ref (s0_ s0) s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid lookUp save_state sound_array t'' t_log
                  (third_ (det_fps t'')) (fst__ (det_fps t''))
     else do
-      putMVar state_ref ((fst__ event) {control_key = control}, w_grid, save_state)
+      putMVar state_ref (fst__ event, w_grid, save_state)
       updatePlay io_box state_ref (s0_ (fst__ event)) (snd__ event) in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid lookUp save_state
                  sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
   else
@@ -1641,11 +1645,6 @@ updatePlay io_box state_ref s0 s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_g
         putMVar state_ref (s0 {control_key = control}, w_grid, save_state)
         updatePlay io_box state_ref (s0'_ 0 control (s0_ (fourth link0)) 4) (fifth link0) False min_frame_t (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0)
                    (third link0) lookUp save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
-      else if control == 13 then do
-        putMVar state_ref (s0 {control_key = control}, w_grid, save_state)
-        updatePlay io_box state_ref (s0'_ 0 control (s0_ (fourth link0)) 5) ((fifth link0) {sig_q = sig_q s1 ++ [0, 0, 1]}) False min_frame_t
-                   (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0) (fst (sendSignal 1 (GPLC_int 1) (GPLC_int 0, GPLC_int 0, GPLC_int 1) (third link0) s1 []))
-                   lookUp save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
       else do
         putMVar state_ref (s0 {control_key = control}, w_grid, save_state)
         updatePlay io_box state_ref (s0'_ 0 control (s0_ (fourth link0)) 6) (fifth link0) False min_frame_t (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0)
@@ -1669,8 +1668,49 @@ updatePlay io_box state_ref s0 s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_g
         updatePlay io_box state_ref (s0'_ 0 control (s0_ s0) 10) link1_ False min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid lookUp save_state
                    sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
       else do
+        putMVar state_ref (s0 {control_key = control, landing_frame = True}, w_grid, save_state)
         updatePlay io_box state_ref (s0'_ 0 control (s0_ s0) 11) link1 False min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid lookUp save_state
                    sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
+
+replay :: SEQ.Seq Frame_record -> Int -> Int -> Io_box -> MVar (Play_state0, Array (Int, Int, Int) Wall_grid, Game_state) -> Play_state0 -> Play_state1
+          -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int])
+          -> UArray (Int, Int) Float -> (Array Int Source, Int) -> IO ()
+replay frame_seq i limit io_box state_ref s0 s1 w_grid f_grid obj_grid look_up sound_array
+  | i > limit = do
+      putMVar state_ref (s0 {message_ = [(-3, [])]}, w_grid, def_save_state)
+      replay frame_seq 0 limit io_box state_ref s0 s1 w_grid f_grid obj_grid look_up sound_array
+  | control == 10 =
+      replay frame_seq (i + 1) limit io_box state_ref s0 (s1 {sig_q = sig_q s1 ++ [2, 0, 0, 0]}) w_grid f_grid obj_grid look_up sound_array
+  | control == 11 = do
+      if view_mode s0 == 0 then
+        replay frame_seq (i + 1) limit io_box state_ref (s0 {view_mode = 1}) s1 w_grid f_grid obj_grid look_up sound_array
+      else
+        replay frame_seq (i + 1) limit io_box state_ref (s0 {view_mode = 0}) s1 w_grid f_grid obj_grid look_up sound_array
+  | control == 12 =
+      replay frame_seq (i + 1) limit io_box state_ref (s0 {view_angle = modAngle (view_angle s0) 5}) s1 w_grid f_grid obj_grid look_up sound_array
+  | control == 13 =
+      replay frame_seq (i + 1) limit io_box state_ref s0 (s1 {sig_q = sig_q s1 ++ [2, 0, 0, 1]}) w_grid f_grid obj_grid look_up sound_array
+  | message s1 /= [] = do
+      event <- procMsg0 (message s1) s0 s1 io_box (fst sound_array)
+      putMVar state_ref (fst__ event, w_grid, def_save_state)
+      replay frame_seq (i + 1) limit io_box state_ref ((fst__ event) {message_ = []}) (snd__ event) w_grid f_grid obj_grid look_up sound_array
+  | otherwise = do
+      link0 <- linkGplc0 gplc_tick (drop 4 det) player_voxel w_grid [] f_grid obj_grid [] s0_r (s1 {sig_q = prioritiseNpcs (sig_q s1) [] []}) look_up True
+      link1 <- linkGplc1 s0_r s1 obj_grid 0
+      putMVar state_ref (s0, w_grid, def_save_state)
+      if landing_frame_r frame == True then
+        replay frame_seq (i + 1) limit io_box state_ref s0_r link1 w_grid f_grid obj_grid look_up sound_array
+      else
+        replay frame_seq (i + 1) limit io_box state_ref (fourth link0) (fifth link0) (fst_ link0) (snd_ link0) (third link0) look_up sound_array
+  where frame = SEQ.index frame_seq i
+        control = control_key_r frame
+        gplc_tick = if game_t_r frame < game_t_r (SEQ.index frame_seq (i + 1)) then True
+                    else False
+        s0_r = s0 {pos_u = pos_u_r frame, pos_v = pos_v_r frame, pos_w = pos_w_r frame, vel = [vel_u_r frame, vel_v_r frame, 0],
+                   angle_ = angle_r frame}
+        player_voxel = [truncate (pos_w s0_r), truncate (pos_u s0_r), truncate (pos_v s0_r)]
+        det = detectColl (truncate (pos_w s0_r)) (pos_u s0_r, pos_v s0_r) (((vel s0_r), 652) !! (0 :: Int) / 1, ((vel s0_r), 653) !! (1 :: Int) / 1)
+                         obj_grid w_grid
 
 -- This function is used to convert integers to their representation in the engine's message tile reference format.
 convMsg :: Int -> [Int]

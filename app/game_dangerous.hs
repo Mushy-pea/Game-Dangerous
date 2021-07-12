@@ -387,6 +387,11 @@ startGame control_ref uniform p_bind c conf_reg mode u v w g f mag_r mag_j save_
     exitSuccess
   else return ()
 
+--      tid <- forkIO (replay (decodeSequence 0 def_frame_record contents SEQ.Empty) 0 ((SEQ.length (decodeSequence 0 def_frame_record contents SEQ.Empty)) - 1)
+--                     (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref}) state_ref s0 s1 w_grid f_grid obj_grid look_up_ sound_array)
+--      result <- showFrame p_bind uniform (p_mt_matrix, p_light_buffer) (p_f_table0, p_f_table1) 0 0 0 0 0 state_ref w_grid f_grid obj_grid look_up_
+--                        camera_to_clip (array (0, 5) [(i, (0, [])) | i <- [0..5]]) (SEQ.Empty)
+
 -- Used to update the engine's configuration file when a map transit event occurs, such that the targetted map will be loaded the next time the engine is run.
 updConfigFile :: Array Int [Char] -> ([Char], [Char]) -> Bool -> IO ()
 updConfigFile conf_reg (map_file, map_unlock_code) ready_flag = do
@@ -782,7 +787,9 @@ showFrame p_bind uniform (p_mt_matrix, p_light_buffer) filter_table u v w a a' s
     showFrame p_bind uniform (p_mt_matrix, p_light_buffer) filter_table (pos_u (fst__ p_state)) (pos_v (fst__ p_state)) (pos_w (fst__ p_state))
               (angle (fst__ p_state)) (view_angle (fst__ p_state)) state_ref (snd__ p_state) f_grid obj_grid lookUp camera_to_clip (snd msg_residue)
               (SEQ.take 10800 (SEQ.singleton Frame_record {pos_u_r = pos_u (fst__ p_state), pos_v_r = pos_v (fst__ p_state), pos_w_r = pos_w (fst__ p_state),
-              control_key_r = control_key (fst__ p_state), game_t_r = fst__ (gameClock (fst__ p_state))} SEQ.>< frame_seq))
+              vel_u_r = ((vel (fst__ p_state)), 650) !! 0, vel_v_r = ((vel (fst__ p_state)), 651) !! 1, control_key_r = control_key (fst__ p_state),
+              game_t_r = fst__ (gameClock (fst__ p_state)), angle_r = angle_ (fst__ p_state),
+              landing_frame_r = landing_frame (fst__ p_state)} SEQ.>< frame_seq))
 
 -- These two functions iterate through the message queue received from the game logic thread.  They manage the appearance and expiry of on screen messages
 -- and detect special event messages, such as are received when the user opts to return to the main menu.

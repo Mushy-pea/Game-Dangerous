@@ -19,5 +19,4 @@ errString2 = " max: "
 -- The commenting out of the above two functions can be inverted to switch off the debugging provided by the index wrapper system
 -- and save the runtime overhead.
 
--- current max location: 648
 
