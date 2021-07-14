@@ -52,10 +52,10 @@ main = do
   args <- getArgs
   if length args == 0 then do
     contents <- bracket (openFile "config.txt" ReadMode) (hClose) (\h -> do c <- hGetContents h; putStr ("\ncfg file size: " ++ show (length c)); return c)
-    openWindow (listArray (0, 87) (splitOneOf "=\n" (tailFile contents)))
+    openWindow (listArray (0, 91) (splitOneOf "=\n" (tailFile contents)))
   else do
     contents <- bracket (openFile ((args, 1) !! 0) ReadMode) (hClose) (\h -> do c <- hGetContents h; putStr ("\ncfg file size: " ++ show (length c)); return c)
-    openWindow (listArray (0, 87) (splitOneOf "=\n" (tailFile contents)))
+    openWindow (listArray (0, 91) (splitOneOf "=\n" (tailFile contents)))
 
 -- This function initialises the GLUT runtime system, which in turn is used to initialise a window and OpenGL context.
 openWindow :: Array Int [Char] -> IO ()
@@ -338,7 +338,8 @@ startGame control_ref uniform p_bind c conf_reg mode u v w g f mag_r mag_j save_
     p_light_buffer <- mallocBytes (glfloat * 35)
     state_ref <- newEmptyMVar
     t_log <- newEmptyMVar
-    tid <- forkIO (updatePlayWrapper0 (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref}) state_ref
+    frame_seq <- loadLogFile (cfg' "replay_file")
+    tid <- forkIO (updatePlayWrapper0 (cfg' "replay_file") (SEQ.reverse (fst frame_seq)) (snd frame_seq) (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref}) state_ref
                               (selectState mode lock_flag s0 (fst unlocked_state)
                                            ((s0_ save_state) {on_screen_metrics = selectMetricMode (cfg' "on_screen_metrics")}))
                               (selectState mode lock_flag s1 (snd unlocked_state) ((s1_ save_state) {verbose_mode = selectVerboseMode (cfg' "verbose_mode")}))
@@ -353,7 +354,9 @@ startGame control_ref uniform p_bind c conf_reg mode u v w g f mag_r mag_j save_
     free p_f_table1
     free p_light_buffer
     killThread tid
-    LBS.writeFile "replay_log.log" (saveFrameRecords (third_ result) LBS.empty 0 ((SEQ.length (third_ result)) - 1))
+    if cfg' "replay_file" == "null" then
+      LBS.writeFile "replay_log.log" (saveFrameRecords (third_ result) LBS.empty 0 ((SEQ.length (third_ result)) - 1))
+    else return ()
     startGame control_ref uniform p_bind c conf_reg ((fst__ result) + 1) u v w g f mag_r mag_j (snd__ result) sound_array camera_to_clip r_gen
   else if mode == 2 then do
     choice <- runMenu mainMenuText [] (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref}) (-0.75) (-0.75) 1 0 0 ps0_init 1
@@ -386,11 +389,6 @@ startGame control_ref uniform p_bind c conf_reg mode u v w g f mag_r mag_j save_
     putStr ("\n\nConfiguration file updated due to map transit event.")
     exitSuccess
   else return ()
-
---      tid <- forkIO (replay (decodeSequence 0 def_frame_record contents SEQ.Empty) 0 ((SEQ.length (decodeSequence 0 def_frame_record contents SEQ.Empty)) - 1)
---                     (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref}) state_ref s0 s1 w_grid f_grid obj_grid look_up_ sound_array)
---      result <- showFrame p_bind uniform (p_mt_matrix, p_light_buffer) (p_f_table0, p_f_table1) 0 0 0 0 0 state_ref w_grid f_grid obj_grid look_up_
---                        camera_to_clip (array (0, 5) [(i, (0, [])) | i <- [0..5]]) (SEQ.Empty)
 
 -- Used to update the engine's configuration file when a map transit event occurs, such that the targetted map will be loaded the next time the engine is run.
 updConfigFile :: Array Int [Char] -> ([Char], [Char]) -> Bool -> IO ()
@@ -542,6 +540,14 @@ saveFrameRecords :: SEQ.Seq Frame_record -> LBS.ByteString -> Int -> Int -> LBS.
 saveFrameRecords frame_seq bstring i limit =
   if i > limit then bstring
   else saveFrameRecords frame_seq (LBS.append bstring (encode (SEQ.index frame_seq i))) (i + 1) limit
+
+-- This function loads the log file used when the engine is run in replay mode.
+loadLogFile :: [Char] -> IO (SEQ.Seq Frame_record, Int)
+loadLogFile filename = do
+  if filename == "null" then return (SEQ.Empty, 0)
+  else do
+    contents <- LBS.readFile filename
+    return (decodeSequence 0 def_frame_record contents SEQ.Empty, SEQ.length (decodeSequence 0 def_frame_record contents SEQ.Empty) - 1)
 
 -- Find the uniform locations of GLSL uniform variables.
 findGlUniform :: [[Char]] -> [Int] -> Ptr GLuint -> [Int32] -> IO [Int32]

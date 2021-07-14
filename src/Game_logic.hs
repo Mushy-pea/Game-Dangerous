@@ -1516,14 +1516,16 @@ s0' pos_uv pos_w0 pos_w1 vel0 vel1 angle' game_clock' mag_r mag_j f_rate f look_
 
 -- updatePlay is called from Main.startGame through the two wrapper functions below.  This means that if an exception occurs
 -- within the game logic thread control is returned to the rendering thread, allowing the replay system to save debugging log information.
-updatePlayWrapper0 :: Io_box -> MVar (Play_state0, Array (Int, Int, Int) Wall_grid, Game_state) -> Play_state0 -> Play_state1 -> Bool -> Integer
-                      -> (Float, Float, Float, Float) -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid
+updatePlayWrapper0 :: [Char] -> SEQ.Seq Frame_record -> Int -> Io_box -> MVar (Play_state0, Array (Int, Int, Int) Wall_grid, Game_state) -> Play_state0
+                      -> Play_state1 -> Bool -> Integer -> (Float, Float, Float, Float) -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid
                       -> Array (Int, Int, Int) (Int, [Int]) -> UArray (Int, Int) Float -> Game_state -> (Array Int Source, Int) -> Integer -> MVar Integer
                       -> SEQ.Seq Integer -> Float -> IO ()
-updatePlayWrapper0 io_box state_ref s0 s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid lookUp save_state sound_array
-                   t_last t_log t_seq f_rate =
-  catch (updatePlay io_box state_ref s0 s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid lookUp save_state sound_array t_last t_log t_seq f_rate)
-        (\e -> updatePlayWrapper1 state_ref e)
+updatePlayWrapper0 replay_file frame_seq limit io_box state_ref s0 s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up save_state
+                   sound_array t_last t_log t_seq f_rate =
+  if replay_file == "null" then
+    catch (updatePlay io_box state_ref s0 s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up save_state sound_array t_last t_log t_seq f_rate)
+          (\e -> updatePlayWrapper1 state_ref e)
+  else replay frame_seq 0 limit io_box state_ref s0 s1 w_grid f_grid obj_grid look_up (fst sound_array) 0 0
 
 updatePlayWrapper1 :: MVar (Play_state0, Array (Int, Int, Int) Wall_grid, Game_state) -> SomeException -> IO ()
 updatePlayWrapper1 state_ref e = do
@@ -1672,42 +1674,49 @@ updatePlay io_box state_ref s0 s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_g
         updatePlay io_box state_ref (s0'_ 0 control (s0_ s0) 11) link1 False min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid lookUp save_state
                    sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
 
+-- This function is part of the implementation of the replay system and is used to replay a game state progression.
 replay :: SEQ.Seq Frame_record -> Int -> Int -> Io_box -> MVar (Play_state0, Array (Int, Int, Int) Wall_grid, Game_state) -> Play_state0 -> Play_state1
           -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int])
-          -> UArray (Int, Int) Float -> (Array Int Source, Int) -> IO ()
-replay frame_seq i limit io_box state_ref s0 s1 w_grid f_grid obj_grid look_up sound_array
+          -> UArray (Int, Int) Float -> Array Int Source -> Int -> Integer -> IO ()
+replay frame_seq i limit io_box state_ref s0 s1 w_grid f_grid obj_grid look_up sound_array c t0
+  | c == 0 = do
+      t <- getTime Monotonic
+      replay frame_seq i limit io_box state_ref s0 s1 w_grid f_grid obj_grid look_up sound_array 1 (toNanoSecs t)
   | i > limit = do
+      t1 <- getTime Monotonic
+      putStr ("\n\nAverage FPS: " ++ show (fromIntegral (limit + 1) / fromIntegral (toNanoSecs t1 - t0) * 1000000000))
       putMVar state_ref (s0 {message_ = [(-3, [])]}, w_grid, def_save_state)
-      replay frame_seq 0 limit io_box state_ref s0 s1 w_grid f_grid obj_grid look_up sound_array
+      replay frame_seq 0 limit io_box state_ref s0 s1 w_grid f_grid obj_grid look_up sound_array c t0
   | control == 10 =
-      replay frame_seq (i + 1) limit io_box state_ref s0 (s1 {sig_q = sig_q s1 ++ [2, 0, 0, 0]}) w_grid f_grid obj_grid look_up sound_array
+      replay frame_seq (i + 1) limit io_box state_ref s0 (s1 {sig_q = sig_q s1 ++ [2, 0, 0, 0]}) w_grid f_grid obj_grid look_up sound_array c t0
   | control == 11 = do
       if view_mode s0 == 0 then
-        replay frame_seq (i + 1) limit io_box state_ref (s0 {view_mode = 1}) s1 w_grid f_grid obj_grid look_up sound_array
+        replay frame_seq (i + 1) limit io_box state_ref (s0 {view_mode = 1}) s1 w_grid f_grid obj_grid look_up sound_array c t0
       else
-        replay frame_seq (i + 1) limit io_box state_ref (s0 {view_mode = 0}) s1 w_grid f_grid obj_grid look_up sound_array
+        replay frame_seq (i + 1) limit io_box state_ref (s0 {view_mode = 0}) s1 w_grid f_grid obj_grid look_up sound_array c t0
   | control == 12 =
-      replay frame_seq (i + 1) limit io_box state_ref (s0 {view_angle = modAngle (view_angle s0) 5}) s1 w_grid f_grid obj_grid look_up sound_array
+      replay frame_seq (i + 1) limit io_box state_ref (s0 {view_angle = modAngle (view_angle s0) 5}) s1 w_grid f_grid obj_grid look_up sound_array c t0
   | control == 13 =
-      replay frame_seq (i + 1) limit io_box state_ref s0 (s1 {sig_q = sig_q s1 ++ [2, 0, 0, 1]}) w_grid f_grid obj_grid look_up sound_array
+      replay frame_seq (i + 1) limit io_box state_ref s0 (s1 {sig_q = sig_q s1 ++ [2, 0, 0, 1]}) w_grid f_grid obj_grid look_up sound_array c t0
   | message s1 /= [] = do
-      event <- procMsg0 (message s1) s0 s1 io_box (fst sound_array)
+      event <- procMsg0 (message s1) s0 s1 io_box sound_array
       putMVar state_ref (fst__ event, w_grid, def_save_state)
-      replay frame_seq (i + 1) limit io_box state_ref ((fst__ event) {message_ = []}) (snd__ event) w_grid f_grid obj_grid look_up sound_array
+      replay frame_seq (i + 1) limit io_box state_ref ((fst__ event) {message_ = []}) (snd__ event) w_grid f_grid obj_grid look_up sound_array c t0
   | otherwise = do
       link0 <- linkGplc0 gplc_tick (drop 4 det) player_voxel w_grid [] f_grid obj_grid [] s0_r (s1 {sig_q = prioritiseNpcs (sig_q s1) [] []}) look_up True
       link1 <- linkGplc1 s0_r s1 obj_grid 0
       putMVar state_ref (s0, w_grid, def_save_state)
       if landing_frame_r frame == True then
-        replay frame_seq (i + 1) limit io_box state_ref s0_r link1 w_grid f_grid obj_grid look_up sound_array
+        replay frame_seq (i + 1) limit io_box state_ref s0_r link1 w_grid f_grid obj_grid look_up sound_array c t0
       else
-        replay frame_seq (i + 1) limit io_box state_ref (fourth link0) (fifth link0) (fst_ link0) (snd_ link0) (third link0) look_up sound_array
+        replay frame_seq (i + 1) limit io_box state_ref (fourth link0) (fifth link0) (fst_ link0) (snd_ link0) (third link0) look_up sound_array c t0
   where frame = SEQ.index frame_seq i
         control = control_key_r frame
-        gplc_tick = if game_t_r frame < game_t_r (SEQ.index frame_seq (i + 1)) then True
+        gplc_tick = if i == limit then True
+                    else if game_t_r frame < game_t_r (SEQ.index frame_seq (i + 1)) then True
                     else False
         s0_r = s0 {pos_u = pos_u_r frame, pos_v = pos_v_r frame, pos_w = pos_w_r frame, vel = [vel_u_r frame, vel_v_r frame, 0],
-                   angle_ = angle_r frame}
+                   angle_ = angle_r frame, angle = truncate (angle_r frame), gameClock = (game_t_r frame, 0, i)}
         player_voxel = [truncate (pos_w s0_r), truncate (pos_u s0_r), truncate (pos_v s0_r)]
         det = detectColl (truncate (pos_w s0_r)) (pos_u s0_r, pos_v s0_r) (((vel s0_r), 652) !! (0 :: Int) / 1, ((vel s0_r), 653) !! (1 :: Int) / 1)
                          obj_grid w_grid
