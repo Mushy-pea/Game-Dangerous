@@ -287,6 +287,14 @@ def_save_log = "1\n*save0.sav_000000\n*save1.sav_000000\n*save2.sav_000000\n*sav
 def_frame_record = Frame_record {pos_u_r = 0, pos_v_r = 0, pos_w_r = 0, vel_u_r = 0, vel_v_r = 0,
 control_key_r = 0, game_t_r = 0, angle_r = 0, landing_frame_r = False}
 
+-- The fixed_prob_seq array is only used in the development build of the engine to make it easier to recreate a game state progression in replay mode.
+fixed_prob_seq = listArray (0, 239) [83,71,76,7,26,14,64,8,71,62,80,79,39,78,65,82,43,33,82,95,99,14,77,42,52,22,99,51,69,53,58,41,64,17,38,23,47,68,4,12,22
+                                     ,20,75,50,76,70,29,63,70,51,17,5,77,43,90,81,11,63,52,87,0,91,92,44,92,28,67,92,13,24,78,38,12,43,98,38,38,94,90,12,60,88
+                                     ,22,19,33,83,47,84,50,7,8,76,87,45,89,85,88,7,69,94,74,37,20,36,39,79,66,92,47,34,85,62,89,88,61,89,86,8,76,83,56,39,89,29
+                                     ,29,39,18,22,52,37,57,54,4,7,75,63,60,19,23,25,44,14,92,50,47,52,64,26,81,57,5,0,9,87,1,63,48,65,10,94,18,23,62,68,17,43
+                                     ,64,14,35,6,97,69,75,0,25,80,71,71,48,90,44,10,54,1,58,41,71,52,65,70,52,6,9,61,54,69,88,73,50,69,5,9,77,43,46,62,62,22,82
+                                     ,58,50,97,96,76,68,0,61,61,25,10,25,39,89,0,99,56,9,78,31,41,24,19,3,59,95,94,85,11,5,16] :: UArray Int Int
+
 -- The implementation of the environmental ceiling is simple and usea a single model that is rendered in every frame.  The Obj_place value for this model has
 -- therefore been hard coded and is added directly to the [Obj_place] taken by Main.show_object, as there is no requirement for the ray tracer to be involved.
 ceiling_model = Obj_place {ident_ = 1044, u__ = 0, v__ = 0, w__ = 0, rotation = [], rotate_ = False, phase = 0, texture__ = 1, num_elem = 36, obj_flag = 0}

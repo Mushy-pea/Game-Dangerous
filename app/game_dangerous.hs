@@ -2,6 +2,7 @@
 -- If you wish to redistribute it or use it as part of your own work, this is permitted as long as you acknowledge the work is by the abovementioned author.
 
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE CPP #-}
 
 module Main where
 
@@ -309,7 +310,7 @@ startGame control_ref uniform p_bind c conf_reg mode u v w g f mag_r mag_j save_
       setup_music = if cfg' "music" == "off" then 0
                     else read (cfg' "music_period")
       s0 = ps0_init {pos_u = u, pos_v = v, pos_w = w, on_screen_metrics = selectMetricMode (cfg' "on_screen_metrics"),
-                     prob_seq = genProbSeq 0 239 (read (cfg' "prob_c")) r_gen}
+                     prob_seq = fixed_prob_seq}
       s1 = ps1_init {verbose_mode = selectVerboseMode (cfg' "verbose_mode")}
       unlocked_state = unlockWrapper (cfg' "map_unlock_code") s0 s1
       lock_flag = ((splitOn "~" c), 635) !! 11
