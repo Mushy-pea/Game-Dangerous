@@ -349,7 +349,7 @@ startGame control_ref uniform p_bind c conf_reg mode u v w g f mag_r mag_j save_
                               (selectState mode lock_flag obj_grid obj_grid (obj_grid_ save_state)) look_up_ save_state (sound_array, setup_music)
                               0 t_log (SEQ.empty) 60)
     result <- showFrame p_bind uniform (p_mt_matrix, p_light_buffer) (p_f_table0, p_f_table1) 0 0 0 0 0 state_ref w_grid f_grid obj_grid look_up_
-                        camera_to_clip (array (0, 5) [(i, (0, [])) | i <- [0..5]]) (SEQ.Empty)
+                        camera_to_clip (array (0, 5) [(i, (0, [])) | i <- [0..5]]) (SEQ.Empty) conf_reg
     free p_mt_matrix
     free p_f_table0
     free p_f_table1
@@ -545,7 +545,7 @@ saveFrameRecords frame_seq bstring i limit =
 -- This function loads the log file used when the engine is run in replay mode.
 loadLogFile :: [Char] -> IO (SEQ.Seq Frame_record, Int)
 loadLogFile filename = do
-  if filename == "null" then return (SEQ.Empty, 0)
+  if filename == "null" || filename == "off" then return (SEQ.Empty, 0)
   else do
     contents <- LBS.readFile filename
     return (decodeSequence 0 def_frame_record contents SEQ.Empty, SEQ.length (decodeSequence 0 def_frame_record contents SEQ.Empty) - 1)
@@ -718,14 +718,15 @@ detBufferLen s0 mode component_size =
 showFrame :: (UArray Int Word32, Int) -> UArray Int Int32 -> (Ptr GLfloat, Ptr GLfloat) -> (Ptr Int, Ptr Int) -> Float -> Float -> Float -> Int -> Int
              -> MVar (Play_state0, Array (Int, Int, Int) Wall_grid, Game_state) -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid
              -> Array (Int, Int, Int) (Int, [Int]) -> UArray (Int, Int) Float -> Matrix Float -> Array Int (Int, [Int]) -> SEQ.Seq Frame_record
-             -> IO (Int, Game_state, SEQ.Seq Frame_record)
-showFrame p_bind uniform (p_mt_matrix, p_light_buffer) filter_table u v w a a' state_ref w_grid f_grid obj_grid lookUp camera_to_clip msg_queue frame_seq =
+             -> Array Int [Char] -> IO (Int, Game_state, SEQ.Seq Frame_record)
+showFrame p_bind uniform (p_mt_matrix, p_light_buffer) filter_table u v w a a' state_ref w_grid f_grid obj_grid lookUp camera_to_clip msg_queue frame_seq conf_reg =
   let survey0 = multiSurvey (modAngle a (-92)) 183 u v (truncate u) (truncate v) w_grid f_grid obj_grid lookUp 2 0 [] []
       survey1 = multiSurvey (modAngle (modAngle a' a) 222) 183 (fst view_circle') (snd view_circle') (truncate (fst view_circle')) (truncate (snd view_circle'))
                             w_grid f_grid obj_grid lookUp 2 0 [] []
       view_circle' = viewCircle u v 2 (modAngle a a') lookUp
       world_to_clip0 = multStd camera_to_clip (worldToCamera (-u) (-v) (-w) a lookUp)
       world_to_clip1 = multStd camera_to_clip (worldToCamera (- (fst view_circle')) (- (snd view_circle')) (-w) (modAngle (modAngle a' a) 314) lookUp)
+      cfg' = cfg conf_reg 0
   in do
   p_state <- takeMVar state_ref
   glClear (GL_COLOR_BUFFER_BIT .|. GL_DEPTH_BUFFER_BIT)
@@ -791,12 +792,16 @@ showFrame p_bind uniform (p_mt_matrix, p_light_buffer) filter_table u v w a a' s
     return (2, third_ p_state, frame_seq)
   else do
     swapBuffers
-    showFrame p_bind uniform (p_mt_matrix, p_light_buffer) filter_table (pos_u (fst__ p_state)) (pos_v (fst__ p_state)) (pos_w (fst__ p_state))
-              (angle (fst__ p_state)) (view_angle (fst__ p_state)) state_ref (snd__ p_state) f_grid obj_grid lookUp camera_to_clip (snd msg_residue)
-              (SEQ.take 10800 (SEQ.singleton Frame_record {pos_u_r = pos_u (fst__ p_state), pos_v_r = pos_v (fst__ p_state), pos_w_r = pos_w (fst__ p_state),
-              vel_u_r = ((vel (fst__ p_state)), 650) !! 0, vel_v_r = ((vel (fst__ p_state)), 651) !! 1, control_key_r = control_key (fst__ p_state),
-              game_t_r = fst__ (gameClock (fst__ p_state)), angle_r = angle_ (fst__ p_state),
-              landing_frame_r = landing_frame (fst__ p_state)} SEQ.>< frame_seq))
+    if cfg' "replay_file" == "null" then
+      showFrame p_bind uniform (p_mt_matrix, p_light_buffer) filter_table (pos_u (fst__ p_state)) (pos_v (fst__ p_state)) (pos_w (fst__ p_state))
+                (angle (fst__ p_state)) (view_angle (fst__ p_state)) state_ref (snd__ p_state) f_grid obj_grid lookUp camera_to_clip (snd msg_residue)
+                (SEQ.take 10800 (SEQ.singleton Frame_record {pos_u_r = pos_u (fst__ p_state), pos_v_r = pos_v (fst__ p_state), pos_w_r = pos_w (fst__ p_state),
+                vel_u_r = ((vel (fst__ p_state)), 650) !! 0, vel_v_r = ((vel (fst__ p_state)), 651) !! 1, control_key_r = control_key (fst__ p_state),
+                game_t_r = fst__ (gameClock (fst__ p_state)), angle_r = angle_ (fst__ p_state),
+                landing_frame_r = landing_frame (fst__ p_state)} SEQ.>< frame_seq)) conf_reg
+    else showFrame p_bind uniform (p_mt_matrix, p_light_buffer) filter_table (pos_u (fst__ p_state)) (pos_v (fst__ p_state)) (pos_w (fst__ p_state))
+                   (angle (fst__ p_state)) (view_angle (fst__ p_state)) state_ref (snd__ p_state) f_grid obj_grid lookUp camera_to_clip (snd msg_residue)
+                   (SEQ.Empty) conf_reg
 
 -- These two functions iterate through the message queue received from the game logic thread.  They manage the appearance and expiry of on screen messages
 -- and detect special event messages, such as are received when the user opts to return to the main menu.

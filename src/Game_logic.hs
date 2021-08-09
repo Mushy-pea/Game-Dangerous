@@ -1522,7 +1522,7 @@ updatePlayWrapper0 :: [Char] -> SEQ.Seq Frame_record -> Int -> Io_box -> MVar (P
                       -> SEQ.Seq Integer -> Float -> IO ()
 updatePlayWrapper0 replay_file frame_seq limit io_box state_ref s0 s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up save_state
                    sound_array t_last t_log t_seq f_rate =
-  if replay_file == "null" then
+  if replay_file == "null" || replay_file == "off" then
     catch (updatePlay io_box state_ref s0 s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up save_state sound_array t_last t_log t_seq f_rate)
           (\e -> updatePlayWrapper1 state_ref e)
   else replay frame_seq 0 limit io_box state_ref s0 s1 w_grid f_grid obj_grid look_up (fst sound_array) 0 0
