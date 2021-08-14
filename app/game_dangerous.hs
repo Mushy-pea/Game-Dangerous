@@ -339,7 +339,16 @@ startGame control_ref uniform p_bind c conf_reg mode u v w g f mag_r mag_j save_
     state_ref <- newEmptyMVar
     t_log <- newEmptyMVar
     frame_seq <- loadLogFile (cfg' "replay_file")
-    tid <- forkIO (updatePlayWrapper0 (cfg' "replay_file") (SEQ.reverse (fst frame_seq)) (snd frame_seq) (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref}) state_ref
+    survey_view_out0_ <- newEmptyMVar
+    survey_view_out1_ <- newEmptyMVar
+    survey_view_out2_ <- newEmptyMVar
+    survey_view_in0_ <- newEmptyMVar
+    survey_view_in1_ <- newEmptyMVar
+    survey_view_in2_ <- newEmptyMVar
+    tid0 <- forkIO (surveyView 0 0 0 0 0 0 0 defWGridArr def_f_grid_arr look_up_ 0 [] [] survey_view_out0_ survey_view_in0_ True)
+    tid1 <- forkIO (surveyView 0 0 0 0 0 0 0 defWGridArr def_f_grid_arr look_up_ 0 [] [] survey_view_out1_ survey_view_in1_ True)
+    tid2 <- forkIO (surveyView 0 0 0 0 0 0 0 defWGridArr def_f_grid_arr look_up_ 0 [] [] survey_view_out2_ survey_view_in2_ True)
+    tid3 <- forkIO (updatePlayWrapper0 (cfg' "replay_file") (SEQ.reverse (fst frame_seq)) (snd frame_seq) (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref}) state_ref
                               (selectState mode lock_flag s0 (fst unlocked_state)
                                            ((s0_ save_state) {on_screen_metrics = selectMetricMode (cfg' "on_screen_metrics")}))
                               (selectState mode lock_flag s1 (snd unlocked_state) ((s1_ save_state) {verbose_mode = selectVerboseMode (cfg' "verbose_mode")}))
@@ -349,11 +358,16 @@ startGame control_ref uniform p_bind c conf_reg mode u v w g f mag_r mag_j save_
                               0 t_log (SEQ.empty) 60)
     result <- showFrame p_bind uniform (p_mt_matrix, p_light_buffer) (p_f_table0, p_f_table1) 0 0 0 0 0 state_ref w_grid f_grid obj_grid look_up_
                         camera_to_clip (array (0, 5) [(i, (0, [])) | i <- [0..5]]) (SEQ.Empty) conf_reg
+                        (RayThreadHandles {survey_view_in0 = survey_view_in0_,  survey_view_in1 = survey_view_in1_, survey_view_in2 = survey_view_in2_,
+                                           survey_view_out0 = survey_view_out0_, survey_view_out1 = survey_view_out1_, survey_view_out2 = survey_view_out2_})
     free p_mt_matrix
     free p_f_table0
     free p_f_table1
     free p_light_buffer
-    killThread tid
+    killThread tid0
+    killThread tid1
+    killThread tid2
+    killThread tid3
     if cfg' "replay_file" == "null" then
       LBS.writeFile "replay_log.log" (saveFrameRecords (third_ result) LBS.empty 0 ((SEQ.length (third_ result)) - 1))
     else return ()
@@ -712,22 +726,30 @@ detBufferLen s0 mode component_size =
   if mode == 0 then div (fromIntegral (length (fst (mobile_lights s0)))) component_size
   else div (fromIntegral (length (snd (mobile_lights s0)))) component_size
 
+data RayThreadHandles = RayThreadHandles {survey_view_out0 :: MVar ([Wall_place], [Obj_place]), survey_view_in0 :: MVar SurveyViewArgs,
+                              survey_view_out1 :: MVar ([Wall_place], [Obj_place]), survey_view_in1 :: MVar SurveyViewArgs,
+                              survey_view_out2 :: MVar ([Wall_place], [Obj_place]), survey_view_in2 :: MVar SurveyViewArgs}
+
 -- This function manages the rendering of all environmental models and in game messages.
 -- It recurses once per frame rendered and is the central branching point of the rendering thread.
 showFrame :: (UArray Int Word32, Int) -> UArray Int Int32 -> (Ptr GLfloat, Ptr GLfloat) -> (Ptr Int, Ptr Int) -> Float -> Float -> Float -> Int -> Int
              -> MVar (Play_state0, Array (Int, Int, Int) Wall_grid, Game_state) -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid
              -> Array (Int, Int, Int) (Int, [Int]) -> UArray (Int, Int) Float -> Matrix Float -> Array Int (Int, [Int]) -> SEQ.Seq Frame_record
-             -> Array Int [Char] -> IO (Int, Game_state, SEQ.Seq Frame_record)
-showFrame p_bind uniform (p_mt_matrix, p_light_buffer) filter_table u v w a a' state_ref w_grid f_grid obj_grid lookUp camera_to_clip msg_queue frame_seq conf_reg =
-  let survey0 = multiSurvey (modAngle a (-92)) 183 u v (truncate u) (truncate v) w_grid f_grid obj_grid lookUp 2 0 [] []
-      survey1 = multiSurvey (modAngle (modAngle a' a) 222) 183 (fst view_circle') (snd view_circle') (truncate (fst view_circle')) (truncate (snd view_circle'))
-                            w_grid f_grid obj_grid lookUp 2 0 [] []
-      view_circle' = viewCircle u v 2 (modAngle a a') lookUp
+             -> Array Int [Char] -> RayThreadHandles -> IO (Int, Game_state, SEQ.Seq Frame_record)
+showFrame p_bind uniform (p_mt_matrix, p_light_buffer) filter_table u v w a a' state_ref w_grid f_grid obj_grid lookUp camera_to_clip msg_queue frame_seq
+          conf_reg t_handle =
+  let view_circle' = viewCircle u v 2 (modAngle a a') lookUp
       world_to_clip0 = multStd camera_to_clip (worldToCamera (-u) (-v) (-w) a lookUp)
       world_to_clip1 = multStd camera_to_clip (worldToCamera (- (fst view_circle')) (- (snd view_circle')) (-w) (modAngle (modAngle a' a) 314) lookUp)
       cfg' = cfg conf_reg 0
   in do
   p_state <- takeMVar state_ref
+  putMVar (survey_view_in0 t_handle) SurveyViewArgs {sv_a = a, sv_limit = 183, sv_u = u, sv_v = v, sv_u_block = truncate u, sv_v_block = truncate v, sv_w_grid = w_grid, sv_f_grid = f_grid, sv_w_block = 0}
+  putMVar (survey_view_in1 t_handle) SurveyViewArgs {sv_a = a, sv_limit = 183, sv_u = u, sv_v = v, sv_u_block = truncate u, sv_v_block = truncate v, sv_w_grid = w_grid, sv_f_grid = f_grid, sv_w_block = 1}
+  putMVar (survey_view_in2 t_handle) SurveyViewArgs {sv_a = a, sv_limit = 183, sv_u = u, sv_v = v, sv_u_block = truncate u, sv_v_block = truncate v, sv_w_grid = w_grid, sv_f_grid = f_grid, sv_w_block = 2}
+  survey00 <- takeMVar (survey_view_out0 t_handle)
+  survey01 <- takeMVar (survey_view_out1 t_handle)
+  survey02 <- takeMVar (survey_view_out2 t_handle)
   glClear (GL_COLOR_BUFFER_BIT .|. GL_DEPTH_BUFFER_BIT)
   if view_mode (fst__ p_state) == 0 then loadArray (toList world_to_clip0) (castPtr p_mt_matrix) 0
   else do
@@ -774,13 +796,13 @@ showFrame p_bind uniform (p_mt_matrix, p_light_buffer) filter_table u v w a a' s
     glUniform1i (coerce (uniform ! 33)) (fromIntegral (torch_t_limit (fst__ p_state) - (fst__ (gameClock (fst__ p_state)) - torch_t0 (fst__ p_state))))
   glBindVertexArray (unsafeCoerce ((fst p_bind) ! 0))
   if view_mode (fst__ p_state) == 0 then do
-    filtered_surv0 <- filterSurv 0 (fst survey0) [] (fst filter_table) (third_ (gameClock (fst__ p_state)))
-    filtered_surv1 <- filterSurv 1 (snd survey0) [] (snd filter_table) (third_ (gameClock (fst__ p_state)))
+    filtered_surv0 <- filterSurv 0 (fst survey00 ++ fst survey01 ++ fst survey02) [] (fst filter_table) (third_ (gameClock (fst__ p_state)))
+    filtered_surv1 <- filterSurv 1 (snd survey00 ++ snd survey01 ++ snd survey02) [] (snd filter_table) (third_ (gameClock (fst__ p_state)))
     showWalls filtered_surv0 uniform p_bind (plusPtr p_mt_matrix (glfloat * 16)) u v w a lookUp (rend_mode (fst__ p_state))
     showObject (ceiling_model : filtered_surv1) uniform p_bind (plusPtr p_mt_matrix (glfloat * 48)) u v w a lookUp (rend_mode (fst__ p_state))
   else do
-    filtered_surv0 <- filterSurv 0 (fst survey1) [] (fst filter_table) (third_ (gameClock (fst__ p_state)))
-    filtered_surv1 <- filterSurv 1 (snd survey1) [] (snd filter_table) (third_ (gameClock (fst__ p_state)))
+    filtered_surv0 <- filterSurv 0 (fst survey00 ++ fst survey01 ++ fst survey02) [] (fst filter_table) (third_ (gameClock (fst__ p_state)))
+    filtered_surv1 <- filterSurv 1 (snd survey00 ++ snd survey01 ++ snd survey02) [] (snd filter_table) (third_ (gameClock (fst__ p_state)))
     showWalls filtered_surv0 uniform p_bind (plusPtr p_mt_matrix (glfloat * 16)) u v w a lookUp (rend_mode (fst__ p_state))
     showObject (ceiling_model : filtered_surv1) uniform p_bind (plusPtr p_mt_matrix (glfloat * 48)) u v w a lookUp (rend_mode (fst__ p_state))
   msg_residue <- handleMessage0 (handleMessage1 (message_ (fst__ p_state)) msg_queue 0 3) uniform p_bind 0
@@ -797,10 +819,10 @@ showFrame p_bind uniform (p_mt_matrix, p_light_buffer) filter_table u v w a a' s
                 (SEQ.take 10800 (SEQ.singleton Frame_record {pos_u_r = pos_u (fst__ p_state), pos_v_r = pos_v (fst__ p_state), pos_w_r = pos_w (fst__ p_state),
                 vel_u_r = ((vel (fst__ p_state)), 650) !! 0, vel_v_r = ((vel (fst__ p_state)), 651) !! 1, control_key_r = control_key (fst__ p_state),
                 game_t_r = fst__ (gameClock (fst__ p_state)), angle_r = angle_ (fst__ p_state),
-                landing_frame_r = landing_frame (fst__ p_state)} SEQ.>< frame_seq)) conf_reg
+                landing_frame_r = landing_frame (fst__ p_state)} SEQ.>< frame_seq)) conf_reg t_handle
     else showFrame p_bind uniform (p_mt_matrix, p_light_buffer) filter_table (pos_u (fst__ p_state)) (pos_v (fst__ p_state)) (pos_w (fst__ p_state))
                    (angle (fst__ p_state)) (view_angle (fst__ p_state)) state_ref (snd__ p_state) f_grid obj_grid lookUp camera_to_clip (snd msg_residue)
-                   (SEQ.Empty) conf_reg
+                   (SEQ.Empty) conf_reg t_handle
 
 -- These two functions iterate through the message queue received from the game logic thread.  They manage the appearance and expiry of on screen messages
 -- and detect special event messages, such as are received when the user opts to return to the main menu.

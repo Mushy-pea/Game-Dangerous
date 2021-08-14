@@ -1578,7 +1578,7 @@ updatePlay io_box state_ref s0 s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_g
       updatePlay io_box state_ref (s0 {gameClock = snd game_clock'}) s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid lookUp save_state
                  sound_array t_last t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
   else if control == 2 then do
-    choice <- runMenu (pauseText (showGameTime (fst__ (gameClock s0)) [] False) s1 (difficulty s1)) [] io_box (-0.75) (-0.75) 1 0 0 s0 1
+    choice <- fixChoice 1
     if choice == 1 then
       updatePlay io_box state_ref (s0_ s0) s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid lookUp save_state sound_array t'' t_log
                  (third_ (det_fps t'')) (fst__ (det_fps t''))
@@ -1673,6 +1673,9 @@ updatePlay io_box state_ref s0 s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_g
         putMVar state_ref (s0 {control_key = control, landing_frame = True}, w_grid, save_state)
         updatePlay io_box state_ref (s0'_ 0 control (s0_ s0) 11) link1 False min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid lookUp save_state
                    sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
+
+fixChoice :: Int -> IO Int
+fixChoice x = return x
 
 -- This function is part of the implementation of the replay system and is used to replay a game state progression.
 replay :: SEQ.Seq Frame_record -> Int -> Int -> Io_box -> MVar (Play_state0, Array (Int, Int, Int) Wall_grid, Game_state) -> Play_state0 -> Play_state1
@@ -1776,10 +1779,11 @@ procMsg0 (x0:x1:xs) s0 s1 io_box sound_array =
     procMsg0 (drop 3 xs)
              (s0 {pos_u = intToFloat ((xs, 584) !! (0 :: Int)), pos_v = intToFloat ((xs, 585) !! (1 :: Int)), pos_w = intToFloat ((xs, 586) !! (2 :: Int))})
              s1 io_box sound_array
-  else do
-    choice <- runMenu (procMsg1 (tail (splitOn [-1] (take x1 xs)))) [] io_box (-0.96) (-0.2) 1 0 0 s0 (x0 - 3)
-    procMsg0 (drop x1 xs) s0 (s1 {sig_q = sig_q s1 ++ [choice + 1, (signal_, 579) !! (0 :: Int), (signal_, 580) !! (1 :: Int), (signal_, 581) !! (2 :: Int)]})
-             io_box sound_array
+  else procMsg0 (drop x1 xs) s0 (s1 {sig_q = sig_q s1 ++ [2, (signal_, 579) !! (0 :: Int), (signal_, 580) !! (1 :: Int), (signal_, 581) !! (2 :: Int)]})
+                io_box sound_array
+
+--    choice <- runMenu (procMsg1 (tail (splitOn [-1] (take x1 xs)))) [] io_box (-0.96) (-0.2) 1 0 0 s0 (x0 - 3)
+    
 
 -- Used by the game logic thread for in game menus and by the main thread for the main menu.
 runMenu :: [(Int, [Int])] -> [(Int, [Int])] -> Io_box -> Float -> Float -> Int -> Int -> Int -> Play_state0 -> Int -> IO Int

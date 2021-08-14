@@ -27,6 +27,8 @@ import Foreign.C.Types
 import Unsafe.Coerce
 import System.IO.Unsafe
 import Control.Exception
+import qualified Control.Monad.Par.IO as PAR
+import Control.Concurrent
 import Graphics.GL.Core33
 
 fst_ (a, b, c, d, e) = a
@@ -658,24 +660,46 @@ procAngle a =
   else if a < 472 then (a - 314, False, False)
   else (157 - (a - 471), True, False)
 
+-- This type is used to conveniently pass arguments to surveyView within an MVar, which is done in the multithreaded implementation
+-- of the ray tracing system.
+data SurveyViewArgs = SurveyViewArgs {sv_a :: Int, sv_limit :: Int, sv_u :: Float, sv_v :: Float, sv_u_block :: Int, sv_v_block :: Int,
+                                      sv_w_grid :: Array (Int, Int, Int) Wall_grid, sv_f_grid :: Array (Int, Int, Int) Floor_grid, sv_w_block :: Int}
+
 -- These two functions handle the tracing of rays over the range of the field of view, returning a list of the wall sections that border the visible region and
 -- a list of any objects visible within that region.
 surveyView :: Int -> Int -> Int -> Float -> Float -> Int -> Int -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid
-              -> UArray (Int, Int) Float -> Int -> [Wall_place] -> [Obj_place] -> ([Wall_place], [Obj_place])
-surveyView a da limit u v u_block v_block w_grid f_grid lookUp w_block acc0 acc1 =
+              -> UArray (Int, Int) Float -> Int -> [Wall_place] -> [Obj_place] -> MVar ([Wall_place], [Obj_place]) -> MVar SurveyViewArgs -> Bool -> IO ()
+surveyView a da limit u v u_block v_block w_grid f_grid lookUp w_block acc0 acc1 return_ref next_state_ref init_flag =
   let proc_angle_ = procAngle a
       ray = rayTrace0 u v (fst__ proc_angle_) (snd__ proc_angle_) (third_ proc_angle_) u_block v_block w_grid f_grid w_grid lookUp w_block [] 0 0 0 0
-  in
-  if da > limit then (acc0, acc1)
-  else surveyView (modAngle a 2) (da + 2) limit u v u_block v_block w_grid f_grid lookUp w_block (acc0 ++ [fst__ ray]) (acc1 ++ snd__ ray)
+  in do
+  if da > limit then do
+    putMVar return_ref (acc0, acc1)
+    st <- takeMVar next_state_ref
+    surveyView (sv_a st) 0 (sv_limit st) (sv_u st) (sv_v st) (sv_u_block st) (sv_v_block st) (sv_w_grid st) (sv_f_grid st) lookUp (sv_w_block st) [] []
+               return_ref next_state_ref False
+  else if init_flag then do
+    st <- takeMVar next_state_ref
+    surveyView (sv_a st) 0 (sv_limit st) (sv_u st) (sv_v st) (sv_u_block st) (sv_v_block st) (sv_w_grid st) (sv_f_grid st) lookUp (sv_w_block st) [] []
+               return_ref next_state_ref False
+  else surveyView (modAngle a 1) (da + 1) limit u v u_block v_block w_grid f_grid lookUp w_block (acc0 ++ [fst__ ray]) (acc1 ++ snd__ ray) return_ref next_state_ref False
 
-multiSurvey :: Int -> Int -> Float -> Float -> Int -> Int -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid
-               -> Array (Int, Int, Int) (Int, [Int]) -> UArray (Int, Int) Float -> Int -> Int -> [Wall_place] -> [Obj_place] -> ([Wall_place], [Obj_place])
-multiSurvey a a_limit u v u_block v_block w_grid f_grid obj_grid lookUp w_limit w_block acc0 acc1 =
-  let survey = (surveyView a 0 a_limit u v u_block v_block w_grid f_grid lookUp w_block [] [])
-  in
-  if w_block > w_limit then (acc0, acc1)
-  else multiSurvey a a_limit u v u_block v_block w_grid f_grid obj_grid lookUp w_limit (w_block + 1) (acc0 ++ fst survey) (acc1 ++ snd survey)
+--surveyView :: Int -> Int -> Int -> Float -> Float -> Int -> Int -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid
+--              -> UArray (Int, Int) Float -> Int -> [Wall_place] -> [Obj_place] -> ([Wall_place], [Obj_place])
+--surveyView a da limit u v u_block v_block w_grid f_grid lookUp w_block acc0 acc1 =
+--  let proc_angle_ = procAngle a
+--      ray = rayTrace0 u v (fst__ proc_angle_) (snd__ proc_angle_) (third_ proc_angle_) u_block v_block w_grid f_grid w_grid lookUp w_block [] 0 0 0 0
+--  in
+--  if da > limit then (acc0, acc1)
+--  else surveyView (modAngle a 1) (da + 1) limit u v u_block v_block w_grid f_grid lookUp w_block (acc0 ++ [fst__ ray]) (acc1 ++ snd__ ray)
+
+--multiSurvey :: Int -> Int -> Float -> Float -> Int -> Int -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid
+--               -> Array (Int, Int, Int) (Int, [Int]) -> UArray (Int, Int) Float -> Int -> Int -> [Wall_place] -> [Obj_place] -> ([Wall_place], [Obj_place])
+--multiSurvey a a_limit u v u_block v_block w_grid f_grid obj_grid lookUp w_limit w_block acc0 acc1 =
+--  let survey = surveyView a 0 a_limit u v u_block v_block w_grid f_grid lookUp w_block [] []
+--  in
+--  if w_block > w_limit then (acc0, acc1)
+--  else multiSurvey a a_limit u v u_block v_block w_grid f_grid obj_grid lookUp w_limit (w_block + 1) (acc0 ++ fst survey) (acc1 ++ snd survey)
 
 -- This function filters the output of the ray tracer to avoid multiple rendering.  It has been implemented using direct memory access because of the
 -- performance critical role of this logic.
@@ -689,7 +713,7 @@ filterSurv mode (x:xs) acc p_table game_t = do
     if test == game_t then filterSurv mode xs acc p_table game_t
     else do
       pokeElemOff p_table (theFlag x) game_t
-      filterSurv mode xs (acc ++ [x]) p_table game_t
+      filterSurv mode xs (x : acc) p_table game_t
 
 -- These functions process the wall and floor grid data from the level map file before it is used to form the environment map.
 loadGrid1 :: [Char] -> Bool
