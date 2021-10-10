@@ -720,8 +720,8 @@ showFrame :: (UArray Int Word32, Int) -> UArray Int Int32 -> (Ptr GLfloat, Ptr G
              -> Array Int [Char] -> Int -> IO (Int, Game_state, SEQ.Seq Frame_record)
 showFrame p_bind uniform (p_mt_matrix, p_light_buffer) filter_table u v w a a' state_ref w_grid f_grid obj_grid lookUp camera_to_clip msg_queue frame_seq
           conf_reg ray_offset =
-  let survey0 = multiSurvey ((modAngle a (-92)) + ray_offset) 183 u v (truncate u) (truncate v) w_grid f_grid obj_grid lookUp 2 0 [] []
-      survey1 = multiSurvey ((modAngle (modAngle a' a) 222) + ray_offset) 183 (fst view_circle') (snd view_circle') (truncate (fst view_circle')) (truncate (snd view_circle'))
+  let survey0 = multiSurvey (modAngle a (-92 + ray_offset)) 183 u v (truncate u) (truncate v) w_grid f_grid obj_grid lookUp 2 0 [] []
+      survey1 = multiSurvey (modAngle (modAngle a' a) (222 + ray_offset)) 183 (fst view_circle') (snd view_circle') (truncate (fst view_circle')) (truncate (snd view_circle'))
                             w_grid f_grid obj_grid lookUp 2 0 [] []
       view_circle' = viewCircle u v 2 (modAngle a a') lookUp
       world_to_clip0 = multStd camera_to_clip (worldToCamera (-u) (-v) (-w) a lookUp)
