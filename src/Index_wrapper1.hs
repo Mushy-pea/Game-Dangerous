@@ -57,6 +57,6 @@ instance Index GPLC_general where
 -- The commenting out of the above two functions can be inverted to switch off the debugging provided by the index wrapper system
 -- and save the runtime overhead.
 
--- current max location: 653
+-- current max location: 654
 
 

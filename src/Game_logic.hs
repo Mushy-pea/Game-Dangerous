@@ -875,7 +875,7 @@ cpedePos u v dir t reversed =
   let fg_u_base = (fromIntegral u) + 0.5
       fg_v_base = (fromIntegral v) + 0.5
       normalise = \x y -> if reversed == False then x + y
-                       else x - y
+                          else x - y
   in
   if dir == 1 then ((truncate (fg_u_base + 1), truncate fg_v_base), (normalise fg_u_base ((fromIntegral (40 - t)) * 0.025), fg_v_base))
   else if dir == 3 then ((truncate fg_u_base, truncate (fg_v_base + 1)), (fg_u_base, normalise fg_v_base ((fromIntegral (40 - t)) * 0.025)))
@@ -976,7 +976,7 @@ cpedeMove (GPLC_int offset) (GPLC_flag mode) d_list (w:u:v:blocks) w_grid w_grid
       char_rotation_ = charRotation 1 ((dir_list', 397) !! (node_num char_state)) ((d_list, 398) !! (9 :: Int))
       animateCpede_ = animateCpede (fst__ (gameClock s0)) 11 ((d_list, 399) !! (9 :: Int)) char_rotation_ (node_num char_state) cpede_frames
       w_grid'1 = ((-w - 1, u, v), modWGrid w_grid (-w - 1) u v n n (j (fst (snd cpede_pos_))) (j (snd (snd cpede_pos_))) (j animateCpede_))
-      w_grid'2 = [((-w - 1, u', v'), modWGrid w_grid (-w - 1) u v (j char_rotation_) n n n n), ((-w - 1, u, v), def_w_grid)]
+      w_grid'2 = [((-w - 1, u', v'), modWGrid w_grid (- 1) 0 3 (j char_rotation_) n n n n), ((-w - 1, u, v), def_w_grid)]
       s1_1 = s1'' s1 d_list n (j dir_list') n (j (updTicksLeft (ticks_left0 char_state) (reversed char_state))) n (j [w, u', v', w, u, v]) n
                   (j (cpedeSigCheck ([chs6 (reversed char_state), w, u', v', chs6 (reversed char_state)] ++ drop 3 (node_locations char_state))
                                  (node_num char_state) (end_node char_state) ++ next_sig_q s1))
@@ -1001,7 +1001,7 @@ cpedeMove (GPLC_int offset) (GPLC_flag mode) d_list (w:u:v:blocks) w_grid w_grid
       if attack_mode char_state == True && binaryDice_ 10 s0 == True then
         if health s1 - damage <= 0 then (w_grid_upd, obj_grid_upd, s1 {health = 0, state_chg = 1, message = 0 : msg28})
         else (w_grid_upd, obj_grid_upd,
-              s1 {health = health s1 - damage, message = message s1 ++ msg29, next_sig_q = [chs6 (reversed char_state), w, u, v] ++ next_sig_q s1})
+              s1 {health = health s1 - damage, message = 0 : msg25 ++ message s1, next_sig_q = [chs6 (reversed char_state), w, u, v] ++ next_sig_q s1})
       else (w_grid_upd, obj_grid_upd, s1 {next_sig_q = [chs6 (reversed char_state), w, u, v] ++ next_sig_q s1})
     else if isNothing (obj (w_grid ! (-w - 1, u', v'))) == True then
       (w_grid'2 ++ w_grid_upd, ((w, u, v), (-2, [])) : ((w, u', v'), (-2, d_list_upd)) : obj_grid_upd, s1_1)
@@ -1046,7 +1046,7 @@ showGplcArgs :: [Char] -> [(Int, Int)] -> [Int] -> Int -> [Char]
 showGplcArgs opcode [] d_list c = []
 showGplcArgs opcode (x:xs) d_list (-1) = "\n" ++ opcode ++ " run with arguments " ++ showGplcArgs opcode (x:xs) d_list 0
 showGplcArgs opcode (x:xs) d_list c =
-  if fst x == 0 then show c ++ ": " ++ show ((d_list, 644) !! (snd x)) ++ " " ++ showGplcArgs opcode xs d_list (c + 1)
+  if fst x == 0 then show c ++ ": " ++ show ((d_list, 654) !! (snd x)) ++ " " ++ showGplcArgs opcode xs d_list (c + 1)
   else show c ++ ": " ++ show (snd x) ++ " " ++ showGplcArgs opcode xs d_list (c + 1)
 
 -- Branch on each GPLC op - code to call the corresponding function, with optional per op - code status reports for debugging.
@@ -1173,7 +1173,7 @@ runGplc (x0:x1:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 l
   let cpede_move_ = cpedeMove (GPLC_int x0) (GPLC_flag x1) d_list (node_locations ((npc_states s1) ! ((d_list, 504) !! (8 :: Int)))) w_grid w_grid_upd obj_grid
                               obj_grid_upd s0 s1
   in do
-  reportState (verbose_mode s1) 2 [] [] (showGplcArgs "cpede_move" [(0, x0), (1, x1)] d_list (-1))
+  reportState (verbose_mode s1) 2 [] [] (showGplcArgs "cpede_move" [(1, x0), (1, x1)] d_list (-1))
   reportNpcState (verbose_mode s1) s1 ((d_list, 505) !! (8 :: Int))
   runGplc (tail_ xs) d_list w_grid (fst__ cpede_move_) f_grid obj_grid (snd__ cpede_move_) s0 (third_ cpede_move_) lookUp (head_ xs)
 runGplc code d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp c = do
