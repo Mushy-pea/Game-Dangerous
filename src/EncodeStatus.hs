@@ -6,11 +6,11 @@
 -- the map being entered.  A high level of redundancy is added to these codes (only 61 of 128 bits are used) and codes that would result in game state values 
 -- being set outside of their valid range are rejected.  This approach has been taken to avoid adding complexity to the per map game state saving system.
 
-module Encode_status where
+module EncodeStatus where
 
 import Data.Array.IArray
 import Data.Maybe
-import Build_model
+import BuildModel
 
 -- These five functions were originally written for a previous unpublished game project called Maze Game.
 -- They are used to convert numbers from hexadecimal to binary form.

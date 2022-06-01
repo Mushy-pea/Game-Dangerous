@@ -1,152 +1,235 @@
-cabal-version:       >=1.10
-name:                Game-Dangerous
-version:             0.9.0.0
-author:              Steven Tinsley
-maintainer:          steven.tinsley81@gmail.com
-build-type:          Simple
-extra-source-files:  README.md
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.34.4.
+--
+-- see: https://github.com/sol/hpack
+
+name:           Game-Dangerous
+version:        0.9.0.0
+description:    Please see the README on GitHub at <https://github.com/Mushy-pea/Game-Dangerous#readme>
+homepage:       https://github.com/Mushy-pea/Game-Dangerous#readme
+bug-reports:    https://github.com/Mushy-pea/Game-Dangerous/issues
+author:         Steven Tinsley
+maintainer:     steven.tinsley81@gmail.com
+copyright:      None
+license:        Custom
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    README.md
+    ChangeLog.md
+
+source-repository head
+  type: git
+  location: https://github.com/Mushy-pea/Game-Dangerous
 
 library
-  hs-source-dirs: src
   exposed-modules:
-    AL_buffer,
-    Build_model,
-    Decompress_map,
-    Encode_status,
-    Game_logic,
-    Game_sound,
-    Index_wrapper0
-    Index_wrapper1
+      AlBuffer
+      BuildModel
+      DecompressMap
+      EncodeStatus
+      GameLogic
+      GameSound
+      IndexWrapper0
+      IndexWrapper1
+  other-modules:
+      Paths_Game_Dangerous
+  hs-source-dirs:
+      src
   build-depends:
-    base >=4.12 && <4.16,
-    matrix >=0.3,
-    split >=0.2,
-    StateVar >=1.2,
-    OpenAL >=1.7,
-    ObjectName >=1.1,
-    bytestring >=0.10,
-    OpenGL >=3.0,
-    array >=0.5,
-    OpenGLRaw >=3.3,
-    containers >=0.6,
-    binary >= 0.8,
-    GLURaw >=2.0,
-    clock >=0.8,
-    GLUT >=2.7,
-    random >=1.2
+      GLURaw >=2.0
+    , GLUT >=2.7
+    , ObjectName >=1.1
+    , OpenAL >=1.7
+    , OpenGL >=3.0
+    , OpenGLRaw >=3.3
+    , StateVar >=1.2
+    , array >=0.5
+    , base >=4.7 && <5
+    , binary >=0.8
+    , bytestring >=0.10
+    , clock >=0.8
+    , containers >=0.6
+    , matrix >=0.3
+    , random >=1.2
+    , split >=0.2
   default-language: Haskell2010
 
-executable game-dangerous
-  main-is:             game_dangerous.hs
-  hs-source-dirs: app
+executable AssmGplc
+  main-is: AssmGplc.hs
+  hs-source-dirs:
+      app
+  ghc-options: -O
   build-depends:
-    base >=4.12 && <4.16,
-    matrix >=0.3,
-    split >=0.2,
-    StateVar >=1.2,
-    OpenAL >=1.7,
-    ObjectName >=1.1,
-    bytestring >=0.10,
-    OpenGL >=3.0,
-    array >=0.5,
-    OpenGLRaw >=3.3,
-    containers >=0.6,
-    binary >= 0.8,
-    GLURaw >=2.0,
-    clock >=0.8,
-    GLUT >=2.7,
-    random >=1.2,
-    Game-Dangerous
-  default-language:    Haskell2010
+      GLURaw >=2.0
+    , GLUT >=2.7
+    , Game-Dangerous
+    , ObjectName >=1.1
+    , OpenAL >=1.7
+    , OpenGL >=3.0
+    , OpenGLRaw >=3.3
+    , StateVar >=1.2
+    , array >=0.5
+    , base >=4.7 && <5
+    , binary >=0.8
+    , bytestring >=0.10
+    , clock >=0.8
+    , containers >=0.6
+    , matrix >=0.3
+    , random >=1.2
+    , split >=0.2
+  default-language: Haskell2010
 
-executable convert-message
-  main-is:             conv_msg.hs
-  hs-source-dirs: app
+executable ConvMsg
+  main-is: ConvMsg.hs
+  hs-source-dirs:
+      app
+  ghc-options: -O
   build-depends:
-    base >=4.12 && <4.16,
-    matrix >=0.3,
-    split >=0.2,
-    StateVar >=1.2,
-    OpenAL >=1.7,
-    ObjectName >=1.1,
-    bytestring >=0.10,
-    OpenGL >=3.0,
-    array >=0.5,
-    OpenGLRaw >=3.3,
-    containers >=0.6,
-    binary >= 0.8,
-    GLURaw >=2.0,
-    clock >=0.8,
-    GLUT >=2.7,
-    random >=1.2,
-    Game-Dangerous
-  default-language:    Haskell2010
+      GLURaw >=2.0
+    , GLUT >=2.7
+    , Game-Dangerous
+    , ObjectName >=1.1
+    , OpenAL >=1.7
+    , OpenGL >=3.0
+    , OpenGLRaw >=3.3
+    , StateVar >=1.2
+    , array >=0.5
+    , base >=4.7 && <5
+    , binary >=0.8
+    , bytestring >=0.10
+    , clock >=0.8
+    , containers >=0.6
+    , matrix >=0.3
+    , random >=1.2
+    , split >=0.2
+  default-language: Haskell2010
 
-executable preprocess-map
-  main-is:             Preprocess_map.hs
-  hs-source-dirs: app
+executable Game-Dangerous-exe
+  main-is: Main.hs
+  hs-source-dirs:
+      app
+  ghc-options: -O
   build-depends:
-    base >=4.12 && <4.16,
-    matrix >=0.3,
-    split >=0.2,
-    StateVar >=1.2,
-    OpenAL >=1.7,
-    ObjectName >=1.1,
-    bytestring >=0.10,
-    OpenGL >=3.0,
-    array >=0.5,
-    OpenGLRaw >=3.3,
-    containers >=0.6,
-    binary >= 0.8,
-    GLURaw >=2.0,
-    clock >=0.8,
-    GLUT >=2.7,
-    random >=1.2,
-    Game-Dangerous
-  default-language:    Haskell2010
+      GLURaw >=2.0
+    , GLUT >=2.7
+    , Game-Dangerous
+    , ObjectName >=1.1
+    , OpenAL >=1.7
+    , OpenGL >=3.0
+    , OpenGLRaw >=3.3
+    , StateVar >=1.2
+    , array >=0.5
+    , base >=4.7 && <5
+    , binary >=0.8
+    , bytestring >=0.10
+    , clock >=0.8
+    , containers >=0.6
+    , matrix >=0.3
+    , random >=1.2
+    , split >=0.2
+  default-language: Haskell2010
 
-executable transform-model
-  main-is:             transform_model.hs
-  hs-source-dirs: app
+executable ImportModel
+  main-is: ImportModel.hs
+  hs-source-dirs:
+      app
+  ghc-options: -O
   build-depends:
-    base >=4.12 && <4.16,
-    matrix >=0.3,
-    split >=0.2,
-    StateVar >=1.2,
-    OpenAL >=1.7,
-    ObjectName >=1.1,
-    bytestring >=0.10,
-    OpenGL >=3.0,
-    array >=0.5,
-    OpenGLRaw >=3.3,
-    containers >=0.6,
-    binary >= 0.8,
-    GLURaw >=2.0,
-    clock >=0.8,
-    GLUT >=2.7,
-    random >=1.2,
-    Game-Dangerous
-  default-language:    Haskell2010
+      GLURaw >=2.0
+    , GLUT >=2.7
+    , Game-Dangerous
+    , ObjectName >=1.1
+    , OpenAL >=1.7
+    , OpenGL >=3.0
+    , OpenGLRaw >=3.3
+    , StateVar >=1.2
+    , array >=0.5
+    , base >=4.7 && <5
+    , binary >=0.8
+    , bytestring >=0.10
+    , clock >=0.8
+    , containers >=0.6
+    , matrix >=0.3
+    , random >=1.2
+    , split >=0.2
+  default-language: Haskell2010
 
-executable import-model
-  main-is:             import_model.hs
-  hs-source-dirs: app
+executable PreprocessMap
+  main-is: PreprocessMap.hs
+  hs-source-dirs:
+      app
+  ghc-options: -O
   build-depends:
-    base >=4.12 && <4.16,
-    matrix >=0.3,
-    split >=0.2,
-    StateVar >=1.2,
-    OpenAL >=1.7,
-    ObjectName >=1.1,
-    bytestring >=0.10,
-    OpenGL >=3.0,
-    array >=0.5,
-    OpenGLRaw >=3.3,
-    containers >=0.6,
-    binary >= 0.8,
-    GLURaw >=2.0,
-    clock >=0.8,
-    GLUT >=2.7,
-    random >=1.2,
-    Game-Dangerous
-  default-language:    Haskell2010
+      GLURaw >=2.0
+    , GLUT >=2.7
+    , Game-Dangerous
+    , ObjectName >=1.1
+    , OpenAL >=1.7
+    , OpenGL >=3.0
+    , OpenGLRaw >=3.3
+    , StateVar >=1.2
+    , array >=0.5
+    , base >=4.7 && <5
+    , binary >=0.8
+    , bytestring >=0.10
+    , clock >=0.8
+    , containers >=0.6
+    , matrix >=0.3
+    , random >=1.2
+    , split >=0.2
+  default-language: Haskell2010
+
+executable TransformModel
+  main-is: TransformModel.hs
+  hs-source-dirs:
+      app
+  ghc-options: -O
+  build-depends:
+      GLURaw >=2.0
+    , GLUT >=2.7
+    , Game-Dangerous
+    , ObjectName >=1.1
+    , OpenAL >=1.7
+    , OpenGL >=3.0
+    , OpenGLRaw >=3.3
+    , StateVar >=1.2
+    , array >=0.5
+    , base >=4.7 && <5
+    , binary >=0.8
+    , bytestring >=0.10
+    , clock >=0.8
+    , containers >=0.6
+    , matrix >=0.3
+    , random >=1.2
+    , split >=0.2
+  default-language: Haskell2010
+
+test-suite Game-Dangerous-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      Paths_Game_Dangerous
+  hs-source-dirs:
+      test
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      GLURaw >=2.0
+    , GLUT >=2.7
+    , Game-Dangerous
+    , ObjectName >=1.1
+    , OpenAL >=1.7
+    , OpenGL >=3.0
+    , OpenGLRaw >=3.3
+    , StateVar >=1.2
+    , array >=0.5
+    , base >=4.7 && <5
+    , binary >=0.8
+    , bytestring >=0.10
+    , clock >=0.8
+    , containers >=0.6
+    , matrix >=0.3
+    , random >=1.2
+    , split >=0.2
+  default-language: Haskell2010

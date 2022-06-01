@@ -1,7 +1,7 @@
 -- Game :: Dangerous code by Steven Tinsley.  You are free to use this software and view its source code.
 -- If you wish to redistribute it or use it as part of your own work, this is permitted as long as you acknowledge the work is by the abovementioned author.
 
-module Index_wrapper0 where
+module IndexWrapper0 where
 
 import qualified Prelude as PREL
 

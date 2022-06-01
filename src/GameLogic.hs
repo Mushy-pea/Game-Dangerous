@@ -1,10 +1,10 @@
 -- Game :: Dangerous code by Steven Tinsley.  You are free to use this software and view its source code.
 -- If you wish to redistribute it or use it as part of your own work, this is permitted as long as you acknowledge the work is by the abovementioned author.
 
-module Game_logic where
+module GameLogic where
 
 import Prelude hiding ((!!))
-import Index_wrapper1
+import IndexWrapper1
 import System.IO
 import System.IO.Unsafe
 import System.Exit
@@ -25,9 +25,9 @@ import qualified Data.Matrix as MAT
 import Unsafe.Coerce
 import Data.Coerce
 import System.Clock
-import Build_model
-import Game_sound
-import Encode_status
+import BuildModel
+import GameSound
+import EncodeStatus
 
 -- Used to load C style arrays, which are used with certain OpenGL functions.
 loadArray :: Storable a => [a] -> Ptr a -> Int -> IO ()

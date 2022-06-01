@@ -6,16 +6,16 @@
 -- originally done by a tool chain program as a pre - processing step and was later moved into the engine.
 -- I have retained the intermediate text format to avoid having to re - write some of the game state initialisation code, which appeared needless.
 
-module Decompress_map where
+module DecompressMap where
 
 import Prelude hiding ((!!))
-import Index_wrapper0
+import IndexWrapper0
 import Data.Maybe
 import Data.List.Split
 import Data.Sequence hiding (take, length)
 import Data.Foldable
 import Control.Exception
-import Build_model
+import BuildModel
 
 -- Convenience functions used by some of the map file parsing functions below.
 filter0 :: Char -> Char

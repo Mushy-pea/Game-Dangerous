@@ -8,10 +8,10 @@
 
 {-# LANGUAGE FlexibleInstances #-}
 
-module Build_model where
+module BuildModel where
 
 import Prelude hiding ((!!))
-import Index_wrapper0
+import IndexWrapper0
 import Data.Word
 import Data.List.Split
 import Data.Matrix hiding ((!))

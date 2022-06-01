@@ -8,7 +8,7 @@
 -- for generating buffer and source names, which required overiding the library's module structure in places to bring certain things
 -- in hidden modules into scope.  This is why the AL_buffer module is required.
 
-module Game_sound where
+module GameSound where
 
 import System.IO
 import Foreign
@@ -24,22 +24,22 @@ import Sound.OpenAL.AL.StringQueries
 import Sound.OpenAL.AL.Source
 import Sound.OpenAL.ALC
 import Unsafe.Coerce
-import AL_buffer
+import AlBuffer
 
 -- See notes at the top of the module.
 foreign import ccall unsafe "alGenSources"
    alGenSources :: Sound.OpenAL.AL.BasicTypes.ALsizei -> Ptr Sound.OpenAL.AL.BasicTypes.ALuint -> IO ()
 
 foreign import ccall unsafe "alDeleteSources"
-   alDeleteSources :: Sound.OpenAL.AL.BasicTypes.ALsizei -> Ptr Game_sound.Source -> IO ()
+   alDeleteSources :: Sound.OpenAL.AL.BasicTypes.ALsizei -> Ptr GameSound.Source -> IO ()
 
 foreign import ccall unsafe "alIsSource"
-   alIsSource :: Game_sound.Source -> IO Sound.OpenAL.AL.BasicTypes.ALboolean
+   alIsSource :: GameSound.Source -> IO Sound.OpenAL.AL.BasicTypes.ALboolean
 
 newtype Source = Source Sound.OpenAL.AL.BasicTypes.ALuint
    deriving ( Eq, Ord, Show )
 
-instance Storable Game_sound.Source where
+instance Storable GameSound.Source where
    sizeOf    ~(Source b) = sizeOf b
    alignment ~(Source b) = alignment b
    peek                  = peek1 Source . castPtr
@@ -59,14 +59,14 @@ initAlContext = do
   currentContext $= context
 
 -- Generate and link the required set of OpenAL source and buffer objects.
-initAlEffect0 :: [[Char]] -> [Char] -> Array Int Game_sound.Source -> IO (Array Int Game_sound.Source)
+initAlEffect0 :: [[Char]] -> [Char] -> Array Int GameSound.Source -> IO (Array Int GameSound.Source)
 initAlEffect0 sample_list path src_array = do
   buf <- genBuffer0 0 (div (length sample_list) 2) []
   src <- genSource0 0 (div (length sample_list) 2) []
   src_array_ <- initAlEffect1 sample_list buf src path src_array
   return src_array_
 
-initAlEffect1 :: [[Char]] -> [Buffer] -> [Game_sound.Source] -> [Char] -> Array Int Game_sound.Source -> IO (Array Int Game_sound.Source)
+initAlEffect1 :: [[Char]] -> [Buffer] -> [GameSound.Source] -> [Char] -> Array Int GameSound.Source -> IO (Array Int GameSound.Source)
 initAlEffect1 [] [] [] path src_array = return src_array
 initAlEffect1 (x0:x1:xs) (y:ys) (z:zs) path src_array = do
   sample_data <- loadSndBuf0 [x1] path []
@@ -75,7 +75,7 @@ initAlEffect1 (x0:x1:xs) (y:ys) (z:zs) path src_array = do
   initAlEffect1 xs ys zs path (src_array // [(read x0, z)])
 
 -- Custom source generation functions (bug fix).
-genSource1 :: IO Game_sound.Source
+genSource1 :: IO GameSound.Source
 genSource1 = do
   p_src <- mallocBytes 4
   alGenSources 1 p_src
@@ -83,7 +83,7 @@ genSource1 = do
   free p_src
   return (Source src)
 
-genSource0 :: Int -> Int -> [Game_sound.Source] -> IO [Game_sound.Source]
+genSource0 :: Int -> Int -> [GameSound.Source] -> IO [GameSound.Source]
 genSource0 c limit acc = do
   if c == limit then return acc
   else do
@@ -109,14 +109,13 @@ loadSndBuf2 mode buf len p_waveFile =
   if mode == True then (bufferData buf) $= (BufferData (MemoryRegion p_waveFile (fromIntegral (len - 44))) Stereo16 32000)
   else (bufferData buf) $= (BufferData (MemoryRegion p_waveFile (fromIntegral (len - 44))) Stereo16 44100)
 
-linkSource :: [Game_sound.Source] -> [Buffer] -> IO ()
+linkSource :: [GameSound.Source] -> [Buffer] -> IO ()
 linkSource [] [] = return ()
 linkSource (x:xs) (y:ys) = do
   queueBuffers (unsafeCoerce x) (unsafeCoerce [y])
   (sourcePosition (unsafeCoerce x)) $= (Vertex3 0 0 1)
   linkSource xs ys
 
-play_ :: Game_sound.Source -> IO ()
+play_ :: GameSound.Source -> IO ()
 play_ src = play [unsafeCoerce src]
-
 

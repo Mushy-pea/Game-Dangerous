@@ -15,7 +15,7 @@ import System.IO.Unsafe
 import System.Environment
 import Data.Array.IArray
 import Data.List.Split
-import Decompress_map hiding (padWalls)
+import DecompressMap hiding (padWalls)
 
 -- This is a simplified analogue of the Wall_grid type defined in Build_model, as less information is needed in this context.
 data Wall_grid = Wall_grid {u1 :: Bool, u2 :: Bool, v1 :: Bool, v2 :: Bool}

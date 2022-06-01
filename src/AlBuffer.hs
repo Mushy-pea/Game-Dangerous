@@ -1,4 +1,4 @@
-module AL_buffer where
+module AlBuffer where
 
 import Foreign.C.Types
 import Data.StateVar ( StateVar, makeStateVar )

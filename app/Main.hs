@@ -6,7 +6,7 @@
 module Main where
 
 import Prelude hiding ((!!))
-import Index_wrapper0
+import IndexWrapper0
 import System.IO
 import Foreign
 import Foreign.C.String
@@ -36,11 +36,11 @@ import qualified Data.Foldable as FOLD
 import Control.Exception
 import System.Exit
 import System.Random
-import Build_model
-import Decompress_map
-import Game_logic
-import Game_sound
-import Encode_status
+import BuildModel
+import DecompressMap
+import GameLogic
+import GameSound
+import EncodeStatus
 
 -- This function processes text from input files to return a result that is independent on whether the file has the Windows or Unix end of file format.
 tailFile :: [Char] -> [Char]
@@ -859,7 +859,7 @@ showWalls (x:xs) uniform p_bind p_mt_matrix u v w a lookUp mode = do
     else do
       putStr "\nshow_walls: Invalid wall_place texture reference in map..."
       showWalls xs uniform p_bind p_mt_matrix u v w a lookUp mode
-    if Build_model.rotate x < 2 then glDrawElements GL_TRIANGLES 36 GL_UNSIGNED_SHORT (plusPtr zero_ptr (glushort * 36))
+    if BuildModel.rotate x < 2 then glDrawElements GL_TRIANGLES 36 GL_UNSIGNED_SHORT (plusPtr zero_ptr (glushort * 36))
     else glDrawElements GL_TRIANGLES 36 GL_UNSIGNED_SHORT zero_ptr
     showWalls xs uniform p_bind p_mt_matrix u v w a lookUp mode
   else showWalls xs uniform p_bind p_mt_matrix u v w a lookUp mode
