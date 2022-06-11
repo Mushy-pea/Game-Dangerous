@@ -117,6 +117,15 @@ executables:
     - array >= 0.5
     - Game-Dangerous
 
+  Server:
+    main:                Server.hs
+    other-modules:       []
+    source-dirs:         app
+    ghc-options:
+    - -O
+    dependencies:
+    - base >= 4.7 && < 5
+    - Game-Dangerous
 
 tests:
   Game-Dangerous-test:
