@@ -118,7 +118,7 @@ repaintWindow = return ()
 -- This function initialises the OpenAL context, decompresses the map file, manages the compilation of GLSL shaders, loading of 3D models, loading of the
 -- light map and loading of sound effects.
 setupGame :: [Char] -> Array Int [Char] -> Size -> IORef Int -> IO ()
-setupGame comp_env_map conf_reg (Size w h) control_ref =
+setupGame comp_map_text conf_reg (Size w h) control_ref =
   let m0 = "mod_to_world"
       m1 = "world_to_clip"
       m2 = "world_to_mod"
@@ -131,16 +131,16 @@ setupGame comp_env_map conf_reg (Size w h) control_ref =
       dl0 = "mobileLightIntensities"
       dl1 = "mobileLightPositions"
       dl2 = "numLights"
-      u_max = read (((splitOn "\n~\n" comp_env_map), 3) !! 12)
-      v_max = read (((splitOn "\n~\n" comp_env_map), 4) !! 13)
-      w_max = read (((splitOn "\n~\n" comp_env_map), 5) !! 14)
-      proc_map' = procMap (splitOn "\n~\n" comp_env_map) u_max v_max w_max
+      u_max = read (((splitOn "\n~\n" comp_map_text), 3) !! 12)
+      v_max = read (((splitOn "\n~\n" comp_map_text), 4) !! 13)
+      w_max = read (((splitOn "\n~\n" comp_map_text), 5) !! 14)
+      proc_map' = procMap (splitOn "\n~\n" comp_map_text) u_max v_max w_max
       pm'' = fst proc_map'
       pm''' = snd proc_map'
-      mc = \i -> ((splitOn "\n~\n" comp_env_map), 637) !! i
-      env_map = ".~.~.~.~" ++ pm'' ++ "~" ++ pm''' ++ (mc 10) ++ "~" ++ (mc 11) ++ "~" ++ (mc 12) ++ "~" ++ (mc 13) ++ "~" ++ (mc 14) ++ "~" ++ (mc 15)
+      mc = \i -> ((splitOn "\n~\n" comp_map_text), 637) !! i
+      map_text = ".~.~.~.~" ++ pm'' ++ "~" ++ pm''' ++ (mc 10) ++ "~" ++ (mc 11) ++ "~" ++ (mc 12) ++ "~" ++ (mc 13) ++ "~" ++ (mc 14) ++ "~" ++ (mc 15)
       cfg' = cfg conf_reg 0
-      p_bind_limit = (read (((splitOn "\n~\n" comp_env_map), 11) !! 7)) - 1
+      p_bind_limit = (read (((splitOn "\n~\n" comp_map_text), 11) !! 7)) - 1
       frustumScale0 = (read (cfg' "frustumScale1")) / (fromIntegral w / fromIntegral h)
   in do
   glEnable GL_DEPTH_TEST
@@ -219,8 +219,8 @@ setupGame comp_env_map conf_reg (Size w h) control_ref =
   validateProg gl_program6 6
   p_bind <- bufferToArray (castPtr p_gl_program) (array (0, p_bind_limit) [(x, 0) | x <- [0..p_bind_limit]]) 0 (p_bind_limit - 6) 6
   putStr "\nLoading 3D models..."
-  mod_bind <- callocBytes ((read (((splitOn "\n~\n" comp_env_map), 42) !! 7)) * gluint)
-  loadModFile (init (splitOn ", " (((splitOn "\n~\n" comp_env_map), 43) !! 8))) (cfg' "model_data_dir") mod_bind
+  mod_bind <- callocBytes ((read (((splitOn "\n~\n" comp_map_text), 42) !! 7)) * gluint)
+  loadModFile (init (splitOn ", " (((splitOn "\n~\n" comp_map_text), 43) !! 8))) (cfg' "model_data_dir") mod_bind
   free p_gl_program; free p_lmap_pos0; free p_lmap_pos1; free p_lmap_int0; free p_lmap_int1; free p_lmap_t0; free p_lmap_t1
   p_bind_ <- bufferToArray (castPtr mod_bind) p_bind 0 0 (p_bind_limit - 16)
   initAlContext
@@ -229,7 +229,7 @@ setupGame comp_env_map conf_reg (Size w h) control_ref =
   sound_array <- initAlEffect0 (splitOneOf "\n " (tailFile contents2)) (cfg' "sound_data_dir")
                                (array (0, (div (length (splitOneOf "\n " (tailFile contents2))) 2) - 1) [(x, Source 0) | x <- [0..(div (length (splitOneOf "\n " (tailFile contents2))) 2) - 1]])
   r_gen <- getStdGen
-  startGame control_ref (listArray (0, 65) uniform) (p_bind_, p_bind_limit + 1) env_map conf_reg (-1) (read (cfg' "init_u")) (read (cfg' "init_v"))
+  startGame control_ref (listArray (0, 65) uniform) (p_bind_, p_bind_limit + 1) map_text conf_reg (-1) (read (cfg' "init_u")) (read (cfg' "init_v"))
             (read (cfg' "init_w")) (read (cfg' "gravity")) (read (cfg' "friction")) (read (cfg' "run_power")) (read (cfg' "jump_power"))
             def_save_state sound_array (cameraToClip frustumScale0 (read (cfg' "frustumScale1"))) r_gen
 

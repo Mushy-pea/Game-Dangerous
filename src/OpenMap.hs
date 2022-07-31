@@ -1,3 +1,5 @@
+-- The map loading code in this module is used as a library by the engine (in Main) and the development server (in Server).
+
 module OpenMap where
 
 import Prelude hiding ((!!))

@@ -64,12 +64,21 @@ send_signal_ game_state args =
   if w < fst__ (fst bd) || w > fst__ (snd bd) || u < snd__ (fst bd) || u > snd__ (snd bd) || v < third_ (fst bd) || v > third_ (snd bd) then (Nothing, "send_signal_ failed.  Arguments passed were sig: " ++ (args !! 0) ++ " w: " ++ (args !! 1) ++ " u: " ++ (args !! 2) ++ " v: " ++ (args !! 3))
   else (Just game_state {s1_ = ((s1_ game_state) {sig_q = [sig, w, u, v]})}, "send_signal succeeded.  Arguments passed were sig: " ++ (args !! 0) ++ " w: " ++ (args !! 1) ++ " u: " ++ (args !! 2) ++ " v: " ++ (args !! 3))
 
+parseTerrain :: [Char] -> Terrain
+parseTerrain t_name
+  | t_name == "Positive_u" = BuildModel.Positive_u
+  | t_name == "Negative_u" = BuildModel.Negative_u
+  | t_name == "Positive_v" = BuildModel.Positive_v
+  | t_name == "Negative_v" = BuildModel.Negative_v
+  | t_name == "Flat" = BuildModel.Flat
+  | t_name == "Open" = BuildModel.Open
+
 set_floor_grid game_state args =
   let w = read (args !! 0)
       u = read (args !! 1)
       v = read (args !! 2)
       height = read (args !! 3)
-      terrain = read (args !! 4)
+      terrain = parseTerrain (args !! 4)
       bd = bounds (f_grid_ game_state)
   in
   if w < fst__ (fst bd) || w > fst__ (snd bd) || u < snd__ (fst bd) || u > snd__ (snd bd) || v < third_ (fst bd) || v > third_ (snd bd) then (Nothing, "set_floor_grid failed.  Arguments passed were w: " ++ (args !! 0) ++ " u: " ++ (args !! 1) ++ " v: " ++ (args !! 2) ++ " height: " ++ (args !! 3) ++ " terrain: " ++ (args !! 4))
@@ -232,7 +241,7 @@ story_state_node = Comm_struct {dictionary_page = [], branches = Nothing, update
 
 -- This function traverses the decision tree and thereby interprets console commands.
 interpretCommand :: [[Char]] -> Comm_struct -> Game_state -> (Game_state, [Char])
-interpretCommand [] comm_struct game_state = (game_state, "\nInvalid command.")
+interpretCommand [] comm_struct game_state = (game_state, "\nInvalid command (1).")
 interpretCommand (x:xs) comm_struct game_state =
   let new_game_state = (fromJust (update_game_state comm_struct)) game_state (x:xs)
       look_up = elemIndex x (dictionary_page comm_struct)
@@ -241,7 +250,7 @@ interpretCommand (x:xs) comm_struct game_state =
     if isNothing (fst new_game_state) == True then (game_state, "\n" ++ snd new_game_state)
     else (fromJust (fst new_game_state), "\n" ++ snd new_game_state)
   else
-    if isNothing look_up == True then (game_state, "\nInvalid command.")
+    if isNothing look_up == True then (game_state, "\nInvalid command (2).")
     else interpretCommand xs ((fromJust (branches comm_struct)) ! (fromJust look_up)) game_state
 
 -- When the engine is in interactive or menu input mode, this is the callback that GLUT calls each time mainLoopEvent has been called and there is keyboard input
