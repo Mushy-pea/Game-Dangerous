@@ -79,6 +79,6 @@ handleInput game_state comp_map_text command
 
 applyCommand :: Game_state -> [[Char]] -> IO (Game_state, [Char])
 applyCommand game_state command =
-  let next_game_state = interpretCommand command base_node game_state
+  let next_game_state = interpretCommand command baseNode game_state
   in return next_game_state
 

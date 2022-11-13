@@ -122,8 +122,8 @@ tail_ ls = tail ls
 head__ [] = error "Invalid Obj_grid structure detected."
 head__ ls = head ls
 
-boundCheck :: Int -> Int -> ((Int, Int, Int), (Int, Int, Int)) -> Bool
-boundCheck block axis ((a, b, c), (w_max, u_max, v_max)) =
+edgeCheck :: Int -> Int -> ((Int, Int, Int), (Int, Int, Int)) -> Bool
+edgeCheck block axis ((a, b, c), (w_max, u_max, v_max)) =
   if axis == 0 && block > u_max then False
   else if axis == 1 && block > v_max then False
   else True
@@ -287,8 +287,8 @@ copyPs1 (GPLC_int offset) (GPLC_int i0, GPLC_int i1, GPLC_int i2) s1 obj_grid ob
 objType :: Int -> Int -> Int -> Array (Int, Int, Int) (Int, [Int]) -> Int
 objType w u v obj_grid =
   if u < 0 || v < 0 then 2
-  else if boundCheck u 0 (bounds obj_grid) == False then 2
-  else if boundCheck v 1 (bounds obj_grid) == False then 2
+  else if edgeCheck u 0 (bounds obj_grid) == False then 2
+  else if edgeCheck v 1 (bounds obj_grid) == False then 2
   else fst (obj_grid ! (w, u, v))
 
 copyLstate :: GPLC_int -> (GPLC_int, GPLC_int, GPLC_int) -> (GPLC_int, GPLC_int, GPLC_int) -> Array (Int, Int, Int) Wall_grid
