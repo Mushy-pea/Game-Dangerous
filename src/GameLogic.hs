@@ -194,95 +194,109 @@ chgState code (i0, i1, i2) (i3, i4, i5) w_grid update w_grid_upd d_list =
 
 chgGrid :: GPLC_flag -> (GPLC_int, GPLC_int, GPLC_int) -> (GPLC_int, GPLC_int, GPLC_int) -> Array (Int, Int, Int) Wall_grid -> Wall_grid
            -> [((Int, Int, Int), Wall_grid)] -> [Int] -> [((Int, Int, Int), Wall_grid)]
-chgGrid (GPLC_flag mode) (GPLC_int i0, GPLC_int i1, GPLC_int i2) (GPLC_int i3, GPLC_int i4, GPLC_int i5) w_grid def w_grid_upd d_list =
-  let dest0 = ((d_list, 146) !! i0, (d_list, 147) !! i1, (d_list, 148) !! i2)
-      dest1 = ((d_list, 149) !! i3, (d_list, 150) !! i4, (d_list, 151) !! i5)
-  in
-  if (d_list, 152) !! mode == 0 then (dest0, def) : w_grid_upd
-  else if (d_list, 153) !! mode == 1 then [(dest1, w_grid ! dest0), (dest0, def)] ++ w_grid_upd
-  else (dest1, w_grid ! dest0) : w_grid_upd
+chgGrid mode (i0, i1, i2) (i3, i4, i5) w_grid def w_grid_upd d_list
+  | not (isNothing boundsCheck0) = error (fromJust boundsCheck0)
+  | not (isNothing boundsCheck1) = error (fromJust boundsCheck1)
+  | (d_list, 152) !! mode == 0 = (dest0, def) : w_grid_upd
+  | (d_list, 153) !! mode == 1 = [(dest1, w_grid ! dest0), (dest0, def)] ++ w_grid_upd
+  | otherwise = (dest1, w_grid ! dest0) : w_grid_upd
+  where dest0 = ((d_list, 146) !! i0, (d_list, 147) !! i1, (d_list, 148) !! i2)
+        dest1 = ((d_list, 149) !! i3, (d_list, 150) !! i4, (d_list, 151) !! i5)
+        boundsCheck0 = boundsCheck w_grid (coerce dest0 :: (GPLC_int, GPLC_int, GPLC_int)) "chg_grid(0)"
+        boundsCheck1 = boundsCheck w_grid (coerce dest1 :: (GPLC_int, GPLC_int, GPLC_int)) "chg_grid(1)"
 
-chgGrid_ :: GPLC_flag -> (GPLC_int, GPLC_int, GPLC_int) -> (GPLC_int, GPLC_int, GPLC_int) -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> [Int]
-            -> [((Int, Int, Int), (Int, [(Int, Int)]))]
-chgGrid_ (GPLC_flag mode) (GPLC_int i0, GPLC_int i1, GPLC_int i2) (GPLC_int i3, GPLC_int i4, GPLC_int i5) obj_grid_upd d_list =
-  let source = ((d_list, 154) !! i0, (d_list, 155) !! i1, (d_list, 156) !! i2)
-      dest = ((d_list, 157) !! i3, (d_list, 158) !! i4, (d_list, 159) !! i5)
-  in
-  if (d_list, 160) !! mode == 0 then (source, (-1, [])) : obj_grid_upd
-  else if (d_list, 161) !! mode == 1 then (source, (-2, [])) : (dest, (-2, [])) : obj_grid_upd
-  else (source, (-3, [])) : (dest, (-3, [])) : obj_grid_upd
+chgGrid_ :: GPLC_flag -> (GPLC_int, GPLC_int, GPLC_int) -> (GPLC_int, GPLC_int, GPLC_int) -> Array (Int, Int, Int) (Int, [Int])
+            ->[((Int, Int, Int), (Int, [(Int, Int)]))] -> [Int] -> [((Int, Int, Int), (Int, [(Int, Int)]))]
+chgGrid_ mode (i0, i1, i2) (i3, i4, i5) obj_grid obj_grid_upd d_list
+  | not (isNothing boundsCheck0) = error (fromJust boundsCheck0)
+  | not (isNothing boundsCheck1) = error (fromJust boundsCheck1)
+  | (d_list, 160) !! mode == 0 = (source, (-1, [])) : obj_grid_upd
+  | (d_list, 161) !! mode == 1 = (source, (-2, [])) : (dest, (-2, [])) : obj_grid_upd
+  | otherwise = (source, (-3, [])) : (dest, (-3, [])) : obj_grid_upd
+  where source = ((d_list, 154) !! i0, (d_list, 155) !! i1, (d_list, 156) !! i2)
+        dest = ((d_list, 157) !! i3, (d_list, 158) !! i4, (d_list, 159) !! i5)
+        boundsCheck0 = boundsCheck obj_grid (coerce source :: (GPLC_int, GPLC_int, GPLC_int)) "chg_grid_(0)"
+        boundsCheck1 = boundsCheck obj_grid (coerce dest :: (GPLC_int, GPLC_int, GPLC_int)) "chg_grid_(1)"
 
 chgFloor :: GPLC_int -> GPLC_flag -> Int -> (GPLC_int, GPLC_int, GPLC_int) -> Array (Int, Int, Int) Floor_grid -> [Int]
             -> Array (Int, Int, Int) Floor_grid
-chgFloor (GPLC_int state_val) (GPLC_flag abs) v (GPLC_int i0, GPLC_int i1, GPLC_int i2) grid d_list =
-  let index = ((d_list, 162) !! i0, (d_list, 163) !! i1, (d_list, 164) !! i2)
-  in
-  if (d_list, 165) !! state_val == 0 then
-    grid // [(index, (grid ! index) {w_ = upd ((d_list, 166) !! abs) (w_ (grid ! index)) (intToFloat ((d_list, 167) !! v))})]
-  else grid // [(index, (grid ! index) {surface = int_to_surface ((d_list, 168) !! v)})]
+chgFloor state_val abs v (i0, i1, i2) f_grid d_list
+  | not (isNothing boundsCheck_) = error (fromJust boundsCheck_)
+  | (d_list, 165) !! state_val == 0 = 
+    f_grid // [(index, (f_grid ! index) {w_ = upd ((d_list, 166) !! abs) (w_ (f_grid ! index)) (intToFloat ((d_list, 167) !! v))})]
+  | otherwise = f_grid // [(index, (f_grid ! index) {surface = int_to_surface ((d_list, 168) !! v)})]
+  where index = ((d_list, 162) !! i0, (d_list, 163) !! i1, (d_list, 164) !! i2)
+        boundsCheck_ = boundsCheck f_grid (coerce index :: (GPLC_int, GPLC_int, GPLC_int)) "chg_floor"
 
 chgValue :: GPLC_int -> GPLC_flag -> GPLC_int -> (GPLC_int, GPLC_int, GPLC_int) -> [Int] -> Array (Int, Int, Int) (Int, [Int])
             -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> [((Int, Int, Int), (Int, [(Int, Int)]))]
-chgValue (GPLC_int val) (GPLC_flag abs) (GPLC_int v) (GPLC_int i0, GPLC_int i1, GPLC_int i2) d_list obj_grid obj_grid_upd =
-  let target = obj_grid ! ((d_list, 169) !! i0, (d_list, 170) !! i1, (d_list, 171) !! i2)
-  in
-  if val == 536870910 then (((d_list, 172) !! i0, (d_list, 173) !! i1, (d_list, 174) !! i2), (fst target, [(0, v)])) : obj_grid_upd
-  else (((d_list, 175) !! i0, (d_list, 176) !! i1, (d_list, 177) !! i2),
-       (fst target, [(val, upd ((d_list, 178) !! abs) (((snd target), 179) !! val) ((d_list, 180) !! v))])) : obj_grid_upd
+chgValue (GPLC_int val) abs (GPLC_int v) (i0, i1, i2) d_list obj_grid obj_grid_upd
+  | not (isNothing boundsCheck_) = error (fromJust boundsCheck_)
+  | val == 536870910 = (((d_list, 172) !! i0, (d_list, 173) !! i1, (d_list, 174) !! i2), (fst target, [(0, v)])) : obj_grid_upd
+  | otherwise = (((d_list, 175) !! i0, (d_list, 176) !! i1, (d_list, 177) !! i2),
+                 (fst target, [(val, upd ((d_list, 178) !! abs) (((snd target), 179) !! val) ((d_list, 180) !! v))])) : obj_grid_upd
+  where index = ((d_list, 169) !! i0, (d_list, 170) !! i1, (d_list, 171) !! i2)
+        target = obj_grid ! index
+        boundsCheck_ = boundsCheck obj_grid (coerce index :: (GPLC_int, GPLC_int, GPLC_int)) "chg_value"
 
 chgPs0 :: GPLC_int -> GPLC_flag -> GPLC_int -> [Int] -> Play_state0 -> Play_state0
-chgPs0 (GPLC_int state_val) (GPLC_flag abs) (GPLC_int v) d_list s0 =
-  if (d_list, 200) !! state_val == 4 then s0 {rend_mode = (d_list, 201) !! v}
-  else if (d_list, 202) !! state_val == 5 then s0 {torch_t0 = (d_list, 203) !! v}
-  else if (d_list, 639) !! state_val == 6 then s0 {torch_t_limit = (d_list, 204) !! v}
-  else error ("\nchg_ps0: Invalid value passed for argument state_val: " ++ show ((d_list, 640) !! state_val))
+chgPs0 state_val abs v d_list s0
+  | (d_list, 200) !! state_val == 4 = s0 {rend_mode = (d_list, 201) !! v}
+  | (d_list, 202) !! state_val == 5 = s0 {torch_t0 = (d_list, 203) !! v}
+  | (d_list, 639) !! state_val == 6 = s0 {torch_t_limit = (d_list, 204) !! v}
+  | otherwise = error ("\nchg_ps0: Invalid value passed for argument state_val: " ++ show ((d_list, 640) !! state_val))
 
 chgPs1 :: GPLC_int -> GPLC_int -> GPLC_int -> [Int] -> Play_state1 -> Play_state1
-chgPs1 (GPLC_int state_val) (GPLC_int abs) (GPLC_int v) d_list s =
-  if (d_list, 205) !! state_val == 0 then s {health = upd ((d_list, 206) !! abs) (health s) ((d_list, 207) !! v), state_chg = 1}
-  else if (d_list, 208) !! state_val == 1 then s {ammo = upd ((d_list, 209) !! abs) (ammo s) ((d_list, 210) !! v), state_chg = 2}
-  else if (d_list, 211) !! state_val == 2 then s {gems = upd ((d_list, 212) !! abs) (gems s) ((d_list, 213) !! v), state_chg = 3}
-  else if (d_list, 214) !! state_val == 3 then s {torches = upd ((d_list, 215) !! abs) (torches s) ((d_list, 216) !! v), state_chg = 4}
-  else if (d_list, 217) !! state_val == 4 then
-    s {keys = (take ((d_list, 218) !! abs) (keys s)) ++ [(d_list, 219) !! v] ++ drop (((d_list, 220) !! abs) + 1) (keys s), state_chg = 5}
-  else if (d_list, 221) !! state_val == 5 then s {difficulty = ("Hey, not too risky!", 6, 8, 10)}
-  else if (d_list, 222) !! state_val == 6 then s {difficulty = ("Plenty of danger please.", 6, 10, 14)}
-  else if (d_list, 223) !! state_val == 7 then s {difficulty = ("Ultra danger.", 10, 15, 20)}
-  else s {difficulty = ("Health and safety nightmare!", 15, 20, 25)}
+chgPs1 state_val abs v d_list s1
+  | (d_list, 205) !! state_val == 0 = s1 {health = upd ((d_list, 206) !! abs) (health s1) ((d_list, 207) !! v), state_chg = 1}
+  | (d_list, 208) !! state_val == 1 = s1 {ammo = upd ((d_list, 209) !! abs) (ammo s1) ((d_list, 210) !! v), state_chg = 2}
+  | (d_list, 211) !! state_val == 2 = s1 {gems = upd ((d_list, 212) !! abs) (gems s1) ((d_list, 213) !! v), state_chg = 3}
+  | (d_list, 214) !! state_val == 3 = s1 {torches = upd ((d_list, 215) !! abs) (torches s1) ((d_list, 216) !! v), state_chg = 4}
+  | (d_list, 217) !! state_val == 4 =
+    s1 {keys = (take ((d_list, 218) !! abs) (keys s1)) ++ [(d_list, 219) !! v] ++ drop (((d_list, 220) !! abs) + 1) (keys s1), state_chg = 5}
+  | (d_list, 221) !! state_val == 5 = s1 {difficulty = ("Hey, not too risky!", 6, 8, 10)}
+  | (d_list, 222) !! state_val == 6 = s1 {difficulty = ("Plenty of danger please.", 6, 10, 14)}
+  | (d_list, 223) !! state_val == 7 = s1 {difficulty = ("Ultra danger.", 10, 15, 20)}
+  | otherwise = s1 {difficulty = ("Health and safety nightmare!", 15, 20, 25)}
 
 copyPs0 :: GPLC_int -> (GPLC_int, GPLC_int, GPLC_int) -> Play_state0 -> Array (Int, Int, Int) (Int, [Int]) -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> [Int]
            -> [((Int, Int, Int), (Int, [(Int, Int)]))]
-copyPs0 (GPLC_int offset) (GPLC_int i0, GPLC_int i1, GPLC_int i2) s0 obj_grid obj_grid_upd d_list =
-  let target = obj_grid ! ((d_list, 224) !! i0, (d_list, 225) !! i1, (d_list, 226) !! i2)
-      v0 = (offset, flToInt (pos_u s0))
-      v1 = (offset + 1, flToInt (pos_v s0))
-      v2 = (offset + 2, flToInt (pos_w s0))
-      v3 = (offset + 3, flToInt (((vel s0), 227) !! (0 :: Int)))
-      v4 = (offset + 4, flToInt (((vel s0), 228) !! (1 :: Int)))
-      v5 = (offset + 5, flToInt (((vel s0), 229) !! (2 :: Int)))
-      v6 = (offset + 6, angle s0)
-      v7 = (offset + 7, rend_mode s0)
-      v8 = (offset + 8, fst__ (gameClock s0))
-      v9 = (offset + 9, torch_t0 s0)
-      v10 = (offset + 10, torch_t_limit s0)
-  in (((d_list, 230) !! i0, (d_list, 231) !! i1, (d_list, 232) !! i2), (fst target, [v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10])) : obj_grid_upd
+copyPs0 (GPLC_int offset) (i0, i1, i2) s0 obj_grid obj_grid_upd d_list
+  | not (isNothing boundsCheck_) = error (fromJust boundsCheck_)
+  | otherwise = (((d_list, 230) !! i0, (d_list, 231) !! i1, (d_list, 232) !! i2), (fst target, [v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10])) : obj_grid_upd
+  where index = ((d_list, 224) !! i0, (d_list, 225) !! i1, (d_list, 226) !! i2)
+        target = obj_grid ! index
+        boundsCheck_ = boundsCheck obj_grid (coerce index :: (GPLC_int, GPLC_int, GPLC_int)) "copy_ps0"
+        v0 = (offset, flToInt (pos_u s0))
+        v1 = (offset + 1, flToInt (pos_v s0))
+        v2 = (offset + 2, flToInt (pos_w s0))
+        v3 = (offset + 3, flToInt (((vel s0), 227) !! (0 :: Int)))
+        v4 = (offset + 4, flToInt (((vel s0), 228) !! (1 :: Int)))
+        v5 = (offset + 5, flToInt (((vel s0), 229) !! (2 :: Int)))
+        v6 = (offset + 6, angle s0)
+        v7 = (offset + 7, rend_mode s0)
+        v8 = (offset + 8, fst__ (gameClock s0))
+        v9 = (offset + 9, torch_t0 s0)
+        v10 = (offset + 10, torch_t_limit s0)
 
 copyPs1 :: GPLC_int -> (GPLC_int, GPLC_int, GPLC_int) -> Play_state1 -> Array (Int, Int, Int) (Int, [Int]) -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> [Int]
            -> [((Int, Int, Int), (Int, [(Int, Int)]))]
-copyPs1 (GPLC_int offset) (GPLC_int i0, GPLC_int i1, GPLC_int i2) s1 obj_grid obj_grid_upd d_list =
-  let target = obj_grid ! ((d_list, 233) !! i0, (d_list, 234) !! i1, (d_list, 235) !! i2)
-      v0 = (offset, health s1)
-      v1 = (offset + 1, ammo s1)
-      v2 = (offset + 2, gems s1)
-      v3 = (offset + 3, torches s1)
-      v4 = (offset + 4, ((keys s1), 239) !! (0 :: Int))
-      v5 = (offset + 5, ((keys s1), 240) !! (1 :: Int))
-      v6 = (offset + 6, ((keys s1), 241) !! (2 :: Int))
-      v7 = (offset + 7, ((keys s1), 242) !! (3 :: Int))
-      v8 = (offset + 8, ((keys s1), 243) !! (4 :: Int))
-      v9 = (offset + 9, ((keys s1), 244) !! (5 :: Int))
-  in
-  (((d_list, 236) !! i0, (d_list, 237) !! i1, (d_list, 238) !! i2), (fst target, [v0, v1, v2, v3, v4, v5, v6, v7, v8, v9])) : obj_grid_upd
+copyPs1 (GPLC_int offset) (i0, i1, i2) s1 obj_grid obj_grid_upd d_list
+  | not (isNothing boundsCheck_) = error (fromJust boundsCheck_)
+  | otherwise = (((d_list, 236) !! i0, (d_list, 237) !! i1, (d_list, 238) !! i2), (fst target, [v0, v1, v2, v3, v4, v5, v6, v7, v8, v9])) : obj_grid_upd
+  where index = ((d_list, 233) !! i0, (d_list, 234) !! i1, (d_list, 235) !! i2)
+        target = obj_grid ! index
+        boundsCheck_ = boundsCheck obj_grid (coerce index :: (GPLC_int, GPLC_int, GPLC_int)) "copy_ps1"
+        v0 = (offset, health s1)
+        v1 = (offset + 1, ammo s1)
+        v2 = (offset + 2, gems s1)
+        v3 = (offset + 3, torches s1)
+        v4 = (offset + 4, ((keys s1), 239) !! (0 :: Int))
+        v5 = (offset + 5, ((keys s1), 240) !! (1 :: Int))
+        v6 = (offset + 6, ((keys s1), 241) !! (2 :: Int))
+        v7 = (offset + 7, ((keys s1), 242) !! (3 :: Int))
+        v8 = (offset + 8, ((keys s1), 243) !! (4 :: Int))
+        v9 = (offset + 9, ((keys s1), 244) !! (5 :: Int))
 
 objType :: Int -> Int -> Int -> Array (Int, Int, Int) (Int, [Int]) -> Int
 objType w u v obj_grid =
@@ -293,52 +307,65 @@ objType w u v obj_grid =
 
 copyLstate :: GPLC_int -> (GPLC_int, GPLC_int, GPLC_int) -> (GPLC_int, GPLC_int, GPLC_int) -> Array (Int, Int, Int) Wall_grid
               -> Array (Int, Int, Int) (Int, [Int]) -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> [Int] -> [((Int, Int, Int), (Int, [(Int, Int)]))]
-copyLstate (GPLC_int offset) (GPLC_int i0, GPLC_int i1, GPLC_int i2) (GPLC_int i3, GPLC_int i4, GPLC_int i5) w_grid obj_grid obj_grid_upd d_list =
-  let w = ((d_list, 245) !! i3)
-      u = ((d_list, 246) !! i4)
-      v = ((d_list, 247) !! i5)
-      u' = ((d_list, 248) !! i4) - 1
-      u'' = ((d_list, 249) !! i4) + 1
-      v' = ((d_list, 250) !! i5) - 1
-      v'' = ((d_list, 251) !! i5) + 1
-      w_conf_u1 = (offset + 9, bool_to_int (u1 (w_grid ! ((d_list, 252) !! i3, (d_list, 253) !! i4, (d_list, 254) !! i5))))
-      w_conf_u2 = (offset + 10, bool_to_int (u2 (w_grid ! ((d_list, 255) !! i3, (d_list, 256) !! i4, (d_list, 257) !! i5))))
-      w_conf_v1 = (offset + 11, bool_to_int (v1 (w_grid ! ((d_list, 258) !! i3, (d_list, 259) !! i4, (d_list, 260) !! i5))))
-      w_conf_v2 = (offset + 12, bool_to_int (v2 (w_grid ! ((d_list, 261) !! i3, (d_list, 262) !! i4, (d_list, 263) !! i5))))
-      target = obj_grid ! ((d_list, 264) !! i0, (d_list, 265) !! i1, (d_list, 266) !! i2)
-      c0 = (offset, objType w u v obj_grid)
-      c1 = (offset + 1, objType w u' v obj_grid)
-      c2 = (offset + 2, objType w u'' v obj_grid)
-      c3 = (offset + 3, objType w u v' obj_grid)
-      c4 = (offset + 4, objType w u v'' obj_grid)
-      c5 = (offset + 5, objType w u' v' obj_grid)
-      c6 = (offset + 6, objType w u'' v' obj_grid)
-      c7 = (offset + 7, objType w u' v'' obj_grid)
-      c8 = (offset + 8, objType w u'' v'' obj_grid)
-  in (((d_list, 267) !! i0, (d_list, 268) !! i1, (d_list, 269) !! i2),
+copyLstate (GPLC_int offset) (i0, i1, i2) (i3, i4, i5) w_grid obj_grid obj_grid_upd d_list
+  | not (isNothing boundsCheck_) = error (fromJust boundsCheck_)
+  | otherwise =
+    (((d_list, 267) !! i0, (d_list, 268) !! i1, (d_list, 269) !! i2),
      (fst target, [c0, c1, c2, c3, c4, c5, c6, c7, c8, w_conf_u1, w_conf_u2, w_conf_v1, w_conf_v2])) : obj_grid_upd
+  where index = ((d_list, 264) !! i0, (d_list, 265) !! i1, (d_list, 266) !! i2)
+        target = obj_grid ! index
+        boundsCheck_ = boundsCheck obj_grid (coerce index :: (GPLC_int, GPLC_int, GPLC_int)) "copy_lstate"
+        w = ((d_list, 245) !! i3)
+        u = ((d_list, 246) !! i4)
+        v = ((d_list, 247) !! i5)
+        u' = ((d_list, 248) !! i4) - 1
+        u'' = ((d_list, 249) !! i4) + 1
+        v' = ((d_list, 250) !! i5) - 1
+        v'' = ((d_list, 251) !! i5) + 1
+        w_conf_u1 = (offset + 9, bool_to_int (u1 (w_grid ! ((d_list, 252) !! i3, (d_list, 253) !! i4, (d_list, 254) !! i5))))
+        w_conf_u2 = (offset + 10, bool_to_int (u2 (w_grid ! ((d_list, 255) !! i3, (d_list, 256) !! i4, (d_list, 257) !! i5))))
+        w_conf_v1 = (offset + 11, bool_to_int (v1 (w_grid ! ((d_list, 258) !! i3, (d_list, 259) !! i4, (d_list, 260) !! i5))))
+        w_conf_v2 = (offset + 12, bool_to_int (v2 (w_grid ! ((d_list, 261) !! i3, (d_list, 262) !! i4, (d_list, 263) !! i5))))
+        c0 = (offset, objType w u v obj_grid)
+        c1 = (offset + 1, objType w u' v obj_grid)
+        c2 = (offset + 2, objType w u'' v obj_grid)
+        c3 = (offset + 3, objType w u v' obj_grid)
+        c4 = (offset + 4, objType w u v'' obj_grid)
+        c5 = (offset + 5, objType w u' v' obj_grid)
+        c6 = (offset + 6, objType w u'' v' obj_grid)
+        c7 = (offset + 7, objType w u' v'' obj_grid)
+        c8 = (offset + 8, objType w u'' v'' obj_grid)
 
 chgObjType :: GPLC_int -> (GPLC_int, GPLC_int, GPLC_int) -> [Int] -> Array (Int, Int, Int) (Int, [Int]) -> [((Int, Int, Int), (Int, [(Int, Int)]))]
               -> [((Int, Int, Int), (Int, [(Int, Int)]))]
-chgObjType (GPLC_int v) (GPLC_int i0, GPLC_int i1, GPLC_int i2) d_list obj_grid obj_grid_upd =
-  let target = obj_grid ! ((d_list, 270) !! i0, (d_list, 271) !! i1, (d_list, 272) !! i2)
-  in
-  (((d_list, 273) !! i0, (d_list, 274) !! i1, (d_list, 275) !! i2), ((d_list, 276) !! v, [])) : obj_grid_upd
+chgObjType v (i0, i1, i2) d_list obj_grid obj_grid_upd
+  | not (isNothing boundsCheck_) = error (fromJust boundsCheck_)
+  | otherwise = (((d_list, 273) !! i0, (d_list, 274) !! i1, (d_list, 275) !! i2), ((d_list, 276) !! v, [])) : obj_grid_upd
+  where index = ((d_list, 270) !! i0, (d_list, 271) !! i1, (d_list, 272) !! i2)
+        target = obj_grid ! index
+        boundsCheck_ = boundsCheck obj_grid (coerce index :: (GPLC_int, GPLC_int, GPLC_int)) "chg_obj_type"
 
 passMsg :: GPLC_int -> [Int] -> Play_state1 -> [Int] -> ([Int], Play_state1)
-passMsg (GPLC_int len) msg s d_list = (drop ((d_list, 277) !! len) msg,
-                            s {message = message s ++ [head msg] ++ [((d_list, 278) !! len) - 1] ++ take (((d_list, 279) !! len) - 1) (tail msg)})
+passMsg len msg s1 d_list =
+  (drop ((d_list, 277) !! len) msg,
+   s1 {message = message s1 ++ [head msg] ++ [((d_list, 278) !! len) - 1] ++ take (((d_list, 279) !! len) - 1) (tail msg)})
 
 sendSignal :: Int -> GPLC_int -> (GPLC_int, GPLC_int, GPLC_int) -> Array (Int, Int, Int) (Int, [Int]) -> Play_state1 -> [Int]
               -> (Array (Int, Int, Int) (Int, [Int]), Play_state1)
-sendSignal 0 (GPLC_int sig) (GPLC_int i0, GPLC_int i1, GPLC_int i2) obj_grid s1 d_list =
-  let dest = ((d_list, 280) !! i0, (d_list, 281) !! i1, (d_list, 282) !! i2)
-      prog = (snd (obj_grid ! dest))
-  in (obj_grid, s1 {next_sig_q = [(d_list, 283) !! sig, (d_list, 284) !! i0, (d_list, 285) !! i1, (d_list, 286) !! i2] ++ next_sig_q s1})
-sendSignal 1 (GPLC_int sig) (GPLC_int i0, GPLC_int i1, GPLC_int i2) obj_grid s1 d_list =
-  let prog = (snd (obj_grid ! (i0, i1, i2)))
-  in
-  (obj_grid // [((i0, i1, i2), (fst (obj_grid ! (i0, i1, i2)), (head prog) : sig : drop 2 prog))], s1)
+sendSignal mode (GPLC_int sig) (GPLC_int i0, GPLC_int i1, GPLC_int i2) obj_grid s1 d_list
+  | mode == 0 =
+    if not (isNothing boundsCheck0) then error (fromJust boundsCheck0)
+    else (obj_grid, s1 {next_sig_q = [(d_list, 283) !! sig, (d_list, 284) !! i0, (d_list, 285) !! i1, (d_list, 286) !! i2] ++ next_sig_q s1})
+  | mode == 1 =
+    if not (isNothing boundsCheck1) then error (fromJust boundsCheck1)
+    else (obj_grid // [(index1, (obj_type, (head prog) : sig : drop 2 prog))], s1)
+  where index0 = ((d_list, 655) !! i0, (d_list, 656) !! i1, (d_list, 657) !! i2)
+        index1 = (i0, i1, i2)
+        boundsCheck0 = boundsCheck obj_grid (coerce index0 :: (GPLC_int, GPLC_int, GPLC_int)) ("send_signal(0)")
+        boundsCheck1 = boundsCheck obj_grid (coerce index1 :: (GPLC_int, GPLC_int, GPLC_int)) ("send_signal(1)")
+        obj = obj_grid ! index1
+        obj_type = fst obj
+        prog = snd obj  
 
 projectInit :: GPLC_float -> GPLC_float -> GPLC_float -> GPLC_int -> GPLC_float -> (GPLC_int, GPLC_int, GPLC_int) -> (GPLC_int, GPLC_int, GPLC_int) -> GPLC_int
                -> GPLC_int -> Array (Int, Int, Int) (Int, [Int]) -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> [Int] -> UArray (Int, Int) Float
@@ -1106,7 +1133,7 @@ runGplc (x0:x1:x2:x3:x4:x5:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid
 runGplc (x0:x1:x2:x3:x4:x5:x6:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 10 = do
   reportState (verbose_mode s1) 2 [] [] (showGplcArgs "chg_grid_" [(0, x0), (0, x1), (0, x2), (0, x3), (0, x4), (0, x5), (0, x6)] d_list (-1))
   runGplc (tail_ xs) d_list w_grid w_grid_upd f_grid obj_grid
-          (chgGrid_ (GPLC_flag x0) (GPLC_int x1, GPLC_int x2, GPLC_int x3) (GPLC_int x4, GPLC_int x5, GPLC_int x6) obj_grid_upd d_list) s0 s1 lookUp (head_ xs)
+          (chgGrid_ (GPLC_flag x0) (GPLC_int x1, GPLC_int x2, GPLC_int x3) (GPLC_int x4, GPLC_int x5, GPLC_int x6) obj_grid obj_grid_upd d_list) s0 s1 lookUp (head_ xs)
 runGplc (x0:x1:x2:x3:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 11 = do
   reportState (verbose_mode s1) 2 [] [] (showGplcArgs "copy_ps1" [(1, x0), (0, x1), (0, x2), (0, x3)] d_list (-1))
   runGplc (tail_ xs) d_list w_grid w_grid_upd f_grid obj_grid (copyPs1 (GPLC_int x0) (GPLC_int x1, GPLC_int x2, GPLC_int x3) s1 obj_grid obj_grid_upd d_list)

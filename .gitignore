@@ -1,5 +1,8 @@
 .stack-work/
+dist/
 *.bak
+*.hi
+*.o
 OpenAL32.dll
 freeglut.dll
 
