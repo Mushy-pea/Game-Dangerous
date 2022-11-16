@@ -1,26 +1,30 @@
 # Game :: Dangerous (a tribute to ZZT)
 
-## A project update as of 13/06/2021
+## A project update as of 16/11/2022
 
-Release 4 of the project is being made today.  Since release 3 a raft of bug fixes have been made and the packaged demo map is now completable
-and contains all its intended features.  No further changes are planned to the map or scripting language specifications so future versions
-of the engine should remain backwardly compatible with this map.  There is further work planned on the engine (as detailed below) and
-the quality of the packaged map is admittedly only at proof of concept level.  However, for developers interested in the project on a technical level
-it provides a demonstration of most of the engine's core features.  It may also be useful as a baseline for getting play tester feedback on the core
-game mechanics.  Below are the remaining tasks I intend to complete before turning my attention to developing a production package of game content.
+With the engine almost feature complete work has started on the map development editor.  
+The architecture I've decided to go with is a client - server approach whereby a server 
+written in Haskell will run on the local machine, partnered with a GUI client built with 
+TypeScript and React Native Windows.  The server will provide an API that is accessible 
+on localhost, which allows changes to a map state to be requested as well as sections 
+of the map to be read by the client.
 
-1.  Adding a small number of quality of life features that would likely be expected for even a free game released on a gaming focussed
-platform such as itch.io.  For one thing I intend to make a loader for the application, mainly so that users can change settings without
-having to edit the config.txt file.
+The server will handle loading and saving of map states from and to the file format used 
+by the engine.  The several existing Haskell written development tools (such as ImportModel and PreprocessMap) 
+will be integrated into the server through static imports.  The C# written GPLC compiler 
+(hosted in Mushy-pea/Game-Dangerous-Editor) will be deprecated and a new implementation 
+written in Haskell (or AssmGplc updated to meet requirements).  This will then also be 
+integrated into the server.
 
-2.  I may decide to add parallelism to parts of the rendering engine.  The motivation would be to allow the ray casting algorithm to cast
-rays at a higher density (while not overloading per thread speed capacity on some systems) and thereby address one of the visual artefact 
-issues seen in game.
+I'm hoping the result will be a much faster and less error prone map development process 
+than at present, for me and anyone else who fancies trying their hand at it.  Although 
+the GUI client will be Windows specific the engine, server and tools will remain buildable 
+on Windows and Linux from the same Haskell code.
 
-Additional credits: Samuel Schlesinger has become the second contributor to the Game :: Dangerous project by making the engine and
-development tools into a Cabal project.  Nice one!
+Credits:
 
-The in game music bundled with release 3 has kindly been made available for free by Kevin MacLeod under the following license:
+The in game music bundled with release 4 has kindly been made available for free by 
+Kevin MacLeod under the following license:
 
 Lightless Dawn Kevin MacLeod (incompetech.com)
 Licensed under Creative Commons: By Attribution 3.0 License

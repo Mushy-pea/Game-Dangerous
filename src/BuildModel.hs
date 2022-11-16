@@ -131,7 +131,7 @@ instance Binary Floor_grid where
 
 data Play_state0 = Play_state0 {pos_u :: Float, pos_v :: Float, pos_w :: Float, vel :: [Float], angle :: Int, angle_ :: Float, message_ :: [(Int, [Int])],
 rend_mode :: Int, view_mode :: Int, view_angle :: Int, gameClock :: (Int, Float, Int), torch_t0 :: Int, torch_t_limit :: Int, on_screen_metrics :: Int,
-prob_seq :: UArray Int Int, mobile_lights :: ([Float], [Float]), control_key :: Int, landing_frame :: Bool} deriving (Eq, Show)
+prob_seq :: UArray Int Int, mobile_lights :: ([Float], [Float])} deriving (Eq, Show)
 
 instance Binary Play_state0 where
   put Play_state0 {pos_u = a, pos_v = b, pos_w = c, vel = d, angle = e, angle_ = f, rend_mode = g, view_mode = h, view_angle = i, gameClock = j, torch_t0 = k, torch_t_limit = l} =
@@ -221,30 +221,8 @@ data EngineError = Invalid_wall_flag | Invalid_obj_flag | Invalid_GPLC_opcode | 
 
 instance Exception EngineError
 
--- The Frame_record type is used in the implementation of the replay system.
-data Frame_record = Frame_record {pos_u_r :: Float, pos_v_r :: Float, pos_w_r :: Float, vel_u_r :: Float, vel_v_r :: Float,
-control_key_r :: Int, game_t_r :: Int, angle_r :: Float, landing_frame_r :: Bool} deriving Show
-
-instance Binary Frame_record where
-  put Frame_record {pos_u_r = a, pos_v_r = b, pos_w_r = c, vel_u_r = d, vel_v_r = e, control_key_r = f, game_t_r = g,
-      angle_r = h, landing_frame_r = i} =
-    put a >> put b >> put c >> put d >> put e >> put f >> put g >> put h >> put i
-  
-  get = do a <- get
-           b <- get
-           c <- get
-           d <- get
-           e <- get
-           f <- get
-           g <- get
-           h <- get
-           i <- get
-           return Frame_record {pos_u_r = a, pos_v_r = b, pos_w_r = c, vel_u_r = d, vel_v_r = e, control_key_r = f, game_t_r = g,
-                  angle_r = h, landing_frame_r = i}
-
 ps0_init = Play_state0 {pos_u = 0, pos_v = 0, pos_w = 0, vel = [0, 0, 0], angle = 0, angle_ = 0, message_ = [], rend_mode = 0, view_mode = 0, view_angle = 0,
-gameClock = (1, 1, 1), torch_t0 = 1, torch_t_limit = 0, on_screen_metrics = 0, prob_seq = def_prob_seq, mobile_lights = ([], []), control_key = 0,
-landing_frame = False}
+gameClock = (1, 1, 1), torch_t0 = 1, torch_t_limit = 0, on_screen_metrics = 0, prob_seq = def_prob_seq, mobile_lights = ([], [])}
 
 ps1_init = Play_state1 {health = 100, ammo = 0, gems = 0, torches = 0, keys = [63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63],
 region = [19,46,41,44,27,33,31,63,28,27,51,63,4], difficulty = ("Plenty of danger please", 6, 10, 14), sig_q = [], next_sig_q = [], message = [], state_chg = 0,
@@ -283,17 +261,6 @@ avoid_dist = 0, attack_mode = False, finalAppr = False, fire_prob = 0, fireball_
 empty_npc_array = array (0, 127) [(i, def_npc_state) | i <- [0..127]]
 
 def_save_log = "1\n*save0.sav_000000\n*save1.sav_000000\n*save2.sav_000000\n*save3.sav_000000\n*save4.sav_000000\n*save5.sav_000000"
-
-def_frame_record = Frame_record {pos_u_r = 0, pos_v_r = 0, pos_w_r = 0, vel_u_r = 0, vel_v_r = 0,
-control_key_r = 0, game_t_r = 0, angle_r = 0, landing_frame_r = False}
-
--- The fixed_prob_seq array is only used in the development build of the engine to make it easier to recreate a game state progression in replay mode.
-fixed_prob_seq = listArray (0, 239) [83,71,76,7,26,14,64,8,71,62,80,79,39,78,65,82,43,33,82,95,99,14,77,42,52,22,99,51,69,53,58,41,64,17,38,23,47,68,4,12,22
-                                     ,20,75,50,76,70,29,63,70,51,17,5,77,43,90,81,11,63,52,87,0,91,92,44,92,28,67,92,13,24,78,38,12,43,98,38,38,94,90,12,60,88
-                                     ,22,19,33,83,47,84,50,7,8,76,87,45,89,85,88,7,69,94,74,37,20,36,39,79,66,92,47,34,85,62,89,88,61,89,86,8,76,83,56,39,89,29
-                                     ,29,39,18,22,52,37,57,54,4,7,75,63,60,19,23,25,44,14,92,50,47,52,64,26,81,57,5,0,9,87,1,63,48,65,10,94,18,23,62,68,17,43
-                                     ,64,14,35,6,97,69,75,0,25,80,71,71,48,90,44,10,54,1,58,41,71,52,65,70,52,6,9,61,54,69,88,73,50,69,5,9,77,43,46,62,62,22,82
-                                     ,58,50,97,96,76,68,0,61,61,25,10,25,39,89,0,99,56,9,78,31,41,24,19,3,59,95,94,85,11,5,16] :: UArray Int Int
 
 -- The implementation of the environmental ceiling is simple and usea a single model that is rendered in every frame.  The Obj_place value for this model has
 -- therefore been hard coded and is added directly to the [Obj_place] taken by Main.show_object, as there is no requirement for the ray tracer to be involved.
