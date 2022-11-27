@@ -27,6 +27,7 @@ library
   exposed-modules:
       AlBuffer
       BuildModel
+      CompressMap
       DecompressMap
       EncodeStatus
       GameLogic

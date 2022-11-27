@@ -11,6 +11,7 @@ import Data.Maybe
 import Data.Array.IArray
 import BuildModel
 import DecompressMap
+import CompressMap
 import OpenMap
 import HandleInput
 
@@ -48,34 +49,18 @@ handleInput game_state comp_map_text command
       request <- getLine
       handleInput game_state comp_map_text (splitOn " " request)
   | head command == "exit" = putStr "\nExit command received ... closing server."
-  | head command == "show" = do
-      if command !! 1 == "Wall_grid" then do
-        if w < fst__ (fst w_bd) || w > fst__ (snd w_bd) || u < snd__ (fst w_bd) || u > snd__ (snd w_bd) || v < third_ (fst w_bd) || v > third_ (snd w_bd) then do
-          putStr "\nInvalid w_grid index."
-          handleInput game_state comp_map_text []
-        else putStr ("\n" ++ show ((w_grid_ (fromJust game_state)) ! (w, u, v)))
-      else if command !! 1 == "Floor_grid" then do
-        if w < fst__ (fst f_bd) || w > fst__ (snd f_bd) || u < snd__ (fst f_bd) || u > snd__ (snd f_bd) || v < third_ (fst f_bd) || v > third_ (snd f_bd) then do
-          putStr "\nInvalid f_grid index."
-          handleInput game_state comp_map_text []
-        else putStr ("\n" ++ show ((f_grid_ (fromJust game_state)) ! (w, u, v)))
-      else if command !! 1 == "Obj_grid" then do
-        if w < fst__ (fst w_bd) || w > fst__ (snd w_bd) || u < snd__ (fst w_bd) || u > snd__ (snd w_bd) || v < third_ (fst w_bd) || v > third_ (snd w_bd) then do
-          putStr "\nInvalid obj_grid index."
-          handleInput game_state comp_map_text []
-        else putStr ("\n" ++ show ((obj_grid_ (fromJust game_state)) ! (w, u, v)))
-      else putStr "\nInvalid parameter passed to show command."
-      handleInput game_state comp_map_text []
+  | head command == "save" = do
+    h <- openFile (command !! 1) WriteMode
+    hPutStr h encodedWallGrid
+    hClose h
   | otherwise = do
       result <- applyCommand (fromJust game_state) command
       putStr ("\nresult: " ++ snd result)
       handleInput (Just (fst result)) comp_map_text []
   where new_game_state = loadMap comp_map_text
-        w = read (command !! 2)
-        u = read (command !! 3)
-        v = read (command !! 4)
         w_bd = bounds (w_grid_ (fromJust game_state))
         f_bd = bounds (f_grid_ (fromJust game_state))
+        encodedWallGrid = encodeWallGrid (w_grid_ (fromJust game_state)) (f_grid_ (fromJust game_state)) 0 0 0 (snd__ (snd w_bd)) (third_ (snd w_bd)) []
 
 applyCommand :: Game_state -> [[Char]] -> IO (Game_state, [Char])
 applyCommand game_state command =
