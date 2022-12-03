@@ -1,30 +1,41 @@
 -- Game :: Dangerous code by Steven Tinsley.  You are free to use this software and view its source code.
 -- If you wish to redistribute it or use it as part of your own work, this is permitted as long as you acknowledge the work is by the abovementioned author.
 
+-- The functions in this module are used by the server to encode a map state into the engine's map file format,
+-- so it can be saved to disk.
+
 module CompressMap where
 
 import Data.Array.IArray
 import Data.Maybe
 import BuildModel
 
-encodeFloorModel :: Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Int -> Int -> Int -> Char
-encodeFloorModel w_grid f_grid w u v
-  | surface floor_voxel == Flat =
+-- The header for the Wall_grid section in the map file does not depend on any degree of freedom that can be edited through the server,
+-- so it has been hard coded.
+wGridHeader = concat ["16, 0, 0, 0, 0, 1, 36\n",
+                      "16, 0, 0, 0, 0, 2, 36\n",
+                      "16, 0, 0, 0, 0, 3, 36\n",
+                      "16, 0, 0, 0, 0, 4, 36\n",
+                      "32, 0, 0, 0, 0, 1, 6\n",
+                      "48, 0, 0, 0, 0, 1, 6\n",
+                      "64, 0, 0, 0, 0, 1, 6\n",
+                      "80, 0, 0, 0, 0, 1, 6\n~\n"]
+
+-- These three functions encode the Wall_grid array into the engine's map file format.
+encodeFloorModel :: Wall_grid -> Char
+encodeFloorModel voxel
+  | floor_model == 16 =
     if floor_texture == 1 then 'a'
     else if floor_texture == 2 then 'b'
     else if floor_texture == 3 then 'c'
-    else if floor_texture == 4 then 'd'
-    else '0'
-  | surface floor_voxel == Positive_u = 'e'
-  | surface floor_voxel == Negative_u = 'f'
-  | surface floor_voxel == Positive_v = 'g'
-  | surface floor_voxel == Negative_v = 'h'
-  | surface floor_voxel == Open = '0'
-  where u_ = div u 2
-        v_ = div v 2
-        wall_voxel = w_grid ! (w, u, v)
-        floor_voxel = f_grid ! (w, u_, v_)
-        floor_texture = texture__ (fromMaybe def_obj_place (obj wall_voxel))
+    else 'd'
+  | floor_model == 32 = 'e'
+  | floor_model == 48 = 'f'
+  | floor_model == 64 = 'g'
+  | floor_model == 80 = 'h'
+  | otherwise = '0'
+  where floor_model = ident_ (fromMaybe def_obj_place (obj voxel))
+        floor_texture = texture__ (fromMaybe def_obj_place (obj voxel))
 
 encodeWallStructure :: Wall_grid -> Char
 encodeWallStructure voxel
@@ -49,20 +60,49 @@ encodeWallStructure voxel
         v1_ = v1 voxel
         v2_ = v2 voxel
 
-encodeWallGrid :: Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Int -> Int -> Int -> Int -> Int -> [[Char]] -> [Char]
-encodeWallGrid w_grid f_grid w u v u_max v_max acc
-  | w > 2 = reverse (concat acc)
-  | u > u_max = encodeWallGrid w_grid f_grid (w + 1) 0 0 u_max v_max ("\n~\n " : acc)
-  | v > v_max && u < u_max = encodeWallGrid w_grid f_grid w (u + 1) 0 u_max v_max ("\n" : acc)
-  | v > v_max = encodeWallGrid w_grid f_grid w (u + 1) 0 u_max v_max acc
-  | v == v_max = encodeWallGrid w_grid f_grid w u (v + 1) u_max v_max ([floor_type, tex3, tex2, tex1, tex0, structure] : acc)
-  | otherwise = encodeWallGrid w_grid f_grid w u (v + 1) u_max v_max ([' ', floor_type, tex3, tex2, tex1, tex0, structure] : acc)
+encodeWallGrid :: Array (Int, Int, Int) Wall_grid -> Int -> Int -> Int -> Int -> Int -> [[Char]] -> [Char]
+encodeWallGrid w_grid w u v u_max v_max acc
+  | w > 2 = wGridHeader ++ reverse (concat acc)
+  | u > u_max = encodeWallGrid w_grid (w + 1) 0 0 u_max v_max ("\n~\n " : acc)
+  | v > v_max && u < u_max = encodeWallGrid w_grid w (u + 1) 0 u_max v_max ("\n" : acc)
+  | v > v_max = encodeWallGrid w_grid w (u + 1) 0 u_max v_max acc
+  | v == v_max = encodeWallGrid w_grid w u (v + 1) u_max v_max ([floor_type, tex3, tex2, tex1, tex0, structure] : acc)
+  | otherwise = encodeWallGrid w_grid w u (v + 1) u_max v_max ([' ', floor_type, tex3, tex2, tex1, tex0, structure] : acc)
   where voxel = w_grid ! (w, u, v)
         structure = encodeWallStructure voxel
         tex0 = head (show ((texture voxel) !! 0))
         tex1 = head (show ((texture voxel) !! 1))
         tex2 = head (show ((texture voxel) !! 2))
         tex3 = head (show ((texture voxel) !! 3))
-        floor_type = encodeFloorModel w_grid f_grid w u v
+        floor_type = encodeFloorModel voxel
 
+-- These two functions encode the Floor_grid array into the engine's map file format.
+encodeFloorTerrain :: Array (Int, Int, Int) Floor_grid -> Int -> Int -> Int -> Char
+encodeFloorTerrain f_grid w u v
+  | surface voxel == Flat =
+    if truncate (w_ voxel) == w then 'a'
+    else if truncate (w_ voxel) == w + 1 then 'g'
+    else error ("\nencodeFloorTerrain: Invalid voxel found in Floor_grid at " ++ show (w, u, v))
+  | surface voxel == Positive_u = 'b'
+  | surface voxel == Negative_u = 'c'
+  | surface voxel == Positive_v = 'd'
+  | surface voxel == Negative_v = 'e'
+  | surface voxel == Open = 'f'
+  where voxel = f_grid ! (w, u, v)
+
+encodeFloorGrid :: Array (Int, Int, Int) Floor_grid -> Int -> Int -> Int -> Int -> Int -> [[Char]] -> [Char]
+encodeFloorGrid f_grid w u v u_max v_max acc
+  | w > 2 = reverse (concat acc)
+  | u > u_max = encodeFloorGrid f_grid (w + 1) 0 0 u_max v_max ("\n~\n " : acc)
+  | v > v_max && u < u_max = encodeFloorGrid f_grid w (u + 1) 0 u_max v_max ("\n" : acc)
+  | v > v_max = encodeFloorGrid f_grid w (u + 1) 0 u_max v_max acc
+  | v == v_max = encodeFloorGrid f_grid w u (v + 1) u_max v_max ((ramp3 ++ " " ++ ramp2 ++ " " ++ ramp1 ++ " " ++ ramp0 ++ " " ++ [floor_terrain]) : acc)
+  | otherwise = encodeFloorGrid f_grid w u (v + 1) u_max v_max ((" " ++ ramp3 ++ " " ++ ramp2 ++ " " ++ ramp1 ++ " " ++ ramp0 ++ " " ++ [floor_terrain]) : acc)
+  where floor_terrain = encodeFloorTerrain f_grid w u v
+        voxel = f_grid ! (w, u, v)
+        ramp0 = reverse (show (fst (local_up_ramp voxel)))
+        ramp1 = reverse (show (snd (local_up_ramp voxel)))
+        ramp2 = reverse (show (fst (local_down_ramp voxel)))
+        ramp3 = reverse (show (snd (local_down_ramp voxel)))
+        
 
