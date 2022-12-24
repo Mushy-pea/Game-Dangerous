@@ -36,6 +36,7 @@ library
       IndexWrapper0
       IndexWrapper1
       OpenMap
+      PreprocessMap
   other-modules:
       Paths_Game_Dangerous
   hs-source-dirs:
@@ -136,31 +137,6 @@ executable Game-Dangerous-exe
 
 executable ImportModel
   main-is: ImportModel.hs
-  hs-source-dirs:
-      app
-  ghc-options: -O
-  build-depends:
-      GLURaw >=2.0
-    , GLUT >=2.7
-    , Game-Dangerous
-    , ObjectName >=1.1
-    , OpenAL >=1.7
-    , OpenGL >=3.0
-    , OpenGLRaw >=3.3
-    , StateVar >=1.2
-    , array >=0.5
-    , base >=4.7 && <5
-    , binary >=0.8
-    , bytestring >=0.10
-    , clock >=0.8
-    , containers >=0.6
-    , matrix >=0.3
-    , random >=1.2
-    , split >=0.2
-  default-language: Haskell2010
-
-executable PreprocessMap
-  main-is: PreprocessMap.hs
   hs-source-dirs:
       app
   ghc-options: -O

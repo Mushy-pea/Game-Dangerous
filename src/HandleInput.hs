@@ -11,7 +11,7 @@ import Data.Array.IArray
 import Data.Maybe
 import Data.List
 import BuildModel
-import qualified IndexWrapper1 as IR
+import qualified IndexWrapper1 as IW
 
 -- This recursive data type is used to implement the control structure that updates the map state in response to commands received by the server.
 data Comm_struct = Comm_struct {dictionary_page :: [[Char]], branches :: Maybe (Array Int Comm_struct),
@@ -62,7 +62,7 @@ writeFloorGrid game_state args =
       terrain = parseTerrain (args !! 4)
       f' = Floor_grid {w_ = height, surface = terrain, local_up_ramp = (0, 0), local_down_ramp = (0, 0)}
       success_str = "writeFloorGrid succeeded.  Arguments passed were w: "
-      boundsCheck = IR.boundsCheck (f_grid_ game_state) (w, u, v) "writeFloorGrid"
+      boundsCheck = IW.boundsCheck (f_grid_ game_state) (w, u, v) "writeFloorGrid"
   in
   if isNothing boundsCheck then 
     (Just game_state {f_grid_ = (f_grid_ game_state) // [((w, u, v), f')]},
@@ -79,7 +79,7 @@ writeObjGrid game_state args =
       u = read (args !! 1)
       v = read (args !! 2)
       obj_type = read (args !! 3)
-      boundsCheck = IR.boundsCheck (obj_grid_ game_state) (w, u, v) "writeObjGrid"
+      boundsCheck = IW.boundsCheck (obj_grid_ game_state) (w, u, v) "writeObjGrid"
   in
   if isNothing boundsCheck then
     (Just game_state {obj_grid_ = (obj_grid_ game_state) // [((w, u, v), (obj_type, constructProgBlock (drop 4 args)))]},
@@ -95,7 +95,7 @@ writeWallGridStructure game_state args =
       upd_ = [read (args !! 7), read (args !! 8), read (args !! 9), read (args !! 10)]
       w' = ((w_grid_ game_state) ! (w, u, v)) {u1 = upd 3, u2 = upd 4, v1 = upd 5, v2 = upd 6, wall_flag = upd_}
       success_str = "writeWallGridStructure succeeded.  Arguments passed were w: "
-      boundsCheck = IR.boundsCheck (w_grid_ game_state) (w, u, v) "writeWallGridStructure"
+      boundsCheck = IW.boundsCheck (w_grid_ game_state) (w, u, v) "writeWallGridStructure"
   in
   if isNothing boundsCheck then
     (Just game_state {w_grid_ = (w_grid_ game_state) // [((w, u, v), w')]},
@@ -109,7 +109,7 @@ writeWallGridTextures game_state args =
       v = read (args !! 2)
       upd = [read (args !! 3), read (args !! 4), read (args !! 5), read (args !! 6)]
       success_str = "writeWallGridTextures succeeded.  Arguments passed were w: "
-      boundsCheck = IR.boundsCheck (w_grid_ game_state) (w, u, v) "writeWallGridTextures"
+      boundsCheck = IW.boundsCheck (w_grid_ game_state) (w, u, v) "writeWallGridTextures"
   in
   if isNothing boundsCheck then
     (Just game_state {w_grid_ = (w_grid_ game_state) // [((w, u, v), ((w_grid_ game_state) ! (w, u, v)) {texture = upd})]},
@@ -126,7 +126,7 @@ writeObjPlace game_state args =
       w_grid__ = w_grid_ game_state
       obj' = def_obj_place {ident_ = upd 3, u__ = upd_ 4, v__ = upd_ 5, w__ = upd_ 6, texture__ = upd 7, num_elem = read (args !! 8), obj_flag = upd 9}
       success_str = "writeObjPlace succeeded.  Arguments passed were w: "
-      boundsCheck = IR.boundsCheck (w_grid_ game_state) (w, u, v) "writeObjPlace"
+      boundsCheck = IW.boundsCheck (w_grid_ game_state) (w, u, v) "writeObjPlace"
   in
   if isNothing boundsCheck then
     (Just game_state {w_grid_ = w_grid__ // [((w, u, v), (w_grid__ ! (w, u, v)) {obj = Just obj'})]},

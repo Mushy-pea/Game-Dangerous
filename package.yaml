@@ -96,16 +96,6 @@ executables:
     - base >= 4.7 && < 5
     - Game-Dangerous
 
-  PreprocessMap:
-    main:                PreprocessMap.hs
-    other-modules:       []
-    source-dirs:         app
-    ghc-options:
-    - -O
-    dependencies:
-    - array >= 0.5
-    - Game-Dangerous
-  
   TransformModel:
     main:                TransformModel.hs
     other-modules:       []

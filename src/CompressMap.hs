@@ -8,6 +8,7 @@ module CompressMap where
 
 import Data.Array.IArray
 import Data.Maybe
+import Data.List
 import BuildModel
 
 -- The header for the Wall_grid section in the map file does not depend on any degree of freedom that can be edited through the server,
@@ -104,5 +105,18 @@ encodeFloorGrid f_grid w u v u_max v_max acc
         ramp1 = reverse (show (snd (local_up_ramp voxel)))
         ramp2 = reverse (show (fst (local_down_ramp voxel)))
         ramp3 = reverse (show (snd (local_down_ramp voxel)))
-        
+
+-- This function encodes the Obj_grid array into the engine's map file format.
+encodeObjGrid :: Array (Int, Int, Int) (Int, [Int]) -> Int -> Int -> Int -> Int -> Int -> [Char] -> [Char]
+encodeObjGrid obj_grid w u v u_max v_max acc
+  | w > 2 = acc
+  | u > u_max = encodeObjGrid obj_grid (w + 1) 0 0 u_max v_max acc
+  | v > v_max = encodeObjGrid obj_grid w (u + 1) 0 u_max v_max acc
+  | otherwise = if voxel == (0, []) then encodeObjGrid obj_grid w u (v + 1) u_max v_max acc
+                else encodeObjGrid obj_grid w u (v + 1) u_max v_max (encoded_voxel ++ separator ++ acc)
+  where voxel = obj_grid ! (w, u, v)
+        separator = if (w, u, v) == (0, 0, 0) then []
+                    else ", "
+        encoded_prog = map (show) (snd voxel)
+        encoded_voxel = intercalate ", " ([show w, show u, show v, show (fst voxel), show (length (snd voxel))] ++ encoded_prog)
 
