@@ -22,7 +22,7 @@ wGridHeader = concat ["16, 0, 0, 0, 0, 1, 36\n",
                       "64, 0, 0, 0, 0, 1, 6\n",
                       "80, 0, 0, 0, 0, 1, 6\n~\n"]
 
--- These three functions encode the Wall_grid array into the engine's map file format.
+-- These three functions encode the Wall_grid array (for w >= 0) into the engine's map file format.
 encodeFloorModel :: Wall_grid -> Char
 encodeFloorModel voxel
   | floor_model == 16 =
@@ -109,7 +109,7 @@ encodeFloorGrid f_grid w u v u_max v_max acc
 -- This function encodes the Obj_grid array into the engine's map file format.
 encodeObjGrid :: Array (Int, Int, Int) (Int, [Int]) -> Int -> Int -> Int -> Int -> Int -> [Char] -> [Char]
 encodeObjGrid obj_grid w u v u_max v_max acc
-  | w > 2 = acc
+  | w > 2 = acc ++ "\n~\n"
   | u > u_max = encodeObjGrid obj_grid (w + 1) 0 0 u_max v_max acc
   | v > v_max = encodeObjGrid obj_grid w (u + 1) 0 u_max v_max acc
   | otherwise = if voxel == (0, []) then encodeObjGrid obj_grid w u (v + 1) u_max v_max acc
@@ -117,6 +117,20 @@ encodeObjGrid obj_grid w u v u_max v_max acc
   where voxel = obj_grid ! (w, u, v)
         separator = if (w, u, v) == (0, 0, 0) then []
                     else ", "
-        encoded_prog = map (show) (snd voxel)
-        encoded_voxel = intercalate ", " ([show w, show u, show v, show (fst voxel), show (length (snd voxel))] ++ encoded_prog)
+        encoded_voxel = intercalate ", " (map (show) ([w, u, v, fst voxel, length (snd voxel)] ++ snd voxel))
+
+-- This function encodes the Wall_grid array (for w < 0) into the engine's map file format.
+encodeSubWallGrid :: Array (Int, Int, Int) Wall_grid -> Int -> Int -> Int -> Int -> Int -> Bool -> [Char] -> [Char]
+encodeSubWallGrid w_grid w u v u_max v_max first_voxel acc
+  | w < -3 = acc ++ "\n~\n"
+  | u > u_max = encodeSubWallGrid w_grid (w - 1) 0 0 u_max v_max first_voxel acc
+  | v > v_max = encodeSubWallGrid w_grid w (u + 1) 0 u_max v_max first_voxel acc
+  | otherwise = if not (isNothing (obj voxel)) then encodeSubWallGrid w_grid w u (v + 1) u_max v_max False (encoded_voxel ++ separator ++ acc)
+                else encodeSubWallGrid w_grid w u (v + 1) u_max v_max first_voxel acc
+  where voxel = w_grid ! (w, u, v)
+        obj_ = fromJust (obj voxel)
+        separator = if first_voxel then []
+                    else ", "
+        encoded_voxel = intercalate ", " [show (-(w + 1)), show u, show v, show (ident_ obj_), show (u__ obj_), show (v__ obj_), show (w__ obj_),
+                                          "0", "0", "0", "0", "0", show (texture__ obj_), show (num_elem obj_)]
 

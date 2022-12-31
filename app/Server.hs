@@ -55,7 +55,7 @@ handleInput game_state comp_map_text base_dir command
     template <- bracket (openFile (base_dir ++ command !! 1) ReadMode) hClose
                         (\h -> do c <- hGetContents h; putStr ("\ntemplate file size: " ++ show (length c)); return c)
     h <- openFile (base_dir ++ command !! 2) WriteMode
-    hPutStr h (encoded_wall_grid ++ encoded_floor_grid ++ template ++ encoded_obj_grid)
+    hPutStr h (encoded_wall_grid ++ encoded_floor_grid ++ template ++ encoded_obj_grid ++ encoded_sub_wall_grid ++ footer)
     hClose h
   | otherwise = do
       result <- applyCommand (fromJust game_state) command
@@ -71,6 +71,8 @@ handleInput game_state comp_map_text base_dir command
         encoded_wall_grid = encodeWallGrid (w_grid_ game_state') 0 0 0 (snd__ (snd w_bd)) (third_ (snd w_bd)) []
         encoded_floor_grid = encodeFloorGrid (f_grid_ game_state') 0 0 0 (snd__ (snd f_bd)) (third_ (snd f_bd)) []
         encoded_obj_grid = encodeObjGrid (obj_grid_ game_state') 0 0 0 (snd__ (snd w_bd)) (third_ (snd w_bd)) []
+        encoded_sub_wall_grid = encodeSubWallGrid (w_grid_ game_state') (-1) 0 0 (snd__ (snd w_bd)) (third_ (snd w_bd)) True []
+        footer = show (snd__ (snd w_bd)) ++ "\n~\n" ++ show (third_ (snd w_bd)) ++ "\n~\n2\n~\nunlocked"
 
 applyCommand :: Game_state -> [[Char]] -> IO (Game_state, [Char])
 applyCommand game_state command =
