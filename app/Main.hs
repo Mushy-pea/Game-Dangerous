@@ -139,6 +139,7 @@ setupGame comp_map_text conf_reg (Size w h) control_ref =
       pm''' = snd proc_map'
       mc = \i -> ((splitOn "\n~\n" comp_map_text), 637) !! i
       map_text = ".~.~.~.~" ++ pm'' ++ "~" ++ pm''' ++ (mc 10) ++ "~" ++ (mc 11) ++ "~" ++ (mc 12) ++ "~" ++ (mc 13) ++ "~" ++ (mc 14) ++ "~" ++ (mc 15)
+      obj_grid_patch = drop 16 (splitOn "\n~\n" comp_map_text)
       cfg' = cfg conf_reg 0
       p_bind_limit = (read (((splitOn "\n~\n" comp_map_text), 11) !! 7)) - 1
       frustumScale0 = (read (cfg' "frustumScale1")) / (fromIntegral w / fromIntegral h)
@@ -229,7 +230,7 @@ setupGame comp_map_text conf_reg (Size w h) control_ref =
   sound_array <- initAlEffect0 (splitOneOf "\n " (tailFile contents2)) (cfg' "sound_data_dir")
                                (array (0, (div (length (splitOneOf "\n " (tailFile contents2))) 2) - 1) [(x, Source 0) | x <- [0..(div (length (splitOneOf "\n " (tailFile contents2))) 2) - 1]])
   r_gen <- getStdGen
-  startGame control_ref (listArray (0, 65) uniform) (p_bind_, p_bind_limit + 1) map_text conf_reg (-1) (read (cfg' "init_u")) (read (cfg' "init_v"))
+  startGame control_ref (listArray (0, 65) uniform) (p_bind_, p_bind_limit + 1) map_text obj_grid_patch conf_reg (-1) (read (cfg' "init_u")) (read (cfg' "init_v"))
             (read (cfg' "init_w")) (read (cfg' "gravity")) (read (cfg' "friction")) (read (cfg' "run_power")) (read (cfg' "jump_power"))
             def_save_state sound_array (cameraToClip frustumScale0 (read (cfg' "frustumScale1"))) r_gen
 
@@ -289,13 +290,13 @@ cameraToClip frustumScale0 frustumScale1 =
   y [frustumScale0, 0, 0, 0, 0, frustumScale1, 0, 0, 0, 0, ((zFar + zNear) / (zNear - zFar)), ((2 * zFar * zNear) / (zNear - zFar)), 0, 0, -1, 0]
 
 -- This function initialises the game logic thread each time a new game is started and handles user input from the main menu.
-startGame :: RandomGen g => IORef Int -> UArray Int Int32 -> (UArray Int Word32, Int) -> [Char] -> Array Int [Char] -> Int -> Float -> Float -> Float -> Float
+startGame :: RandomGen g => IORef Int -> UArray Int Int32 -> (UArray Int Word32, Int) -> [Char] -> [[Char]] -> Array Int [Char] -> Int -> Float -> Float -> Float -> Float
              -> Float -> Float -> Float -> Game_state -> Array Int Source -> Matrix Float -> g -> IO ()
-startGame control_ref uniform p_bind map_text conf_reg mode u v w g f mag_r mag_j save_state sound_array camera_to_clip r_gen =
+startGame control_ref uniform p_bind map_text obj_grid_patch conf_reg mode u v w g f mag_r mag_j save_state sound_array camera_to_clip r_gen =
   let u_limit = (read (((splitOn "~" map_text), 56) !! 8))
       v_limit = (read (((splitOn "~" map_text), 57) !! 9))
       w_limit = (read (((splitOn "~" map_text), 58) !! 10))
-      map = openMap map_text u_limit v_limit w_limit
+      map = openMap map_text obj_grid_patch u_limit v_limit w_limit 0
       w_grid = fst__ map
       f_grid = snd__ map
       obj_grid = third_ map
@@ -324,8 +325,8 @@ startGame control_ref uniform p_bind map_text conf_reg mode u v w g f mag_r mag_
       free p_tt_matrix
       threadDelay 5000000
       glEnable GL_DEPTH_TEST
-      startGame control_ref uniform p_bind map_text conf_reg 2 u v w g f mag_r mag_j save_state sound_array camera_to_clip r_gen
-    else startGame control_ref uniform p_bind map_text conf_reg 0 u v w g f mag_r mag_j save_state sound_array camera_to_clip r_gen
+      startGame control_ref uniform p_bind map_text obj_grid_patch conf_reg 2 u v w g f mag_r mag_j save_state sound_array camera_to_clip r_gen
+    else startGame control_ref uniform p_bind map_text obj_grid_patch conf_reg 0 u v w g f mag_r mag_j save_state sound_array camera_to_clip r_gen
   else if mode < 2 then do
     p_mt_matrix <- mallocBytes (glfloat * 128)
     p_f_table0 <- callocBytes (int_ * 120000)
@@ -348,30 +349,30 @@ startGame control_ref uniform p_bind map_text conf_reg mode u v w g f mag_r mag_
     free p_f_table1
     free p_light_buffer
     killThread tid
-    startGame control_ref uniform p_bind map_text conf_reg ((fst result) + 1) u v w g f mag_r mag_j (snd result) sound_array camera_to_clip r_gen
+    startGame control_ref uniform p_bind map_text obj_grid_patch conf_reg ((fst result) + 1) u v w g f mag_r mag_j (snd result) sound_array camera_to_clip r_gen
   else if mode == 2 then do
     choice <- runMenu mainMenuText [] (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref}) (-0.75) (-0.75) 1 0 0 ps0_init 1
-    if choice == 1 then startGame control_ref uniform p_bind map_text conf_reg 0 u v w g f mag_r mag_j save_state sound_array camera_to_clip r_gen
+    if choice == 1 then startGame control_ref uniform p_bind map_text obj_grid_patch conf_reg 0 u v w g f mag_r mag_j save_state sound_array camera_to_clip r_gen
     else if choice == 2 then do
       contents <- bracket (openFile "save_log.log" ReadMode) (hClose) (\h -> do c <- hGetContents h; putStr ("\nsave_log size: " ++ show (length c)); return c)
       state_choice <- runMenu (genLoadMenu (tail (splitOn "\n" (tailFile contents))) [] 1) [] (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref})
                               (-0.75) (-0.75) 1 0 0 ps0_init 1
       loaded_state <- loadSavedGame 0 (tail (splitOn "\n" (tailFile contents))) [] 1 state_choice (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref})
                                     w_grid f_grid obj_grid conf_reg
-      if isNothing loaded_state == True then startGame control_ref uniform p_bind map_text conf_reg 2 u v w g f mag_r mag_j def_save_state sound_array
+      if isNothing loaded_state == True then startGame control_ref uniform p_bind map_text obj_grid_patch conf_reg 2 u v w g f mag_r mag_j def_save_state sound_array
                                                        camera_to_clip r_gen
-      else startGame control_ref uniform p_bind map_text conf_reg 1 u v w g f mag_r mag_j (fromJust loaded_state) sound_array camera_to_clip r_gen
+      else startGame control_ref uniform p_bind map_text obj_grid_patch conf_reg 1 u v w g f mag_r mag_j (fromJust loaded_state) sound_array camera_to_clip r_gen
     else exitSuccess
   else if mode == 3 then do
-    if is_set save_state == True then startGame control_ref uniform p_bind map_text conf_reg 1 u v w g f mag_r mag_j save_state sound_array camera_to_clip r_gen
-    else startGame control_ref uniform p_bind map_text conf_reg 0 u v w g f mag_r mag_j save_state sound_array camera_to_clip r_gen
+    if is_set save_state == True then startGame control_ref uniform p_bind map_text obj_grid_patch conf_reg 1 u v w g f mag_r mag_j save_state sound_array camera_to_clip r_gen
+    else startGame control_ref uniform p_bind map_text obj_grid_patch conf_reg 0 u v w g f mag_r mag_j save_state sound_array camera_to_clip r_gen
   else if mode == 4 then exitSuccess
   else if mode == 5 then do
     saveArrayDiff0 0 ([], []) (wrappedSaveArrayDiff1 (genArrayDiff (-3) 0 0 u_limit v_limit w_grid (w_grid_ save_state) SEQ.empty))
                    (wrappedSaveArrayDiff1 (genArrayDiff 0 0 0 ((div (u_limit + 1) 2) - 1) ((div (v_limit + 1) 2) - 1) f_grid (f_grid_ save_state) SEQ.empty))
                    (wrappedSaveArrayDiff1 (genArrayDiff 0 0 0 u_limit v_limit obj_grid (obj_grid_ save_state) SEQ.empty))
                    (labelPlayStateEncoding (encode (s0_ save_state))) (labelPlayStateEncoding (encode (s1_ save_state))) conf_reg (s0_ save_state)
-    startGame control_ref uniform p_bind map_text conf_reg 1 u v w g f mag_r mag_j save_state sound_array camera_to_clip r_gen
+    startGame control_ref uniform p_bind map_text obj_grid_patch conf_reg 1 u v w g f mag_r mag_j save_state sound_array camera_to_clip r_gen
   else if mode == 6 then do
     updConfigFile conf_reg (map_transit_string save_state) False
     h <- openFile "save_log.log" WriteMode
