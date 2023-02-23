@@ -26,7 +26,7 @@ loadMap comp_map_text u_max v_max w_max =
       pm''' = snd proc_map'
       mc = \i -> (splitOn "\n~\n" comp_map_text) !! i
       map_text = ".~.~.~.~" ++ pm'' ++ "~" ++ pm''' ++ mc 10 ++ "~" ++ mc 11 ++ "~" ++ mc 12 ++ "~" ++ mc 13 ++ "~" ++ mc 14 ++ "~" ++ mc 15
-  in openMap map_text [] u_max v_max w_max 1
+  in openMap map_text u_max v_max w_max
 
 main = do
   args <- getArgs

@@ -1,7 +1,5 @@
 .stack-work/
-*.bak
-*.hi
-*.o
+dist/
 OpenAL32.dll
 freeglut.dll
 backup_process.bat
