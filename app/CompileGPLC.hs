@@ -119,7 +119,7 @@ rowsToJump instruction_length j_size =
 
 genSignalBlock :: Array (Int, Int) Token -> Int -> Int -> Int -> Int -> SEQ.Seq Int -> [[Char]] -> (SEQ.Seq Int, [[Char]])
 genSignalBlock token_arr i i_max size offset signal_block error_list
-  | i > i_max = (signal_block SEQ.|> size, error_list)
+  | i > i_max = (signal_block SEQ.|> size SEQ.|> 536870912, error_list)
   | content keyword == "pass_msg" && not (all isDigit (content first_arg)) = (signal_block, error_list ++ [first_arg_error])
   | content keyword == "pass_msg" = genSignalBlock token_arr (i + rows_to_jump) i_max (size + first_arg_int) offset signal_block error_list
   | content keyword == "--signal" && not (all isDigit (content first_arg)) = (signal_block, error_list ++ [first_arg_error])
@@ -148,6 +148,7 @@ sizeSignalCodeBlock signal_block i i_max total_size =
 addWriteRefKey :: Int -> Symbol_binding -> Symbol_binding
 addWriteRefKey offset binding = binding {writeRefKey = readRefKey binding + offset}
 
+-- This function processes the ...message... argument of the pass_msg keyword.
 readMsg :: Array (Int, Int) Token -> Int -> Int -> Int -> Int -> Int -> SEQ.Seq Int -> Maybe (SEQ.Seq Int)
 readMsg token_arr i j j_max c msg_length result
   | c == msg_length = Just result
@@ -157,6 +158,8 @@ readMsg token_arr i j j_max c msg_length result
   | otherwise = readMsg token_arr i (j + 1) j_max (c + 1) msg_length (result SEQ.|> read msg_unit)
   where msg_unit = content (token_arr ! (i, j))
 
+-- These two functions transform the read reference, write reference and literal constant type arguments of each keyword
+-- to bytecode output.
 matchSymbol :: [Symbol_binding] -> [Char] -> Instruction_arg_type -> Maybe Int
 matchSymbol [] token_content arg_type = Nothing
 matchSymbol (x:xs) token_content arg_type
@@ -182,6 +185,7 @@ interpretArgs (x:xs) token_arr bound_symbols i j result error_list
         const_error = error_location ++ content arg_token ++ " is not a literal integer."
         symbol_error = error_location ++ content arg_token ++ " is not a bound symbol in the scope of this program."
 
+-- This function transforms each instruction line in the source code (keyword plus argument set) into bytecode output.
 genCodeBlock :: Array (Int, Int) Token -> [Symbol_binding] -> Int -> Int -> SEQ.Seq Int -> [[Char]] -> (SEQ.Seq Int, [[Char]])
 genCodeBlock token_arr bound_symbols i i_max code_block error_list
   | i > i_max = (code_block, error_list)
@@ -189,10 +193,11 @@ genCodeBlock token_arr bound_symbols i i_max code_block error_list
   | content keyword == "pass_msg" && isNothing read_msg =
     genCodeBlock token_arr bound_symbols (i + rows_to_jump) i_max code_block (error_list ++ ["Message read error"])
   | content keyword == "pass_msg" =
-    genCodeBlock token_arr bound_symbols (i + rows_to_jump) i_max ((code_block SEQ.|> 13) SEQ.>< fst interpreted_args_ SEQ.>< fromJust read_msg)
+    genCodeBlock token_arr bound_symbols (i + rows_to_jump) i_max
+                 ((code_block SEQ.|> 13) SEQ.>< fst interpreted_args_ SEQ.>< (fromJust read_msg SEQ.|> line_term))
                  (error_list ++ snd interpreted_args_)
   | otherwise =
-    genCodeBlock token_arr bound_symbols (i + 1) i_max ((code_block SEQ.|> opcode matched_keyword) SEQ.>< fst interpreted_args)
+    genCodeBlock token_arr bound_symbols (i + 1) i_max ((code_block SEQ.|> opcode matched_keyword) SEQ.>< (fst interpreted_args SEQ.|> line_term))
                  (error_list ++ snd interpreted_args)
   where keyword = token_arr ! (i, 0)
         matched_keyword = fromJust (matchKeyword (content keyword))
@@ -202,15 +207,39 @@ genCodeBlock token_arr bound_symbols i i_max code_block error_list
         read_msg = readMsg token_arr i 3 j_max 0 (l_arg - 2) SEQ.empty
         interpreted_args = interpretArgs (arguments matched_keyword) token_arr bound_symbols i 1 SEQ.empty []
         interpreted_args_ = interpretArgs [RefRead] token_arr bound_symbols i 2 SEQ.empty []
+        line_term = 536870912
+
+-- The data block part of the bytecode output is the sequence of initial values assigned to bound symbols in the
+-- source code, in the order the symbol bindings appear in the source code.
+genDataBlock :: [Symbol_binding] -> SEQ.Seq Int -> SEQ.Seq Int
+genDataBlock [] data_block = data_block
+genDataBlock (x:xs) data_block = genDataBlock xs (data_block SEQ.|> initialValue x)
+
+showTestOutput :: SEQ.Seq Int -> [Char] -> [Char]
+showTestOutput SEQ.Empty output = reverse output
+showTestOutput (x0 SEQ.:<| x1 SEQ.:<| xs) output
+  | x0 == 536870912 = showTestOutput (x1 SEQ.:<| xs) (" \n " ++ output)
+  | x1 == 536870912 = showTestOutput (x1 SEQ.:<| xs) (reverse (show x0) ++ output)
+  | otherwise = showTestOutput (x1 SEQ.:<| xs) (" " ++ reverse (show x0) ++ output)
+showTestOutput (x0 SEQ.:<| xs) output = showTestOutput xs (" \n " ++ output)
 
 main = do
   args <- getArgs
-  contents <- bracket (openFile (args !! 0) ReadMode) hClose
+  contents <- bracket (openFile (args !! 1) ReadMode) hClose
                       (\h -> do c <- hGetContents h; putStr ("\nprogram file size: " ++ show (length c)); return c)
-  showResult contents
+  bytecode <- compileProgram contents
+  if args !! 0 == "stdout" then do
+    putStr ("\nSignal block: " ++ bytecode !! 0)
+    putStr ("\nCode block: " ++ bytecode !! 1)
+    putStr ("\nData block: " ++ bytecode !! 2)
+  else if args !! 0 == "file" then do
+    h <- openFile (args !! 2) WriteMode
+    hPutStr h (bytecode !! 0 ++ bytecode !! 1 ++ bytecode !! 2)
+    hClose h
+  else putStr ("\nInvalid flag passed.")
 
-showResult :: [Char] -> IO ()
-showResult contents =
+compileProgram :: [Char] -> IO [[Char]]
+compileProgram contents =
   let split_contents = splitOn " " contents
       array_dim = detArrayDim split_contents 0 0 0
       empty_token_array = array ((0, 0), (fst__ array_dim, (snd__ array_dim) - 1))
@@ -220,13 +249,17 @@ showResult contents =
       signal_block = genSignalBlock token_arr (snd__ bound_symbols) (fst__ array_dim) 0 0 SEQ.empty []
       signal_code_block_size = sizeSignalCodeBlock (fst signal_block) 2 (SEQ.length (fst signal_block) - 1) 0
       add_write_ref_key = addWriteRefKey (signal_code_block_size + 3)
-      code_block = genCodeBlock token_arr (fst__ bound_symbols) (snd__ bound_symbols) (fst__ array_dim) SEQ.empty []
+      code_block = genCodeBlock token_arr (map add_write_ref_key (fst__ bound_symbols)) (snd__ bound_symbols) (fst__ array_dim) SEQ.empty []
+      data_block = genDataBlock (fst__ bound_symbols) SEQ.empty
+      data_block_output = showTestOutput data_block []
   in do
   if third_ array_dim /= [] then error (third_ array_dim)
   else if third_ bound_symbols /= [] then error (show (third_ bound_symbols))
   else if snd signal_block /= [] then error (show (snd signal_block))
   else if snd code_block /= [] then error (show (snd code_block))
-  else putStr ("\ncode_block: " ++ show (fst code_block))
+  else return [showTestOutput (fst signal_block) [],
+               showTestOutput (fst code_block) [],
+               drop 2 (take ((length data_block_output) - 4) data_block_output)]
 
 showSymbolBindings :: [Symbol_binding] -> IO ()
 showSymbolBindings [] = return ()

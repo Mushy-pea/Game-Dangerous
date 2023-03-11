@@ -66,26 +66,6 @@ executables:
     - random >= 1.2
     - Game-Dangerous
 
-  AssmGplc:
-    main:                AssmGplc.hs
-    other-modules:       []
-    source-dirs:         app
-    ghc-options:
-    - -O
-    dependencies:
-    - base >= 4.7 && < 5
-    - Game-Dangerous
-
-  ConvMsg:
-    main:                ConvMsg.hs
-    other-modules:       []
-    source-dirs:         app
-    ghc-options:
-    - -O
-    dependencies:
-    - base >= 4.7 && < 5
-    - Game-Dangerous
-
   ImportModel:
     main:                ImportModel.hs
     other-modules:       []
@@ -109,6 +89,16 @@ executables:
 
   Server:
     main:                Server.hs
+    other-modules:       []
+    source-dirs:         app
+    ghc-options:
+    - -O
+    dependencies:
+    - base >= 4.7 && < 5
+    - Game-Dangerous
+
+  CompileGPLC:
+    main:                CompileGPLC.hs
     other-modules:       []
     source-dirs:         app
     ghc-options:
