@@ -15,6 +15,39 @@ import Data.Char
 import Data.Maybe
 import qualified Data.Sequence as SEQ
 
+inputDir = "C:\\Users\\steve\\code\\GD\\GPLC-scripts-and-maps\\GPLC_Programs\\"
+
+outputDir = "C:\\Users\\steve\\code\\GD\\GPLC-scripts-and-maps\\CompilerOutput\\"
+
+testFileSet = SEQ.fromList ["ActivateDefence",
+                            "Ammo",
+                            "BlueKey",
+                            "BulletPrototype",
+                            "CAU_Door",
+                            "CentipedeFrontNode",
+                            "CentipedeInnerNode",
+                            "CentipedeRearNode",
+                            "FireballPrototype",
+                            "Gem",
+                            "InitialScript1",
+                            "InitialScript2",
+                            "InitialScript2_1",
+                            "InitialScript3",
+                            "InterMapPortal",
+                            "LightTorch",
+                            "NPC_Gun",
+                            "NPC_Sarah",
+                            "PlayerGun",
+                            "Shooter",
+                            "StartTest",
+                            "Teleporter1",
+                            "Teleporter2",
+                            "Teleporter3",
+                            "TheEnd",
+                            "Torch",
+                            "UnblockTeleporter",
+                            "ZombieSmiley"]
+
 fst__ (a, b, c) = a
 snd__ (a, b, c) = b
 third_ (a, b, c) = c
@@ -223,24 +256,9 @@ showTestOutput (x0 SEQ.:<| x1 SEQ.:<| xs) output
   | otherwise = showTestOutput (x1 SEQ.:<| xs) (" " ++ reverse (show x0) ++ output)
 showTestOutput (x0 SEQ.:<| xs) output = showTestOutput xs (" \n " ++ output)
 
-main = do
-  args <- getArgs
-  contents <- bracket (openFile (args !! 1) ReadMode) hClose
-                      (\h -> do c <- hGetContents h; putStr ("\nprogram file size: " ++ show (length c)); return c)
-  bytecode <- compileProgram contents
-  if args !! 0 == "stdout" then do
-    putStr ("\nSignal block: " ++ bytecode !! 0)
-    putStr ("\nCode block: " ++ bytecode !! 1)
-    putStr ("\nData block: " ++ bytecode !! 2)
-  else if args !! 0 == "file" then do
-    h <- openFile (args !! 2) WriteMode
-    hPutStr h (bytecode !! 0 ++ bytecode !! 1 ++ bytecode !! 2)
-    hClose h
-  else putStr ("\nInvalid flag passed.")
-
-compileProgram :: [Char] -> IO [[Char]]
-compileProgram contents =
-  let split_contents = splitOn " " contents
+compileProgram :: [Char] -> [Char]
+compileProgram source =
+  let split_contents = splitOn " " source
       array_dim = detArrayDim split_contents 0 0 0
       empty_token_array = array ((0, 0), (fst__ array_dim, (snd__ array_dim) - 1))
                                 [((i, j), defToken) | i <- [0..fst__ array_dim], j <- [0..(snd__ array_dim) - 1]]
@@ -252,14 +270,29 @@ compileProgram contents =
       code_block = genCodeBlock token_arr (map add_write_ref_key (fst__ bound_symbols)) (snd__ bound_symbols) (fst__ array_dim) SEQ.empty []
       data_block = genDataBlock (fst__ bound_symbols) SEQ.empty
       data_block_output = showTestOutput data_block []
-  in do
+  in
   if third_ array_dim /= [] then error (third_ array_dim)
-  else if third_ bound_symbols /= [] then error (show (third_ bound_symbols))
-  else if snd signal_block /= [] then error (show (snd signal_block))
-  else if snd code_block /= [] then error (show (snd code_block))
-  else return [showTestOutput (fst signal_block) [],
-               showTestOutput (fst code_block) [],
-               drop 2 (take ((length data_block_output) - 4) data_block_output)]
+  else if third_ bound_symbols /= [] then error ("\n" ++ show (third_ bound_symbols))
+  else if snd signal_block /= [] then error ("\n" ++ show (snd signal_block))
+  else if snd code_block /= [] then error ("\n" ++ show (snd code_block))
+  else showTestOutput (fst signal_block) []
+       ++ showTestOutput (fst code_block) []
+       ++ take ((length data_block_output) - 4) data_block_output
+
+main = do
+  testSet 0
+  
+testSet :: Int -> IO ()
+testSet i = do
+  if i > 27 then return ()
+  else do
+    source <- bracket (openFile (inputDir ++ SEQ.index testFileSet i ++ ".gplc") ReadMode) hClose
+                      (\h -> do c <- hGetContents h; putStr ("\nprogram file size: " ++ show (length c)); return c)
+    putStr ("\nCompiling program: " ++ ((splitOn "\n~\n" source) !! 0))
+    h <- openFile (outputDir ++ SEQ.index testFileSet i ++ ".out") WriteMode
+    hPutStr h (compileProgram ((splitOn "\n~\n" source) !! 1))
+    hClose h
+    testSet (i + 1)
 
 showSymbolBindings :: [Symbol_binding] -> IO ()
 showSymbolBindings [] = return ()
