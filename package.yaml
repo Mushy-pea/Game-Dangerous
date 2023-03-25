@@ -97,16 +97,6 @@ executables:
     - base >= 4.7 && < 5
     - Game-Dangerous
 
-  CompileGPLC:
-    main:                CompileGPLC.hs
-    other-modules:       []
-    source-dirs:         app
-    ghc-options:
-    - -O
-    dependencies:
-    - base >= 4.7 && < 5
-    - Game-Dangerous
-
 tests:
   Game-Dangerous-test:
     main:                Spec.hs

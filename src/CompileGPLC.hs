@@ -4,7 +4,7 @@
 -- The new implementation of the GPLC compiler, which is to be moved to /src and integrated into the 
 -- server when ready.
 
-module Main where
+module CompileGPLC where
 
 import System.IO
 import System.Environment
@@ -14,6 +14,7 @@ import Data.Array.IArray
 import Data.Char
 import Data.Maybe
 import qualified Data.Sequence as SEQ
+import BuildModel
 
 inputDir = "C:\\Users\\steve\\code\\GD\\GPLC-scripts-and-maps\\GPLC_Programs\\"
 
@@ -30,8 +31,8 @@ testFileSet = SEQ.fromList ["ActivateDefence",
                             "FireballPrototype",
                             "Gem",
                             "InitialScript1",
-                            "InitialScript2",
                             "InitialScript2_1",
+                            "InitialScript2_2",
                             "InitialScript3",
                             "InterMapPortal",
                             "LightTorch",
@@ -47,10 +48,6 @@ testFileSet = SEQ.fromList ["ActivateDefence",
                             "Torch",
                             "UnblockTeleporter",
                             "ZombieSmiley"]
-
-fst__ (a, b, c) = a
-snd__ (a, b, c) = b
-third_ (a, b, c) = c
 
 data Token = Token {column :: Int, content :: [Char]} deriving (Eq, Show)
 
@@ -92,7 +89,7 @@ tokenise (x:xs) token_arr col i j
 genSymbolBindings :: Array (Int, Int) Token -> [Symbol_binding] -> [[Char]] -> Int -> Int -> Int -> Int -> ([Symbol_binding], Int, [[Char]])
 genSymbolBindings token_arr binding_set error_list i j ref_key i_max
   | i > i_max = (binding_set, i + 1, error_list ++ ["\nNo code block found."])
-  | j > 14 || symbol_token == defToken = genSymbolBindings token_arr binding_set error_list (i + 1) 0 ref_key i_max
+  | j > j_max || symbol_token == defToken = genSymbolBindings token_arr binding_set error_list (i + 1) 0 ref_key i_max
   | content symbol_token == "~" = (binding_set, i + 1, error_list)
   | isDigit (head (content symbol_token)) = genSymbolBindings token_arr binding_set (error_list ++ [symbol_error]) i (j + 2) ref_key i_max
   | head (content value_token) == '-' && not (all isDigit (tail (content value_token))) =
@@ -107,6 +104,7 @@ genSymbolBindings token_arr binding_set error_list i j ref_key i_max
         value_error = error_location ++ "The initial value bound to a symbol must be an integer."
         bound_symbol = Symbol_binding {symbol = content symbol_token, initialValue = read (content value_token),
                                        readRefKey = ref_key, writeRefKey = 0}
+        j_max = snd (snd (bounds token_arr))
 
 -- This function is used to recognise each GPLC keyword at source code level.  Except for opcode 5 there is a one to one mapping between 
 -- keywords at source code level and opcodes at bytecode level.  See the GPLC Specification for more details.
@@ -245,7 +243,7 @@ genCodeBlock token_arr bound_symbols i i_max code_block error_list
 -- The data block part of the bytecode output is the sequence of initial values assigned to bound symbols in the
 -- source code, in the order the symbol bindings appear in the source code.
 genDataBlock :: [Symbol_binding] -> SEQ.Seq Int -> SEQ.Seq Int
-genDataBlock [] data_block = data_block
+genDataBlock [] data_block = data_block SEQ.|> 536870912
 genDataBlock (x:xs) data_block = genDataBlock xs (data_block SEQ.|> initialValue x)
 
 showTestOutput :: SEQ.Seq Int -> [Char] -> [Char]
@@ -266,10 +264,10 @@ compileProgram source =
       bound_symbols = genSymbolBindings token_arr [] [] 0 0 0 (fst__ array_dim)
       signal_block = genSignalBlock token_arr (snd__ bound_symbols) (fst__ array_dim) 0 0 SEQ.empty []
       signal_code_block_size = sizeSignalCodeBlock (fst signal_block) 2 (SEQ.length (fst signal_block) - 1) 0
-      add_write_ref_key = addWriteRefKey (signal_code_block_size + 3)
+      add_write_ref_key = addWriteRefKey (signal_code_block_size + 4)
       code_block = genCodeBlock token_arr (map add_write_ref_key (fst__ bound_symbols)) (snd__ bound_symbols) (fst__ array_dim) SEQ.empty []
       data_block = genDataBlock (fst__ bound_symbols) SEQ.empty
-      data_block_output = showTestOutput data_block []
+      show_data_block = showTestOutput data_block []
   in
   if third_ array_dim /= [] then error (third_ array_dim)
   else if third_ bound_symbols /= [] then error ("\n" ++ show (third_ bound_symbols))
@@ -277,26 +275,18 @@ compileProgram source =
   else if snd code_block /= [] then error ("\n" ++ show (snd code_block))
   else showTestOutput (fst signal_block) []
        ++ showTestOutput (fst code_block) []
-       ++ take ((length data_block_output) - 4) data_block_output
+       ++ take ((length show_data_block) - 3) show_data_block
 
-main = do
-  testSet 0
-  
 testSet :: Int -> IO ()
-testSet i = do
+testSet i =
+  let sourceFile = inputDir ++ SEQ.index testFileSet i ++ ".gplc"
+  in do
   if i > 27 then return ()
   else do
-    source <- bracket (openFile (inputDir ++ SEQ.index testFileSet i ++ ".gplc") ReadMode) hClose
+    source <- bracket (openFile sourceFile ReadMode) hClose
                       (\h -> do c <- hGetContents h; putStr ("\nprogram file size: " ++ show (length c)); return c)
-    putStr ("\nCompiling program: " ++ ((splitOn "\n~\n" source) !! 0))
-    h <- openFile (outputDir ++ SEQ.index testFileSet i ++ ".out") WriteMode
-    hPutStr h (compileProgram ((splitOn "\n~\n" source) !! 1))
-    hClose h
+    putStr ("\nCompiling program " ++ ((splitOn "\n~\n" source) !! 0) ++ " from source file " ++ sourceFile)
+    bracket (openFile (outputDir ++ SEQ.index testFileSet i ++ ".out") WriteMode) hClose
+            (\h -> hPutStr h (compileProgram ((splitOn "\n~\n" source) !! 1))) 
     testSet (i + 1)
-
-showSymbolBindings :: [Symbol_binding] -> IO ()
-showSymbolBindings [] = return ()
-showSymbolBindings (x:xs) = do
-  putStr ("\n" ++ show x)
-  showSymbolBindings xs
 

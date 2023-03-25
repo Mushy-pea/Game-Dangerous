@@ -18,6 +18,7 @@ import CompressMap
 import OpenMap
 import HandleInput
 import PreprocessMap
+import CompileGPLC
 
 loadMap :: [Char] -> Int -> Int -> Int -> (Array (Int, Int, Int) Wall_grid, Array (Int, Int, Int) Floor_grid, Array (Int, Int, Int) (Int, [Int]))
 loadMap comp_map_text u_max v_max w_max =
@@ -57,6 +58,7 @@ handleInput game_state comp_map_text base_dir command
     h <- openFile (base_dir ++ command !! 2) WriteMode
     hPutStr h (encoded_wall_grid ++ encoded_floor_grid ++ template ++ encoded_obj_grid ++ encoded_sub_wall_grid ++ footer)
     hClose h
+  | head command == "CompileGPLC" = testSet 0
   | otherwise = do
       result <- applyCommand (fromJust game_state) command
       putStr ("\nresult: " ++ snd result)
