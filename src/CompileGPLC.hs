@@ -15,6 +15,7 @@ import Data.Char
 import Data.Maybe
 import qualified Data.Sequence as SEQ
 import BuildModel
+import HandleInput
 
 inputDir = "C:\\Users\\steve\\code\\GD\\GPLC-scripts-and-maps\\GPLC_Programs\\"
 
@@ -49,9 +50,18 @@ testFileSet = SEQ.fromList ["ActivateDefence",
                             "UnblockTeleporter",
                             "ZombieSmiley"]
 
-data Token = Token {column :: Int, content :: [Char]} deriving (Eq, Show)
+data Token = Token {line :: Int, column :: Int, content :: [Char], textColour :: [Char]} deriving (Eq, Show)
 
-defToken = Token {column = 0, content = []}
+instance Serialise_voxel Token where
+  toJSON (Just a) =
+    "{\n"
+    ++ "  line: " ++ show (line a) ++ ",\n"
+    ++ "  column: " ++ show (column a) ++ ",\n"
+    ++ "  content: " ++ show (content a) ++ ",\n"
+    ++ "  textColour: " ++ show (textColour a)
+    ++ "\n}"
+
+defToken = Token {line = 0, column = 0, content = [], textColour = []}
 
 -- The readRefKey and writeRefKey bind a symbolic reference to a value in GPLC source code to its in memory representation 
 -- at engine runtime.  They thereby allow for reference based argument passing to the engine functions that implement 
@@ -81,7 +91,7 @@ tokenise [] token_arr col i j = token_arr
 tokenise (x:xs) token_arr col i j
   | x == "\n" = tokenise xs token_arr 1 (i + 1) 0
   | otherwise = tokenise xs (token_arr // [((i, j), token_added)]) (col + length x + 1) i (j + 1)
-  where token_added = Token {column = col + col_correction, content = x}
+  where token_added = Token {line = 0, column = col + col_correction, content = x, textColour = []}
         col_correction = if i == 0 then 0
                          else 1
 
@@ -163,7 +173,7 @@ genSignalBlock token_arr i i_max size offset signal_block error_list
   where keyword = token_arr ! (i, 0)
         first_arg = token_arr ! (i, 1)
         first_arg_int = read (content first_arg)
-        j_size = snd (snd (bounds token_arr))
+        j_size = snd (snd (bounds token_arr)) + 1
         rows_to_jump = rowsToJump (first_arg_int + 1) j_size
         matched_keyword = matchKeyword (content keyword)
         first_arg_error = "\n(" ++ show (i + 1) ++ ", " ++ show (column first_arg) ++ "): \"--signal\" and \"pass_msg\" must be followed by an integer."
@@ -233,9 +243,9 @@ genCodeBlock token_arr bound_symbols i i_max code_block error_list
   where keyword = token_arr ! (i, 0)
         matched_keyword = fromJust (matchKeyword (content keyword))
         l_arg = read (content (token_arr ! (i, 1)))
-        j_max = snd (snd (bounds token_arr))
-        rows_to_jump = rowsToJump (l_arg + 1) j_max
-        read_msg = readMsg token_arr i 3 j_max 0 (l_arg - 2) SEQ.empty
+        j_size = snd (snd (bounds token_arr)) + 1
+        rows_to_jump = rowsToJump (l_arg + 1) j_size
+        read_msg = readMsg token_arr i 3 (j_size - 1) 0 (l_arg - 2) SEQ.empty
         interpreted_args = interpretArgs (arguments matched_keyword) token_arr bound_symbols i 1 SEQ.empty []
         interpreted_args_ = interpretArgs [RefRead] token_arr bound_symbols i 2 SEQ.empty []
         line_term = 536870912
@@ -246,6 +256,32 @@ genDataBlock :: [Symbol_binding] -> SEQ.Seq Int -> SEQ.Seq Int
 genDataBlock [] data_block = data_block SEQ.|> 536870912
 genDataBlock (x:xs) data_block = genDataBlock xs (data_block SEQ.|> initialValue x)
 
+-- These two functions annotate the source code with text colours.
+mapColour :: Instruction_arg_type -> [Char]
+mapColour RefRead = "Green"
+mapColour RefWrite = "Red"
+mapColour Const = "White"
+
+addColour :: Array (Int, Int) Token -> Int -> Int -> [((Int, Int), Token)] -> [((Int, Int), Token)]
+addColour token_arr i i_max token_arr_upd
+  | i > i_max = token_arr_upd
+  | isNothing matched_keyword = addColour token_arr (i + 1) i_max token_arr_upd
+  | otherwise = addColour token_arr (i + 1) i_max (update ++ token_arr_upd)
+  where matched_keyword = matchKeyword (content (token_arr ! (i, 0)))
+        target = \j -> token_arr ! (i, j)
+        colour_scheme = map mapColour (arguments (fromJust matched_keyword))
+        update = ((i, 0), (target 0) {textColour = "Blue"})
+                 : [((i, j), (target j) {textColour = colour_scheme !! (j - 1)}) | j <- [1..instructionLength (fromJust matched_keyword) - 1]]
+
+-- This function serialises the annotated source code to JSON for sending to the client.
+serialiseCode :: Array (Int, Int) Token -> Int -> Int -> Int -> Int -> [Char] -> [Char]
+serialiseCode token_arr i j i_max j_max output
+  | i > i_max = take ((length output) - 2) output
+  | j > j_max = serialiseCode token_arr (i + 1) 0 i_max j_max output
+  | token == defToken = serialiseCode token_arr (i + 1) 0 i_max j_max output
+  | otherwise = serialiseCode token_arr i (j + 1) i_max j_max (toJSON (Just (token {line = i + 1})) ++ ",\n" ++ output)
+  where token = token_arr ! (i, j)
+
 showTestOutput :: SEQ.Seq Int -> [Char] -> [Char]
 showTestOutput SEQ.Empty output = reverse output
 showTestOutput (x0 SEQ.:<| x1 SEQ.:<| xs) output
@@ -254,7 +290,7 @@ showTestOutput (x0 SEQ.:<| x1 SEQ.:<| xs) output
   | otherwise = showTestOutput (x1 SEQ.:<| xs) (" " ++ reverse (show x0) ++ output)
 showTestOutput (x0 SEQ.:<| xs) output = showTestOutput xs (" \n " ++ output)
 
-compileProgram :: [Char] -> [Char]
+compileProgram :: [Char] -> ([Char], Array (Int, Int) Token)
 compileProgram source =
   let split_contents = splitOn " " source
       array_dim = detArrayDim split_contents 0 0 0
@@ -268,25 +304,37 @@ compileProgram source =
       code_block = genCodeBlock token_arr (map add_write_ref_key (fst__ bound_symbols)) (snd__ bound_symbols) (fst__ array_dim) SEQ.empty []
       data_block = genDataBlock (fst__ bound_symbols) SEQ.empty
       show_data_block = showTestOutput data_block []
+      colour_update = addColour token_arr 0 (fst__ array_dim) []
   in
   if third_ array_dim /= [] then error (third_ array_dim)
   else if third_ bound_symbols /= [] then error ("\n" ++ show (third_ bound_symbols))
   else if snd signal_block /= [] then error ("\n" ++ show (snd signal_block))
   else if snd code_block /= [] then error ("\n" ++ show (snd code_block))
-  else showTestOutput (fst signal_block) []
+  else (showTestOutput (fst signal_block) []
        ++ showTestOutput (fst code_block) []
-       ++ take ((length show_data_block) - 3) show_data_block
+       ++ take ((length show_data_block) - 3) show_data_block, token_arr // colour_update)
 
 testSet :: Int -> IO ()
 testSet i =
-  let sourceFile = inputDir ++ SEQ.index testFileSet i ++ ".gplc"
+  let source_file = inputDir ++ SEQ.index testFileSet i ++ ".gplc"
   in do
   if i > 27 then return ()
   else do
-    source <- bracket (openFile sourceFile ReadMode) hClose
+    source <- bracket (openFile source_file ReadMode) hClose
                       (\h -> do c <- hGetContents h; putStr ("\nprogram file size: " ++ show (length c)); return c)
-    putStr ("\nCompiling program " ++ ((splitOn "\n~\n" source) !! 0) ++ " from source file " ++ sourceFile)
-    bracket (openFile (outputDir ++ SEQ.index testFileSet i ++ ".out") WriteMode) hClose
-            (\h -> hPutStr h (compileProgram ((splitOn "\n~\n" source) !! 1))) 
+    putStr ("\nCompiling program " ++ ((splitOn "\n~\n" source) !! 0) ++ " from source file " ++ source_file)
+    deployResult source (outputDir ++ SEQ.index testFileSet i)
     testSet (i + 1)
+
+deployResult :: [Char] -> [Char] -> IO ()
+deployResult source output_path =
+  let result = compileProgram ((splitOn "\n~\n" source) !! 1)
+      bytecode = fst result
+      token_arr = snd result
+      annotated_code = "[\n" ++ serialiseCode token_arr 0 0 (fst (snd (bounds token_arr))) (snd (snd (bounds token_arr))) [] ++ "\n]"
+  in do
+  bracket (openFile (output_path ++ ".out") WriteMode) hClose
+          (\h -> hPutStr h bytecode)
+  bracket (openFile (output_path ++ ".txt") WriteMode) hClose
+          (\h -> hPutStr h annotated_code)
 
