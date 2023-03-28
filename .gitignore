@@ -1,6 +1,7 @@
 .stack-work/
 dist/
-OpenAL32.dll
-freeglut.dll
-backup_process.bat
-backup_process2.bat
+*.dll
+*.bat
+*.hi
+*.o
+

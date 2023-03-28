@@ -55,10 +55,10 @@ data Token = Token {line :: Int, column :: Int, content :: [Char], textColour ::
 instance Serialise_voxel Token where
   toJSON (Just a) =
     "{\n"
-    ++ "  line: " ++ show (line a) ++ ",\n"
-    ++ "  column: " ++ show (column a) ++ ",\n"
-    ++ "  content: " ++ show (content a) ++ ",\n"
-    ++ "  textColour: " ++ show (textColour a)
+    ++ "  \"line\": " ++ show (line a) ++ ",\n"
+    ++ "  \"column\": " ++ show (column a) ++ ",\n"
+    ++ "  \"content\": " ++ show (content a) ++ ",\n"
+    ++ "  \"textColour\": " ++ show (textColour a)
     ++ "\n}"
 
 defToken = Token {line = 0, column = 0, content = [], textColour = []}
@@ -335,6 +335,6 @@ deployResult source output_path =
   in do
   bracket (openFile (output_path ++ ".out") WriteMode) hClose
           (\h -> hPutStr h bytecode)
-  bracket (openFile (output_path ++ ".txt") WriteMode) hClose
+  bracket (openFile (output_path ++ ".json") WriteMode) hClose
           (\h -> hPutStr h annotated_code)
 
