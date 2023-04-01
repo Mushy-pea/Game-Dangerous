@@ -43,14 +43,14 @@ filterSigQ (x0:x1:x2:x3:xs) (i0, i1, i2) (i3, i4, i5) =
   if (x1, x2, x3) == (i0, i1, i2) || (x1, x2, x3) == (i3, i4, i5) then filterSigQ xs (i0, i1, i2) (i3, i4, i5)
   else [x0, x1, x2, x3] ++ filterSigQ xs (i0, i1, i2) (i3, i4, i5)
 
-subI :: Int -> Array (Int, Int, Int) (Int, [Int]) -> (Int, Int, Int) -> (Int, Int, Int) -> Play_state1 -> ((Int, [Int]), Play_state1)
+subI :: Int -> Array (Int, Int, Int) Obj_grid -> (Int, Int, Int) -> (Int, Int, Int) -> Play_state1 -> (Obj_grid, Play_state1)
 subI location arr (i0, i1, i2) (i3, i4, i5) s1 =
   let bd = bounds arr
       error_string0 = "\nThe engine will be allowed to continue due to a designed exception for when the error arises from project_update."
       error_string1 = "\n\nError in array index.  location: " ++ show location ++ " index: " ++ show (i0, i1, i2) ++ " bounds: " ++ show bd ++ error_string0
   in
   if i0 < fst__ (fst bd) || i0 > fst__ (snd bd) || i1 < snd__ (fst bd) || i1 > snd__ (snd bd) || i2 < third_ (fst bd) || i2 > third_ (snd bd) then
-    unsafePerformIO (putStr error_string1 >> return ((2, []), s1 {next_sig_q = filterSigQ (next_sig_q s1) (i0, i1, i2) (i3, i4, i5)}))
+    unsafePerformIO (putStr error_string1 >> return (Obj_grid {objType = 2, program = [], programName = []}, s1 {next_sig_q = filterSigQ (next_sig_q s1) (i0, i1, i2) (i3, i4, i5)}))
   else (arr ! (i0, i1, i2), s1)
 
 -- Encodings of set piece on screen messages used in the tile display system.
@@ -205,7 +205,7 @@ chgGrid mode (i0, i1, i2) (i3, i4, i5) w_grid def w_grid_upd d_list
         boundsCheck0 = boundsCheck w_grid (coerce dest0 :: (GPLC_int, GPLC_int, GPLC_int)) "chg_grid(0)"
         boundsCheck1 = boundsCheck w_grid (coerce dest1 :: (GPLC_int, GPLC_int, GPLC_int)) "chg_grid(1)"
 
-chgGrid_ :: GPLC_flag -> (GPLC_int, GPLC_int, GPLC_int) -> (GPLC_int, GPLC_int, GPLC_int) -> Array (Int, Int, Int) (Int, [Int])
+chgGrid_ :: GPLC_flag -> (GPLC_int, GPLC_int, GPLC_int) -> (GPLC_int, GPLC_int, GPLC_int) -> Array (Int, Int, Int) Obj_grid
             ->[((Int, Int, Int), (Int, [(Int, Int)]))] -> [Int] -> [((Int, Int, Int), (Int, [(Int, Int)]))]
 chgGrid_ mode (i0, i1, i2) (i3, i4, i5) obj_grid obj_grid_upd d_list
   | not (isNothing boundsCheck0) = error (fromJust boundsCheck0)
@@ -228,13 +228,13 @@ chgFloor state_val abs v (i0, i1, i2) f_grid d_list
   where index = ((d_list, 162) !! i0, (d_list, 163) !! i1, (d_list, 164) !! i2)
         boundsCheck_ = boundsCheck f_grid (coerce index :: (GPLC_int, GPLC_int, GPLC_int)) "chg_floor"
 
-chgValue :: GPLC_int -> GPLC_flag -> GPLC_int -> (GPLC_int, GPLC_int, GPLC_int) -> [Int] -> Array (Int, Int, Int) (Int, [Int])
+chgValue :: GPLC_int -> GPLC_flag -> GPLC_int -> (GPLC_int, GPLC_int, GPLC_int) -> [Int] -> Array (Int, Int, Int) Obj_grid
             -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> [((Int, Int, Int), (Int, [(Int, Int)]))]
 chgValue (GPLC_int val) abs (GPLC_int v) (i0, i1, i2) d_list obj_grid obj_grid_upd
   | not (isNothing boundsCheck_) = error (fromJust boundsCheck_)
-  | val == 536870910 = (((d_list, 172) !! i0, (d_list, 173) !! i1, (d_list, 174) !! i2), (fst target, [(0, v)])) : obj_grid_upd
+  | val == 536870910 = (((d_list, 172) !! i0, (d_list, 173) !! i1, (d_list, 174) !! i2), (objType target, [(0, v)])) : obj_grid_upd
   | otherwise = (((d_list, 175) !! i0, (d_list, 176) !! i1, (d_list, 177) !! i2),
-                 (fst target, [(val, upd ((d_list, 178) !! abs) (((snd target), 179) !! val) ((d_list, 180) !! v))])) : obj_grid_upd
+                 (objType target, [(val, upd ((d_list, 178) !! abs) (((program target), 179) !! val) ((d_list, 180) !! v))])) : obj_grid_upd
   where index = ((d_list, 169) !! i0, (d_list, 170) !! i1, (d_list, 171) !! i2)
         target = obj_grid ! index
         boundsCheck_ = boundsCheck obj_grid (coerce index :: (GPLC_int, GPLC_int, GPLC_int)) "chg_value"
@@ -259,11 +259,11 @@ chgPs1 state_val abs v d_list s1
   | (d_list, 223) !! state_val == 7 = s1 {difficulty = ("Ultra danger.", 10, 15, 20)}
   | otherwise = s1 {difficulty = ("Health and safety nightmare!", 15, 20, 25)}
 
-copyPs0 :: GPLC_int -> (GPLC_int, GPLC_int, GPLC_int) -> Play_state0 -> Array (Int, Int, Int) (Int, [Int]) -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> [Int]
+copyPs0 :: GPLC_int -> (GPLC_int, GPLC_int, GPLC_int) -> Play_state0 -> Array (Int, Int, Int) Obj_grid -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> [Int]
            -> [((Int, Int, Int), (Int, [(Int, Int)]))]
 copyPs0 (GPLC_int offset) (i0, i1, i2) s0 obj_grid obj_grid_upd d_list
   | not (isNothing boundsCheck_) = error (fromJust boundsCheck_)
-  | otherwise = (((d_list, 230) !! i0, (d_list, 231) !! i1, (d_list, 232) !! i2), (fst target, [v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10])) : obj_grid_upd
+  | otherwise = (((d_list, 230) !! i0, (d_list, 231) !! i1, (d_list, 232) !! i2), (objType target, [v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10])) : obj_grid_upd
   where index = ((d_list, 224) !! i0, (d_list, 225) !! i1, (d_list, 226) !! i2)
         target = obj_grid ! index
         boundsCheck_ = boundsCheck obj_grid (coerce index :: (GPLC_int, GPLC_int, GPLC_int)) "copy_ps0"
@@ -279,11 +279,11 @@ copyPs0 (GPLC_int offset) (i0, i1, i2) s0 obj_grid obj_grid_upd d_list
         v9 = (offset + 9, torch_t0 s0)
         v10 = (offset + 10, torch_t_limit s0)
 
-copyPs1 :: GPLC_int -> (GPLC_int, GPLC_int, GPLC_int) -> Play_state1 -> Array (Int, Int, Int) (Int, [Int]) -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> [Int]
+copyPs1 :: GPLC_int -> (GPLC_int, GPLC_int, GPLC_int) -> Play_state1 -> Array (Int, Int, Int) Obj_grid -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> [Int]
            -> [((Int, Int, Int), (Int, [(Int, Int)]))]
 copyPs1 (GPLC_int offset) (i0, i1, i2) s1 obj_grid obj_grid_upd d_list
   | not (isNothing boundsCheck_) = error (fromJust boundsCheck_)
-  | otherwise = (((d_list, 236) !! i0, (d_list, 237) !! i1, (d_list, 238) !! i2), (fst target, [v0, v1, v2, v3, v4, v5, v6, v7, v8, v9])) : obj_grid_upd
+  | otherwise = (((d_list, 236) !! i0, (d_list, 237) !! i1, (d_list, 238) !! i2), (objType target, [v0, v1, v2, v3, v4, v5, v6, v7, v8, v9])) : obj_grid_upd
   where index = ((d_list, 233) !! i0, (d_list, 234) !! i1, (d_list, 235) !! i2)
         target = obj_grid ! index
         boundsCheck_ = boundsCheck obj_grid (coerce index :: (GPLC_int, GPLC_int, GPLC_int)) "copy_ps1"
@@ -298,20 +298,20 @@ copyPs1 (GPLC_int offset) (i0, i1, i2) s1 obj_grid obj_grid_upd d_list
         v8 = (offset + 8, ((keys s1), 243) !! (4 :: Int))
         v9 = (offset + 9, ((keys s1), 244) !! (5 :: Int))
 
-objType :: Int -> Int -> Int -> Array (Int, Int, Int) (Int, [Int]) -> Int
-objType w u v obj_grid =
+objType_ :: Int -> Int -> Int -> Array (Int, Int, Int) Obj_grid -> Int
+objType_ w u v obj_grid =
   if u < 0 || v < 0 then 2
   else if edgeCheck u 0 (bounds obj_grid) == False then 2
   else if edgeCheck v 1 (bounds obj_grid) == False then 2
-  else fst (obj_grid ! (w, u, v))
+  else objType (obj_grid ! (w, u, v))
 
 copyLstate :: GPLC_int -> (GPLC_int, GPLC_int, GPLC_int) -> (GPLC_int, GPLC_int, GPLC_int) -> Array (Int, Int, Int) Wall_grid
-              -> Array (Int, Int, Int) (Int, [Int]) -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> [Int] -> [((Int, Int, Int), (Int, [(Int, Int)]))]
+              -> Array (Int, Int, Int) Obj_grid -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> [Int] -> [((Int, Int, Int), (Int, [(Int, Int)]))]
 copyLstate (GPLC_int offset) (i0, i1, i2) (i3, i4, i5) w_grid obj_grid obj_grid_upd d_list
   | not (isNothing boundsCheck_) = error (fromJust boundsCheck_)
   | otherwise =
     (((d_list, 267) !! i0, (d_list, 268) !! i1, (d_list, 269) !! i2),
-     (fst target, [c0, c1, c2, c3, c4, c5, c6, c7, c8, w_conf_u1, w_conf_u2, w_conf_v1, w_conf_v2])) : obj_grid_upd
+     (objType target, [c0, c1, c2, c3, c4, c5, c6, c7, c8, w_conf_u1, w_conf_u2, w_conf_v1, w_conf_v2])) : obj_grid_upd
   where index = ((d_list, 264) !! i0, (d_list, 265) !! i1, (d_list, 266) !! i2)
         target = obj_grid ! index
         boundsCheck_ = boundsCheck obj_grid (coerce index :: (GPLC_int, GPLC_int, GPLC_int)) "copy_lstate"
@@ -326,23 +326,22 @@ copyLstate (GPLC_int offset) (i0, i1, i2) (i3, i4, i5) w_grid obj_grid obj_grid_
         w_conf_u2 = (offset + 10, bool_to_int (u2 (w_grid ! ((d_list, 255) !! i3, (d_list, 256) !! i4, (d_list, 257) !! i5))))
         w_conf_v1 = (offset + 11, bool_to_int (v1 (w_grid ! ((d_list, 258) !! i3, (d_list, 259) !! i4, (d_list, 260) !! i5))))
         w_conf_v2 = (offset + 12, bool_to_int (v2 (w_grid ! ((d_list, 261) !! i3, (d_list, 262) !! i4, (d_list, 263) !! i5))))
-        c0 = (offset, objType w u v obj_grid)
-        c1 = (offset + 1, objType w u' v obj_grid)
-        c2 = (offset + 2, objType w u'' v obj_grid)
-        c3 = (offset + 3, objType w u v' obj_grid)
-        c4 = (offset + 4, objType w u v'' obj_grid)
-        c5 = (offset + 5, objType w u' v' obj_grid)
-        c6 = (offset + 6, objType w u'' v' obj_grid)
-        c7 = (offset + 7, objType w u' v'' obj_grid)
-        c8 = (offset + 8, objType w u'' v'' obj_grid)
+        c0 = (offset, objType_ w u v obj_grid)
+        c1 = (offset + 1, objType_ w u' v obj_grid)
+        c2 = (offset + 2, objType_ w u'' v obj_grid)
+        c3 = (offset + 3, objType_ w u v' obj_grid)
+        c4 = (offset + 4, objType_ w u v'' obj_grid)
+        c5 = (offset + 5, objType_ w u' v' obj_grid)
+        c6 = (offset + 6, objType_ w u'' v' obj_grid)
+        c7 = (offset + 7, objType_ w u' v'' obj_grid)
+        c8 = (offset + 8, objType_ w u'' v'' obj_grid)
 
-chgObjType :: GPLC_int -> (GPLC_int, GPLC_int, GPLC_int) -> [Int] -> Array (Int, Int, Int) (Int, [Int]) -> [((Int, Int, Int), (Int, [(Int, Int)]))]
+chgObjType :: GPLC_int -> (GPLC_int, GPLC_int, GPLC_int) -> [Int] -> Array (Int, Int, Int) Obj_grid -> [((Int, Int, Int), (Int, [(Int, Int)]))]
               -> [((Int, Int, Int), (Int, [(Int, Int)]))]
 chgObjType v (i0, i1, i2) d_list obj_grid obj_grid_upd
   | not (isNothing boundsCheck_) = error (fromJust boundsCheck_)
   | otherwise = (((d_list, 273) !! i0, (d_list, 274) !! i1, (d_list, 275) !! i2), ((d_list, 276) !! v, [])) : obj_grid_upd
   where index = ((d_list, 270) !! i0, (d_list, 271) !! i1, (d_list, 272) !! i2)
-        target = obj_grid ! index
         boundsCheck_ = boundsCheck obj_grid (coerce index :: (GPLC_int, GPLC_int, GPLC_int)) "chg_obj_type"
 
 passMsg :: GPLC_int -> [Int] -> Play_state1 -> [Int] -> ([Int], Play_state1)
@@ -350,31 +349,29 @@ passMsg len msg s1 d_list =
   (drop ((d_list, 277) !! len) msg,
    s1 {message = message s1 ++ [head msg] ++ [((d_list, 278) !! len) - 1] ++ take (((d_list, 279) !! len) - 1) (tail msg)})
 
-sendSignal :: Int -> GPLC_int -> (GPLC_int, GPLC_int, GPLC_int) -> Array (Int, Int, Int) (Int, [Int]) -> Play_state1 -> [Int]
-              -> (Array (Int, Int, Int) (Int, [Int]), Play_state1)
+sendSignal :: Int -> GPLC_int -> (GPLC_int, GPLC_int, GPLC_int) -> Array (Int, Int, Int) Obj_grid -> Play_state1 -> [Int]
+              -> (Array (Int, Int, Int) Obj_grid, Play_state1)
 sendSignal mode (GPLC_int sig) (GPLC_int i0, GPLC_int i1, GPLC_int i2) obj_grid s1 d_list
   | mode == 0 =
     if not (isNothing boundsCheck0) then error (fromJust boundsCheck0)
     else (obj_grid, s1 {next_sig_q = [(d_list, 283) !! sig, (d_list, 284) !! i0, (d_list, 285) !! i1, (d_list, 286) !! i2] ++ next_sig_q s1})
   | mode == 1 =
     if not (isNothing boundsCheck1) then error (fromJust boundsCheck1)
-    else (obj_grid // [(index1, (obj_type, (head prog) : sig : drop 2 prog))], s1)
+    else (obj_grid // [(index1, obj {program = (head prog) : sig : drop 2 prog})], s1)
   where index0 = ((d_list, 655) !! i0, (d_list, 656) !! i1, (d_list, 657) !! i2)
         index1 = (i0, i1, i2)
         boundsCheck0 = boundsCheck obj_grid (coerce index0 :: (GPLC_int, GPLC_int, GPLC_int)) ("send_signal(0)")
         boundsCheck1 = boundsCheck obj_grid (coerce index1 :: (GPLC_int, GPLC_int, GPLC_int)) ("send_signal(1)")
         obj = obj_grid ! index1
-        obj_type = fst obj
-        prog = snd obj  
+        prog = program obj
 
 projectInit :: GPLC_float -> GPLC_float -> GPLC_float -> GPLC_int -> GPLC_float -> (GPLC_int, GPLC_int, GPLC_int) -> (GPLC_int, GPLC_int, GPLC_int) -> GPLC_int
-               -> GPLC_int -> Array (Int, Int, Int) (Int, [Int]) -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> [Int] -> UArray (Int, Int) Float
+               -> GPLC_int -> Array (Int, Int, Int) Obj_grid -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> [Int] -> UArray (Int, Int) Float
                -> [((Int, Int, Int), (Int, [(Int, Int)]))]
 projectInit (GPLC_float u) (GPLC_float v) (GPLC_float w) (GPLC_int a) (GPLC_float vel) (GPLC_int i0, GPLC_int i1, GPLC_int i2)
             (GPLC_int i3, GPLC_int i4, GPLC_int i5) (GPLC_int offset) (GPLC_int obj_flag) obj_grid obj_grid_upd d_list lookUp =
   let source = ((d_list, 288) !! i0, (d_list, 289) !! i1, (d_list, 290) !! i2)
       dest = ((d_list, 291) !! i3, (d_list, 292) !! i4, (d_list, 293) !! i5)
-      target = obj_grid ! source
       v0 = (offset, (d_list, 294) !! i3)
       v1 = (offset + 1, (d_list, 295) !! i4)
       v2 = (offset + 2, (d_list, 296) !! i5)
@@ -390,7 +387,7 @@ projectInit (GPLC_float u) (GPLC_float v) (GPLC_float w) (GPLC_int a) (GPLC_floa
   in (source, (-3, [])) : (dest, (-3, [v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11])) : obj_grid_upd
 
 -- This function tests if a projectile has collided with a wall, object or the player when it crosses into another voxel.
-detectProjectColl :: Int -> Int -> Int -> Int -> UArray Int Bool -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) (Int, [Int]) -> Play_state0 -> Int
+detectProjectColl :: Int -> Int -> Int -> Int -> UArray Int Bool -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Obj_grid -> Play_state0 -> Int
 detectProjectColl intersection w_block u_block' v_block' wall_struct w_grid obj_grid s0 =
   let no_collision = 0
       wall_collision = 1
@@ -398,13 +395,13 @@ detectProjectColl intersection w_block u_block' v_block' wall_struct w_grid obj_
       player_collision = 3
   in
   if wall_struct ! intersection == True then wall_collision
-  else if fst (obj_grid ! (w_block, u_block', v_block')) > 0 && fst (obj_grid ! (w_block, u_block', v_block')) < 4 then object_collision
+  else if objType (obj_grid ! (w_block, u_block', v_block')) > 0 && objType (obj_grid ! (w_block, u_block', v_block')) < 4 then object_collision
   else if (truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)) == (w_block, u_block', v_block') then player_collision
   else no_collision
 
 -- This function checks which voxel a projectile has crossed into and then calls detectProjectColl to test which kind of collision (if any)
 -- has occured as a result.
-projectUpdate1 :: Int -> Int -> Int -> Int -> Int -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) (Int, [Int]) -> Play_state0 -> Int
+projectUpdate1 :: Int -> Int -> Int -> Int -> Int -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Obj_grid -> Play_state0 -> Int
 projectUpdate1 w_block u_block v_block u_block' v_block' w_grid obj_grid s0 =
   let index = (w_block, u_block, v_block)
       wall_struct = array (0, 7) [(0, u2 (w_grid ! index)), (1, u2 (w_grid ! index)), (2, v2 (w_grid ! index)), (3, v2 (w_grid ! index))
@@ -422,7 +419,7 @@ projectUpdate1 w_block u_block v_block u_block' v_block' w_grid obj_grid s0 =
 -- This function is the entry point for the implementation of the project_update op - code.  The rest of the required logic
 -- is handled by the two functions above.
 projectUpdate0 :: GPLC_int -> GPLC_int -> (GPLC_int, GPLC_int, GPLC_int) -> Array (Int, Int, Int) Wall_grid -> [((Int, Int, Int), Wall_grid)]
-                  -> Array (Int, Int, Int) (Int, [Int]) -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> Play_state0 -> Play_state1 -> [Int]
+                  -> Array (Int, Int, Int) Obj_grid -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> Play_state0 -> Play_state1 -> [Int]
                   -> ([((Int, Int, Int), Wall_grid)], [((Int, Int, Int), (Int, [(Int, Int)]))], Play_state1)
 projectUpdate0 (GPLC_int p_state) (GPLC_int p_state') (GPLC_int i0, GPLC_int i1, GPLC_int i2) w_grid w_grid_upd obj_grid obj_grid_upd s0 s1 d_list =
   let location = ((d_list, 307) !! i0, (d_list, 308) !! i1, (d_list, 309) !! i2)
@@ -448,24 +445,24 @@ projectUpdate0 (GPLC_int p_state) (GPLC_int p_state') (GPLC_int i0, GPLC_int i1,
       collision = projectUpdate1 w_block_ u_block v_block u_block' v_block' w_grid obj_grid s0
       itf = \x -> intToFloat x
   in
-  if isNothing grid_i' == True then ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 1)])) : obj_grid_upd, s1)
+  if isNothing grid_i' == True then ((index, def_w_grid) : w_grid_upd, (location, (objType target, [(p_state' + 8, 1)])) : obj_grid_upd, s1)
   else if ident_ grid_i /= 128 then
-    (w_grid_upd, (location, (fst target, [(p_state' + 8, 2), (p_state' + 9, w_block_), (p_state' + 10, u_block), (p_state' + 11, v_block)])) : obj_grid_upd, s1)
+    (w_grid_upd, (location, (objType target, [(p_state' + 8, 2), (p_state' + 9, w_block_), (p_state' + 10, u_block), (p_state' + 11, v_block)])) : obj_grid_upd, s1)
   else if u_block' == u_block && v_block' == v_block then
     ((index, (w_grid ! index) {obj = Just (grid_i {u__ = u__ grid_i + intToFloat vel_u, v__ = v__ grid_i + intToFloat vel_v})}) : w_grid_upd,
-     (location, (fst target, [(p_state', u'), (p_state' + 1, v')])) : obj_grid_upd, s1_ (w_block_, u_block, v_block))
+     (location, (objType target, [(p_state', u'), (p_state' + 1, v')])) : obj_grid_upd, s1_ (w_block_, u_block, v_block))
   else
-    if collision == 1 then ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 1)])) : obj_grid_upd, s1)
+    if collision == 1 then ((index, def_w_grid) : w_grid_upd, (location, (objType target, [(p_state' + 8, 1)])) : obj_grid_upd, s1)
     else if collision == 2 then
       ((index, def_w_grid) : w_grid_upd,
-       (location, (fst target, [(p_state' + 8, 2), (p_state' + 9, w_block_), (p_state' + 10, u_block'), (p_state' + 11, v_block')])) : obj_grid_upd,
+       (location, (objType target, [(p_state' + 8, 2), (p_state' + 9, w_block_), (p_state' + 10, u_block'), (p_state' + 11, v_block')])) : obj_grid_upd,
        s1_ (w_block_, u_block, v_block'))
     else if collision == 3 && (d_list, 315) !! i0 /= 0 then
       if health s1 - detDamage (difficulty s1) s0 <= 0 then (w_grid_upd, obj_grid_upd, s1 {health = 0, state_chg = 1, message = 0 : msg27})
-      else ((index, def_w_grid) : w_grid_upd, (location, (fst target, [(p_state' + 8, 1)])) : obj_grid_upd,
+      else ((index, def_w_grid) : w_grid_upd, (location, (objType target, [(p_state' + 8, 1)])) : obj_grid_upd,
             s1 {health = health s1 - detDamage (difficulty s1) s0, state_chg = 1, message = 0 : msg25})
     else ([(index', (w_grid ! index) {obj = Just (grid_i {u__ = u__ grid_i + itf vel_u, v__ = v__ grid_i + itf vel_v})}), (index, def_w_grid)] ++ w_grid_upd,
-          (location, (fst target, [(p_state', u'), (p_state' + 1, v')])) : obj_grid_upd, s1)
+          (location, (objType target, [(p_state', u'), (p_state' + 1, v')])) : obj_grid_upd, s1)
 
 -- Called from project_update, npcMove and npc_damage.  Used to determine the damage taken by the player and non - player characters from adverse events.
 detDamage :: ([Char], Int, Int, Int) -> Play_state0 -> Int
@@ -474,14 +471,14 @@ detDamage (d, low, med, high) s0 =
   else if (prob_seq s0) ! (mod (fst__ (gameClock s0)) 240) > 70 then high
   else med
 
-binaryDice :: GPLC_int -> GPLC_int -> (GPLC_int, GPLC_int, GPLC_int) -> GPLC_int -> Play_state0 -> Array (Int, Int, Int) (Int, [Int])
+binaryDice :: GPLC_int -> GPLC_int -> (GPLC_int, GPLC_int, GPLC_int) -> GPLC_int -> Play_state0 -> Array (Int, Int, Int) Obj_grid
               -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> [Int] -> [((Int, Int, Int), (Int, [(Int, Int)]))]
 binaryDice (GPLC_int prob) (GPLC_int diff) (GPLC_int i0, GPLC_int i1, GPLC_int i2) (GPLC_int offset) s0 obj_grid obj_grid_upd d_list =
   let target = obj_grid ! ((d_list, 323) !! i0, (d_list, 324) !! i1, (d_list, 325) !! i2)
   in
   if (prob_seq s0) ! (mod (fst__ (gameClock s0) + ((d_list, 326) !! diff)) 240) < (d_list, 327) !! prob then
-    (((d_list, 328) !! i0, (d_list, 329) !! i1, (d_list, 330) !! i2), (fst target, [(offset, 1)])) : obj_grid_upd
-  else (((d_list, 331) !! i0, (d_list, 332) !! i1, (d_list, 333) !! i2), (fst target, [(offset, 0)])) : obj_grid_upd
+    (((d_list, 328) !! i0, (d_list, 329) !! i1, (d_list, 330) !! i2), (objType target, [(offset, 1)])) : obj_grid_upd
+  else (((d_list, 331) !! i0, (d_list, 332) !! i1, (d_list, 333) !! i2), (objType target, [(offset, 0)])) : obj_grid_upd
 
 binaryDice_ :: Int -> Play_state0 -> Bool
 binaryDice_ prob s0 =
@@ -522,7 +519,7 @@ detRandTarget s0 u_bound v_bound =
 
 -- The NPC path finding is based around line of sight checks, which use the Obj_grid ( (Int, [Int]) ) instance of the ray tracer.
 chkLineSight :: Int -> Int -> Int -> Int -> Int -> (Float, Float) -> Int -> Int -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid
-                -> Array (Int, Int, Int) (Int, [Int]) -> UArray (Int, Int) Float -> Int
+                -> Array (Int, Int, Int) Obj_grid -> UArray (Int, Int) Float -> Int
 chkLineSight mode a w_block u_block v_block (fg_u, fg_v) target_u target_v w_grid f_grid obj_grid lookUp =
   let a' = procAngle a
   in
@@ -548,7 +545,7 @@ npc_dir_remap (-8) = 7
 
 -- Determine an alternative viable direction if an NPC is blocked from following its primary choice of direction.
 anotherDir :: Bool -> [Int] -> Int -> Int -> Int -> Int -> (Float, Float) -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid
-              -> Array (Int, Int, Int) (Int, [Int]) -> UArray (Int, Int) Float -> Play_state0 -> Int
+              -> Array (Int, Int, Int) Obj_grid -> UArray (Int, Int) Float -> Play_state0 -> Int
 anotherDir shift_flag [] c w_block u_block v_block (fg_u, fg_v) w_grid f_grid obj_grid lookUp s0 = 0
 anotherDir shift_flag poss_dirs c w_block u_block v_block (fg_u, fg_v) w_grid f_grid obj_grid lookUp s0 =
   let choice = (poss_dirs, 351) !! (mod ((prob_seq s0) ! (mod (fst__ (gameClock s0) + c) 240)) c)
@@ -577,7 +574,7 @@ cpede_reverse 7 = 3
 
 -- This function contains the decision logic specific to the type 2 (centipede) behavioural model and is called from the more general npcDecision function.
 cpedeDecision :: Int -> Int -> Int -> Int -> Int -> Int -> Int -> Int -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid
-                 -> Array (Int, Int, Int) (Int, [Int]) -> Play_state0 -> Play_state1 -> UArray (Int, Int) Float -> (Int, Bool)
+                 -> Array (Int, Int, Int) Obj_grid -> Play_state0 -> Play_state1 -> UArray (Int, Int) Float -> (Int, Bool)
 cpedeDecision 0 choice i target_u target_v w u v w_grid f_grid obj_grid s0 s1 lookUp =
   let char_state = (npc_states s1) ! i
   in
@@ -661,7 +658,7 @@ s1' s1 d_list finalAppr' direction' lastDir' fireball_state' ticks_left0' ticks_
       target_v' = fromMaybe (target_v' char_state) target_v''})]}
 
 npcDecision :: Int -> Int -> GPLC_int -> Int -> Int -> Int -> [Int] -> [Int] -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid
-               -> Array (Int, Int, Int) (Int, [Int]) -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> Play_state0 -> Play_state1 -> UArray (Int, Int) Float
+               -> Array (Int, Int, Int) Obj_grid -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> Play_state0 -> Play_state1 -> UArray (Int, Int) Float
                -> ([((Int, Int, Int), (Int, [(Int, Int)]))], Play_state1)
 npcDecision 0 flag (GPLC_int offset) target_w target_u target_v d_list (w:u:v:xs) w_grid f_grid obj_grid obj_grid_upd s0 s1 lookUp =
   let char_state = (npc_states s1) ! ((d_list, 352) !! (8 :: Int))
@@ -707,7 +704,6 @@ npcDecision 2 flag (GPLC_int offset) target_w target_u target_v d_list (w:u:v:xs
       fg_pos = fg_position char_state
       a = vectorToAngle (((fromIntegral target_u) + 0.5) - snd__ fg_pos) (((fromIntegral target_v) + 0.5) - third_ fg_pos)
       qa = quantiseAngle a
-      prog = obj_grid ! (w, u, v)
       line_sight0 = chkLineSight 2 (fst qa) w u v (snd__ (fg_position char_state), third_ (fg_position char_state)) target_u target_v w_grid f_grid obj_grid
                                  lookUp
       line_sight1 = chkLineSight 3 (fst qa) w u v (snd__ (fg_position char_state), third_ (fg_position char_state)) target_u target_v w_grid f_grid obj_grid
@@ -737,7 +733,7 @@ npcDecision 3 flag (GPLC_int offset) target_w target_u target_v d_list (w:u:v:xs
   in
   if snd choice then
     if (prob_seq s0) ! (mod (fst__ (gameClock s0)) 240) < fire_prob char_state then
-      (((w, u, v), (fst prog, [(offset, 1), (offset + 1, flToInt (fst__ fg_pos)), (offset + 2, flToInt (snd__ fg_pos)), (offset + 3, flToInt (third_ fg_pos)), (offset + 4, npcDirTable False (fst choice))])) : obj_grid_upd,
+      (((w, u, v), (objType prog, [(offset, 1), (offset + 1, flToInt (fst__ fg_pos)), (offset + 2, flToInt (snd__ fg_pos)), (offset + 3, flToInt (third_ fg_pos)), (offset + 4, npcDirTable False (fst choice))])) : obj_grid_upd,
        s1' s1 d_list n (j (fst choice)) n n n n n n n)
     else (obj_grid_upd, s1' s1 d_list n (j (fst choice)) n n n n n n n)
   else (obj_grid_upd, s1' s1 d_list n (j (fst choice)) n n n n n n n)
@@ -815,7 +811,7 @@ s1'' s1 d_list dir_vector' dir_list' fg_position' ticks_left0' fireball_state' n
       direction = fromMaybe (direction char_state) direction'})], next_sig_q = fromMaybe (next_sig_q s1) next_sig_q'}
 
 npcMove :: GPLC_int -> [Int] -> [Int] -> Array (Int, Int, Int) Wall_grid -> [((Int, Int, Int), Wall_grid)] -> Array (Int, Int, Int) Floor_grid
-           -> Array (Int, Int, Int) (Int, [Int]) -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> Play_state0 -> Play_state1 -> UArray (Int, Int) Float
+           -> Array (Int, Int, Int) Obj_grid -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> Play_state0 -> Play_state1 -> UArray (Int, Int) Float
            -> ([((Int, Int, Int), Wall_grid)], [((Int, Int, Int), (Int, [(Int, Int)]))], Play_state1)
 npcMove (GPLC_int offset) d_list (w:u:v:w1:u1:v1:blocks) w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp =
   let char_state = (npc_states s1) ! ((d_list, 374) !! (8 :: Int))
@@ -827,7 +823,7 @@ npcMove (GPLC_int offset) d_list (w:u:v:w1:u1:v1:blocks) w_grid w_grid_upd f_gri
       v'' = \x -> if x == 0 then snd (local_up_ramp (f_grid ! (w, div u 2, div v 2))) * 2
                   else snd (local_down_ramp (f_grid ! (w, div u 2, div v 2))) * 2
       prog = obj_grid ! (w, u, v)
-      prog' = \x y -> (fst prog, take offset (snd prog) ++ [x, y] ++ drop (offset + 2) (snd prog))
+      prog' = \x y -> (objType prog, take offset (program prog) ++ [x, y] ++ drop (offset + 2) (program prog))
       ramp_fill' = \dw -> last (rampFill (w + dw) u v (direction char_state) (-2, [(offset, 0)]) (surface (f_grid ! (w, div u 2, div v 2))))
       dir_vector' = detDirVector (lastDir char_state) (speed char_state) lookUp
       ramp_climb_ = rampClimb (direction char_state) (41 - ticks_left0 char_state) fgp
@@ -881,13 +877,13 @@ npcMove (GPLC_int offset) d_list (w:u:v:w1:u1:v1:blocks) w_grid w_grid_upd f_gri
     else if direction char_state < -4 then
       if (w + 1, (conv_ramp_fill0, 383) !! (1 :: Int), (conv_ramp_fill0, 384) !! (2 :: Int)) == (truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)) then
         (w_grid_upd, obj_grid_upd, s1 {next_sig_q = [129, w, u, v] ++ next_sig_q s1})
-      else if fst (obj_grid ! (w + 1, (conv_ramp_fill0, 385) !! (1 :: Int), (conv_ramp_fill0, 386) !! (2 :: Int))) > 0 then
+      else if objType (obj_grid ! (w + 1, (conv_ramp_fill0, 385) !! (1 :: Int), (conv_ramp_fill0, 386) !! (2 :: Int))) > 0 then
         (w_grid_upd, obj_grid_upd, s1 {next_sig_q = [129, w, u, v] ++ next_sig_q s1})
       else (w_grid'4 (-1) ++ w_grid_upd, obj_grid'3 ++ obj_grid_upd, s1_4)
     else
       if (w, (conv_ramp_fill1, 388) !! (1 :: Int), (conv_ramp_fill1, 389) !! (2 :: Int)) == (truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)) then
         (w_grid_upd, obj_grid_upd, s1 {next_sig_q = [129, w, u, v] ++ next_sig_q s1})
-      else if fst (obj_grid ! (w, (conv_ramp_fill1, 390) !! (1 :: Int), (conv_ramp_fill1, 391) !! (2 :: Int))) > 0 then
+      else if objType (obj_grid ! (w, (conv_ramp_fill1, 390) !! (1 :: Int), (conv_ramp_fill1, 391) !! (2 :: Int))) > 0 then
         (w_grid_upd, obj_grid_upd, s1 {next_sig_q = [129, w, u, v] ++ next_sig_q s1})
       else (w_grid'4 0 ++ w_grid_upd, obj_grid'4 ++ obj_grid_upd, s1_5)
   else if ticks_left0 char_state > 1 then
@@ -988,7 +984,7 @@ updTicksLeft t reversed =
   else if reversed == False then t - 1
   else t + 1
 
-cpedeMove :: GPLC_int -> GPLC_flag -> [Int] -> [Int] -> Array (Int, Int, Int) Wall_grid -> [((Int, Int, Int), Wall_grid)] -> Array (Int, Int, Int) (Int, [Int])
+cpedeMove :: GPLC_int -> GPLC_flag -> [Int] -> [Int] -> Array (Int, Int, Int) Wall_grid -> [((Int, Int, Int), Wall_grid)] -> Array (Int, Int, Int) Obj_grid
              -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> Play_state0 -> Play_state1
              -> ([((Int, Int, Int), Wall_grid)], [((Int, Int, Int), (Int, [(Int, Int)]))], Play_state1)
 cpedeMove (GPLC_int offset) (GPLC_flag mode) d_list (w:u:v:blocks) w_grid w_grid_upd obj_grid obj_grid_upd s0 s1 =
@@ -1037,7 +1033,7 @@ cpedeMove (GPLC_int offset) (GPLC_flag mode) d_list (w:u:v:blocks) w_grid w_grid
       else (w_grid_upd, obj_grid_upd, s1_2)
   else (w_grid'1 : w_grid_upd, obj_grid_upd, s1_3)
 
-npcDamage :: GPLC_flag -> [Int] -> Array (Int, Int, Int) Wall_grid -> [((Int, Int, Int), Wall_grid)] -> Array (Int, Int, Int) (Int, [Int])
+npcDamage :: GPLC_flag -> [Int] -> Array (Int, Int, Int) Wall_grid -> [((Int, Int, Int), Wall_grid)] -> Array (Int, Int, Int) Obj_grid
              -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> Play_state0 -> Play_state1 -> [Int]
              -> ([((Int, Int, Int), Wall_grid)], [((Int, Int, Int), (Int, [(Int, Int)]))], Play_state1)
 npcDamage (GPLC_flag mode) (w:u:v:blocks) w_grid w_grid_upd obj_grid obj_grid_upd s0 s1 d_list =
@@ -1078,7 +1074,7 @@ showGplcArgs opcode (x:xs) d_list c =
 
 -- Branch on each GPLC op - code to call the corresponding function, with optional per op - code status reports for debugging.
 runGplc :: [Int] -> [Int] -> Array (Int, Int, Int) Wall_grid -> [((Int, Int, Int), Wall_grid)] -> Array (Int, Int, Int) Floor_grid
-           -> Array (Int, Int, Int) (Int, [Int]) -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> Play_state0 -> Play_state1 -> UArray (Int, Int) Float -> Int
+           -> Array (Int, Int, Int) Obj_grid -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> Play_state0 -> Play_state1 -> UArray (Int, Int) Float -> Int
            -> IO ([((Int, Int, Int), Wall_grid)], Array (Int, Int, Int) Floor_grid, [((Int, Int, Int), (Int, [(Int, Int)]))], Play_state0, Play_state1)
 runGplc [] d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp c = return (w_grid_upd, f_grid, obj_grid_upd, s0, s1)
 runGplc code d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 0 =
@@ -1086,7 +1082,7 @@ runGplc code d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 
       location = ((location_block, 645) !! (0 :: Int), (location_block, 646) !! (1 :: Int), (location_block, 647) !! (2 :: Int))
   in do
   reportState (verbose_mode s1) 2 [] [] "\non_signal run.  Initial state is..."
-  reportState (verbose_mode s1) 0 (snd (obj_grid ! location)) (((splitOn [536870911] code), 411) !! (2 :: Int)) []
+  reportState (verbose_mode s1) 0 (program (obj_grid ! location)) (((splitOn [536870911] code), 411) !! (2 :: Int)) []
   runGplc (onSignal (drop 2 (((splitOn [536870911] code), 412) !! (0 :: Int))) (((splitOn [536870911] code), 413) !! (1 :: Int)) ((code, 414) !! (1 :: Int)))
           (((splitOn [536870911] code), 415) !! (2 :: Int)) w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 1
 runGplc code d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 1 =
@@ -1269,11 +1265,11 @@ forceUpdate0 (x:xs) acc c = forceUpdate0 xs (x : acc) (c + forceUpdate1 x)
 -- some updates that previously relied on sequential applications of ( // ) were made to work by making these updates atomic in the op - code
 -- functions.  Solving the same problem for Obj_grid was less simple and the solution chosen involves encoding updates in a list of one type and mapping that to
 -- the type taken by the ( // ) operation.  This mapping is done by the function below.
-atomiseObjGridUpd :: Int -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> [(Int, Int)] -> Array (Int, Int, Int) (Int, [Int]) -> [((Int, Int, Int), (Int, [Int]))]
+atomiseObjGridUpd :: Int -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> [(Int, Int)] -> Array (Int, Int, Int) Obj_grid -> [((Int, Int, Int), Obj_grid)]
 atomiseObjGridUpd m [] acc obj_grid = []
 atomiseObjGridUpd m (x:xs) acc obj_grid =
   let source = (obj_grid ! (fst x))
-      prog = snd source
+      prog = program source
       new_prog0 = if length prog > 0 then elems ((listArray (0, (length prog) - 1) prog :: UArray Int Int) // (snd (snd ((xs, 506) !! (0 :: Int)))))
                   else []
       new_prog1 = if length prog > 0 then elems ((listArray (0, (length prog) - 1) prog :: UArray Int Int) // (acc ++ snd (snd x)))
@@ -1283,33 +1279,37 @@ atomiseObjGridUpd m (x:xs) acc obj_grid =
     if fst (snd x) >= 0 then atomiseObjGridUpd 1 (x:xs) acc obj_grid
     else if fst (snd x) == -1 then (fst x, def_obj_grid) : atomiseObjGridUpd 0 xs acc obj_grid
     else if fst (snd x) == -2 then
-      if fst x == fst ((xs, 507) !! (0 :: Int)) then (fst x, (fst source, new_prog0)) : atomiseObjGridUpd 0 (drop 1 xs) acc obj_grid
-      else (fst ((xs, 509) !! (0 :: Int)), (fst source, new_prog0)) : (fst x, def_obj_grid) : atomiseObjGridUpd 0 (drop 1 xs) acc obj_grid
-    else (fst ((xs, 510) !! (0 :: Int)), (fst source, new_prog0)) : atomiseObjGridUpd 0 (drop 1 xs) acc obj_grid
+      if fst x == fst ((xs, 507) !! (0 :: Int)) then (fst x, source {program = new_prog0}) : atomiseObjGridUpd 0 (drop 1 xs) acc obj_grid
+      else (fst ((xs, 509) !! (0 :: Int)), source {program = new_prog0}) : (fst x, def_obj_grid) : atomiseObjGridUpd 0 (drop 1 xs) acc obj_grid
+    else (fst ((xs, 510) !! (0 :: Int)), source {program = new_prog0}) : atomiseObjGridUpd 0 (drop 1 xs) acc obj_grid
   else
-    if xs == [] then [(fst x, (fst source, new_prog1))]
+    if xs == [] then [(fst x, source {program = new_prog1})]
     else if fst x == fst ((xs, 511) !! (0 :: Int)) then atomiseObjGridUpd 1 xs (acc ++ snd (snd x)) obj_grid
-    else (fst x, (fst source, new_prog1)) : atomiseObjGridUpd 0 xs [] obj_grid
+    else (fst x, source {program = new_prog1}) : atomiseObjGridUpd 0 xs [] obj_grid
+
+--(objType (obj_grid ! target1), (head__ prog) : (((sig_q s1), 515) !! (0 :: Int)) : drop 2 prog)
 
 -- These three functions (together with send_signal) implement the signalling system that drives GPLC program runs.  This involves signalling programs in
 -- response to player object collisions and handling the signal queue, which allows programs to signal each other.  The phase_flag argument of linkGplc0
 -- is used by updatePlay to limit the speed of the GPLC interpreter to 40 ticks per second, independent of the variable frame rate.  The exception to this
 -- limit is if a player object collision needs to be handled, in which case an additional interpreter tick is allowed as a special case.
 linkGplc0 :: Bool -> [Float] -> [Int] -> Array (Int, Int, Int) Wall_grid -> [((Int, Int, Int), Wall_grid)] -> Array (Int, Int, Int) Floor_grid
-             -> Array (Int, Int, Int) (Int, [Int]) -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> Play_state0 -> Play_state1 -> UArray (Int, Int) Float -> Bool
-             -> IO (Array (Int, Int, Int) Wall_grid, Array (Int, Int, Int) Floor_grid, Array (Int, Int, Int) (Int, [Int]), Play_state0, Play_state1)
+             -> Array (Int, Int, Int) Obj_grid -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> Play_state0 -> Play_state1 -> UArray (Int, Int) Float -> Bool
+             -> IO (Array (Int, Int, Int) Wall_grid, Array (Int, Int, Int) Floor_grid, Array (Int, Int, Int) Obj_grid, Play_state0, Play_state1)
 linkGplc0 phase_flag (x0:x1:xs) (z0:z1:z2:zs) w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp init_flag =
   let target0 = link_gplc2 x0 (z0, z1, z2)
       target1 = (((sig_q s1), 512) !! (1 :: Int), ((sig_q s1), 513) !! (2 :: Int), ((sig_q s1), 514) !! (3 :: Int))
-      prog = (snd (obj_grid ! target1))
+      prog = (program (obj_grid ! target1))
       obj_grid' = sendSignal 1 (GPLC_int 1) (GPLC_int (fst__ target0), GPLC_int (snd__ target0), GPLC_int (third_ target0)) obj_grid s1 []
-      obj_grid'' = obj_grid // [(target1, (fst (obj_grid ! target1), (head__ prog) : (((sig_q s1), 515) !! (0 :: Int)) : drop 2 prog))]
+      obj_grid'' = obj_grid // [(target1, Obj_grid {objType = objType (obj_grid ! target1),
+                                                    program = (head__ prog) : (((sig_q s1), 515) !! (0 :: Int)) : drop 2 prog,
+                                                    programName = programName (obj_grid ! target1)})]
       show_obj_grid = show (((sig_q s1), 519) !! (1 :: Int), ((sig_q s1), 520) !! (2 :: Int), ((sig_q s1), 521) !! (3 :: Int))
   in do
   if init_flag == True then do
-    if (x1 == 1 || x1 == 3) && head (snd (obj_grid ! target0)) == 0 then do
+    if (x1 == 1 || x1 == 3) && head (program (obj_grid ! target0)) == 0 then do
       reportState (verbose_mode s1) 2 [] [] ("\nPlayer starts GPLC program at Obj_grid " ++ show target0)
-      run_gplc' <- catch (runGplc (snd ((fst obj_grid') ! target0)) [] w_grid w_grid_upd f_grid (fst obj_grid') obj_grid_upd s0 s1 lookUp 0)
+      run_gplc' <- catch (runGplc (program ((fst obj_grid') ! target0)) [] w_grid w_grid_upd f_grid (fst obj_grid') obj_grid_upd s0 s1 lookUp 0)
                          (\e -> gplcError w_grid_upd f_grid obj_grid_upd s0 s1 e)
       linkGplc0 phase_flag (x0:x1:xs) (z0:z1:z2:zs) w_grid (fst_ run_gplc') (snd_ run_gplc') obj_grid (third run_gplc') (fourth run_gplc') (fifth run_gplc')
                 lookUp False
@@ -1321,11 +1321,11 @@ linkGplc0 phase_flag (x0:x1:xs) (z0:z1:z2:zs) w_grid w_grid_upd f_grid obj_grid 
     else do
       reportState ((verbose_mode s1) && sig_q s1 /= []) 2 [] []
                   ("\n\ngame_t = " ++ show (fst__ (gameClock s0)) ++ "\n----------------\n\nsignal queue: " ++ show (sig_q s1) ++ "\n")
-      if fst (obj_grid ! target1) == 1 || fst (obj_grid ! target1) == 3 then do
+      if objType (obj_grid ! target1) == 1 || objType (obj_grid ! target1) == 3 then do
         reportState (verbose_mode s1) 2 [] []
                     ("\nGPLC program run at Obj_grid "
                     ++ show (((sig_q s1), 516) !! (1 :: Int), ((sig_q s1), 517) !! (2 :: Int), ((sig_q s1), 518) !! (3 :: Int)))
-        run_gplc' <- catch (runGplc (snd (obj_grid'' ! target1)) [] w_grid w_grid_upd f_grid obj_grid'' obj_grid_upd s0 (s1 {sig_q = drop 4 (sig_q s1)}) lookUp 0)
+        run_gplc' <- catch (runGplc (program (obj_grid'' ! target1)) [] w_grid w_grid_upd f_grid obj_grid'' obj_grid_upd s0 (s1 {sig_q = drop 4 (sig_q s1)}) lookUp 0)
                            (\e -> gplcError w_grid_upd f_grid obj_grid_upd s0 s1 e)
         linkGplc0 True (x0:x1:xs) (z0:z1:z2:zs) w_grid (fst_ run_gplc') (snd_ run_gplc') obj_grid (third run_gplc') (fourth run_gplc') (fifth run_gplc') lookUp
                   False
@@ -1336,16 +1336,16 @@ linkGplc0 phase_flag (x0:x1:xs) (z0:z1:z2:zs) w_grid w_grid_upd f_grid obj_grid 
     update <- forceUpdate0 w_grid_upd [] 0
     return (w_grid // update, f_grid, obj_grid // (atomiseObjGridUpd 0 obj_grid_upd [] obj_grid), s0, s1)
 
-linkGplc1 :: Play_state0 -> Play_state1 -> Array (Int, Int, Int) (Int, [Int]) -> Int -> IO Play_state1
+linkGplc1 :: Play_state0 -> Play_state1 -> Array (Int, Int, Int) Obj_grid -> Int -> IO Play_state1
 linkGplc1 s0 s1 obj_grid mode =
   let dest0 = (truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0))
       dest1 = [truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)]
   in do
   if mode == 0 then 
-    if fst (obj_grid ! dest0) == 1 || fst (obj_grid ! dest0) == 3 then return s1 {sig_q = sig_q s1 ++ [1] ++ dest1}
+    if objType (obj_grid ! dest0) == 1 || objType (obj_grid ! dest0) == 3 then return s1 {sig_q = sig_q s1 ++ [1] ++ dest1}
     else return s1
   else
-    if fst (obj_grid ! dest0) == 1 || fst (obj_grid ! dest0) == 3 then do
+    if objType (obj_grid ! dest0) == 1 || objType (obj_grid ! dest0) == 3 then do
       if health s1 <= detDamage (difficulty s1) s0 then return s1 {health = 0, state_chg = 1, message = 0 : msg26}
       else return s1 {sig_q = sig_q s1 ++ [1] ++ dest1, health = (health s1) - detDamage (difficulty s1) s0, state_chg = 1, message = 0 : msg13}
     else do
@@ -1359,15 +1359,15 @@ link_gplc2 3 (z0, z1, z2) = (z0, z1 - 1, z2)
 
 -- These four functions perform game physics and geometry computations.
 -- These include player collision detection, thrust, friction, gravity and floor surface modelling.
-detectColl :: Int -> (Float, Float) -> (Float, Float) -> Array (Int, Int, Int) (Int, [Int]) -> Array (Int, Int, Int) Wall_grid -> [Float]
+detectColl :: Int -> (Float, Float) -> (Float, Float) -> Array (Int, Int, Int) Obj_grid -> Array (Int, Int, Int) Wall_grid -> [Float]
 detectColl w_block (u, v) (step_u, step_v) obj_grid w_grid =
   let u' = u + step_u
       v' = v + step_v
       grid_i = w_grid ! (w_block, truncate u, truncate v)
-      grid_o0 = fst (obj_grid ! (w_block, truncate u, (truncate v) + 1))
-      grid_o1 = fst (obj_grid ! (w_block, (truncate u) + 1, truncate v))
-      grid_o2 = fst (obj_grid ! (w_block, truncate u, (truncate v) - 1))
-      grid_o3 = fst (obj_grid ! (w_block, (truncate u) - 1, truncate v))
+      grid_o0 = objType (obj_grid ! (w_block, truncate u, (truncate v) + 1))
+      grid_o1 = objType (obj_grid ! (w_block, (truncate u) + 1, truncate v))
+      grid_o2 = objType (obj_grid ! (w_block, truncate u, (truncate v) - 1))
+      grid_o3 = objType (obj_grid ! (w_block, (truncate u) - 1, truncate v))
   in
   if v' > v2_bound grid_i && v2 grid_i == True then
     if (u' < u1_bound grid_i || u' > u2_bound grid_i) && (u1 grid_i == True || u2 grid_i == True) then [u, v, 1, 1, 0, 0]
@@ -1545,7 +1545,7 @@ s0' pos_uv pos_w0 pos_w1 vel0 vel1 angle' game_clock' mag_r mag_j f_rate f look_
 -- within the game logic thread control is returned to the rendering thread, allowing for the options of a game logic thread restart or engine shutdown.
 updatePlayWrapper0 :: Io_box -> MVar (Play_state0, Array (Int, Int, Int) Wall_grid, Game_state) -> Play_state0
                       -> Play_state1 -> Bool -> Integer -> (Float, Float, Float, Float) -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid
-                      -> Array (Int, Int, Int) (Int, [Int]) -> UArray (Int, Int) Float -> Game_state -> (Array Int Source, Int) -> Integer -> MVar Integer
+                      -> Array (Int, Int, Int) Obj_grid -> UArray (Int, Int) Float -> Game_state -> (Array Int Source, Int) -> Integer -> MVar Integer
                       -> SEQ.Seq Integer -> Float -> IO ()
 updatePlayWrapper0 io_box state_ref s0 s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up save_state
                    sound_array t_last t_log t_seq f_rate =
@@ -1559,7 +1559,7 @@ updatePlayWrapper1 state_ref e = do
 
 -- This function recurses once for each recursion of showFrame (and rendering of that frame) and is the central branching point of the game logic thread.
 updatePlay :: Io_box -> MVar (Play_state0, Array (Int, Int, Int) Wall_grid, Game_state) -> Play_state0 -> Play_state1 -> Bool -> Integer
-              -> (Float, Float, Float, Float) -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int])
+              -> (Float, Float, Float, Float) -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) Obj_grid
               -> UArray (Int, Int) Float -> Game_state -> (Array Int Source, Int) -> Integer -> MVar Integer -> SEQ.Seq Integer -> Float -> IO ()
 updatePlay io_box state_ref s0 s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid lookUp save_state sound_array t_last t_log t_seq f_rate =
   let det = detectColl (truncate (pos_w s0)) (pos_u s0, pos_v s0) (((vel s0), 522) !! (0 :: Int) / f_rate, ((vel s0), 523) !! (1 :: Int) / f_rate)

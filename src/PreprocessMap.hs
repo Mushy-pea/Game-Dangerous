@@ -25,16 +25,16 @@ head_ ls = head ls
 
 -- This function modifies the collision properties of Obj_grid such that walls are effectively padded with voxels that can't be entered.
 -- This is so that the models for the player and NPCs don't intersect the walls.
-padWalls :: Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> Int -> Int -> Int -> Int -> Int
-               -> Array (Int, Int, Int) (Int, [Int])
+padWalls :: Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) Obj_grid -> Int -> Int -> Int -> Int -> Int
+               -> Array (Int, Int, Int) Obj_grid
 padWalls w_grid f_grid obj_grid w u v u_limit v_limit =
   let wall_voxel = w_grid ! (w, u, v)
       floor_surface = surface (f_grid ! (w, div u 2, div v 2))
-      prog_present = if snd (obj_grid ! (w, u, v)) == [] then False
+      prog_present = if program (obj_grid ! (w, u, v)) == [] then False
                      else True
       wall_adjacent = u1 wall_voxel || u2 wall_voxel || v1 wall_voxel || v2 wall_voxel
       obj_grid' = if (floor_surface == Open || floor_surface == Flat) && prog_present == False && wall_adjacent then
-        obj_grid // [((w, u, v), (4, []))]
+        obj_grid // [((w, u, v), Obj_grid {objType = 4, program = [], programName = []})]
                   else obj_grid
   in
   if w == 2 && u == u_limit && v == v_limit then obj_grid'
@@ -60,9 +60,9 @@ buildRampSet f_grid w u v u_limit v_limit acc =
   else buildRampSet f_grid w u (v + 1) u_limit v_limit (ramp_update (fst__ acc) (snd__ acc) (third_ acc))
 
 -- The version of obj_grid updated within simFlood0 isn't returned and is only used internally as part of the flood simulation.
-objGridUpd :: [(Int, Int, Int)] -> [((Int, Int, Int), (Int, [Int]))]
+objGridUpd :: [(Int, Int, Int)] -> [((Int, Int, Int), Obj_grid)]
 objGridUpd [] = []
-objGridUpd ((w, u, v):xs) = ((w, u, v), (4, [])) : objGridUpd xs
+objGridUpd ((w, u, v):xs) = ((w, u, v), Obj_grid {objType = 4, program = [], programName = []}) : objGridUpd xs
 
 -- These two functions check each voxel encountered in the current iteration to see if it is colocated with a ramp.
 checkVoxel1 :: [(Int, Int, Int)] -> (Int, Int) -> ([(Int, Int)], [(Int, Int)])
@@ -80,24 +80,24 @@ checkVoxel0 ((w, u, v):xs) ramp_set up_ramp down_ramp =
   in checkVoxel0 xs ramp_set (single_fill up_ramp (fst check_voxel1_)) (single_fill down_ramp (snd check_voxel1_))
 
 -- These two functions compute each iteration of the flood simulation.
-simFlood1 :: Array (Int, Int, Int) (Int, [Int]) -> [(Int, Int, Int)] -> [(Int, Int, Int)] -> Int -> Int -> [(Int, Int, Int)]
+simFlood1 :: Array (Int, Int, Int) Obj_grid -> [(Int, Int, Int)] -> [(Int, Int, Int)] -> Int -> Int -> [(Int, Int, Int)]
 simFlood1 obj_grid [] acc u_limit v_limit = acc
 simFlood1 obj_grid ((w, u, v):xs) acc u_limit v_limit =
-  let pos_u = if fst (obj_grid ! (w, u + 1, v)) > 0 then []
+  let pos_u = if objType (obj_grid ! (w, u + 1, v)) > 0 then []
               else [(w, u + 1, v)]
-      pos_v = if fst (obj_grid ! (w, u, v + 1)) > 0 then []
+      pos_v = if objType (obj_grid ! (w, u, v + 1)) > 0 then []
               else [(w, u, v + 1)]
-      neg_u = if fst (obj_grid ! (w, u - 1, v)) > 0 then []
+      neg_u = if objType (obj_grid ! (w, u - 1, v)) > 0 then []
               else [(w, u - 1, v)]
-      neg_v = if fst (obj_grid ! (w, u, v - 1)) > 0 then []
+      neg_v = if objType (obj_grid ! (w, u, v - 1)) > 0 then []
               else [(w, u, v - 1)]
-      pos_uv = if fst (obj_grid ! (w, u + 1, v + 1)) > 0 then []
+      pos_uv = if objType (obj_grid ! (w, u + 1, v + 1)) > 0 then []
                else [(w, u + 1, v + 1)]
-      pos_v_neg_u = if fst (obj_grid ! (w, u - 1, v + 1)) > 0 then []
+      pos_v_neg_u = if objType (obj_grid ! (w, u - 1, v + 1)) > 0 then []
                     else [(w, u - 1, v + 1)]
-      neg_uv = if fst (obj_grid ! (w, u - 1, v - 1)) > 0 then []
+      neg_uv = if objType (obj_grid ! (w, u - 1, v - 1)) > 0 then []
                     else [(w, u - 1, v - 1)]
-      pos_u_neg_v = if fst (obj_grid ! (w, u + 1, v - 1)) > 0 then []
+      pos_u_neg_v = if objType (obj_grid ! (w, u + 1, v - 1)) > 0 then []
                     else [(w, u + 1, v - 1)]
       unique_add = \new set -> if new == [] then set
                                else new ++ filter (/= head new) set
@@ -112,7 +112,7 @@ simFlood1 obj_grid ((w, u, v):xs) acc u_limit v_limit =
                               (unique_add neg_uv) $
                               (unique_add pos_u_neg_v acc)) u_limit v_limit
 
-simFlood0 :: Array (Int, Int, Int) (Int, [Int]) -> [(Int, Int, Int)] -> [(Int, Int, Int)] -> [(Int, Int)] -> [(Int, Int)] -> Int -> Int
+simFlood0 :: Array (Int, Int, Int) Obj_grid -> [(Int, Int, Int)] -> [(Int, Int, Int)] -> [(Int, Int)] -> [(Int, Int)] -> Int -> Int
              -> ((Int, Int), (Int, Int))
 simFlood0 obj_grid current_set ramp_set up_ramp down_ramp u_limit v_limit =
   let sim_flood1_ = simFlood1 obj_grid current_set [] u_limit v_limit
@@ -124,10 +124,10 @@ simFlood0 obj_grid current_set ramp_set up_ramp down_ramp u_limit v_limit =
 
 -- The flood simulation is applied to each element of Obj_grid where object type is initially 0, which is managed by this function.
 -- note: Obj_grid elements are to be interpreted as (object type, [GPLC program]).
-findRamps :: Array (Int, Int, Int) (Int, [Int]) -> Array (Int, Int, Int) ((Int, Int), (Int, Int)) -> [[(Int, Int, Int)]] -> Int -> Int -> Int -> Int -> Int
+findRamps :: Array (Int, Int, Int) Obj_grid -> Array (Int, Int, Int) ((Int, Int), (Int, Int)) -> [[(Int, Int, Int)]] -> Int -> Int -> Int -> Int -> Int
               -> Array (Int, Int, Int) ((Int, Int), (Int, Int))
 findRamps obj_grid ramp_map ramp_set w u v u_limit v_limit =
-  let ramp_map' = if fst (obj_grid ! (w, u, v)) == 0 then ramp_map // [((w, u, v), simFlood0 obj_grid [(w, u, v)] (ramp_set !! w) [] [] u_limit v_limit)]
+  let ramp_map' = if objType (obj_grid ! (w, u, v)) == 0 then ramp_map // [((w, u, v), simFlood0 obj_grid [(w, u, v)] (ramp_set !! w) [] [] u_limit v_limit)]
                   else ramp_map
   in
   if w == 2 && u == u_limit && v == v_limit then ramp_map'

@@ -405,7 +405,7 @@ genLoadMenu ((y0:y1:y2:y3:y4:y5:y6:y7:y8:y9:y10:y11:y12:y13:y14:y15:y16:ys):xs) 
 -- Constants used to fix the types decoded from save game files.
 def_obj_place_ = ((0, 0, 0), Nothing) :: ((Int, Int, Int), Maybe Obj_place)
 def_f_grid_ = ((0, 0, 0), def_f_grid) :: ((Int, Int, Int), Floor_grid)
-def_obj_grid_ = ((0, 0, 0), def_obj_grid) :: ((Int, Int, Int), (Int, [Int]))
+def_obj_grid_ = ((0, 0, 0), def_obj_grid) :: ((Int, Int, Int), Obj_grid)
 
 -- These three functions deal with loading a saved game state and recreating the game state by updating a base map state.
 decodeSequence :: Binary a => Int -> a -> LBS.ByteString -> SEQ.Seq a -> SEQ.Seq a
@@ -421,8 +421,8 @@ procWGridUpd :: SEQ.Seq ((Int, Int, Int), Maybe Obj_place) -> Array (Int, Int, I
 procWGridUpd SEQ.Empty w_grid = []
 procWGridUpd (x SEQ.:<| xs) w_grid = (fst x, (w_grid ! (fst x)) {obj = snd x}) : procWGridUpd xs w_grid
 
-loadGameStateFile :: Int -> LBS.ByteString -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int])
-                     -> SEQ.Seq ((Int, Int, Int), Maybe Obj_place) -> SEQ.Seq ((Int, Int, Int), Floor_grid) -> SEQ.Seq ((Int, Int, Int), (Int, [Int]))
+loadGameStateFile :: Int -> LBS.ByteString -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) Obj_grid
+                     -> SEQ.Seq ((Int, Int, Int), Maybe Obj_place) -> SEQ.Seq ((Int, Int, Int), Floor_grid) -> SEQ.Seq ((Int, Int, Int), Obj_grid)
                      -> Play_state0 -> Play_state1 -> Game_state
 loadGameStateFile c bs w_grid f_grid obj_grid w_grid_upd f_grid_upd obj_grid_upd s0 s1 =
   if c == 0 then loadGameStateFile (c + 1) (LBS.drop (8 + fromIntegral ((decode (LBS.take 8 bs)) :: Int)) bs) w_grid f_grid obj_grid
@@ -450,7 +450,7 @@ loaderError x box = do
 
 -- This function is the entry point to the game state saving logic and handles user input from the load game menu.
 loadSavedGame :: Int -> [[Char]] -> [Char] -> Int -> Int -> Io_box -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid
-                 -> Array (Int, Int, Int) (Int, [Int]) -> Array Int [Char] -> IO (Maybe Game_state)
+                 -> Array (Int, Int, Int) Obj_grid -> Array Int [Char] -> IO (Maybe Game_state)
 loadSavedGame 0 [] chosen_file c choice box w_grid f_grid obj_grid conf_reg = error "\nload_saved_game: encountered an unexpected log file structure."
 loadSavedGame 0 ((y0:y1:y2:y3:y4:y5:y6:y7:y8:y9:y10:y11:y12:y13:y14:y15:y16:ys):xs) chosen_file c choice box w_grid f_grid obj_grid conf_reg = do
   if choice == 7 then return Nothing
@@ -490,7 +490,7 @@ instance Serialise_diff Wall_grid where
 instance Serialise_diff Floor_grid where
   save_diff ((w, u, v), x) = LBS.append (encode (w, u, v)) (encode x)
 
-instance Serialise_diff (Int, [Int]) where
+instance Serialise_diff Obj_grid where
   save_diff ((w, u, v), x) = LBS.append (encode (w, u, v)) (encode x)
 
 saveArrayDiff0 :: Int -> ([Char], [Char]) -> LBS.ByteString -> LBS.ByteString -> LBS.ByteString -> LBS.ByteString -> LBS.ByteString -> Array Int [Char]
@@ -692,7 +692,7 @@ detBufferLen s0 mode component_size =
 -- It recurses once per frame rendered and is the central branching point of the rendering thread.
 showFrame :: (UArray Int Word32, Int) -> UArray Int Int32 -> (Ptr GLfloat, Ptr GLfloat) -> (Ptr Int, Ptr Int) -> Float -> Float -> Float -> Int -> Int
              -> MVar (Play_state0, Array (Int, Int, Int) Wall_grid, Game_state) -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid
-             -> Array (Int, Int, Int) (Int, [Int]) -> UArray (Int, Int) Float -> Matrix Float -> Array Int (Int, [Int])
+             -> Array (Int, Int, Int) Obj_grid -> UArray (Int, Int) Float -> Matrix Float -> Array Int (Int, [Int])
              -> Array Int [Char] -> Int -> IO (Int, Game_state)
 showFrame p_bind uniform (p_mt_matrix, p_light_buffer) filter_table u v w a a' state_ref w_grid f_grid obj_grid lookUp camera_to_clip msg_queue
           conf_reg ray_offset =

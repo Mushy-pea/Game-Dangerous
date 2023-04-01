@@ -8,7 +8,7 @@ import Data.Array.IArray
 import Data.List.Split
 import BuildModel
 
-openMap :: [Char] -> Int -> Int -> Int -> (Array (Int, Int, Int) Wall_grid, Array (Int, Int, Int) Floor_grid, Array (Int, Int, Int) (Int, [Int]))
+openMap :: [Char] -> Int -> Int -> Int -> (Array (Int, Int, Int) Wall_grid, Array (Int, Int, Int) Floor_grid, Array (Int, Int, Int) Obj_grid)
 openMap map_text u_limit v_limit w_limit =
   let fd = \limit -> (div (limit + 1) 2) - 1
       buildTable1_ = buildTable1 (splitOn ", " (((splitOn "~" map_text), 59) !! 7)) (emptyWGrid u_limit v_limit w_limit) 7500

@@ -211,8 +211,18 @@ instance Binary NPC_state where
                    lastDir = i, dir_list = j, node_num = k, end_node = l, head_index = m, reversed = n, target_u' = o, target_v' = p, target_w' = q, speed = r,
                    avoid_dist = s, attack_mode = t, finalAppr = u, fire_prob = v, fireball_state = w})
 
+data Obj_grid = Obj_grid {objType :: Int, program :: [Int], programName :: [Char]} deriving (Eq)
+
+instance Binary Obj_grid where
+  put Obj_grid {objType = a, program = b, programName = c} = put a >> put b >> put c
+
+  get = do a <- get
+           b <- get
+           c <- get
+           return (Obj_grid {objType = a, program = b, programName = c})
+
 data Game_state = Game_state {is_set :: Bool, w_grid_ :: Array (Int, Int, Int) Wall_grid, f_grid_ :: Array (Int, Int, Int) Floor_grid,
-                  obj_grid_ :: Array (Int, Int, Int) (Int, [Int]), s0_ :: Play_state0, s1_ :: Play_state1, map_transit_string :: ([Char], [Char])}
+                  obj_grid_ :: Array (Int, Int, Int) Obj_grid, s0_ :: Play_state0, s1_ :: Play_state1, map_transit_string :: ([Char], [Char])}
 
 data Io_box = Io_box {uniform_ :: UArray Int Int32, p_bind_ :: (UArray Int Word32, Int), control_ :: IORef Int}
 
@@ -237,10 +247,10 @@ defWGridArr = array ((-1, 0, 0), (-3, 99, 99)) [((w, u, v), def_w_grid) | w <- [
 def_f_grid = Floor_grid {w_ = 0, surface = Flat, local_up_ramp = (0, 0), local_down_ramp = (0, 0)}
 def_f_grid1 = Floor_grid {w_ = 0, surface = Open, local_up_ramp = (0, 0), local_down_ramp = (0, 0)}
 def_f_grid_arr = array ((0, 0, 0), (2, 9, 9)) [((w, u, v), def_f_grid) | w <- [0..2], u <- [0..9], v <- [0..9]] :: Array (Int, Int, Int) Floor_grid
-def_obj_grid = (0, [])
+def_obj_grid = Obj_grid {objType = 0, program = [], programName = []}
 
-defObjGridArr :: Array (Int, Int, Int) (Int, [Int])
-defObjGridArr = array ((0, 0, 0), (2, 99, 99)) [((w, u, v), def_obj_grid) | w <- [0..2], u <- [0..99], v <- [0..99]] :: Array (Int, Int, Int) (Int, [Int])
+defObjGridArr :: Array (Int, Int, Int) Obj_grid
+defObjGridArr = array ((0, 0, 0), (2, 99, 99)) [((w, u, v), def_obj_grid) | w <- [0..2], u <- [0..99], v <- [0..99]] :: Array (Int, Int, Int) Obj_grid
 
 def_obj_place = Obj_place {ident_ = 0, u__ = 0, v__ = 0, w__ = 0, rotation = [], rotate_ = False, phase = 0, texture__ = 0, num_elem = 0, obj_flag = 0}
 
@@ -248,7 +258,7 @@ w_grid_flag = Wall_grid {u1 = True, u2 = True, v1 = True, v2 = True, u1_bound = 
 texture = [], obj = Just def_obj_place}
 
 f_grid_flag = Floor_grid {w_ = 3, surface = Flat, local_up_ramp = (0, 0), local_down_ramp = (0, 0)}
-obj_grid_flag = (5, []) :: (Int, [Int])
+obj_grid_flag = Obj_grid {objType = 5, program = [], programName = []} :: Obj_grid
 
 def_save_state = Game_state {is_set = False, w_grid_ = defWGridArr, f_grid_ = def_f_grid_arr, obj_grid_ = defObjGridArr, s0_ = ps0_init, s1_ = ps1_init}
 def_wall_place = Wall_place {rotate = 0, translate_u = 0, translate_v = 0, translate_w = 0, wall_flag_ = 0, texture_ = 0, isNull = True}
@@ -369,18 +379,18 @@ modAngle_ a f_rate clockwise =
 -- These functions implement a ray tracing algorhythm, which is part of the visible surface determination (VSD) system and is used for line of sight checks by
 -- the non - player character logic.  The Ray_test class exists so that the ray tracer can conveniently provide differing functionality when called from the
 -- VSD system or game logic.
-fBlock :: Int -> Int -> Int -> Terrain -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) (Int, [Int]) -> Int
+fBlock :: Int -> Int -> Int -> Terrain -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) Obj_grid -> Int
 fBlock w u v f_target0 f_grid obj_grid =
   let f_target1 = surface (f_grid ! (w - 1, div u 2, div v 2))
   in
-  if f_target0 == Open && f_target1 == Positive_u && fst (obj_grid ! (w - 1, u, v)) == 0 then -1
-  else if f_target0 == Open && f_target1 == Negative_u && fst (obj_grid ! (w - 1, u, v)) == 0 then -2
-  else if f_target0 == Open && f_target1 == Positive_v && fst (obj_grid ! (w - 1, u, v)) == 0 then -3
-  else if f_target0 == Open && f_target1 == Negative_v && fst (obj_grid ! (w - 1, u, v)) == 0 then -4
-  else if f_target0 == Positive_u && fst (obj_grid ! (w, u, v)) == 0 then -5
-  else if f_target0 == Negative_u && fst (obj_grid ! (w, u, v)) == 0 then -6
-  else if f_target0 == Positive_v && fst (obj_grid ! (w, u, v)) == 0 then -7
-  else if f_target0 == Negative_v && fst (obj_grid ! (w, u, v)) == 0 then -8
+  if f_target0 == Open && f_target1 == Positive_u && objType (obj_grid ! (w - 1, u, v)) == 0 then -1
+  else if f_target0 == Open && f_target1 == Negative_u && objType (obj_grid ! (w - 1, u, v)) == 0 then -2
+  else if f_target0 == Open && f_target1 == Positive_v && objType (obj_grid ! (w - 1, u, v)) == 0 then -3
+  else if f_target0 == Open && f_target1 == Negative_v && objType (obj_grid ! (w - 1, u, v)) == 0 then -4
+  else if f_target0 == Positive_u && objType (obj_grid ! (w, u, v)) == 0 then -5
+  else if f_target0 == Negative_u && objType (obj_grid ! (w, u, v)) == 0 then -6
+  else if f_target0 == Positive_v && objType (obj_grid ! (w, u, v)) == 0 then -7
+  else if f_target0 == Negative_v && objType (obj_grid ! (w, u, v)) == 0 then -8
   else 0
 
 class Ray_test a where
@@ -388,118 +398,118 @@ class Ray_test a where
 
   scan_cube :: Array (Int, Int, Int) a -> Int -> Int -> Int -> [Obj_place]
 
-instance Ray_test (Int, [Int]) where
+instance Ray_test Obj_grid where
   intersect U1 obj_grid f_grid u v w_block u_block v_block seek_mode c =
     let f_target0 = surface (f_grid ! (w_block, div (truncate (u - 0.025)) 2, div v_block 2))
         f_block_ = fBlock w_block (u_block - 1) v_block f_target0 f_grid obj_grid
     in
     if seek_mode < 3 then
-      if fst (obj_grid ! (w_block, u_block - 1, v_block)) > 0 then (Object_hit, 0)
+      if objType (obj_grid ! (w_block, u_block - 1, v_block)) > 0 then (Object_hit, 0)
       else if surface (f_grid ! (w_block, div (u_block - 1) 2, div v_block 2)) /= Flat then (Object_hit, 0)
       else (U1, 0)
     else
       if c == 1 && f_target0 /= Flat then
         if f_block_ == 0 then (Object_hit, 0)
         else (Ramp_found, f_block_)
-      else if fst (obj_grid ! (w_block, u_block - 1, v_block)) > 0 then (Object_hit, 0)
+      else if objType (obj_grid ! (w_block, u_block - 1, v_block)) > 0 then (Object_hit, 0)
       else (U1, 0)
   intersect U2 obj_grid f_grid u v w_block u_block v_block seek_mode c =
     let f_target0 = surface (f_grid ! (w_block, div (truncate (u + 0.025)) 2, div v_block 2))
         f_block_ = fBlock w_block (u_block + 1) v_block f_target0 f_grid obj_grid
     in
     if seek_mode < 3 then
-      if fst (obj_grid ! (w_block, u_block + 1, v_block)) > 0 then (Object_hit, 0)
+      if objType (obj_grid ! (w_block, u_block + 1, v_block)) > 0 then (Object_hit, 0)
       else if surface (f_grid ! (w_block, div (u_block + 1) 2, div v_block 2)) /= Flat then (Object_hit, 0)
       else (U2, 0)
     else
       if c == 1 && f_target0 /= Flat then
         if f_block_ == 0 then (Object_hit, 0)
         else (Ramp_found, f_block_)
-      else if fst (obj_grid ! (w_block, u_block + 1, v_block)) > 0 then (Object_hit, 0)
+      else if objType (obj_grid ! (w_block, u_block + 1, v_block)) > 0 then (Object_hit, 0)
       else (U2, 0)
   intersect V1 obj_grid f_grid u v w_block u_block v_block seek_mode c =
     let f_target0 = surface (f_grid ! (w_block, div u_block 2, div (truncate (v - 0.025)) 2))
         f_block_ = fBlock w_block u_block (v_block - 1) f_target0 f_grid obj_grid
     in
     if seek_mode < 3 then
-      if fst (obj_grid ! (w_block, u_block, v_block - 1)) > 0 then (Object_hit, 0)
+      if objType (obj_grid ! (w_block, u_block, v_block - 1)) > 0 then (Object_hit, 0)
       else if surface (f_grid ! (w_block, div u_block 2, div (v_block - 1) 2)) /= Flat then (Object_hit, 0)
       else (V1, 0)
     else
       if c == 1 && f_target0 /= Flat then
         if f_block_ == 0 then (Object_hit, 0)
         else (Ramp_found, f_block_)
-      else if fst (obj_grid ! (w_block, u_block, v_block - 1)) > 0 then (Object_hit, 0)
+      else if objType (obj_grid ! (w_block, u_block, v_block - 1)) > 0 then (Object_hit, 0)
       else (V1, 0)
   intersect V2 obj_grid f_grid u v w_block u_block v_block seek_mode c =
     let f_target0 = surface (f_grid ! (w_block, div u_block 2, div (truncate (v + 0.025)) 2))
         f_block_ = fBlock w_block u_block (v_block + 1) f_target0 f_grid obj_grid
     in
     if seek_mode < 3 then
-      if fst (obj_grid ! (w_block, u_block, v_block + 1)) > 0 then (Object_hit, 0)
+      if objType (obj_grid ! (w_block, u_block, v_block + 1)) > 0 then (Object_hit, 0)
       else if surface (f_grid ! (w_block, div u_block 2, div (v_block + 1) 2)) /= Flat then (Object_hit, 0)
       else (V2, 0)
     else
       if c == 1 && f_target0 /= Flat then
         if f_block_ == 0 then (Object_hit, 0)
         else (Ramp_found, f_block_)
-      else if fst (obj_grid ! (w_block, u_block, v_block + 1)) > 0 then (Object_hit, 0)
+      else if objType (obj_grid ! (w_block, u_block, v_block + 1)) > 0 then (Object_hit, 0)
       else (V2, 0)
   intersect Corner0 obj_grid f_grid u v w_block u_block v_block seek_mode c =
     let f_target0 = surface (f_grid ! (w_block, div (truncate (u - 0.025)) 2, div (truncate (v + 0.025)) 2))
         f_block_ = fBlock w_block (u_block - 1) (v_block + 1) f_target0 f_grid obj_grid
     in
     if seek_mode < 3 then
-      if fst (obj_grid ! (w_block, u_block - 1, v_block + 1)) > 0 then (Object_hit, 0)
+      if objType (obj_grid ! (w_block, u_block - 1, v_block + 1)) > 0 then (Object_hit, 0)
       else if surface (f_grid ! (w_block, div (u_block - 1) 2, div (v_block + 1) 2)) /= Flat then (Object_hit, 0)
       else (Corner0, 0)
     else
       if c == 1 && f_target0 /= Flat then
         if f_block_ == 0 then (Object_hit, 0)
         else (Ramp_found, f_block_)
-      else if fst (obj_grid ! (w_block, u_block - 1, v_block + 1)) > 0 then (Object_hit, 0)
+      else if objType (obj_grid ! (w_block, u_block - 1, v_block + 1)) > 0 then (Object_hit, 0)
       else (Corner0, 0)
   intersect Corner1 obj_grid f_grid u v w_block u_block v_block seek_mode c =
     let f_target0 = surface (f_grid ! (w_block, div (truncate (u + 0.025)) 2, div (truncate (v + 0.025)) 2))
         f_block_ = fBlock w_block (u_block + 1) (v_block + 1) f_target0 f_grid obj_grid
     in
     if seek_mode < 3 then
-      if fst (obj_grid ! (w_block, u_block + 1, v_block + 1)) > 0 then (Object_hit, 0)
+      if objType (obj_grid ! (w_block, u_block + 1, v_block + 1)) > 0 then (Object_hit, 0)
       else if surface (f_grid ! (w_block, div (u_block + 1) 2, div (v_block + 1) 2)) /= Flat then (Object_hit, 0)
       else (Corner1, 0)
     else
       if c == 1 && f_target0 /= Flat then
         if f_block_ == 0 then (Object_hit, 0)
         else (Ramp_found, f_block_)
-      else if fst (obj_grid ! (w_block, u_block + 1, v_block + 1)) > 0 then (Object_hit, 0)
+      else if objType (obj_grid ! (w_block, u_block + 1, v_block + 1)) > 0 then (Object_hit, 0)
       else (Corner1, 0)
   intersect Corner2 obj_grid f_grid u v w_block u_block v_block seek_mode c =
     let f_target0 = surface (f_grid ! (w_block, div (truncate (u + 0.025)) 2, div (truncate (v - 0.025)) 2))
         f_block_ = fBlock w_block (u_block + 1) (v_block - 1) f_target0 f_grid obj_grid
     in
     if seek_mode < 3 then
-      if fst (obj_grid ! (w_block, u_block + 1, v_block - 1)) > 0 then (Object_hit, 0)
+      if objType (obj_grid ! (w_block, u_block + 1, v_block - 1)) > 0 then (Object_hit, 0)
       else if surface (f_grid ! (w_block, div (u_block + 1) 2, div (v_block - 1) 2)) /= Flat then (Object_hit, 0)
       else (Corner2, 0)
     else
       if c == 1 && f_target0 /= Flat then
         if f_block_ == 0 then (Object_hit, 0)
         else (Ramp_found, f_block_)
-      else if fst (obj_grid ! (w_block, u_block + 1, v_block - 1)) > 0 then (Object_hit, 0)
+      else if objType (obj_grid ! (w_block, u_block + 1, v_block - 1)) > 0 then (Object_hit, 0)
       else (Corner2, 0)
   intersect Corner3 obj_grid f_grid u v w_block u_block v_block seek_mode c =
     let f_target0 = surface (f_grid ! (w_block, div (truncate (u - 0.025)) 2, div (truncate (v - 0.025)) 2))
         f_block_ = fBlock w_block (u_block - 1) (v_block - 1) f_target0 f_grid obj_grid
     in
     if seek_mode < 3 then
-      if fst (obj_grid ! (w_block, u_block - 1, v_block - 1)) > 0 then (Object_hit, 0)
+      if objType (obj_grid ! (w_block, u_block - 1, v_block - 1)) > 0 then (Object_hit, 0)
       else if surface (f_grid ! (w_block, div (u_block - 1) 2, div (v_block - 1) 2)) /= Flat then (Object_hit, 0)
       else (Corner3, 0)
     else
       if c == 1 && f_target0 /= Flat then
         if f_block_ == 0 then (Object_hit, 0)
         else (Ramp_found, f_block_)
-      else if fst (obj_grid ! (w_block, u_block - 1, v_block - 1)) > 0 then (Object_hit, 0)
+      else if objType (obj_grid ! (w_block, u_block - 1, v_block - 1)) > 0 then (Object_hit, 0)
       else (Corner3, 0)
 
   scan_cube obj_grid w u v = []
@@ -637,7 +647,7 @@ surveyView a da limit u v u_block v_block w_grid f_grid lookUp w_block acc0 acc1
   else surveyView (modAngle a 2) (da + 2) limit u v u_block v_block w_grid f_grid lookUp w_block (acc0 ++ [fst__ ray]) (acc1 ++ snd__ ray)
 
 multiSurvey :: Int -> Int -> Float -> Float -> Int -> Int -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid
-               -> Array (Int, Int, Int) (Int, [Int]) -> UArray (Int, Int) Float -> Int -> Int -> [Wall_place] -> [Obj_place] -> ([Wall_place], [Obj_place])
+               -> Array (Int, Int, Int) Obj_grid -> UArray (Int, Int) Float -> Int -> Int -> [Wall_place] -> [Obj_place] -> ([Wall_place], [Obj_place])
 multiSurvey a a_limit u v u_block v_block w_grid f_grid obj_grid lookUp w_limit w_block acc0 acc1 =
   let survey = (surveyView a 0 a_limit u v u_block v_block w_grid f_grid lookUp w_block [] [])
   in
@@ -726,12 +736,15 @@ loadObject0 [] = []
 loadObject0 (x:xs) = loadObject1 (splitOn ", " x) : loadObject0 xs
 
 -- These functions are also used to genarate the environment map from a map file.
-emptyObjGrid :: Int -> Int -> Int -> Array (Int, Int, Int) (Int, [Int])
-emptyObjGrid u_max v_max w_max = array ((0, 0, 0), (w_max, u_max, v_max)) [((w, u, v), (0, [])) | w <- [0..w_max], u <- [0..u_max], v <- [0..v_max]]
+emptyObjGrid :: Int -> Int -> Int -> Array (Int, Int, Int) Obj_grid
+emptyObjGrid u_max v_max w_max = array ((0, 0, 0), (w_max, u_max, v_max)) [((w, u, v), def_obj_grid) | w <- [0..w_max], u <- [0..u_max], v <- [0..v_max]]
 
-loadObjGrid :: [[Char]] -> [((Int, Int, Int), (Int, [Int]))]
+--(read x3, procInts (take (read x4) xs))
+
+loadObjGrid :: [[Char]] -> [((Int, Int, Int), Obj_grid)]
 loadObjGrid [] = []
-loadObjGrid (x0:x1:x2:x3:x4:xs) = ((read x0, read x1, read x2), (read x3, procInts (take (read x4) xs))) : loadObjGrid (drop (read x4) xs)
+loadObjGrid (x0:x1:x2:x3:x4:xs) = ((read x0, read x1, read x2), Obj_grid {objType = read x3, program = procInts (take (read x4) xs), programName = []})
+                                  : loadObjGrid (drop (read x4) xs)
 
 emptyWGrid :: Int -> Int -> Int -> Array (Int, Int, Int) Wall_grid
 emptyWGrid u_max v_max w_max = array ((0, 0, 0), (w_max, u_max, v_max))

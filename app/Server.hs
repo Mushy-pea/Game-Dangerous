@@ -20,7 +20,7 @@ import HandleInput
 import PreprocessMap
 import CompileGPLC
 
-loadMap :: [Char] -> Int -> Int -> Int -> (Array (Int, Int, Int) Wall_grid, Array (Int, Int, Int) Floor_grid, Array (Int, Int, Int) (Int, [Int]))
+loadMap :: [Char] -> Int -> Int -> Int -> (Array (Int, Int, Int) Wall_grid, Array (Int, Int, Int) Floor_grid, Array (Int, Int, Int) Obj_grid)
 loadMap comp_map_text u_max v_max w_max =
   let proc_map' = procMap (splitOn "\n~\n" comp_map_text) u_max v_max w_max
       pm'' = fst proc_map'

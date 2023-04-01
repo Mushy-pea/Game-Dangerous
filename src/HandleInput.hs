@@ -82,7 +82,9 @@ writeObjGrid game_state args =
       boundsCheck = IW.boundsCheck (obj_grid_ game_state) (w, u, v) "writeObjGrid"
   in
   if isNothing boundsCheck then
-    (Just game_state {obj_grid_ = (obj_grid_ game_state) // [((w, u, v), (obj_type, constructProgBlock (drop 4 args)))]},
+    (Just game_state {obj_grid_ = (obj_grid_ game_state) // [((w, u, v), Obj_grid {objType = obj_type,
+                                                                                   program = constructProgBlock (drop 4 args),
+                                                                                   programName = []})]},
      "writeObjGrid succeeded.  Arguments passed were w: " ++ (args !! 0) ++ " u: " ++ (args !! 1) ++ " v: " ++ (args !! 2) ++ " obj_type: " ++ (args !! 3))
   else (Nothing, fromJust boundsCheck)
 
@@ -174,11 +176,12 @@ instance Serialise_voxel Floor_grid where
     ++ "  \"surface\": \"" ++ show (surface a) ++ "\""
     ++ "\n}"
 
-instance Serialise_voxel (Int, [Int]) where
+instance Serialise_voxel Obj_grid where
   toJSON (Just a) =
     "{\n"
-    ++ "  \"objType\": " ++ show (fst a) ++ ",\n"
-    ++ "  \"prog\": " ++ show (snd a)
+    ++ "  \"objType\": " ++ show (objType a) ++ ",\n"
+    ++ "  \"program\": " ++ show (program a)
+    ++ "  \"programName\": " ++ show (programName a)
     ++ "\n}"
 
 -- These three functions read the state of a set of voxels in the map, which is serialised and sent to the client.

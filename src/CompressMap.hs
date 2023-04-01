@@ -107,17 +107,17 @@ encodeFloorGrid f_grid w u v u_max v_max acc
         ramp3 = reverse (show (snd (local_down_ramp voxel)))
 
 -- This function encodes the Obj_grid array into the engine's map file format.
-encodeObjGrid :: Array (Int, Int, Int) (Int, [Int]) -> Int -> Int -> Int -> Int -> Int -> [Char] -> [Char]
+encodeObjGrid :: Array (Int, Int, Int) Obj_grid -> Int -> Int -> Int -> Int -> Int -> [Char] -> [Char]
 encodeObjGrid obj_grid w u v u_max v_max acc
   | w > 2 = acc ++ "\n~\n"
   | u > u_max = encodeObjGrid obj_grid (w + 1) 0 0 u_max v_max acc
   | v > v_max = encodeObjGrid obj_grid w (u + 1) 0 u_max v_max acc
-  | otherwise = if voxel == (0, []) then encodeObjGrid obj_grid w u (v + 1) u_max v_max acc
+  | otherwise = if voxel == def_obj_grid then encodeObjGrid obj_grid w u (v + 1) u_max v_max acc
                 else encodeObjGrid obj_grid w u (v + 1) u_max v_max (encoded_voxel ++ separator ++ acc)
   where voxel = obj_grid ! (w, u, v)
         separator = if (w, u, v) == (0, 0, 0) then []
                     else ", "
-        encoded_voxel = intercalate ", " (map (show) ([w, u, v, fst voxel, length (snd voxel)] ++ snd voxel))
+        encoded_voxel = intercalate ", " (map (show) ([w, u, v, objType voxel, length (program voxel)] ++ program voxel))
 
 -- This function encodes the Wall_grid array (for w < 0) into the engine's map file format.
 encodeSubWallGrid :: Array (Int, Int, Int) Wall_grid -> Int -> Int -> Int -> Int -> Int -> Bool -> [Char] -> [Char]
