@@ -1,39 +1,36 @@
 # Game :: Dangerous (a tribute to ZZT)
 
-## A project update as of 31/12/2022
+## A project update as of 02/04/2023
 
-With the engine almost feature complete work has started on the map development editor.  
-The architecture I've decided to go with is a client - server approach whereby a server 
-written in Haskell will run on the local machine, partnered with a web based client written in TypeScript.  
-The server will provide an API that is accessible 
-on localhost, which allows changes to a map state to be requested as well as sections 
-of the map to be read by the client.
+I've set myself a target that by the end of September this year I'll have started to create production map content 
+using the map development editor.  For much of the seven and a half years over which I've been (on and off) working 
+on this project, it's felt like there was still such a mountain of work to do that I didn't even try to estimate when 
+this milestone would be reached.  At this stage there's an engine that it appears can viably run the kind of game I'd 
+like to build and a substantial part of the editor that would make it feasible to build.  There are still question 
+marks over what will happen when I try to implement the game design ideas in my head on this platform, including complex 
+puzzles.
 
-The server will handle loading and saving of map states from and to the file format used 
-by the engine.  The several existing Haskell written development tools (such as ImportModel and PreprocessMap) 
-will be integrated into the server through static imports.  The C# written GPLC compiler 
-(hosted in Mushy-pea/Game-Dangerous-Editor) will be deprecated and a new implementation 
-written in Haskell (or AssmGplc updated to meet requirements).  This will then also be 
-integrated into the server.
+I suspect it'll turn into a battle of patience and attrition where I'm forced to squeeze every last ounce of 
+capability out of the engine (and myself) to make something anyone might find remotely fun.  That sounds like great fun 
+in itself though.
 
-I'm hoping the result will be a much faster and less error prone map development process 
-than at present, for me and anyone else who fancies trying their hand at it.
+I've just created a new repo (Mushy-pea/Game-Dangerous-Client) to contain the client side of the map editor.  For context, 
+the new GPLC compiler (module CompileGPLC) I've been working on recently outputs both bytecode for the engine and a JSON 
+representation of the source code it's compiled with colour annotations.  So far the client repo just contains a simple 
+TypeScript / Node.js program that renders this annotated code to the console (example in screenshot below).  This is just 
+for testing purposes and the actual client will be a web application, probably written with "vanilla" TypeScript / HTML 
+(i.e. no complex abstraction framework like React or Vue).  I'm going to take a minimum viable product approach and for 
+this limited purpose the vanilla approach seems to make more sense.  Despite this, it is intended to feature a minimal 
+IDE for writing GPLC scripts.  At the end of the day I've written three compilers for this language over the years so 
+I might as well write an IDE this time as well, hey?
 
-Credits:
+![Annotated GPLC code example](https://github.com/Mushy-pea/Game-Dangerous/blob/master/images/CodeColouring.png)
 
-The in game music bundled with release 4 has kindly been made available for free by 
-Kevin MacLeod under the following license:
-
-Lightless Dawn Kevin MacLeod (incompetech.com)
-Licensed under Creative Commons: By Attribution 3.0 License
-http://creativecommons.org/licenses/by/3.0/
+Key -> Blue: keyword, Green: readable reference argument, Red: writable reference argument, White: literal constant argument (or anything else)
 
 [![Preview unavailable](https://img.youtube.com/vi/yxnuFl-8j5c/default.jpg)](https://youtu.be/yxnuFl-8j5c)
-
-[![Preview unavailable](https://img.youtube.com/vi/gBaIU4U6eQs/default.jpg)](https://youtu.be/gBaIU4U6eQs)
 
 [![Preview unavailable](https://img.youtube.com/vi/oHMakxQZjlk/default.jpg)](https://youtu.be/oHMakxQZjlk)
 
 [![Preview unavailable](https://img.youtube.com/vi/4Y2er6WZ5qs/default.jpg)](https://youtu.be/4Y2er6WZ5qs)
-
 
