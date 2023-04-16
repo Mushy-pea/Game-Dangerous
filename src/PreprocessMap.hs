@@ -12,8 +12,9 @@ module PreprocessMap where
 
 import Data.Array.IArray
 import Data.List.Split
-import BuildModel
+import BuildModel hiding (Game_state, w_grid_, f_grid_, obj_grid_)
 import DecompressMap
+import HandleInput
 
 single_fill [] (x:xs) = (x:xs)
 single_fill (x:xs) [] = (x:xs)
@@ -157,7 +158,7 @@ augmentFloorGrid f_grid ramp_map w u v f_u_limit f_v_limit =
   else augmentFloorGrid f_grid' ramp_map w u (v + 1) f_u_limit f_v_limit
 
 -- This is the intended entry point function for the module.
-applyAugmentations :: Game_state -> (Int, Int) -> (Int, Int) -> Game_state
+applyAugmentations :: Server_state -> (Int, Int) -> (Int, Int) -> Server_state
 applyAugmentations game_state (w_u_limit, w_v_limit) (f_u_limit, f_v_limit) =
   let obj_grid' = padWalls (w_grid_ game_state) (f_grid_ game_state) (obj_grid_ game_state) 0 0 0 w_u_limit w_v_limit
       ramp_set = splitOn [(3, 0, 0)] (buildRampSet (f_grid_ game_state) 0 0 0 f_u_limit f_v_limit ([], [], []))

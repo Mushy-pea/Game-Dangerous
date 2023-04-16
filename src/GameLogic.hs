@@ -517,7 +517,7 @@ detRandTarget s0 u_bound v_bound =
   let n = \i -> (prob_seq s0) ! (mod (fst__ (gameClock s0) + i) 240)
   in (mod (n 0) 2, mod (((n 1) + 1) * ((n 2) + 1)) u_bound, mod (((n 1) + 1) * ((n 2) + 1)) v_bound)
 
--- The NPC path finding is based around line of sight checks, which use the Obj_grid ( (Int, [Int]) ) instance of the ray tracer.
+-- The NPC path finding is based around line of sight checks, which use the Obj_grid instance of the ray tracer.
 chkLineSight :: Int -> Int -> Int -> Int -> Int -> (Float, Float) -> Int -> Int -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid
                 -> Array (Int, Int, Int) Obj_grid -> UArray (Int, Int) Float -> Int
 chkLineSight mode a w_block u_block v_block (fg_u, fg_v) target_u target_v w_grid f_grid obj_grid lookUp =
@@ -1297,7 +1297,7 @@ linkGplc0 :: Bool -> [Float] -> [Int] -> Array (Int, Int, Int) Wall_grid -> [((I
              -> Array (Int, Int, Int) Obj_grid -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> Play_state0 -> Play_state1 -> UArray (Int, Int) Float -> Bool
              -> IO (Array (Int, Int, Int) Wall_grid, Array (Int, Int, Int) Floor_grid, Array (Int, Int, Int) Obj_grid, Play_state0, Play_state1)
 linkGplc0 phase_flag (x0:x1:xs) (z0:z1:z2:zs) w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp init_flag =
-  let target0 = link_gplc2 x0 (z0, z1, z2)
+  let target0 = linkGplc2 x0 (z0, z1, z2)
       target1 = (((sig_q s1), 512) !! (1 :: Int), ((sig_q s1), 513) !! (2 :: Int), ((sig_q s1), 514) !! (3 :: Int))
       prog = (program (obj_grid ! target1))
       obj_grid' = sendSignal 1 (GPLC_int 1) (GPLC_int (fst__ target0), GPLC_int (snd__ target0), GPLC_int (third_ target0)) obj_grid s1 []
@@ -1308,7 +1308,7 @@ linkGplc0 phase_flag (x0:x1:xs) (z0:z1:z2:zs) w_grid w_grid_upd f_grid obj_grid 
   in do
   if init_flag == True then do
     if (x1 == 1 || x1 == 3) && head (program (obj_grid ! target0)) == 0 then do
-      reportState (verbose_mode s1) 2 [] [] ("\nPlayer starts GPLC program at Obj_grid " ++ show target0)
+      reportState (verbose_mode s1) 2 [] [] ("\nPlayer starts GPLC program [" ++ programName (obj_grid ! target0) ++ "] at Obj_grid " ++ show target0)
       run_gplc' <- catch (runGplc (program ((fst obj_grid') ! target0)) [] w_grid w_grid_upd f_grid (fst obj_grid') obj_grid_upd s0 s1 lookUp 0)
                          (\e -> gplcError w_grid_upd f_grid obj_grid_upd s0 s1 e)
       linkGplc0 phase_flag (x0:x1:xs) (z0:z1:z2:zs) w_grid (fst_ run_gplc') (snd_ run_gplc') obj_grid (third run_gplc') (fourth run_gplc') (fifth run_gplc')
@@ -1323,7 +1323,7 @@ linkGplc0 phase_flag (x0:x1:xs) (z0:z1:z2:zs) w_grid w_grid_upd f_grid obj_grid 
                   ("\n\ngame_t = " ++ show (fst__ (gameClock s0)) ++ "\n----------------\n\nsignal queue: " ++ show (sig_q s1) ++ "\n")
       if objType (obj_grid ! target1) == 1 || objType (obj_grid ! target1) == 3 then do
         reportState (verbose_mode s1) 2 [] []
-                    ("\nGPLC program run at Obj_grid "
+                    ("\nGPLC program [" ++ programName (obj_grid ! target1) ++ "] run at Obj_grid "
                     ++ show (((sig_q s1), 516) !! (1 :: Int), ((sig_q s1), 517) !! (2 :: Int), ((sig_q s1), 518) !! (3 :: Int)))
         run_gplc' <- catch (runGplc (program (obj_grid'' ! target1)) [] w_grid w_grid_upd f_grid obj_grid'' obj_grid_upd s0 (s1 {sig_q = drop 4 (sig_q s1)}) lookUp 0)
                            (\e -> gplcError w_grid_upd f_grid obj_grid_upd s0 s1 e)
@@ -1352,10 +1352,11 @@ linkGplc1 s0 s1 obj_grid mode =
       if health s1 <= detDamage (difficulty s1) s0 then return s1 {health = 0, state_chg = 1, message = 0 : msg26}
       else return s1 {health = health s1 - detDamage (difficulty s1) s0, state_chg = 1, message = 0 : msg13}
 
-link_gplc2 0 (z0, z1, z2) = (z0, z1, z2 + 1)
-link_gplc2 1 (z0, z1, z2) = (z0, z1 + 1, z2)
-link_gplc2 2 (z0, z1, z2) = (z0, z1, z2 - 1)
-link_gplc2 3 (z0, z1, z2) = (z0, z1 - 1, z2)
+linkGplc2 :: Float -> (Int, Int, Int) -> (Int, Int, Int)
+linkGplc2 0 (w, u, v) = (w, u, v + 1)
+linkGplc2 1 (w, u, v) = (w, u + 1, v)
+linkGplc2 2 (w, u, v) = (w, u, v - 1)
+linkGplc2 3 (w, u, v) = (w, u - 1, v)
 
 -- These four functions perform game physics and geometry computations.
 -- These include player collision detection, thrust, friction, gravity and floor surface modelling.

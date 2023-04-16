@@ -9,7 +9,8 @@ module CompressMap where
 import Data.Array.IArray
 import Data.Maybe
 import Data.List
-import BuildModel
+import BuildModel hiding (Game_state, w_grid_, f_grid_, obj_grid_)
+import HandleInput
 
 -- The header for the Wall_grid section in the map file does not depend on any degree of freedom that can be edited through the server,
 -- so it has been hard coded.

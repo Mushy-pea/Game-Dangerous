@@ -9,57 +9,13 @@ module CompileGPLC where
 import System.IO
 import System.Environment
 import Control.Exception
-import Data.List.Split
 import Data.Array.IArray
 import Data.Char
 import Data.Maybe
 import qualified Data.Sequence as SEQ
 import BuildModel
-import HandleInput
-
-inputDir = "C:\\Users\\steve\\code\\GD\\GPLC-scripts-and-maps\\GPLC_Programs\\"
-
-outputDir = "C:\\Users\\steve\\code\\GD\\GPLC-scripts-and-maps\\CompilerOutput\\"
-
-testFileSet = SEQ.fromList ["ActivateDefence",
-                            "Ammo",
-                            "BlueKey",
-                            "BulletPrototype",
-                            "CAU_Door",
-                            "CentipedeFrontNode",
-                            "CentipedeInnerNode",
-                            "CentipedeRearNode",
-                            "FireballPrototype",
-                            "Gem",
-                            "InitialScript1",
-                            "InitialScript2_1",
-                            "InitialScript2_2",
-                            "InitialScript3",
-                            "InterMapPortal",
-                            "LightTorch",
-                            "NPC_Gun",
-                            "NPC_Sarah",
-                            "PlayerGun",
-                            "Shooter",
-                            "StartTest",
-                            "Teleporter1",
-                            "Teleporter2",
-                            "Teleporter3",
-                            "TheEnd",
-                            "Torch",
-                            "UnblockTeleporter",
-                            "ZombieSmiley"]
 
 data Token = Token {line :: Int, column :: Int, content :: [Char], textColour :: [Char]} deriving (Eq, Show)
-
-instance Serialise_voxel Token where
-  toJSON (Just a) =
-    "{\n"
-    ++ "  \"line\": " ++ show (line a) ++ ",\n"
-    ++ "  \"column\": " ++ show (column a) ++ ",\n"
-    ++ "  \"content\": " ++ show (content a) ++ ",\n"
-    ++ "  \"textColour\": " ++ show (textColour a)
-    ++ "\n}"
 
 defToken = Token {line = 0, column = 0, content = [], textColour = []}
 
@@ -272,69 +228,4 @@ addColour token_arr i i_max token_arr_upd
         colour_scheme = map mapColour (arguments (fromJust matched_keyword))
         update = ((i, 0), (target 0) {textColour = "Blue"})
                  : [((i, j), (target j) {textColour = colour_scheme !! (j - 1)}) | j <- [1..instructionLength (fromJust matched_keyword) - 1]]
-
--- This function serialises the annotated source code to JSON for sending to the client.
-serialiseCode :: Array (Int, Int) Token -> Int -> Int -> Int -> Int -> [Char] -> [Char]
-serialiseCode token_arr i j i_max j_max output
-  | i > i_max = take ((length output) - 2) output
-  | j > j_max = serialiseCode token_arr (i + 1) 0 i_max j_max output
-  | token == defToken = serialiseCode token_arr (i + 1) 0 i_max j_max output
-  | otherwise = serialiseCode token_arr i (j + 1) i_max j_max (toJSON (Just (token {line = i + 1})) ++ ",\n" ++ output)
-  where token = token_arr ! (i, j)
-
-showTestOutput :: SEQ.Seq Int -> [Char] -> [Char]
-showTestOutput SEQ.Empty output = reverse output
-showTestOutput (x0 SEQ.:<| x1 SEQ.:<| xs) output
-  | x0 == 536870912 = showTestOutput (x1 SEQ.:<| xs) (" \n " ++ output)
-  | x1 == 536870912 = showTestOutput (x1 SEQ.:<| xs) (reverse (show x0) ++ output)
-  | otherwise = showTestOutput (x1 SEQ.:<| xs) (" " ++ reverse (show x0) ++ output)
-showTestOutput (x0 SEQ.:<| xs) output = showTestOutput xs (" \n " ++ output)
-
-compileProgram :: [Char] -> ([Char], Array (Int, Int) Token)
-compileProgram source =
-  let split_contents = splitOn " " source
-      array_dim = detArrayDim split_contents 0 0 0
-      empty_token_array = array ((0, 0), (fst__ array_dim, (snd__ array_dim) - 1))
-                                [((i, j), defToken) | i <- [0..fst__ array_dim], j <- [0..(snd__ array_dim) - 1]]
-      token_arr = tokenise split_contents empty_token_array 1 0 0
-      bound_symbols = genSymbolBindings token_arr [] [] 0 0 0 (fst__ array_dim)
-      signal_block = genSignalBlock token_arr (snd__ bound_symbols) (fst__ array_dim) 0 0 SEQ.empty []
-      signal_code_block_size = sizeSignalCodeBlock (fst signal_block) 2 (SEQ.length (fst signal_block) - 1) 0
-      add_write_ref_key = addWriteRefKey (signal_code_block_size + 4)
-      code_block = genCodeBlock token_arr (map add_write_ref_key (fst__ bound_symbols)) (snd__ bound_symbols) (fst__ array_dim) SEQ.empty []
-      data_block = genDataBlock (fst__ bound_symbols) SEQ.empty
-      show_data_block = showTestOutput data_block []
-      colour_update = addColour token_arr 0 (fst__ array_dim) []
-  in
-  if third_ array_dim /= [] then error (third_ array_dim)
-  else if third_ bound_symbols /= [] then error ("\n" ++ show (third_ bound_symbols))
-  else if snd signal_block /= [] then error ("\n" ++ show (snd signal_block))
-  else if snd code_block /= [] then error ("\n" ++ show (snd code_block))
-  else (showTestOutput (fst signal_block) []
-       ++ showTestOutput (fst code_block) []
-       ++ take ((length show_data_block) - 3) show_data_block, token_arr // colour_update)
-
-testSet :: Int -> IO ()
-testSet i =
-  let source_file = inputDir ++ SEQ.index testFileSet i ++ ".gplc"
-  in do
-  if i > 27 then return ()
-  else do
-    source <- bracket (openFile source_file ReadMode) hClose
-                      (\h -> do c <- hGetContents h; putStr ("\nprogram file size: " ++ show (length c)); return c)
-    putStr ("\nCompiling program " ++ ((splitOn "\n~\n" source) !! 0) ++ " from source file " ++ source_file)
-    deployResult source (outputDir ++ SEQ.index testFileSet i)
-    testSet (i + 1)
-
-deployResult :: [Char] -> [Char] -> IO ()
-deployResult source output_path =
-  let result = compileProgram ((splitOn "\n~\n" source) !! 1)
-      bytecode = fst result
-      token_arr = snd result
-      annotated_code = "[\n" ++ serialiseCode token_arr 0 0 (fst (snd (bounds token_arr))) (snd (snd (bounds token_arr))) [] ++ "\n]"
-  in do
-  bracket (openFile (output_path ++ ".out") WriteMode) hClose
-          (\h -> hPutStr h bytecode)
-  bracket (openFile (output_path ++ ".json") WriteMode) hClose
-          (\h -> hPutStr h annotated_code)
 

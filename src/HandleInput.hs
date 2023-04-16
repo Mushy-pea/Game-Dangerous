@@ -7,41 +7,27 @@
 
 module HandleInput where
 
+import Data.List.Split
 import Data.Array.IArray
 import Data.Maybe
 import Data.List
-import BuildModel
+import qualified Data.Sequence as SEQ
+import qualified Data.ByteString.Char8 as BS
+import qualified Crypto.Hash.SHA256 as SHA256
+import BuildModel hiding (Game_state, w_grid_, f_grid_, obj_grid_)
+import CompileGPLC
 import qualified IndexWrapper1 as IW
+
+data GPLC_program = GPLC_program {name :: [Char], hash :: [Char], source :: [Char], bytecode :: [Char]}
+
+empty_gplc_program = GPLC_program {name = [], hash = [], source = [], bytecode = []}
+
+data Server_state = Server_state {w_grid_ :: Array (Int, Int, Int) Wall_grid, f_grid_ :: Array (Int, Int, Int) Floor_grid,
+                                  obj_grid_ :: Array (Int, Int, Int) Obj_grid, gplcPrograms :: Array Int GPLC_program}
 
 -- This recursive data type is used to implement the control structure that updates the map state in response to commands received by the server.
 data Comm_struct = Comm_struct {dictionary_page :: [[Char]], branches :: Maybe (Array Int Comm_struct),
-                                read_write_game_state :: Maybe (Game_state -> [[Char]] -> (Maybe Game_state, [Char]))}
-
--- The following shows the structure of the decision tree implemented using the above data type.
-
--- unlock(0) (unlock_wrapper)
-
--- set(0) -> Wall_grid (1) 			-> structure (2) (set_wall_grid_structure)
---							-> textures (2) (set_wall_grid_textures)
---							-> Obj_place (2) (set_obj_place)
-
---  -> Floor_grid (1) (set_floor_grid)
---  -> Obj_grid(1) (set_obj_grid)
---  -> Play_state0(1) 				-> position (3) (set_player_position)
---							-> angle (3) (set_camera_angle)
---							-> rend_mode (3) (set_rend_mode)
-
---  -> Play_State1(1)				-> health (4) (set_health)
---							-> ammo (4) (set_ammo)
---							-> gems (4) (set_gems)
---							-> torches (4) (set_torches)
---							-> keys (4) (set_keys)
---							-> region (4) (set_region)
---							-> difficulty (4) (set_difficulty)
---							-> verbose_mode (4) (set_verbose_mode)
---							-> story_state (4) (set_story_state)
-
---send_signal(0) (send_signal_)
+                                read_write_game_state :: Maybe (Server_state -> [[Char]] -> (Maybe Server_state, [Char]))}
 
 -- These are the functions that update the map state in response to the server receiving commands.
 parseTerrain :: [Char] -> Terrain
@@ -53,7 +39,7 @@ parseTerrain t_name
   | t_name == "Flat" = BuildModel.Flat
   | t_name == "Open" = BuildModel.Open
 
-writeFloorGrid :: Game_state -> [[Char]] -> (Maybe Game_state, [Char])
+writeFloorGrid :: Server_state -> [[Char]] -> (Maybe Server_state, [Char])
 writeFloorGrid game_state args =
   let w = read (args !! 0)
       u = read (args !! 1)
@@ -73,7 +59,7 @@ constructProgBlock :: [[Char]] -> [Int]
 constructProgBlock [] = []
 constructProgBlock (x:xs) = (read x) : constructProgBlock xs
 
-writeObjGrid :: Game_state -> [[Char]] -> (Maybe Game_state, [Char])
+writeObjGrid :: Server_state -> [[Char]] -> (Maybe Server_state, [Char])
 writeObjGrid game_state args =
   let w = read (args !! 0)
       u = read (args !! 1)
@@ -88,7 +74,7 @@ writeObjGrid game_state args =
      "writeObjGrid succeeded.  Arguments passed were w: " ++ (args !! 0) ++ " u: " ++ (args !! 1) ++ " v: " ++ (args !! 2) ++ " obj_type: " ++ (args !! 3))
   else (Nothing, fromJust boundsCheck)
 
-writeWallGridStructure :: Game_state -> [[Char]] -> (Maybe Game_state, [Char])
+writeWallGridStructure :: Server_state -> [[Char]] -> (Maybe Server_state, [Char])
 writeWallGridStructure game_state args =
   let w = read (args !! 0)
       u = read (args !! 1)
@@ -104,7 +90,7 @@ writeWallGridStructure game_state args =
      success_str ++ (args !! 0) ++ " u: " ++ (args !! 1) ++ " v: " ++ (args !! 2) ++ " others: " ++ show (drop 3 args))
   else (Nothing, fromJust boundsCheck)
 
-writeWallGridTextures :: Game_state -> [[Char]] -> (Maybe Game_state, [Char])
+writeWallGridTextures :: Server_state -> [[Char]] -> (Maybe Server_state, [Char])
 writeWallGridTextures game_state args =
   let w = read (args !! 0)
       u = read (args !! 1)
@@ -118,7 +104,7 @@ writeWallGridTextures game_state args =
      success_str ++ (args !! 0) ++ " u: " ++ (args !! 1) ++ " v: " ++ (args !! 2) ++ " others: " ++ show (drop 3 args))
   else (Nothing, fromJust boundsCheck)
 
-writeObjPlace :: Game_state -> [[Char]] -> (Maybe Game_state, [Char])
+writeObjPlace :: Server_state -> [[Char]] -> (Maybe Server_state, [Char])
 writeObjPlace game_state args =
   let w = read (args !! 0)
       u = read (args !! 1)
@@ -137,10 +123,10 @@ writeObjPlace game_state args =
 
 -- This class is used by the read commands for Wall_grid, Floor_grid and Obj_grid to serialise these types to JSON for
 -- sending to the client.
-class Serialise_voxel a where
+class Serialise a where
   toJSON :: Maybe a -> [Char]
 
-instance Serialise_voxel Obj_place where
+instance Serialise Obj_place where
   toJSON Nothing = "null"
   toJSON (Just a) =
     "{\n"
@@ -156,7 +142,7 @@ toJSBool :: Bool -> [Char]
 toJSBool True = "true"
 toJSBool False = "false"
 
-instance Serialise_voxel Wall_grid where
+instance Serialise Wall_grid where
   toJSON (Just a) =
     "{\n"
     ++ "  \"u1\": " ++ toJSBool (u1 a) ++ ",\n"
@@ -170,35 +156,44 @@ instance Serialise_voxel Wall_grid where
     ++ toJSON (obj a)
     ++ "\n}" 
 
-instance Serialise_voxel Floor_grid where
+instance Serialise Floor_grid where
   toJSON (Just a) =
     "{\n"
     ++ "  \"surface\": \"" ++ show (surface a) ++ "\""
     ++ "\n}"
 
-instance Serialise_voxel Obj_grid where
+instance Serialise Obj_grid where
   toJSON (Just a) =
     "{\n"
     ++ "  \"objType\": " ++ show (objType a) ++ ",\n"
-    ++ "  \"program\": " ++ show (program a)
+    ++ "  \"program\": " ++ show (program a) ++ ",\n"
     ++ "  \"programName\": " ++ show (programName a)
     ++ "\n}"
 
+instance Serialise Token where
+  toJSON (Just a) =
+    "{\n"
+    ++ "  \"line\": " ++ show (line a) ++ ",\n"
+    ++ "  \"column\": " ++ show (column a) ++ ",\n"
+    ++ "  \"content\": " ++ show (content a) ++ ",\n"
+    ++ "  \"textColour\": " ++ show (textColour a)
+    ++ "\n}"
+
 -- These three functions read the state of a set of voxels in the map, which is serialised and sent to the client.
-readVoxel :: Game_state -> [Char] -> Int -> Int -> Int -> [Char]
+readVoxel :: Server_state -> [Char] -> Int -> Int -> Int -> [Char]
 readVoxel game_state voxel_type w u v
   | voxel_type == "Wall_grid" = toJSON (Just ((w_grid_ game_state) ! (w, u, v)))
   | voxel_type == "Floor_grid" = toJSON (Just ((f_grid_ game_state) ! (w, u, v)))
   | voxel_type == "Obj_grid" = toJSON (Just ((obj_grid_ game_state) ! (w, u, v)))
 
-readVoxels :: Game_state -> Int -> Int -> Int -> Int -> Int -> [Char] -> [Char] -> [Char]
+readVoxels :: Server_state -> Int -> Int -> Int -> Int -> Int -> [Char] -> [Char] -> [Char]
 readVoxels game_state w u v u_max v_max voxel_type acc
   | u > u_max = take ((length acc) - 2) acc
   | v > v_max = readVoxels game_state w (u + 1) 0 u_max v_max voxel_type acc
   | otherwise = readVoxels game_state w u (v + 1) u_max v_max voxel_type (voxel ++ ",\n" ++ acc)
   where voxel = readVoxel game_state voxel_type w u v
 
-readVoxelsCommand :: Game_state -> [[Char]] -> (Maybe Game_state, [Char])
+readVoxelsCommand :: Server_state -> [[Char]] -> (Maybe Server_state, [Char])
 readVoxelsCommand game_state args =
   let w = read (args !! 0)
       u_min = read (args !! 1)
@@ -207,6 +202,53 @@ readVoxelsCommand game_state args =
       v_max = read (args !! 4)
       voxel_type = args !! 5
   in (Nothing, "[" ++ readVoxels game_state w u_min v_min u_max v_max voxel_type [] ++ "\n]")
+
+-- This function serialises annotated GPLC source code to JSON for sending to the client.
+serialiseSourceCode :: Array (Int, Int) Token -> Int -> Int -> Int -> Int -> [Char] -> [Char]
+serialiseSourceCode token_arr i j i_max j_max output
+  | i > i_max = take ((length output) - 2) output
+  | j > j_max = serialiseSourceCode token_arr (i + 1) 0 i_max j_max output
+  | token == defToken = serialiseSourceCode token_arr (i + 1) 0 i_max j_max output
+  | otherwise = serialiseSourceCode token_arr i (j + 1) i_max j_max (toJSON (Just (token {line = i + 1})) ++ ",\n" ++ output)
+  where token = token_arr ! (i, j)
+
+-- This function serialises GPLC bytecode for sending to the client.
+serialiseBytecode :: Int -> SEQ.Seq Int -> [Char] -> [Char]
+serialiseBytecode mode SEQ.Empty output = reverse output
+serialiseBytecode mode (x SEQ.:<| xs) output
+  | x == 536870912 = serialiseBytecode mode xs ("\n" ++ output)
+  | otherwise = serialiseBytecode mode xs (delimiter ++ reverse (show x) ++ output)
+  where delimiter = if mode == 0 then " " else ", "
+
+-- This is the entry point function for the logic in CompileGPLC and handles the compilation of GPLC
+-- programs to bytecode.
+compileProgram :: [Char] -> [Char] -> GPLC_program
+compileProgram name source =
+  let split_contents = splitOn " " source
+      array_dim = detArrayDim split_contents 0 0 0
+      empty_token_array = array ((0, 0), (fst__ array_dim, (snd__ array_dim) - 1))
+                                [((i, j), defToken) | i <- [0..fst__ array_dim], j <- [0..(snd__ array_dim) - 1]]
+      token_arr = tokenise split_contents empty_token_array 1 0 0
+      bound_symbols = genSymbolBindings token_arr [] [] 0 0 0 (fst__ array_dim)
+      signal_block = genSignalBlock token_arr (snd__ bound_symbols) (fst__ array_dim) 0 0 SEQ.empty []
+      signal_code_block_size = sizeSignalCodeBlock (fst signal_block) 2 (SEQ.length (fst signal_block) - 1) 0
+      add_write_ref_key = addWriteRefKey (signal_code_block_size + 4)
+      code_block = genCodeBlock token_arr (map add_write_ref_key (fst__ bound_symbols)) (snd__ bound_symbols) (fst__ array_dim) SEQ.empty []
+      data_block = genDataBlock (fst__ bound_symbols) SEQ.empty
+      show_data_block = serialiseBytecode 1 data_block []
+      colour_update = addColour token_arr 0 (fst__ array_dim) []
+      serialised_source = serialiseSourceCode (token_arr // colour_update) 0 0 (fst (snd (bounds token_arr))) (snd (snd (bounds token_arr))) []
+  in
+  if third_ array_dim /= [] then error (third_ array_dim)
+  else if third_ bound_symbols /= [] then error ("\n" ++ show (third_ bound_symbols))
+  else if snd signal_block /= [] then error ("\n" ++ show (snd signal_block))
+  else if snd code_block /= [] then error ("\n" ++ show (snd code_block))
+  else GPLC_program {name = name,
+                     hash = BS.unpack (SHA256.hash (BS.pack source)),
+                     source = serialised_source,
+                     bytecode = serialiseBytecode 1 (fst signal_block) []
+                                ++ serialiseBytecode 1 (fst code_block) []
+                                ++ take ((length show_data_block) - 3) show_data_block}
 
 -- These are the pages used in the hierarchical dictionary look up used to interpret server commands.
 page0 = ["read", "write"]
@@ -240,7 +282,7 @@ texturesNode = Comm_struct {dictionary_page = [], branches = Nothing, read_write
 objPlaceNode = Comm_struct {dictionary_page = [], branches = Nothing, read_write_game_state = Just writeObjPlace}
 
 -- This function traverses the decision tree and thereby interprets server commands.
-interpretCommand :: [[Char]] -> Comm_struct -> Game_state -> (Game_state, [Char])
+interpretCommand :: [[Char]] -> Comm_struct -> Server_state -> (Server_state, [Char])
 interpretCommand [] comm_struct game_state = (game_state, "\nInvalid command (1).")
 interpretCommand (x:xs) comm_struct game_state =
   let new_game_state = (fromJust (read_write_game_state comm_struct)) game_state (x:xs)
@@ -252,5 +294,4 @@ interpretCommand (x:xs) comm_struct game_state =
   else
     if isNothing look_up == True then (game_state, "\nInvalid command (2).")
     else interpretCommand xs ((fromJust (branches comm_struct)) ! (fromJust look_up)) game_state
-
 

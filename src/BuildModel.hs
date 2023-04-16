@@ -21,6 +21,7 @@ import Data.Maybe
 import Data.IORef
 import qualified Data.Sequence as SEQ
 import Data.Binary
+import Data.Char
 import Foreign hiding (rotate)
 import Foreign.C.String
 import Foreign.C.Types
@@ -739,12 +740,15 @@ loadObject0 (x:xs) = loadObject1 (splitOn ", " x) : loadObject0 xs
 emptyObjGrid :: Int -> Int -> Int -> Array (Int, Int, Int) Obj_grid
 emptyObjGrid u_max v_max w_max = array ((0, 0, 0), (w_max, u_max, v_max)) [((w, u, v), def_obj_grid) | w <- [0..w_max], u <- [0..u_max], v <- [0..v_max]]
 
---(read x3, procInts (take (read x4) xs))
-
 loadObjGrid :: [[Char]] -> [((Int, Int, Int), Obj_grid)]
 loadObjGrid [] = []
-loadObjGrid (x0:x1:x2:x3:x4:xs) = ((read x0, read x1, read x2), Obj_grid {objType = read x3, program = procInts (take (read x4) xs), programName = []})
-                                  : loadObjGrid (drop (read x4) xs)
+loadObjGrid (x0:x1:x2:x3:x4:xs)
+  | isDigit (head (head xs)) = ((read x0, read x1, read x2),
+                                Obj_grid {objType = read x3, program = procInts (take (read x4) xs), programName = "null"})
+                                : loadObjGrid (drop (read x4) xs)
+  | otherwise = ((read x0, read x1, read x2),
+                 Obj_grid {objType = read x3, program = procInts (take ((read x4) - 1) (tail xs)), programName = head xs})
+                 : loadObjGrid (drop (read x4) xs)
 
 emptyWGrid :: Int -> Int -> Int -> Array (Int, Int, Int) Wall_grid
 emptyWGrid u_max v_max w_max = array ((0, 0, 0), (w_max, u_max, v_max))
