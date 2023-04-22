@@ -12,7 +12,8 @@ import Data.Array.IArray
 import Data.Maybe
 import Data.List
 import qualified Data.Sequence as SEQ
-import qualified Data.ByteString.Char8 as BS
+import qualified Data.ByteString as BS
+import qualified Data.ByteString.Char8 as BSC
 import qualified Crypto.Hash.SHA256 as SHA256
 import BuildModel hiding (Game_state, w_grid_, f_grid_, obj_grid_)
 import CompileGPLC
@@ -26,8 +27,8 @@ data Server_state = Server_state {w_grid_ :: Array (Int, Int, Int) Wall_grid, f_
                                   obj_grid_ :: Array (Int, Int, Int) Obj_grid, gplcPrograms :: Array Int GPLC_program}
 
 -- This recursive data type is used to implement the control structure that updates the map state in response to commands received by the server.
-data Comm_struct = Comm_struct {dictionary_page :: [[Char]], branches :: Maybe (Array Int Comm_struct),
-                                read_write_game_state :: Maybe (Server_state -> [[Char]] -> (Maybe Server_state, [Char]))}
+data Comm_struct = Comm_struct {dictionaryPage :: [[Char]], branches :: Maybe (Array Int Comm_struct),
+                                readWriteGameState :: Maybe (Server_state -> [[Char]] -> (Maybe Server_state, [Char]))}
 
 -- These are the functions that update the map state in response to the server receiving commands.
 parseTerrain :: [Char] -> Terrain
@@ -40,7 +41,7 @@ parseTerrain t_name
   | t_name == "Open" = BuildModel.Open
 
 writeFloorGrid :: Server_state -> [[Char]] -> (Maybe Server_state, [Char])
-writeFloorGrid game_state args =
+writeFloorGrid server_state args =
   let w = read (args !! 0)
       u = read (args !! 1)
       v = read (args !! 2)
@@ -48,10 +49,10 @@ writeFloorGrid game_state args =
       terrain = parseTerrain (args !! 4)
       f' = Floor_grid {w_ = height, surface = terrain, local_up_ramp = (0, 0), local_down_ramp = (0, 0)}
       success_str = "writeFloorGrid succeeded.  Arguments passed were w: "
-      boundsCheck = IW.boundsCheck (f_grid_ game_state) (w, u, v) "writeFloorGrid"
+      boundsCheck = IW.boundsCheck (f_grid_ server_state) (w, u, v) "writeFloorGrid"
   in
   if isNothing boundsCheck then 
-    (Just game_state {f_grid_ = (f_grid_ game_state) // [((w, u, v), f')]},
+    (Just server_state {f_grid_ = (f_grid_ server_state) // [((w, u, v), f')]},
      success_str ++ (args !! 0) ++ " u: " ++ (args !! 1) ++ " v: " ++ (args !! 2) ++ " height: " ++ (args !! 3) ++ " terrain: " ++ (args !! 4))
   else (Nothing, fromJust boundsCheck)
 
@@ -60,64 +61,64 @@ constructProgBlock [] = []
 constructProgBlock (x:xs) = (read x) : constructProgBlock xs
 
 writeObjGrid :: Server_state -> [[Char]] -> (Maybe Server_state, [Char])
-writeObjGrid game_state args =
+writeObjGrid server_state args =
   let w = read (args !! 0)
       u = read (args !! 1)
       v = read (args !! 2)
       obj_type = read (args !! 3)
-      boundsCheck = IW.boundsCheck (obj_grid_ game_state) (w, u, v) "writeObjGrid"
+      boundsCheck = IW.boundsCheck (obj_grid_ server_state) (w, u, v) "writeObjGrid"
   in
   if isNothing boundsCheck then
-    (Just game_state {obj_grid_ = (obj_grid_ game_state) // [((w, u, v), Obj_grid {objType = obj_type,
+    (Just server_state {obj_grid_ = (obj_grid_ server_state) // [((w, u, v), Obj_grid {objType = obj_type,
                                                                                    program = constructProgBlock (drop 4 args),
                                                                                    programName = []})]},
      "writeObjGrid succeeded.  Arguments passed were w: " ++ (args !! 0) ++ " u: " ++ (args !! 1) ++ " v: " ++ (args !! 2) ++ " obj_type: " ++ (args !! 3))
   else (Nothing, fromJust boundsCheck)
 
 writeWallGridStructure :: Server_state -> [[Char]] -> (Maybe Server_state, [Char])
-writeWallGridStructure game_state args =
+writeWallGridStructure server_state args =
   let w = read (args !! 0)
       u = read (args !! 1)
       v = read (args !! 2)
       upd = \i -> intToBool (read (args !! i))
       upd_ = [read (args !! 7), read (args !! 8), read (args !! 9), read (args !! 10)]
-      w' = ((w_grid_ game_state) ! (w, u, v)) {u1 = upd 3, u2 = upd 4, v1 = upd 5, v2 = upd 6, wall_flag = upd_}
+      w' = ((w_grid_ server_state) ! (w, u, v)) {u1 = upd 3, u2 = upd 4, v1 = upd 5, v2 = upd 6, wall_flag = upd_}
       success_str = "writeWallGridStructure succeeded.  Arguments passed were w: "
-      boundsCheck = IW.boundsCheck (w_grid_ game_state) (w, u, v) "writeWallGridStructure"
+      boundsCheck = IW.boundsCheck (w_grid_ server_state) (w, u, v) "writeWallGridStructure"
   in
   if isNothing boundsCheck then
-    (Just game_state {w_grid_ = (w_grid_ game_state) // [((w, u, v), w')]},
+    (Just server_state {w_grid_ = (w_grid_ server_state) // [((w, u, v), w')]},
      success_str ++ (args !! 0) ++ " u: " ++ (args !! 1) ++ " v: " ++ (args !! 2) ++ " others: " ++ show (drop 3 args))
   else (Nothing, fromJust boundsCheck)
 
 writeWallGridTextures :: Server_state -> [[Char]] -> (Maybe Server_state, [Char])
-writeWallGridTextures game_state args =
+writeWallGridTextures server_state args =
   let w = read (args !! 0)
       u = read (args !! 1)
       v = read (args !! 2)
       upd = [read (args !! 3), read (args !! 4), read (args !! 5), read (args !! 6)]
       success_str = "writeWallGridTextures succeeded.  Arguments passed were w: "
-      boundsCheck = IW.boundsCheck (w_grid_ game_state) (w, u, v) "writeWallGridTextures"
+      boundsCheck = IW.boundsCheck (w_grid_ server_state) (w, u, v) "writeWallGridTextures"
   in
   if isNothing boundsCheck then
-    (Just game_state {w_grid_ = (w_grid_ game_state) // [((w, u, v), ((w_grid_ game_state) ! (w, u, v)) {texture = upd})]},
+    (Just server_state {w_grid_ = (w_grid_ server_state) // [((w, u, v), ((w_grid_ server_state) ! (w, u, v)) {texture = upd})]},
      success_str ++ (args !! 0) ++ " u: " ++ (args !! 1) ++ " v: " ++ (args !! 2) ++ " others: " ++ show (drop 3 args))
   else (Nothing, fromJust boundsCheck)
 
 writeObjPlace :: Server_state -> [[Char]] -> (Maybe Server_state, [Char])
-writeObjPlace game_state args =
+writeObjPlace server_state args =
   let w = read (args !! 0)
       u = read (args !! 1)
       v = read (args !! 2)
       upd = \i -> read (args !! i)
       upd_ = \i -> read (args !! i)
-      w_grid__ = w_grid_ game_state
+      w_grid__ = w_grid_ server_state
       obj' = def_obj_place {ident_ = upd 3, u__ = upd_ 4, v__ = upd_ 5, w__ = upd_ 6, texture__ = upd 7, num_elem = read (args !! 8), obj_flag = upd 9}
       success_str = "writeObjPlace succeeded.  Arguments passed were w: "
-      boundsCheck = IW.boundsCheck (w_grid_ game_state) (w, u, v) "writeObjPlace"
+      boundsCheck = IW.boundsCheck (w_grid_ server_state) (w, u, v) "writeObjPlace"
   in
   if isNothing boundsCheck then
-    (Just game_state {w_grid_ = w_grid__ // [((w, u, v), (w_grid__ ! (w, u, v)) {obj = Just obj'})]},
+    (Just server_state {w_grid_ = w_grid__ // [((w, u, v), (w_grid__ ! (w, u, v)) {obj = Just obj'})]},
      success_str ++ (args !! 0) ++ " u: " ++ (args !! 1) ++ " v: " ++ (args !! 2) ++ " others: " ++ show (drop 3 args))
   else (Nothing, fromJust boundsCheck)
 
@@ -181,27 +182,27 @@ instance Serialise Token where
 
 -- These three functions read the state of a set of voxels in the map, which is serialised and sent to the client.
 readVoxel :: Server_state -> [Char] -> Int -> Int -> Int -> [Char]
-readVoxel game_state voxel_type w u v
-  | voxel_type == "Wall_grid" = toJSON (Just ((w_grid_ game_state) ! (w, u, v)))
-  | voxel_type == "Floor_grid" = toJSON (Just ((f_grid_ game_state) ! (w, u, v)))
-  | voxel_type == "Obj_grid" = toJSON (Just ((obj_grid_ game_state) ! (w, u, v)))
+readVoxel server_state voxel_type w u v
+  | voxel_type == "Wall_grid" = toJSON (Just ((w_grid_ server_state) ! (w, u, v)))
+  | voxel_type == "Floor_grid" = toJSON (Just ((f_grid_ server_state) ! (w, u, v)))
+  | voxel_type == "Obj_grid" = toJSON (Just ((obj_grid_ server_state) ! (w, u, v)))
 
 readVoxels :: Server_state -> Int -> Int -> Int -> Int -> Int -> [Char] -> [Char] -> [Char]
-readVoxels game_state w u v u_max v_max voxel_type acc
+readVoxels server_state w u v u_max v_max voxel_type acc
   | u > u_max = take ((length acc) - 2) acc
-  | v > v_max = readVoxels game_state w (u + 1) 0 u_max v_max voxel_type acc
-  | otherwise = readVoxels game_state w u (v + 1) u_max v_max voxel_type (voxel ++ ",\n" ++ acc)
-  where voxel = readVoxel game_state voxel_type w u v
+  | v > v_max = readVoxels server_state w (u + 1) 0 u_max v_max voxel_type acc
+  | otherwise = readVoxels server_state w u (v + 1) u_max v_max voxel_type (voxel ++ ",\n" ++ acc)
+  where voxel = readVoxel server_state voxel_type w u v
 
 readVoxelsCommand :: Server_state -> [[Char]] -> (Maybe Server_state, [Char])
-readVoxelsCommand game_state args =
+readVoxelsCommand server_state args =
   let w = read (args !! 0)
       u_min = read (args !! 1)
       v_min = read (args !! 2)
       u_max = read (args !! 3)
       v_max = read (args !! 4)
       voxel_type = args !! 5
-  in (Nothing, "[" ++ readVoxels game_state w u_min v_min u_max v_max voxel_type [] ++ "\n]")
+  in (Nothing, "[" ++ readVoxels server_state w u_min v_min u_max v_max voxel_type [] ++ "\n]")
 
 -- This function serialises annotated GPLC source code to JSON for sending to the client.
 serialiseSourceCode :: Array (Int, Int) Token -> Int -> Int -> Int -> Int -> [Char] -> [Char]
@@ -218,7 +219,25 @@ serialiseBytecode mode SEQ.Empty output = reverse output
 serialiseBytecode mode (x SEQ.:<| xs) output
   | x == 536870912 = serialiseBytecode mode xs ("\n" ++ output)
   | otherwise = serialiseBytecode mode xs (delimiter ++ reverse (show x) ++ output)
-  where delimiter = if mode == 0 then " " else ", "
+  where delimiter = if mode == 0 then " " else " ,"
+
+-- A hash is generated from the source code of a GPLC program at compile time, which the client will append to the
+-- program name at deployment time.  This is so the client can tell if the source code for an existing program in the map
+-- has been modified since it was last deployed (i.e. indicating that source and bytecode no longer represent the same program).
+-- Such a change would break the client's logic for modifying the properties of an existing program, so this needs to be disabled
+-- in this situation.  These two functions convert the ByteString returned by SHA256.hash to a hex string.
+genHexTable :: Int -> Int -> Int -> [(Int, [Char])] -> Array Int [Char]
+genHexTable i j k tableList
+  | i > 15 = array (0, 255) tableList
+  | j > 15 = genHexTable (i + 1) 0 k tableList
+  | otherwise = genHexTable i (j + 1) (k + 1) ((k, [hexSymbols ! i, hexSymbols ! j]) : tableList)
+  where hexSymbols = array (0, 15) [(0, '0'), (1, '1'), (2, '2'), (3, '3'), (4, '4'), (5, '5'), (6, '6'), (7, '7'),
+                                    (8, '8'), (9, '9'), (10, 'a'), (11, 'b'), (12, 'c'), (13, 'd'), (14, 'e'), (15, 'f')] :: Array Int Char
+
+formatHash :: BS.ByteString -> Array Int [Char] -> Int -> [Char] -> [Char]
+formatHash binaryHash hexTable i hexHash
+  | i > 31 = hexHash
+  | otherwise = formatHash binaryHash hexTable (i + 1) ((hexTable ! (fromIntegral (BS.index binaryHash i))) ++ hexHash)
 
 -- This is the entry point function for the logic in CompileGPLC and handles the compilation of GPLC
 -- programs to bytecode.
@@ -244,54 +263,78 @@ compileProgram name source =
   else if snd signal_block /= [] then error ("\n" ++ show (snd signal_block))
   else if snd code_block /= [] then error ("\n" ++ show (snd code_block))
   else GPLC_program {name = name,
-                     hash = BS.unpack (SHA256.hash (BS.pack source)),
-                     source = serialised_source,
-                     bytecode = serialiseBytecode 1 (fst signal_block) []
+                     hash = formatHash (SHA256.hash (BSC.pack source)) (genHexTable 0 0 0 []) 0 [],
+                     source = "[\n" ++ serialised_source ++ "\n]",
+                     bytecode = "[" ++ serialiseBytecode 1 (fst signal_block) []
                                 ++ serialiseBytecode 1 (fst code_block) []
-                                ++ take ((length show_data_block) - 3) show_data_block}
+                                ++ take ((length show_data_block) - 3) show_data_block ++ "]"}
+
+-- This function allows the client to query the properties of the GPLC programs the server compiled at its last start time.
+queryProgram :: Server_state -> [[Char]] -> (Maybe Server_state, [Char])
+queryProgram server_state args =
+  let i = read (args !! 0)
+      program = (gplcPrograms server_state) ! i
+  in (Nothing,
+      "\nname: " ++ name program
+      ++ "\nhash: " ++ hash program
+      ++ "\nsource: " ++ source program
+      ++ "\nbytecode: " ++ bytecode program)
+
+-- This function allows the client to view a list of the GPLC programs the server compiled at its last start time.
+listProgram :: Server_state -> [[Char]] -> (Maybe Server_state, [Char])
+listProgram server_state args = (Nothing, "\nloaded programs: " ++ show (map name (elems (gplcPrograms server_state))))
 
 -- These are the pages used in the hierarchical dictionary look up used to interpret server commands.
-page0 = ["read", "write"]
+page0 = ["read", "write", "GPLC"]
 page1 = ["Wall_grid", "Floor_grid", "Obj_grid"]
 page2 = ["structure", "textures", "Obj_place"]
+page3 = ["query", "list"]
 
 -- These are the sets of branches that exist for non - end nodes.
-baseBranches = array (0, 1) [(0, readNode), (1, writeNode)]
+baseBranches = array (0, 2) [(0, readNode), (1, writeNode), (2, gplcNode)]
 
-setNodeBranches = array (0, 2) [(0, wallGridNode), (1, floorGridNode), (2, objGridNode)]
+writeNodeBranches = array (0, 2) [(0, wallGridNode), (1, floorGridNode), (2, objGridNode)]
 
 wallGridNodeBranches = array (0, 2) [(0, structureNode), (1, texturesNode), (2, objPlaceNode)]
 
+gplcNodeBranches = array (0, 1) [(0, queryNode), (1, listNode)]
+
 -- These are the nodes of the decision tree.
-baseNode = Comm_struct {dictionary_page = page0, branches = Just baseBranches, read_write_game_state = Nothing}
+baseNode = Comm_struct {dictionaryPage = page0, branches = Just baseBranches, readWriteGameState = Nothing}
 
-readNode = Comm_struct {dictionary_page = [], branches = Nothing, read_write_game_state = Just readVoxelsCommand}
+readNode = Comm_struct {dictionaryPage = [], branches = Nothing, readWriteGameState = Just readVoxelsCommand}
 
-writeNode = Comm_struct {dictionary_page = page1, branches = Just setNodeBranches, read_write_game_state = Nothing}
+writeNode = Comm_struct {dictionaryPage = page1, branches = Just writeNodeBranches, readWriteGameState = Nothing}
 
-wallGridNode = Comm_struct {dictionary_page = page2, branches = Just wallGridNodeBranches, read_write_game_state = Nothing}
+gplcNode = Comm_struct {dictionaryPage = page3, branches = Just gplcNodeBranches, readWriteGameState = Nothing}
 
-floorGridNode = Comm_struct {dictionary_page = [], branches = Nothing, read_write_game_state = Just writeFloorGrid}
+wallGridNode = Comm_struct {dictionaryPage = page2, branches = Just wallGridNodeBranches, readWriteGameState = Nothing}
 
-objGridNode = Comm_struct {dictionary_page = [], branches = Nothing, read_write_game_state = Just writeObjGrid}
+floorGridNode = Comm_struct {dictionaryPage = [], branches = Nothing, readWriteGameState = Just writeFloorGrid}
 
-structureNode = Comm_struct {dictionary_page = [], branches = Nothing, read_write_game_state = Just writeWallGridStructure}
+objGridNode = Comm_struct {dictionaryPage = [], branches = Nothing, readWriteGameState = Just writeObjGrid}
 
-texturesNode = Comm_struct {dictionary_page = [], branches = Nothing, read_write_game_state = Just writeWallGridTextures}
+structureNode = Comm_struct {dictionaryPage = [], branches = Nothing, readWriteGameState = Just writeWallGridStructure}
 
-objPlaceNode = Comm_struct {dictionary_page = [], branches = Nothing, read_write_game_state = Just writeObjPlace}
+texturesNode = Comm_struct {dictionaryPage = [], branches = Nothing, readWriteGameState = Just writeWallGridTextures}
+
+objPlaceNode = Comm_struct {dictionaryPage = [], branches = Nothing, readWriteGameState = Just writeObjPlace}
+
+queryNode = Comm_struct {dictionaryPage = [], branches = Nothing, readWriteGameState = Just queryProgram}
+
+listNode = Comm_struct {dictionaryPage = [], branches = Nothing, readWriteGameState = Just listProgram}
 
 -- This function traverses the decision tree and thereby interprets server commands.
 interpretCommand :: [[Char]] -> Comm_struct -> Server_state -> (Server_state, [Char])
-interpretCommand [] comm_struct game_state = (game_state, "\nInvalid command (1).")
-interpretCommand (x:xs) comm_struct game_state =
-  let new_game_state = (fromJust (read_write_game_state comm_struct)) game_state (x:xs)
-      look_up = elemIndex x (dictionary_page comm_struct)
+interpretCommand [] comm_struct server_state = (server_state, "\nInvalid command (1).")
+interpretCommand (x:xs) comm_struct server_state =
+  let new_game_state = (fromJust (readWriteGameState comm_struct)) server_state (x:xs)
+      look_up = elemIndex x (dictionaryPage comm_struct)
   in
   if isNothing (branches comm_struct) == True then
-    if isNothing (fst new_game_state) == True then (game_state, "\n" ++ snd new_game_state)
+    if isNothing (fst new_game_state) == True then (server_state, "\n" ++ snd new_game_state)
     else (fromJust (fst new_game_state), "\n" ++ snd new_game_state)
   else
-    if isNothing look_up == True then (game_state, "\nInvalid command (2).")
-    else interpretCommand xs ((fromJust (branches comm_struct)) ! (fromJust look_up)) game_state
+    if isNothing look_up == True then (server_state, "\nInvalid command (2).")
+    else interpretCommand xs ((fromJust (branches comm_struct)) ! (fromJust look_up)) server_state
 

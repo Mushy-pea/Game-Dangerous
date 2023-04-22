@@ -44,7 +44,7 @@ handleInput server_state comp_map_text base_dir command
                         (\h -> do c <- hGetContents h; putStr ("\nprogram list file size: " ++ show (length c)); return c)
     gplc_programs <- loadGplcPrograms (splitOn "\n" prog_set)
                                       "C:\\Users\\steve\\code\\GD\\GPLC-scripts-and-maps\\GPLC_Programs\\"
-                                      (array (0, length prog_set - 1) [(i, empty_gplc_program) | i <- [0..length prog_set - 1]])
+                                      (array (0, length (splitOn "\n" prog_set) - 1) [(i, empty_gplc_program) | i <- [0..length (splitOn "\n" prog_set) - 1]])
                                       0
     handleInput (Just Server_state {w_grid_ = fst__ new_game_state,
                                     f_grid_ = snd__ new_game_state,
@@ -88,7 +88,7 @@ loadGplcPrograms (x:xs) base_dir prog_array i =
   source <- bracket (openFile source_file ReadMode) hClose
                     (\h -> do c <- hGetContents h; putStr ("\nprogram file size: " ++ show (length c)); return c)
   putStr ("\nCompiling GPLC program " ++ x ++ " from source file " ++ source_file)
-  loadGplcPrograms xs base_dir (prog_array // [(i, compileProgram x source)]) (i + 1)
+  loadGplcPrograms xs base_dir (prog_array // [(i, compileProgram x ((splitOn "\n~\n" source) !! 1))]) (i + 1)
   
 
 applyCommand :: Server_state -> [[Char]] -> IO (Server_state, [Char])
