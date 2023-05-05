@@ -49,22 +49,6 @@ executables:
     ghc-options:
     - -O
     dependencies:
-    - base >= 4.7 && < 5
-    - matrix >= 0.3
-    - split >= 0.2
-    - StateVar >= 1.2
-    - OpenAL >= 1.7
-    - ObjectName >= 1.1
-    - bytestring >= 0.10
-    - OpenGL >= 3.0
-    - array >= 0.5
-    - OpenGLRaw >= 3.3
-    - containers >= 0.6
-    - binary >= 0.8
-    - GLURaw >= 2.0
-    - clock >= 0.8
-    - GLUT >= 2.7
-    - random >= 1.2
     - Game-Dangerous
 
   ImportModel:
@@ -74,18 +58,6 @@ executables:
     ghc-options:
     - -O
     dependencies:
-    - base >= 4.7 && < 5
-    - Game-Dangerous
-
-  TransformModel:
-    main:                TransformModel.hs
-    other-modules:       []
-    source-dirs:         app
-    ghc-options:
-    - -O
-    dependencies:
-    - matrix >= 0.3
-    - array >= 0.5
     - Game-Dangerous
 
   Server:
@@ -95,7 +67,6 @@ executables:
     ghc-options:
     - -O
     dependencies:
-    - base >= 4.7 && < 5
     - Game-Dangerous
 
 tests:
@@ -108,3 +79,4 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - Game-Dangerous
+

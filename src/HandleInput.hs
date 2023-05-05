@@ -230,13 +230,13 @@ genHexTable :: Int -> Int -> Int -> [(Int, [Char])] -> Array Int [Char]
 genHexTable i j k tableList
   | i > 15 = array (0, 255) tableList
   | j > 15 = genHexTable (i + 1) 0 k tableList
-  | otherwise = genHexTable i (j + 1) (k + 1) ((k, [hexSymbols ! i, hexSymbols ! j]) : tableList)
+  | otherwise = genHexTable i (j + 1) (k + 1) ((k, [hexSymbols ! j, hexSymbols ! i]) : tableList)
   where hexSymbols = array (0, 15) [(0, '0'), (1, '1'), (2, '2'), (3, '3'), (4, '4'), (5, '5'), (6, '6'), (7, '7'),
                                     (8, '8'), (9, '9'), (10, 'a'), (11, 'b'), (12, 'c'), (13, 'd'), (14, 'e'), (15, 'f')] :: Array Int Char
 
 formatHash :: BS.ByteString -> Array Int [Char] -> Int -> [Char] -> [Char]
 formatHash binaryHash hexTable i hexHash
-  | i > 31 = hexHash
+  | i > 31 = reverse hexHash
   | otherwise = formatHash binaryHash hexTable (i + 1) ((hexTable ! (fromIntegral (BS.index binaryHash i))) ++ hexHash)
 
 -- This is the entry point function for the logic in CompileGPLC and handles the compilation of GPLC
