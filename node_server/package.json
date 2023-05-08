@@ -1,0 +1,29 @@
+{
+  "name": "game-dangerous-server",
+  "version": "1.0.0",
+  "description": "An embedded Node.js based server within the Game-Dangerous project.  It augments the Server module of the main project with web server functionality, so this can remain a command line processor.",
+  "main": "server.js",
+  "scripts": {
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Mushy-pea/Game-Dangerous.git"
+  },
+  "keywords": [
+    "Haskell",
+    "games"
+  ],
+  "author": "Steven Tinsley",
+  "license": "Custom",
+  "bugs": {
+    "url": "https://github.com/Mushy-pea/Game-Dangerous/issues"
+  },
+  "homepage": "https://github.com/Mushy-pea/Game-Dangerous#readme",
+  "dependencies": {
+    "express": "^4.18.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.1.0"
+  }
+}

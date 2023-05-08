@@ -37,6 +37,7 @@ dependencies:
 - GLUT >= 2.7
 - random >= 1.2
 - cryptohash-sha256 >= 0.11
+- process >= 1.6
 
 library:
   source-dirs: src

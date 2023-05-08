@@ -8,6 +8,7 @@ module Main where
 
 import System.IO
 import System.Environment
+import System.Process
 import Control.Exception
 import Data.List.Split
 import Data.Maybe
@@ -31,30 +32,37 @@ loadMap comp_map_text u_max v_max w_max =
 
 main = do
   args <- getArgs
-  putStr "\nGame :: Dangerous map development server version 0.5.0.0"
+  putStr "\nGame :: Dangerous map development server version 1.0.0"
   putStr "\nLoading map file..."
-  comp_map_text <- bracket (openFile ((args !! 0) ++ (args !! 1)) ReadMode) hClose
+  comp_map_text <- bracket (openFile ((args !! 1) ++ (args !! 2)) ReadMode) hClose
                    (\h -> do c <- hGetContents h; putStr ("\nmap file size: " ++ show (length c)); return c)
-  handleInput Nothing comp_map_text (args !! 0) []
+  if args !! 0 == "console" then handleInput Nothing comp_map_text (args !! 1) [] Nothing Nothing
+  else do
+    (hIn, hOut, _, _) <- createProcess (shell "node .\\node_server\\server.js") {std_in = CreatePipe, std_out = CreatePipe}
+    handleInput Nothing comp_map_text (args !! 1) [] hIn hOut
 
-handleInput :: Maybe Server_state -> [Char] -> [Char] -> [[Char]] -> IO ()
-handleInput server_state comp_map_text base_dir command
+handleInput :: Maybe Server_state -> [Char] -> [Char] -> [[Char]] -> Maybe Handle -> Maybe Handle -> IO ()
+handleInput server_state comp_map_text base_dir command hIn hOut
   | isNothing server_state = do
-    prog_set <- bracket (openFile (base_dir ++ "GPLC_Programs.txt") ReadMode) hClose
+    prog_set <- bracket (openFile (base_dir ++ "GPLC_Programs\\" ++ "GPLC_Programs.txt") ReadMode) hClose
                         (\h -> do c <- hGetContents h; putStr ("\nprogram list file size: " ++ show (length c)); return c)
     gplc_programs <- loadGplcPrograms (splitOn "\n" prog_set)
-                                      "C:\\Users\\steve\\code\\GD\\GPLC-scripts-and-maps\\GPLC_Programs\\"
+                                      (base_dir ++ "GPLC_Programs\\")
                                       (array (0, length (splitOn "\n" prog_set) - 1) [(i, empty_gplc_program) | i <- [0..length (splitOn "\n" prog_set) - 1]])
                                       0
     handleInput (Just Server_state {w_grid_ = fst__ new_game_state,
                                     f_grid_ = snd__ new_game_state,
                                     obj_grid_ = third_ new_game_state,
                                     gplcPrograms = gplc_programs})
-                comp_map_text base_dir command
+                comp_map_text base_dir command hIn hOut
   | command == [] = do
+    if isNothing hOut then do
       putStr "\nReady for request: "
       request <- getLine
-      handleInput server_state comp_map_text base_dir (splitOn " " request)
+      handleInput server_state comp_map_text base_dir (splitOn " " request) hIn hOut
+    else do
+      request <- hGetLine (fromJust hOut)
+      handleInput server_state comp_map_text base_dir (splitOn " " request) hIn hOut
   | head command == "exit" = putStr "\nExit command received ... closing server."
   | head command == "save" = do
     template <- bracket (openFile (base_dir ++ command !! 1) ReadMode) hClose
@@ -63,9 +71,12 @@ handleInput server_state comp_map_text base_dir command
     hPutStr h (encoded_wall_grid ++ encoded_floor_grid ++ template ++ encoded_obj_grid ++ encoded_sub_wall_grid ++ footer)
     hClose h
   | otherwise = do
-      result <- applyCommand (fromJust server_state) command
+    result <- applyCommand (fromJust server_state) command
+    if isNothing hIn then putStr ("\nresult: " ++ snd result)
+    else do
+      hPutStr (fromJust hIn) ((filter (/= '\n') (snd result)) ++ "\n")
       putStr ("\nresult: " ++ snd result)
-      handleInput (Just (fst result)) comp_map_text base_dir []
+      handleInput (Just (fst result)) comp_map_text base_dir [] hIn hOut
   where u_max = read ((splitOn "\n~\n" comp_map_text) !! 12)
         v_max = read ((splitOn "\n~\n" comp_map_text) !! 13)
         w_max = read ((splitOn "\n~\n" comp_map_text) !! 14)

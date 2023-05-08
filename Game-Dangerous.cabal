@@ -58,6 +58,7 @@ library
     , containers >=0.6
     , cryptohash-sha256 >=0.11
     , matrix >=0.3
+    , process >=1.6
     , random >=1.2
     , split >=0.2
   default-language: Haskell2010
@@ -84,6 +85,7 @@ executable Game-Dangerous-exe
     , containers >=0.6
     , cryptohash-sha256 >=0.11
     , matrix >=0.3
+    , process >=1.6
     , random >=1.2
     , split >=0.2
   default-language: Haskell2010
@@ -110,6 +112,7 @@ executable ImportModel
     , containers >=0.6
     , cryptohash-sha256 >=0.11
     , matrix >=0.3
+    , process >=1.6
     , random >=1.2
     , split >=0.2
   default-language: Haskell2010
@@ -136,6 +139,7 @@ executable Server
     , containers >=0.6
     , cryptohash-sha256 >=0.11
     , matrix >=0.3
+    , process >=1.6
     , random >=1.2
     , split >=0.2
   default-language: Haskell2010
@@ -165,6 +169,7 @@ test-suite Game-Dangerous-test
     , containers >=0.6
     , cryptohash-sha256 >=0.11
     , matrix >=0.3
+    , process >=1.6
     , random >=1.2
     , split >=0.2
   default-language: Haskell2010

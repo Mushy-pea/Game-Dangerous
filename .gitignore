@@ -1,7 +1,9 @@
 .stack-work/
 dist/
+node_server/node_modules/
 *.dll
 *.bat
 *.hi
 *.o
+*.js
 
