@@ -1,8 +1,7 @@
 -- Game :: Dangerous code by Steven Tinsley.  You are free to use this software and view its source code.
 -- If you wish to redistribute it or use it as part of your own work, this is permitted as long as you acknowledge the work is by the abovementioned author.
 
--- The Game :: Dangerous map development server, designed to be used with the forthcoming map
--- development client.
+-- The Main module for the map development server, designed to be used with the map development client.
 
 module Main where
 
@@ -37,9 +36,10 @@ main = do
   comp_map_text <- bracket (openFile ((args !! 1) ++ (args !! 2)) ReadMode) hClose
                    (\h -> do c <- hGetContents h; putStr ("\nmap file size: " ++ show (length c)); return c)
   if args !! 0 == "console" then handleInput Nothing comp_map_text (args !! 1) [] Nothing Nothing
-  else do
+  else if args !! 0 == "network" then do
     (hIn, hOut, _, _) <- createProcess (shell "node .\\node_server\\server.js") {std_in = CreatePipe, std_out = CreatePipe}
     handleInput Nothing comp_map_text (args !! 1) [] hIn hOut
+  else error "\nThe mode flag must be either console or network."
 
 handleInput :: Maybe Server_state -> [Char] -> [Char] -> [[Char]] -> Maybe Handle -> Maybe Handle -> IO ()
 handleInput server_state comp_map_text base_dir command hIn hOut
@@ -74,8 +74,8 @@ handleInput server_state comp_map_text base_dir command hIn hOut
     result <- applyCommand (fromJust server_state) command
     if isNothing hIn then putStr ("\nresult: " ++ snd result)
     else do
-      hPutStr (fromJust hIn) ((filter (/= '\n') (snd result)) ++ "\n")
-      putStr ("\nresult: " ++ snd result)
+      hPutStrLn (fromJust hIn) (filter (/= '\n') (snd result))
+      hFlush (fromJust hIn)
       handleInput (Just (fst result)) comp_map_text base_dir [] hIn hOut
   where u_max = read ((splitOn "\n~\n" comp_map_text) !! 12)
         v_max = read ((splitOn "\n~\n" comp_map_text) !! 13)

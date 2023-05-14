@@ -1,7 +1,7 @@
 -- Game :: Dangerous code by Steven Tinsley.  You are free to use this software and view its source code.
 -- If you wish to redistribute it or use it as part of your own work, this is permitted as long as you acknowledge the work is by the abovementioned author.
 
--- This module is part of the development server and interprets commands received by the server.
+-- This module is part of the map development server and interprets commands received by the server.
 
 {-# LANGUAGE FlexibleInstances #-}
 

@@ -14,18 +14,18 @@ I suspect it'll turn into a battle of patience and attrition where I'm forced to
 capability out of the engine (and myself) to make something anyone might find remotely fun.  That sounds like great fun 
 in itself though.
 
-I've just created a new repo (Mushy-pea/Game-Dangerous-Client) to contain the client side of the map editor.  For context, 
-the new GPLC compiler (module CompileGPLC) I've been working on recently outputs both bytecode for the engine and a JSON 
-representation of the source code it's compiled with colour annotations.  So far the client repo just contains a simple 
-TypeScript / Node.js program that renders this annotated code to the console (example in screenshot below).  This is just 
-for testing purposes and the actual client will be a web application, probably written with "vanilla" TypeScript / HTML 
-(i.e. no complex abstraction framework like React or Vue).  I'm going to take a minimum viable product approach and for 
-this limited purpose the vanilla approach seems to make more sense.  Despite this, it is intended to feature a minimal 
-IDE for writing GPLC scripts.  At the end of the day I've written three compilers for this language over the years so 
-I might as well write an IDE this time as well, hey?
+Edit (14/05/2023): Semantic versioning has been introduced for the engine and map development server.  The server API 
+is defined through the command interpreter and GPLC compiler implemented in HandleInput and CompileGPLC, respectively.  
+The GPLC language also has a specification in the repo.  The engine API is defined through the way it interprets map 
+files and the asset files they refer to (model files, sound map and light map) as well as the binary format of game save 
+files.
+
+Engine version (14/05/2023): 0.9.0
+Server version (14/05/2023): 1.0.0
 
 ![Annotated GPLC code example](https://github.com/Mushy-pea/Game-Dangerous/blob/master/images/CodeColouring.png)
 
+Figure 1: Example of annotated GPLC source code that has been compiled using CompileGPLC
 Key -> Blue: keyword, Green: readable reference argument, Red: writable reference argument, White: literal constant argument (or anything else)
 
 [![Preview unavailable](https://img.youtube.com/vi/yxnuFl-8j5c/default.jpg)](https://youtu.be/yxnuFl-8j5c)

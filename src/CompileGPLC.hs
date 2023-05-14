@@ -1,8 +1,8 @@
 -- Game :: Dangerous code by Steven Tinsley.  You are free to use this software and view its source code.
 -- If you wish to redistribute it or use it as part of your own work, this is permitted as long as you acknowledge the work is by the abovementioned author.
 
--- The new implementation of the GPLC compiler, which is to be moved to /src and integrated into the 
--- server when ready.
+-- An implementation of the GPLC compiler, which transforms GPLC source code to the GPLC bytecode that drives augmented 
+-- game logic within the engine.
 
 module CompileGPLC where
 

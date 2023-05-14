@@ -16,9 +16,6 @@ function forwardCommand(comm : CommandObj) : Promise<string> {
     output: process.stdout
   });
   console.log(commandLine);
-  if (commandLine === "exit") {
-    process.exit(0);
-  }
   const commandResolution = new Promise<string>((resolve) => {
     rl.on("line", (input) => {
       resolve(input);

@@ -6,4 +6,5 @@ node_server/node_modules/
 *.hi
 *.o
 *.js
+*.exe
 
