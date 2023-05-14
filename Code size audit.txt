@@ -1,12 +1,14 @@
-Game :: Dangerous code size audit (31/12/2022)
+Game :: Dangerous code size audit (14/05/2023)
 
-Engine (Haskell): 4070 lines, 5.50% comments
+Engine (Haskell): 4088 lines, 5.50% comments
 
-Development server (Haskell): 639 lines, 10.17% comments
+Development server (Haskell): 1006 lines, 7.95% comments
 
-Non - server integrated development tool chain (Haskell): 375 lines, 4.00% comments
+Non - server integrated development tool chain (Haskell): 167 lines, 2.99% comments
 
-Total Haskell code: 5084 lines
+Total Haskell code: 5261 lines
 
-Rendering shaders (OpenGL Shading Language): 469 lines
+Rendering shaders (OpenGL Shading Language): 470 lines
+
+Node.js micro services (TypeScript): 55 lines
 

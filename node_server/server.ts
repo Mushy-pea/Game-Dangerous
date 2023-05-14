@@ -40,6 +40,14 @@ function main() : void {
   app.listen(port, () => {
 
   });
+
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+  });
+  rl.on("line", (input) => {
+    if (input === "exit") { process.exit(0) }
+  });
 }
 
 main();

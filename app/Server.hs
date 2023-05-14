@@ -12,6 +12,7 @@ import Control.Exception
 import Data.List.Split
 import Data.Maybe
 import Data.Array.IArray
+import Control.Concurrent
 import BuildModel hiding (Game_state, w_grid_, f_grid_, obj_grid_)
 import DecompressMap
 import CompressMap
@@ -33,16 +34,19 @@ main = do
   args <- getArgs
   putStr "\nGame :: Dangerous map development server version 1.0.0"
   putStr "\nLoading map file..."
-  comp_map_text <- bracket (openFile ((args !! 1) ++ (args !! 2)) ReadMode) hClose
+  comp_map_text <- bracket (openFile ((args !! 0) ++ (args !! 1)) ReadMode) hClose
                    (\h -> do c <- hGetContents h; putStr ("\nmap file size: " ++ show (length c)); return c)
-  if args !! 0 == "console" then handleInput Nothing comp_map_text (args !! 1) [] Nothing Nothing
-  else if args !! 0 == "network" then do
-    (hIn, hOut, _, _) <- createProcess (shell "node .\\node_server\\server.js") {std_in = CreatePipe, std_out = CreatePipe}
-    handleInput Nothing comp_map_text (args !! 1) [] hIn hOut
-  else error "\nThe mode flag must be either console or network."
+  (h_in, h_out, _, _) <- createProcess (shell "node .\\node_server\\server.js") {std_in = CreatePipe, std_out = CreatePipe}
+  input_ref <- newEmptyMVar
+  console_output <- newEmptyMVar
+  network_output <- newEmptyMVar
+  forkIO (consoleInterface input_ref console_output)
+  forkIO (networkInterface input_ref network_output (fromJust h_in) (fromJust h_out))
+  handleInput Nothing comp_map_text (args !! 0) [] (fromJust h_in) input_ref console_output network_output 0
 
-handleInput :: Maybe Server_state -> [Char] -> [Char] -> [[Char]] -> Maybe Handle -> Maybe Handle -> IO ()
-handleInput server_state comp_map_text base_dir command hIn hOut
+handleInput :: Maybe Server_state -> [Char] -> [Char] -> [[Char]] -> Handle -> MVar (Int, [Char]) -> MVar [Char] -> MVar [Char]
+               -> Int -> IO ()
+handleInput server_state comp_map_text base_dir command h_in input_ref console_output network_output output_mode
   | isNothing server_state = do
     prog_set <- bracket (openFile (base_dir ++ "GPLC_Programs\\" ++ "GPLC_Programs.txt") ReadMode) hClose
                         (\h -> do c <- hGetContents h; putStr ("\nprogram list file size: " ++ show (length c)); return c)
@@ -54,16 +58,14 @@ handleInput server_state comp_map_text base_dir command hIn hOut
                                     f_grid_ = snd__ new_game_state,
                                     obj_grid_ = third_ new_game_state,
                                     gplcPrograms = gplc_programs})
-                comp_map_text base_dir command hIn hOut
+                comp_map_text base_dir command h_in input_ref console_output network_output 0
   | command == [] = do
-    if isNothing hOut then do
-      putStr "\nReady for request: "
-      request <- getLine
-      handleInput server_state comp_map_text base_dir (splitOn " " request) hIn hOut
-    else do
-      request <- hGetLine (fromJust hOut)
-      handleInput server_state comp_map_text base_dir (splitOn " " request) hIn hOut
-  | head command == "exit" = putStr "\nExit command received ... closing server."
+    input <- takeMVar input_ref
+    handleInput server_state comp_map_text base_dir (splitOn " " (snd input)) h_in input_ref console_output network_output (fst input)
+  | head command == "exit" = do
+    putStr "\nExit command received ... closing server."
+    hPutStrLn h_in "exit"
+    hFlush h_in
   | head command == "save" = do
     template <- bracket (openFile (base_dir ++ command !! 1) ReadMode) hClose
                         (\h -> do c <- hGetContents h; putStr ("\ntemplate file size: " ++ show (length c)); return c)
@@ -72,11 +74,9 @@ handleInput server_state comp_map_text base_dir command hIn hOut
     hClose h
   | otherwise = do
     result <- applyCommand (fromJust server_state) command
-    if isNothing hIn then putStr ("\nresult: " ++ snd result)
-    else do
-      hPutStrLn (fromJust hIn) (filter (/= '\n') (snd result))
-      hFlush (fromJust hIn)
-      handleInput (Just (fst result)) comp_map_text base_dir [] hIn hOut
+    if output_mode == 0 then putMVar console_output (snd result)
+    else putMVar network_output (snd result)
+    handleInput (Just (fst result)) comp_map_text base_dir [] h_in input_ref console_output network_output 0
   where u_max = read ((splitOn "\n~\n" comp_map_text) !! 12)
         v_max = read ((splitOn "\n~\n" comp_map_text) !! 13)
         w_max = read ((splitOn "\n~\n" comp_map_text) !! 14)
@@ -89,6 +89,26 @@ handleInput server_state comp_map_text base_dir command hIn hOut
         encoded_obj_grid = encodeObjGrid (obj_grid_ server_state') 0 0 0 (snd__ (snd w_bd)) (third_ (snd w_bd)) []
         encoded_sub_wall_grid = encodeSubWallGrid (w_grid_ server_state') (-1) 0 0 (snd__ (snd w_bd)) (third_ (snd w_bd)) True []
         footer = show (snd__ (snd w_bd)) ++ "\n~\n" ++ show (third_ (snd w_bd)) ++ "\n~\n2\n~\nunlocked"
+
+-- These two functions each run on their own thread and thereby allow the server to respectively receive requests 
+-- through its console and network interfaces, which can then be handled asynchronously.
+consoleInterface :: MVar (Int, [Char]) -> MVar [Char] -> IO ()
+consoleInterface input_ref output_ref = do
+  putStr "\nrequest: "
+  request <- getLine
+  putMVar input_ref (0, request)
+  response <- takeMVar output_ref
+  putStr response
+  consoleInterface input_ref output_ref
+
+networkInterface :: MVar (Int, [Char]) -> MVar [Char] -> Handle -> Handle -> IO ()
+networkInterface input_ref output_ref h_in h_out = do
+  request <- hGetLine h_out
+  putMVar input_ref (1, request)
+  response <- takeMVar output_ref
+  hPutStrLn h_in (filter (/= '\n') response)
+  hFlush h_in
+  networkInterface input_ref output_ref h_in h_out
 
 -- All GPLC programs referred to in GPLC_Programs.txt are compiled (if they are valid) at server start time.
 loadGplcPrograms :: [[Char]] -> [Char] -> Array Int GPLC_program -> Int -> IO (Array Int GPLC_program)
