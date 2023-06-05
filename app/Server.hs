@@ -18,7 +18,6 @@ import DecompressMap
 import CompressMap
 import OpenMap
 import HandleInput
-import CompileGPLC
 import PreprocessMap
 
 loadMap :: [Char] -> Int -> Int -> Int -> (Array (Int, Int, Int) Wall_grid, Array (Int, Int, Int) Floor_grid, Array (Int, Int, Int) Obj_grid)
@@ -36,7 +35,7 @@ main = do
   putStr "\nLoading map file..."
   comp_map_text <- bracket (openFile ((args !! 0) ++ (args !! 1)) ReadMode) hClose
                    (\h -> do c <- hGetContents h; putStr ("\nmap file size: " ++ show (length c)); return c)
-  (h_in, h_out, _, _) <- createProcess (shell "node .\\node_server\\server.js") {std_in = CreatePipe, std_out = CreatePipe}
+  (h_in, h_out, _, _) <- createProcess (shell "node ./node_server/server.js") {std_in = CreatePipe, std_out = CreatePipe}
   input_ref <- newEmptyMVar
   console_output <- newEmptyMVar
   network_output <- newEmptyMVar
@@ -44,14 +43,19 @@ main = do
   forkIO (networkInterface input_ref network_output (fromJust h_in) (fromJust h_out))
   handleInput Nothing comp_map_text (args !! 0) [] (fromJust h_in) input_ref console_output network_output 0
 
+tailFile :: [Char] -> [Char]
+tailFile contents =
+  if last (splitOn "\n" contents) == [] then init contents
+  else contents
+
 handleInput :: Maybe Server_state -> [Char] -> [Char] -> [[Char]] -> Handle -> MVar (Int, [Char]) -> MVar [Char] -> MVar [Char]
                -> Int -> IO ()
 handleInput server_state comp_map_text base_dir command h_in input_ref console_output network_output output_mode
   | isNothing server_state = do
-    prog_set <- bracket (openFile (base_dir ++ "GPLC_Programs\\" ++ "GPLC_Programs.txt") ReadMode) hClose
+    prog_set <- bracket (openFile (base_dir ++ "GPLC_Programs/" ++ "GPLC_Programs.txt") ReadMode) hClose
                         (\h -> do c <- hGetContents h; putStr ("\nprogram list file size: " ++ show (length c)); return c)
     gplc_programs <- loadGplcPrograms (splitOn "\n" prog_set)
-                                      (base_dir ++ "GPLC_Programs\\")
+                                      (base_dir ++ "GPLC_Programs/")
                                       (array (0, length (splitOn "\n" prog_set) - 1) [(i, empty_gplc_program) | i <- [0..length (splitOn "\n" prog_set) - 1]])
                                       0
     handleInput (Just Server_state {w_grid_ = fst__ new_game_state,
@@ -90,7 +94,7 @@ handleInput server_state comp_map_text base_dir command h_in input_ref console_o
         encoded_sub_wall_grid = encodeSubWallGrid (w_grid_ server_state') (-1) 0 0 (snd__ (snd w_bd)) (third_ (snd w_bd)) True []
         footer = show (snd__ (snd w_bd)) ++ "\n~\n" ++ show (third_ (snd w_bd)) ++ "\n~\n2\n~\nunlocked"
 
--- These two functions each run on their own thread and thereby allow the server to respectively receive requests 
+-- These two functions each run on their own GHC thread and thereby allow the server to respectively receive requests 
 -- through its console and network interfaces, which can then be handled asynchronously.
 consoleInterface :: MVar (Int, [Char]) -> MVar [Char] -> IO ()
 consoleInterface input_ref output_ref = do
@@ -110,6 +114,10 @@ networkInterface input_ref output_ref h_in h_out = do
   hFlush h_in
   networkInterface input_ref output_ref h_in h_out
 
+unpackErrors :: [[Char]] -> [Char] -> [Char]
+unpackErrors [] acc = acc
+unpackErrors (x:xs) acc = unpackErrors xs (acc ++ "\n" ++ x)
+
 -- All GPLC programs referred to in GPLC_Programs.txt are compiled (if they are valid) at server start time.
 loadGplcPrograms :: [[Char]] -> [Char] -> Array Int GPLC_program -> Int -> IO (Array Int GPLC_program)
 loadGplcPrograms [] base_dir prog_array i = return prog_array
@@ -119,8 +127,12 @@ loadGplcPrograms (x:xs) base_dir prog_array i =
   source <- bracket (openFile source_file ReadMode) hClose
                     (\h -> do c <- hGetContents h; putStr ("\nprogram file size: " ++ show (length c)); return c)
   putStr ("\nCompiling GPLC program " ++ x ++ " from source file " ++ source_file)
-  loadGplcPrograms xs base_dir (prog_array // [(i, compileProgram x ((splitOn "\n~\n" source) !! 1))]) (i + 1)
-  
+  compiled_program <- compileProgram x ((splitOn "\n~\n" source) !! 1)
+  if errors compiled_program /= [] then
+    putStr ("\ncompileProgram: Compilation of GPLC program [" ++ x ++ "] failed with the following errors.\n"
+            ++ unpackErrors (errors compiled_program) [])
+  else putStr ("\ncompileProgram: Success.  Bytecode was generated for GPLC program [" ++ x ++ "].")
+  loadGplcPrograms xs base_dir (prog_array // [(i, compiled_program)]) (i + 1)
 
 applyCommand :: Server_state -> [[Char]] -> IO (Server_state, [Char])
 applyCommand server_state command =

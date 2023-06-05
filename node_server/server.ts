@@ -27,9 +27,9 @@ function forwardCommand(comm : CommandObj) : Promise<string> {
 function main() : void {
   const app = express();
   const port = 80;
-  const staticDir = "C:\\Users\\steve\\code\\GD_server_deployed\\";
+//  const staticDir = "C:\\Users\\steve\\code\\GD_server_deployed\\";
 
-  app.use(express.static(staticDir));
+//  app.use(express.static(staticDir));
   app.use(express.json());
 
   app.post("/command", async (req, res) => {

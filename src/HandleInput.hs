@@ -19,7 +19,7 @@ import BuildModel hiding (Game_state, w_grid_, f_grid_, obj_grid_)
 import CompileGPLC
 import qualified IndexWrapper1 as IW
 
-data GPLC_program = GPLC_program {name :: [Char], hash :: [Char], source :: [Char], bytecode :: [Char]}
+data GPLC_program = GPLC_program {name :: [Char], hash :: [Char], source :: [Char], bytecode :: [Char], errors :: [[Char]]}
 
 empty_gplc_program = GPLC_program {name = [], hash = [], source = [], bytecode = []}
 
@@ -241,7 +241,7 @@ formatHash binaryHash hexTable i hexHash
 
 -- This is the entry point function for the logic in CompileGPLC and handles the compilation of GPLC
 -- programs to bytecode.
-compileProgram :: [Char] -> [Char] -> GPLC_program
+compileProgram :: [Char] -> [Char] -> IO GPLC_program
 compileProgram name source =
   let split_contents = splitOn " " source
       array_dim = detArrayDim split_contents 0 0 0
@@ -257,17 +257,23 @@ compileProgram name source =
       show_data_block = serialiseBytecode 1 data_block []
       colour_update = addColour token_arr 0 (fst__ array_dim) []
       serialised_source = serialiseSourceCode (token_arr // colour_update) 0 0 (fst (snd (bounds token_arr))) (snd (snd (bounds token_arr))) []
+      serialised_source_ = serialiseSourceCode token_arr 0 0 (fst (snd (bounds token_arr))) (snd (snd (bounds token_arr))) []
   in
-  if third_ array_dim /= [] then error (third_ array_dim)
-  else if third_ bound_symbols /= [] then error ("\n" ++ show (third_ bound_symbols))
-  else if snd signal_block /= [] then error ("\n" ++ show (snd signal_block))
-  else if snd code_block /= [] then error ("\n" ++ show (snd code_block))
-  else GPLC_program {name = name,
-                     hash = formatHash (SHA256.hash (BSC.pack source)) (genHexTable 0 0 0 []) 0 [],
-                     source = "[\n" ++ serialised_source ++ "\n]",
-                     bytecode = "[" ++ serialiseBytecode 1 (fst signal_block) []
+  if third_ array_dim /= [] then return GPLC_program {name = name, hash = [],
+                                                      source = "[\n" ++ serialised_source_ ++ "\n]", bytecode = [], errors = third_ array_dim}
+  else if third_ bound_symbols /= [] then return GPLC_program {name = name, hash = [],
+                                                               source = "[\n" ++ serialised_source_ ++ "\n]", bytecode = [], errors = third_ bound_symbols}
+  else if snd signal_block /= [] then return GPLC_program {name = name, hash = [],
+                                                           source = "[\n" ++ serialised_source_ ++ "\n]", bytecode = [], errors = snd signal_block}
+  else if snd code_block /= [] then return GPLC_program {name = name, hash = [],
+                                                         source = "[\n" ++ serialised_source_ ++ "\n]", bytecode = [], errors = snd code_block}
+  else return GPLC_program {name = name,
+                            hash = formatHash (SHA256.hash (BSC.pack source)) (genHexTable 0 0 0 []) 0 [],
+                            source = "[\n" ++ serialised_source ++ "\n]",
+                            bytecode = "[" ++ serialiseBytecode 1 (fst signal_block) []
                                 ++ serialiseBytecode 1 (fst code_block) []
-                                ++ take ((length show_data_block) - 3) show_data_block ++ "]"}
+                                ++ take ((length show_data_block) - 3) show_data_block ++ "]",
+                            errors = []}
 
 -- This function allows the client to query the properties of the GPLC programs the server compiled at its last start time.
 queryProgram :: Server_state -> [[Char]] -> (Maybe Server_state, [Char])

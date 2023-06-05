@@ -30,17 +30,17 @@ data Instruction = Instruction {opcode :: Int, instructionLength :: Int, argumen
 
 -- The GPLC source code is parsed into lexical tokens and placed in an array, ready to be passed to the interpreter functions.
 -- These two functions determine an appropriate size for that array and perform the parsing, respectively.
-detArrayDim :: [[Char]] -> Int -> Int -> Int -> (Int, Int, [Char])
+detArrayDim :: [[Char]] -> Int -> Int -> Int -> (Int, Int, [[Char]])
 detArrayDim [] current_length longest_line line_index
   | current_length > longest_line = (line_index, current_length, [])
   | otherwise = (line_index, longest_line, [])
 detArrayDim (x:xs) current_length longest_line line_index
   | x == "\n" =
-    if current_length > 16 then (line_index, current_length, error_string)
+    if current_length > 16 then (line_index, current_length, [error_string])
     else if current_length > longest_line then detArrayDim xs 0 current_length (line_index + 1)
     else detArrayDim xs 0 longest_line (line_index + 1)
   | otherwise = detArrayDim xs (current_length + 1) longest_line line_index
-  where error_string = ("\nA line in a GPLC program can't be longer than 16 tokens (line " ++ show (line_index + 1) ++ ").")
+  where error_string = ("A line in a GPLC program can't be longer than 16 tokens (line " ++ show (line_index + 1) ++ ").")
 
 tokenise :: [[Char]] -> Array (Int, Int) Token -> Int -> Int -> Int -> Array (Int, Int) Token
 tokenise [] token_arr col i j = token_arr
@@ -54,7 +54,7 @@ tokenise (x:xs) token_arr col i j
 -- This function generates the symbolic binding for each value in the scope of a particular program, except for the writeRefKey.
 genSymbolBindings :: Array (Int, Int) Token -> [Symbol_binding] -> [[Char]] -> Int -> Int -> Int -> Int -> ([Symbol_binding], Int, [[Char]])
 genSymbolBindings token_arr binding_set error_list i j ref_key i_max
-  | i > i_max = (binding_set, i + 1, error_list ++ ["\nNo code block found."])
+  | i > i_max = (binding_set, i + 1, error_list ++ ["No code block found."])
   | j > j_max || symbol_token == defToken = genSymbolBindings token_arr binding_set error_list (i + 1) 0 ref_key i_max
   | content symbol_token == "~" = (binding_set, i + 1, error_list)
   | isDigit (head (content symbol_token)) = genSymbolBindings token_arr binding_set (error_list ++ [symbol_error]) i (j + 2) ref_key i_max
@@ -65,7 +65,7 @@ genSymbolBindings token_arr binding_set error_list i j ref_key i_max
   | otherwise = genSymbolBindings token_arr (binding_set ++ [bound_symbol]) error_list i (j + 2) (ref_key + 1) i_max
   where symbol_token = token_arr ! (i, j)
         value_token = token_arr ! (i, j + 1)
-        error_location = "\n(" ++ show (i + 1) ++ ", " ++ show (column symbol_token) ++ "): "
+        error_location = "(" ++ show (i + 1) ++ ", " ++ show (column symbol_token) ++ "): "
         symbol_error = error_location ++ "A symbolic binding can't start with a numeric character."
         value_error = error_location ++ "The initial value bound to a symbol must be an integer."
         bound_symbol = Symbol_binding {symbol = content symbol_token, initialValue = read (content value_token),
@@ -132,8 +132,8 @@ genSignalBlock token_arr i i_max size offset signal_block error_list
         j_size = snd (snd (bounds token_arr)) + 1
         rows_to_jump = rowsToJump (first_arg_int + 1) j_size
         matched_keyword = matchKeyword (content keyword)
-        first_arg_error = "\n(" ++ show (i + 1) ++ ", " ++ show (column first_arg) ++ "): \"--signal\" and \"pass_msg\" must be followed by an integer."
-        keyword_error = "\n(" ++ show (i + 1) ++ ", " ++ show (column keyword) ++ "): " ++ content keyword ++ " is not a valid keyword."
+        first_arg_error = "(" ++ show (i + 1) ++ ", " ++ show (column first_arg) ++ "): \"--signal\" and \"pass_msg\" must be followed by an integer."
+        keyword_error = "(" ++ show (i + 1) ++ ", " ++ show (column keyword) ++ "): " ++ content keyword ++ " is not a valid keyword."
 
 -- This function determines the combined size that the signal and code blocks will have in the bytecode output.
 sizeSignalCodeBlock :: SEQ.Seq Int -> Int -> Int -> Int -> Int
@@ -178,7 +178,7 @@ interpretArgs (x:xs) token_arr bound_symbols i j result error_list
   | otherwise = interpretArgs xs token_arr bound_symbols i (j + 1) (result SEQ.|> fromJust matched_symbol) error_list
   where arg_token = token_arr ! (i, j)
         matched_symbol = matchSymbol bound_symbols (content arg_token) x
-        error_location = "\n(" ++ show (i + 1) ++ ", " ++ show (column arg_token) ++ "): "
+        error_location = "(" ++ show (i + 1) ++ ", " ++ show (column arg_token) ++ "): "
         const_error = error_location ++ content arg_token ++ " is not a literal integer."
         symbol_error = error_location ++ content arg_token ++ " is not a bound symbol in the scope of this program."
 
