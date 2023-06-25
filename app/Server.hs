@@ -64,9 +64,10 @@ handleInput server_state comp_map_text asset_path command h_in input_ref console
   | isNothing server_state = do
     prog_set <- bracket (openFile ((asset_path !! 0) ++ (asset_path !! 1) ++ "GPLC_Programs.txt") ReadMode) hClose
                         (\h -> do c <- hGetContents h; putStr ("\nprogram list file size: " ++ show (length c)); return c)
-    gplc_programs <- loadGplcPrograms (splitOn "\n" prog_set)
-                                      ((asset_path !! 0) ++ (asset_path !! 1))
-                                      (array (0, length (splitOn "\n" prog_set) - 1) [(i, empty_gplc_program) | i <- [0..length (splitOn "\n" prog_set) - 1]])
+    gplc_programs <-
+      loadGplcPrograms (splitOn "\n" (tailFile prog_set))
+                       ((asset_path !! 0) ++ (asset_path !! 1))
+                       (array (0, length (splitOn "\n" (tailFile prog_set)) - 1) [(i, empty_gplc_program) | i <- [0..length (splitOn "\n" (tailFile prog_set)) - 1]])
                                       0
     handleInput (Just Server_state {w_grid_ = fst__ new_game_state,
                                     f_grid_ = snd__ new_game_state,
@@ -138,7 +139,7 @@ loadGplcPrograms (x:xs) base_dir prog_array i =
   in do
   source <- bracket (openFile source_file ReadMode) hClose
                     (\h -> do c <- hGetContents h; putStr ("\nprogram file size: " ++ show (length c)); return c)
-  putStr ("\nCompiling GPLC program " ++ x ++ " from source file " ++ source_file)
+  putStr ("\nCompiling GPLC program [" ++ x ++ "] from source file: " ++ source_file)
   compiled_program <- compileProgram x ((splitOn "\n~\n" source) !! 1)
   if errors compiled_program /= [] then
     putStr ("\ncompileProgram: Compilation of GPLC program [" ++ x ++ "] failed with the following errors.\n"

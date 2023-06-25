@@ -1,21 +1,15 @@
 # Game :: Dangerous (a tribute to ZZT)
 
-## A project update as of 02/04/2023
+## A project update as of 25/06/2023
 
-I've set myself a target that by the end of September this year I'll have started to create production map content 
-using the map development editor.  For much of the seven and a half years over which I've been (on and off) working 
-on this project, it's felt like there was still such a mountain of work to do that I didn't even try to estimate when 
-this milestone would be reached.  At this stage there's an engine that it appears can viably run the kind of game I'd 
-like to build and a substantial part of the editor that would make it feasible to build.  There are still question 
-marks over what will happen when I try to implement the game design ideas in my head on this platform, including complex 
-puzzles.
-
-I suspect it'll turn into a battle of patience and attrition where I'm forced to squeeze every last ounce of 
-capability out of the engine (and myself) to make something anyone might find remotely fun.  That sounds like great fun 
-in itself though.
+The map development server now functions consistently on Windows and Linux and provides the bare minimum API I believe 
+will be necessary to meet the project goals.  Work will now largely turn to developing the client (to be hosted at 
+Mushy-pea/Game-Dangerous-Client).  If design issues with the API emerge during this process the server can be modified 
+in parallel to allow for the intended client side experience.
 
 Engine version: 0.9.0
-Server version: 1.0.1
+
+Server version: 1.0.2
 
 ![Annotated GPLC code example](https://github.com/Mushy-pea/Game-Dangerous/blob/master/images/CodeColouring.png)
 
