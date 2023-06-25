@@ -14,9 +14,8 @@ I suspect it'll turn into a battle of patience and attrition where I'm forced to
 capability out of the engine (and myself) to make something anyone might find remotely fun.  That sounds like great fun 
 in itself though.
 
-Edit (06/06/2023): As my main Windows development machine is currently down with a suspected power supply failure, I've 
-failed over to my PopOS Linux box until a fix is found.  This has revealed that a little more work is needed to get the 
-server to work on both platforms.
+Engine version: 0.9.0
+Server version: 1.0.1
 
 ![Annotated GPLC code example](https://github.com/Mushy-pea/Game-Dangerous/blob/master/images/CodeColouring.png)
 

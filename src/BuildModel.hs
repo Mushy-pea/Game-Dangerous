@@ -772,7 +772,7 @@ viewCircle a b r t lookUp = (a + r * lookUp ! (2, t), b + r * lookUp ! (1, t))
 -- Used to query the conf_reg array, which holds startup parameters passed at the command line or from the engine's configuration file.
 cfg :: Array Int [Char] -> Int -> [Char] -> [Char]
 cfg conf_reg i query =
-  if i > 90 then error ("Invalid conf_reg field in query operation: " ++ query ++ "!")
+  if i > 88 then error ("Invalid conf_reg field in query operation: " ++ query ++ "!")
   else if conf_reg ! i == query then conf_reg ! (i + 1)
   else cfg conf_reg (i + 2) query
 
@@ -818,4 +818,9 @@ genArrayDiff w u v u_limit v_limit arr0 arr1 acc =
     if arr0 ! (w, u, v) == arr1 ! (w, u, v) then genArrayDiff w u (v + 1) u_limit v_limit arr0 arr1 acc
     else genArrayDiff w u (v + 1) u_limit v_limit arr0 arr1 (acc SEQ.>< (SEQ.singleton ((w, u, v), (arr1 ! (w, u, v)))))
 
+-- This function processes text from input files to return a result that is independent on whether the file has the Windows or Unix end of file format.
+tailFile :: [Char] -> [Char]
+tailFile contents =
+  if last (splitOn "\n" contents) == [] then init contents
+  else contents
 

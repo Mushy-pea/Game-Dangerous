@@ -21,7 +21,7 @@ import qualified IndexWrapper1 as IW
 
 data GPLC_program = GPLC_program {name :: [Char], hash :: [Char], source :: [Char], bytecode :: [Char], errors :: [[Char]]}
 
-empty_gplc_program = GPLC_program {name = [], hash = [], source = [], bytecode = []}
+empty_gplc_program = GPLC_program {name = [], hash = [], source = [], bytecode = [], errors = []}
 
 data Server_state = Server_state {w_grid_ :: Array (Int, Int, Int) Wall_grid, f_grid_ :: Array (Int, Int, Int) Floor_grid,
                                   obj_grid_ :: Array (Int, Int, Int) Obj_grid, gplcPrograms :: Array Int GPLC_program}

@@ -43,12 +43,6 @@ import GameLogic
 import GameSound
 import EncodeStatus
 
--- This function processes text from input files to return a result that is independent on whether the file has the Windows or Unix end of file format.
-tailFile :: [Char] -> [Char]
-tailFile contents =
-  if last (splitOn "\n" contents) == [] then init contents
-  else contents
-
 main = do
   args <- getArgs
   if length args == 0 then do
@@ -68,7 +62,7 @@ openWindow conf_reg =
                                   , cb "cb_MENU_SELECT", cb "cb_MENU_BACK", cb "cb_MENU_HOME"]
       filePath = cfg' "map_file_path" ++ cfg' "map_file"
   in do
-  putStr ("\n\nGame :: Dangerous engine " ++ cfg' "version_and_platform_string")
+  putStr ("\n\nGame :: Dangerous engine starting.  Version and platform: " ++ cfg' "version_and_platform_string")
   putStr "\nInitialising GLUT and OpenGL runtime environment..."
   initialize "game_dangerous.exe" []
   initialContextVersion $= (3, 3)

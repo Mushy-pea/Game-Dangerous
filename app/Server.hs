@@ -31,56 +31,68 @@ loadMap comp_map_text u_max v_max w_max =
 
 main = do
   args <- getArgs
-  putStr "\nGame :: Dangerous map development server version 1.0.0"
+  cfg_file <- bracket (openFile (args !! 1) ReadMode) (hClose)
+                      (\h -> do c <- hGetContents h; putStr ("\ncfg file size: " ++ show (length c)); return c)
+  initServer (listArray (0, 89) (splitOneOf "=\n" (tailFile cfg_file))) args
+
+initServer :: Array Int [Char] -> [[Char]] -> IO ()
+initServer conf_reg args =
+  let cfg' = cfg conf_reg 0
+  in do
+  putStr ("\n\nGame :: Dangerous map development server starting.  Version and platform: " ++ cfg' "version_and_platform_string")
   putStr "\nLoading map file..."
-  comp_map_text <- bracket (openFile ((args !! 0) ++ (args !! 1)) ReadMode) hClose
+  comp_map_text <- bracket (openFile ((args !! 2) ++ (args !! 3)) ReadMode) hClose
                    (\h -> do c <- hGetContents h; putStr ("\nmap file size: " ++ show (length c)); return c)
-  (h_in, h_out, _, _) <- createProcess (shell "node ./node_server/server.js") {std_in = CreatePipe, std_out = CreatePipe}
   input_ref <- newEmptyMVar
   console_output <- newEmptyMVar
   network_output <- newEmptyMVar
-  forkIO (consoleInterface input_ref console_output)
-  forkIO (networkInterface input_ref network_output (fromJust h_in) (fromJust h_out))
-  handleInput Nothing comp_map_text (args !! 0) [] (fromJust h_in) input_ref console_output network_output 0
+  if (splitOn " " (cfg' "version_and_platform_string")) !! 0 == "Windows" then do
+    (h_in, h_out, _, _) <- createProcess (shell "node .\\node_server\\server.js") {std_in = CreatePipe, std_out = CreatePipe}
+    forkIO (consoleInterface input_ref console_output)
+    forkIO (networkInterface input_ref network_output (fromJust h_in) (fromJust h_out))
+    handleInput Nothing (tailFile comp_map_text) [(args !! 2), "GPLC_Programs\\"] [] (fromJust h_in) input_ref console_output network_output 0
+  else if (splitOn " " (cfg' "version_and_platform_string")) !! 0 == "Linux" then do
+    (h_in, h_out, _, _) <- createProcess (shell "node ./node_server/server.js") {std_in = CreatePipe, std_out = CreatePipe}
+    forkIO (consoleInterface input_ref console_output)
+    forkIO (networkInterface input_ref network_output (fromJust h_in) (fromJust h_out))
+    handleInput Nothing (tailFile comp_map_text) [(args !! 2), "GPLC_Programs/"] [] (fromJust h_in) input_ref console_output network_output 0
+  else error ("Unsupported platform found in version_and_platform_string")
 
-tailFile :: [Char] -> [Char]
-tailFile contents =
-  if last (splitOn "\n" contents) == [] then init contents
-  else contents
-
-handleInput :: Maybe Server_state -> [Char] -> [Char] -> [[Char]] -> Handle -> MVar (Int, [Char]) -> MVar [Char] -> MVar [Char]
+handleInput :: Maybe Server_state -> [Char] -> [[Char]] -> [[Char]] -> Handle -> MVar (Int, [Char]) -> MVar [Char] -> MVar [Char]
                -> Int -> IO ()
-handleInput server_state comp_map_text base_dir command h_in input_ref console_output network_output output_mode
+handleInput server_state comp_map_text asset_path command h_in input_ref console_output network_output output_mode
   | isNothing server_state = do
-    prog_set <- bracket (openFile (base_dir ++ "GPLC_Programs/" ++ "GPLC_Programs.txt") ReadMode) hClose
+    prog_set <- bracket (openFile ((asset_path !! 0) ++ (asset_path !! 1) ++ "GPLC_Programs.txt") ReadMode) hClose
                         (\h -> do c <- hGetContents h; putStr ("\nprogram list file size: " ++ show (length c)); return c)
     gplc_programs <- loadGplcPrograms (splitOn "\n" prog_set)
-                                      (base_dir ++ "GPLC_Programs/")
+                                      ((asset_path !! 0) ++ (asset_path !! 1))
                                       (array (0, length (splitOn "\n" prog_set) - 1) [(i, empty_gplc_program) | i <- [0..length (splitOn "\n" prog_set) - 1]])
                                       0
     handleInput (Just Server_state {w_grid_ = fst__ new_game_state,
                                     f_grid_ = snd__ new_game_state,
                                     obj_grid_ = third_ new_game_state,
                                     gplcPrograms = gplc_programs})
-                comp_map_text base_dir command h_in input_ref console_output network_output 0
+                comp_map_text asset_path command h_in input_ref console_output network_output 0
   | command == [] = do
     input <- takeMVar input_ref
-    handleInput server_state comp_map_text base_dir (splitOn " " (snd input)) h_in input_ref console_output network_output (fst input)
+    handleInput server_state comp_map_text asset_path (splitOn " " (snd input)) h_in input_ref console_output network_output (fst input)
   | head command == "exit" = do
     putStr "\nExit command received ... closing server."
     hPutStrLn h_in "exit"
     hFlush h_in
   | head command == "save" = do
-    template <- bracket (openFile (base_dir ++ command !! 1) ReadMode) hClose
+    template <- bracket (openFile ((asset_path !! 0) ++ command !! 1) ReadMode) (hClose)
                         (\h -> do c <- hGetContents h; putStr ("\ntemplate file size: " ++ show (length c)); return c)
-    h <- openFile (base_dir ++ command !! 2) WriteMode
-    hPutStr h (encoded_wall_grid ++ encoded_floor_grid ++ template ++ encoded_obj_grid ++ encoded_sub_wall_grid ++ footer)
-    hClose h
+    bracket (openFile ((asset_path !! 0) ++ command !! 2) WriteMode) (hClose)
+            (\h -> hPutStr h (encoded_wall_grid ++ encoded_floor_grid ++ template ++ encoded_obj_grid ++ encoded_sub_wall_grid ++ footer))
+    if output_mode == 0 then putMVar console_output "\nMap file saved."
+    else putMVar network_output "Map file saved."
+    handleInput server_state comp_map_text asset_path [] h_in input_ref console_output network_output 0
   | otherwise = do
     result <- applyCommand (fromJust server_state) command
     if output_mode == 0 then putMVar console_output (snd result)
     else putMVar network_output (snd result)
-    handleInput (Just (fst result)) comp_map_text base_dir [] h_in input_ref console_output network_output 0
+    handleInput (Just (fst result)) comp_map_text asset_path [] h_in input_ref console_output network_output 0
   where u_max = read ((splitOn "\n~\n" comp_map_text) !! 12)
         v_max = read ((splitOn "\n~\n" comp_map_text) !! 13)
         w_max = read ((splitOn "\n~\n" comp_map_text) !! 14)
