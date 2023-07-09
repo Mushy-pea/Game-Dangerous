@@ -31,7 +31,7 @@ loadMap comp_map_text u_max v_max w_max =
 
 main = do
   args <- getArgs
-  cfg_file <- bracket (openFile (args !! 1) ReadMode) (hClose)
+  cfg_file <- bracket (openFile (args !! 0) ReadMode) (hClose)
                       (\h -> do c <- hGetContents h; putStr ("\ncfg file size: " ++ show (length c)); return c)
   initServer (listArray (0, 89) (splitOneOf "=\n" (tailFile cfg_file))) args
 
@@ -41,7 +41,7 @@ initServer conf_reg args =
   in do
   putStr ("\n\nGame :: Dangerous map development server starting.  Version and platform: " ++ cfg' "version_and_platform_string")
   putStr "\nLoading map file..."
-  comp_map_text <- bracket (openFile ((args !! 2) ++ (args !! 3)) ReadMode) hClose
+  comp_map_text <- bracket (openFile ((args !! 1) ++ (args !! 2)) ReadMode) hClose
                    (\h -> do c <- hGetContents h; putStr ("\nmap file size: " ++ show (length c)); return c)
   input_ref <- newEmptyMVar
   console_output <- newEmptyMVar
@@ -50,12 +50,12 @@ initServer conf_reg args =
     (h_in, h_out, _, _) <- createProcess (shell "node .\\node_server\\server.js") {std_in = CreatePipe, std_out = CreatePipe}
     forkIO (consoleInterface input_ref console_output)
     forkIO (networkInterface input_ref network_output (fromJust h_in) (fromJust h_out))
-    handleInput Nothing (tailFile comp_map_text) [(args !! 2), "GPLC_Programs\\"] [] (fromJust h_in) input_ref console_output network_output 0
+    handleInput Nothing (tailFile comp_map_text) [(args !! 1), "GPLC_Programs\\"] [] (fromJust h_in) input_ref console_output network_output 0
   else if (splitOn " " (cfg' "version_and_platform_string")) !! 0 == "Linux" then do
     (h_in, h_out, _, _) <- createProcess (shell "node ./node_server/server.js") {std_in = CreatePipe, std_out = CreatePipe}
     forkIO (consoleInterface input_ref console_output)
     forkIO (networkInterface input_ref network_output (fromJust h_in) (fromJust h_out))
-    handleInput Nothing (tailFile comp_map_text) [(args !! 2), "GPLC_Programs/"] [] (fromJust h_in) input_ref console_output network_output 0
+    handleInput Nothing (tailFile comp_map_text) [(args !! 1), "GPLC_Programs/"] [] (fromJust h_in) input_ref console_output network_output 0
   else error ("Unsupported platform found in version_and_platform_string")
 
 handleInput :: Maybe Server_state -> [Char] -> [[Char]] -> [[Char]] -> Handle -> MVar (Int, [Char]) -> MVar [Char] -> MVar [Char]
@@ -65,9 +65,9 @@ handleInput server_state comp_map_text asset_path command h_in input_ref console
     prog_set <- bracket (openFile ((asset_path !! 0) ++ (asset_path !! 1) ++ "GPLC_Programs.txt") ReadMode) hClose
                         (\h -> do c <- hGetContents h; putStr ("\nprogram list file size: " ++ show (length c)); return c)
     gplc_programs <-
-      loadGplcPrograms (splitOn "\n" (tailFile prog_set))
+      loadGplcPrograms (splitOn "\n" (tf prog_set))
                        ((asset_path !! 0) ++ (asset_path !! 1))
-                       (array (0, length (splitOn "\n" (tailFile prog_set)) - 1) [(i, empty_gplc_program) | i <- [0..length (splitOn "\n" (tailFile prog_set)) - 1]])
+                       (array (0, length (splitOn "\n" (tf prog_set)) - 1) [(i, empty_gplc_program) | i <- [0..length (splitOn "\n" (tf prog_set)) - 1]])
                                       0
     handleInput (Just Server_state {w_grid_ = fst__ new_game_state,
                                     f_grid_ = snd__ new_game_state,
@@ -94,7 +94,8 @@ handleInput server_state comp_map_text asset_path command h_in input_ref console
     if output_mode == 0 then putMVar console_output (snd result)
     else putMVar network_output (snd result)
     handleInput (Just (fst result)) comp_map_text asset_path [] h_in input_ref console_output network_output 0
-  where u_max = read ((splitOn "\n~\n" comp_map_text) !! 12)
+  where tf = tailFile
+        u_max = read ((splitOn "\n~\n" comp_map_text) !! 12)
         v_max = read ((splitOn "\n~\n" comp_map_text) !! 13)
         w_max = read ((splitOn "\n~\n" comp_map_text) !! 14)
         new_game_state = loadMap comp_map_text u_max v_max w_max
