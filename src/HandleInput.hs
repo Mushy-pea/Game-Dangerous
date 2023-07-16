@@ -281,10 +281,12 @@ queryProgram server_state args =
   let i = read (args !! 0)
       program = (gplcPrograms server_state) ! i
   in (Nothing,
-      "\nname: " ++ name program
-      ++ "\nhash: " ++ hash program
-      ++ "\nsource: " ++ source program
-      ++ "\nbytecode: " ++ bytecode program)
+      "{\n"
+      ++ "  \"name\": " ++ show (name program) ++ ",\n"
+      ++ "  \"hash\": " ++ show (hash program) ++ ",\n"
+      ++ "  \"source\": " ++ show (source program) ++ ",\n"
+      ++ "  \"bytecode\": " ++ show (bytecode program)
+      ++ "\n}")
 
 -- This function allows the client to view a list of the GPLC programs the server compiled at its last start time.
 listProgram :: Server_state -> [[Char]] -> (Maybe Server_state, [Char])

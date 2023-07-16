@@ -3,13 +3,13 @@
 const readline = require("readline");
 const express = require("express");
 
-type CommandObj = {
-  command : string,
+type Command = {
+  keyword : string,
   arguments : string[]
 };
 
-function forwardCommand(comm : CommandObj) : Promise<string> {
-  let commandLine = comm.command;
+function forwardCommand(comm : Command) : Promise<string> {
+  let commandLine = comm.keyword;
   comm.arguments.forEach((arg) => {commandLine += ` ${arg}`});
   const rl = readline.createInterface({
     input: process.stdin,
@@ -27,9 +27,9 @@ function forwardCommand(comm : CommandObj) : Promise<string> {
 function main() : void {
   const app = express();
   const port = 80;
-//  const staticDir = "C:\\Users\\steve\\code\\GD_server_deployed\\";
+  const staticDir = "C:\\Users\\steve\\code\\Web-Testing";
 
-//  app.use(express.static(staticDir));
+  app.use(express.static(staticDir));
   app.use(express.json());
 
   app.post("/command", async (req, res) => {

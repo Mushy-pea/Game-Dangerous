@@ -47,7 +47,7 @@ tokenise [] token_arr col i j = token_arr
 tokenise (x:xs) token_arr col i j
   | x == "\n" = tokenise xs token_arr 1 (i + 1) 0
   | otherwise = tokenise xs (token_arr // [((i, j), token_added)]) (col + length x + 1) i (j + 1)
-  where token_added = Token {line = 0, column = col + col_correction, content = x, textColour = []}
+  where token_added = Token {line = 0, column = col + col_correction, content = x, textColour = "White"}
         col_correction = if i == 0 then 0
                          else 1
 
