@@ -76,6 +76,7 @@ handleInput server_state comp_map_text asset_path command h_in input_ref console
                 comp_map_text asset_path command h_in input_ref console_output network_output 0
   | command == [] = do
     input <- takeMVar input_ref
+    putStr ("\ncommand received: " ++ show (splitOn " " (snd input)))
     handleInput server_state comp_map_text asset_path (splitOn " " (snd input)) h_in input_ref console_output network_output (fst input)
   | head command == "exit" = do
     putStr "\nExit command received ... closing server."

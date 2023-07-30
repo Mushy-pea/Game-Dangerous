@@ -130,14 +130,15 @@ class Serialise a where
 instance Serialise Obj_place where
   toJSON Nothing = "null"
   toJSON (Just a) =
-    "{\n"
-    ++ "  \"ident_\": " ++ show (ident_ a) ++ ",\n"
-    ++ "  \"u__\": " ++ show (u__ a) ++ ",\n"
-    ++ "  \"v__\": " ++ show (v__ a) ++ ",\n"
-    ++ "  \"w__\": " ++ show (w__ a) ++ ",\n"
-    ++ "  \"texture__\": " ++ show (texture__ a) ++ ",\n"
-    ++ "  \"num_elem\": " ++ show (num_elem a)
-    ++ "\n}"
+    "    {\n"
+    ++ "      \"modelIdent\": " ++ show (ident_ a) ++ ",\n"
+    ++ "      \"u\": " ++ show (u__ a) ++ ",\n"
+    ++ "      \"v\": " ++ show (v__ a) ++ ",\n"
+    ++ "      \"w\": " ++ show (w__ a) ++ ",\n"
+    ++ "      \"texture\": " ++ show (texture__ a) ++ ",\n"
+    ++ "      \"numElem\": " ++ show (num_elem a) ++ ",\n"
+    ++ "      \"objFlag\": " ++ show (obj_flag a)
+    ++ "\n    }"
 
 toJSBool :: Bool -> [Char]
 toJSBool True = "true"
@@ -145,40 +146,44 @@ toJSBool False = "false"
 
 instance Serialise Wall_grid where
   toJSON (Just a) =
-    "{\n"
-    ++ "  \"u1\": " ++ toJSBool (u1 a) ++ ",\n"
-    ++ "  \"u2\": " ++ toJSBool (u2 a) ++ ",\n"
-    ++ "  \"v1\": " ++ toJSBool (v1 a) ++ ",\n"
-    ++ "  \"v2\": " ++ toJSBool (v2 a) ++ ",\n"
-    ++ "  \"u1Texture\": " ++ show ((texture a) !! 0) ++ ",\n"
-    ++ "  \"u2Texture\": " ++ show ((texture a) !! 1) ++ ",\n"
-    ++ "  \"v1Texture\": " ++ show ((texture a) !! 2) ++ ",\n"
-    ++ "  \"v2Texture\": " ++ show ((texture a) !! 3) ++ ",\n"
-    ++ toJSON (obj a)
-    ++ "\n}" 
+    "  {\n"
+    ++ "    \"u1_structure\": " ++ toJSBool (u1 a) ++ ",\n"
+    ++ "    \"u2_structure\": " ++ toJSBool (u2 a) ++ ",\n"
+    ++ "    \"v1_structure\": " ++ toJSBool (v1 a) ++ ",\n"
+    ++ "    \"v2_structure\": " ++ toJSBool (v2 a) ++ ",\n"
+    ++ "    \"u1_texture\": " ++ show ((texture a) !! 0) ++ ",\n"
+    ++ "    \"u2_texture\": " ++ show ((texture a) !! 1) ++ ",\n"
+    ++ "    \"v1_texture\": " ++ show ((texture a) !! 2) ++ ",\n"
+    ++ "    \"v2_texture\": " ++ show ((texture a) !! 3) ++ ",\n"
+    ++ "    \"objPlace\": \n" ++ toJSON (obj a)
+    ++ "\n  }" 
 
 instance Serialise Floor_grid where
   toJSON (Just a) =
-    "{\n"
-    ++ "  \"surface\": \"" ++ show (surface a) ++ "\""
-    ++ "\n}"
+    "  {\n"
+    ++ "    \"height\": " ++ show (w_ a) ++ ",\n"
+    ++ "    \"surface\": \"" ++ show (surface a) ++ "\""
+    ++ "\n  }"
 
 instance Serialise Obj_grid where
   toJSON (Just a) =
-    "{\n"
-    ++ "  \"objType\": " ++ show (objType a) ++ ",\n"
-    ++ "  \"program\": " ++ show (program a) ++ ",\n"
-    ++ "  \"programName\": " ++ show (programName a)
-    ++ "\n}"
+    let programName_ = if programName a == "null" then "null"
+                       else show (programName a)
+    in
+    "  {\n"
+    ++ "    \"objType\": " ++ show (objType a) ++ ",\n"
+    ++ "    \"program\": " ++ show (program a) ++ ",\n"
+    ++ "    \"programName\": " ++ programName_
+    ++ "\n  }"
 
 instance Serialise Token where
   toJSON (Just a) =
-    "{\n"
-    ++ "  \"line\": " ++ show (line a) ++ ",\n"
-    ++ "  \"column\": " ++ show (column a) ++ ",\n"
-    ++ "  \"content\": " ++ show (content a) ++ ",\n"
-    ++ "  \"textColour\": " ++ show (textColour a)
-    ++ "\n}"
+    "  {\n"
+    ++ "    \"line\": " ++ show (line a) ++ ",\n"
+    ++ "    \"column\": " ++ show (column a) ++ ",\n"
+    ++ "    \"content\": " ++ show (content a) ++ ",\n"
+    ++ "    \"textColour\": " ++ show (textColour a)
+    ++ "\n  }"
 
 -- These three functions read the state of a set of voxels in the map, which is serialised and sent to the client.
 readVoxel :: Server_state -> [Char] -> Int -> Int -> Int -> [Char]
@@ -187,11 +192,11 @@ readVoxel server_state voxel_type w u v
   | voxel_type == "Floor_grid" = toJSON (Just ((f_grid_ server_state) ! (w, u, v)))
   | voxel_type == "Obj_grid" = toJSON (Just ((obj_grid_ server_state) ! (w, u, v)))
 
-readVoxels :: Server_state -> Int -> Int -> Int -> Int -> Int -> [Char] -> [Char] -> [Char]
-readVoxels server_state w u v u_max v_max voxel_type acc
+readVoxels :: Server_state -> Int -> Int -> Int -> Int -> Int -> Int -> [Char] -> [Char] -> [Char]
+readVoxels server_state w u v u_max v_max v_min voxel_type acc
   | u > u_max = take ((length acc) - 2) acc
-  | v > v_max = readVoxels server_state w (u + 1) 0 u_max v_max voxel_type acc
-  | otherwise = readVoxels server_state w u (v + 1) u_max v_max voxel_type (voxel ++ ",\n" ++ acc)
+  | v > v_max = readVoxels server_state w (u + 1) v_min u_max v_max v_min voxel_type acc
+  | otherwise = readVoxels server_state w u (v + 1) u_max v_max v_min voxel_type (voxel ++ ",\n" ++ acc)
   where voxel = readVoxel server_state voxel_type w u v
 
 readVoxelsCommand :: Server_state -> [[Char]] -> (Maybe Server_state, [Char])
@@ -202,7 +207,7 @@ readVoxelsCommand server_state args =
       u_max = read (args !! 3)
       v_max = read (args !! 4)
       voxel_type = args !! 5
-  in (Nothing, "[" ++ readVoxels server_state w u_min v_min u_max v_max voxel_type [] ++ "\n]")
+  in (Nothing, "[\n" ++ readVoxels server_state w u_min v_min u_max v_max v_min voxel_type [] ++ "\n]")
 
 -- This function serialises annotated GPLC source code to JSON for sending to the client.
 serialiseSourceCode :: Array (Int, Int) Token -> Int -> Int -> Int -> Int -> [Char] -> [Char]
