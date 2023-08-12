@@ -70,8 +70,8 @@ writeObjGrid server_state args =
   in
   if isNothing boundsCheck then
     (Just server_state {obj_grid_ = (obj_grid_ server_state) // [((w, u, v), Obj_grid {objType = obj_type,
-                                                                                   program = constructProgBlock (drop 4 args),
-                                                                                   programName = []})]},
+                                                                                       program = constructProgBlock (drop 4 args),
+                                                                                       programName = []})]},
      "writeObjGrid succeeded.  Arguments passed were w: " ++ (args !! 0) ++ " u: " ++ (args !! 1) ++ " v: " ++ (args !! 2) ++ " obj_type: " ++ (args !! 3))
   else (Nothing, fromJust boundsCheck)
 
@@ -297,14 +297,30 @@ queryProgram server_state args =
 listProgram :: Server_state -> [[Char]] -> (Maybe Server_state, [Char])
 listProgram server_state args = (Nothing, "\nloaded programs: " ++ show (map name (elems (gplcPrograms server_state))))
 
+-- This function allows the client to query the dimensions of the map.
+getMetaData :: Server_state -> [[Char]] -> (Maybe Server_state, [Char])
+getMetaData server_state args =
+  let u_max_wall = snd__ (snd (bounds (w_grid_ server_state)))
+      v_max_wall = third_ (snd (bounds (w_grid_ server_state)))
+      u_max_floor = snd__ (snd (bounds (f_grid_ server_state)))
+      v_max_floor = third_ (snd (bounds (f_grid_ server_state)))
+  in
+  (Nothing,
+   "{\n"
+   ++ "  \"uMaxWall\": " ++ show u_max_wall ++ ",\n"
+   ++ "  \"vMaxWall\": " ++ show v_max_wall ++ ",\n"
+   ++ "  \"uMaxFloor\": " ++ show u_max_floor ++ ",\n"
+   ++ "  \"vMaxFloor\": " ++ show v_max_floor ++ ",\n"
+   ++ "\n}")
+
 -- These are the pages used in the hierarchical dictionary look up used to interpret server commands.
-page0 = ["read", "write", "GPLC"]
+page0 = ["read", "write", "GPLC", "metaData"]
 page1 = ["Wall_grid", "Floor_grid", "Obj_grid"]
 page2 = ["structure", "textures", "Obj_place"]
 page3 = ["query", "list"]
 
 -- These are the sets of branches that exist for non - end nodes.
-baseBranches = array (0, 2) [(0, readNode), (1, writeNode), (2, gplcNode)]
+baseBranches = array (0, 3) [(0, readNode), (1, writeNode), (2, gplcNode), (3, metaDataNode)]
 
 writeNodeBranches = array (0, 2) [(0, wallGridNode), (1, floorGridNode), (2, objGridNode)]
 
@@ -320,6 +336,8 @@ readNode = Comm_struct {dictionaryPage = [], branches = Nothing, readWriteGameSt
 writeNode = Comm_struct {dictionaryPage = page1, branches = Just writeNodeBranches, readWriteGameState = Nothing}
 
 gplcNode = Comm_struct {dictionaryPage = page3, branches = Just gplcNodeBranches, readWriteGameState = Nothing}
+
+metaDataNode = Comm_struct {dictionaryPage = [], branches = Nothing, readWriteGameState = Just getMetaData}
 
 wallGridNode = Comm_struct {dictionaryPage = page2, branches = Just wallGridNodeBranches, readWriteGameState = Nothing}
 

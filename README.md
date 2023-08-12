@@ -9,7 +9,7 @@ in parallel to allow for the intended client side experience.
 
 Engine version: 0.9.0
 
-Server version: 1.0.4
+Server version: 1.0.5
 
 ![Annotated GPLC code example](https://github.com/Mushy-pea/Game-Dangerous/blob/master/images/CodeColouring.png)
 
