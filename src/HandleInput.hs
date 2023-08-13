@@ -310,8 +310,8 @@ getMetaData server_state args =
    ++ "  \"uMaxWall\": " ++ show u_max_wall ++ ",\n"
    ++ "  \"vMaxWall\": " ++ show v_max_wall ++ ",\n"
    ++ "  \"uMaxFloor\": " ++ show u_max_floor ++ ",\n"
-   ++ "  \"vMaxFloor\": " ++ show v_max_floor ++ ",\n"
-   ++ "\n}")
+   ++ "  \"vMaxFloor\": " ++ show v_max_floor ++ "\n}"
+  )
 
 -- These are the pages used in the hierarchical dictionary look up used to interpret server commands.
 page0 = ["read", "write", "GPLC", "metaData"]

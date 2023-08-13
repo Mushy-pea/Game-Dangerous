@@ -18,6 +18,7 @@ function forwardCommand(comm : Command) : Promise<string> {
   console.log(commandLine);
   const commandResolution = new Promise<string>((resolve) => {
     rl.on("line", (input) => {
+      rl.close();
       resolve(input);
     });
   });
@@ -27,7 +28,7 @@ function forwardCommand(comm : Command) : Promise<string> {
 function main() : void {
   const app = express();
   const port = 80;
-  const staticDir = "C:\\Users\\steve\\Documents\\GitHub\\Game-Dangerous-Client";
+  const staticDir = "/home/steven/Software-Projects/Game-Dangerous-Client";
 
   app.use(express.static(staticDir));
   app.use(express.json());
