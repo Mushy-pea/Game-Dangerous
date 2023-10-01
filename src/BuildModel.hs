@@ -743,6 +743,8 @@ emptyObjGrid u_max v_max w_max = array ((0, 0, 0), (w_max, u_max, v_max)) [((w, 
 loadObjGrid :: [[Char]] -> [((Int, Int, Int), Obj_grid)]
 loadObjGrid [] = []
 loadObjGrid (x0:x1:x2:x3:x4:xs)
+  | xs == [] = [((read x0, read x1, read x2),
+                Obj_grid {objType = read x3, program = [], programName = "null"})]
   | isDigit (head (head xs)) = ((read x0, read x1, read x2),
                                 Obj_grid {objType = read x3, program = procInts (take (read x4) xs), programName = "null"})
                                 : loadObjGrid (drop (read x4) xs)
