@@ -313,6 +313,12 @@ procInts :: [[Char]] -> [Int]
 procInts [] = []
 procInts (x:xs) = (read x :: Int) : procInts xs
 
+procIntsPlus :: [[Char]] -> [Int]
+procIntsPlus [] = []
+procIntsPlus (x:xs)
+  | x == "\n" = 536870912 : procIntsPlus xs
+  | otherwise = (read x :: Int) : procIntsPlus xs
+
 procFname :: [[Char]] -> [Ptr CChar] -> IO [Ptr CChar]
 procFname [] acc = return acc
 procFname (x:xs) acc = do
@@ -740,17 +746,19 @@ loadObject0 (x:xs) = loadObject1 (splitOn ", " x) : loadObject0 xs
 emptyObjGrid :: Int -> Int -> Int -> Array (Int, Int, Int) Obj_grid
 emptyObjGrid u_max v_max w_max = array ((0, 0, 0), (w_max, u_max, v_max)) [((w, u, v), def_obj_grid) | w <- [0..w_max], u <- [0..u_max], v <- [0..v_max]]
 
-loadObjGrid :: [[Char]] -> [((Int, Int, Int), Obj_grid)]
-loadObjGrid [] = []
-loadObjGrid (x0:x1:x2:x3:x4:xs)
+loadObjGrid :: Int -> [[Char]] -> [((Int, Int, Int), Obj_grid)]
+loadObjGrid mode [] = []
+loadObjGrid mode (x0:x1:x2:x3:x4:xs)
   | xs == [] = [((read x0, read x1, read x2),
                 Obj_grid {objType = read x3, program = [], programName = "null"})]
   | isDigit (head (head xs)) = ((read x0, read x1, read x2),
-                                Obj_grid {objType = read x3, program = procInts (take (read x4) xs), programName = "null"})
-                                : loadObjGrid (drop (read x4) xs)
+                                Obj_grid {objType = read x3, program = read_program (take (read x4) xs), programName = "null"})
+                                : loadObjGrid mode (drop (read x4) xs)
   | otherwise = ((read x0, read x1, read x2),
-                 Obj_grid {objType = read x3, program = procInts (take ((read x4) - 1) (tail xs)), programName = head xs})
-                 : loadObjGrid (drop (read x4) xs)
+                 Obj_grid {objType = read x3, program = read_program (take ((read x4) - 1) (tail xs)), programName = head xs})
+                 : loadObjGrid mode (drop (read x4) xs)
+  where read_program = \prog -> if mode == 0 then procInts prog
+                                else procIntsPlus prog
 
 emptyWGrid :: Int -> Int -> Int -> Array (Int, Int, Int) Wall_grid
 emptyWGrid u_max v_max w_max = array ((0, 0, 0), (w_max, u_max, v_max))

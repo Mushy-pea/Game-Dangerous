@@ -289,7 +289,7 @@ startGame control_ref uniform p_bind map_text conf_reg mode u v w g f mag_r mag_
   let u_limit = (read (((splitOn "~" map_text), 56) !! 8))
       v_limit = (read (((splitOn "~" map_text), 57) !! 9))
       w_limit = (read (((splitOn "~" map_text), 58) !! 10))
-      map = openMap map_text u_limit v_limit w_limit
+      map = openMap 0 map_text u_limit v_limit w_limit
       w_grid = fst__ map
       f_grid = snd__ map
       obj_grid = third_ map

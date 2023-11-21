@@ -21,7 +21,7 @@ import qualified IndexWrapper1 as IW
 
 data GPLC_program = GPLC_program {name :: [Char], hash :: [Char], source :: [Char], bytecode :: [Char], errors :: [[Char]]}
 
-empty_gplc_program = GPLC_program {name = [], hash = [], source = [], bytecode = [], errors = []}
+empty_gplc_program = GPLC_program {name = "null", hash = [], source = [], bytecode = [], errors = []}
 
 data Server_state = Server_state {w_grid_ :: Array (Int, Int, Int) Wall_grid, f_grid_ :: Array (Int, Int, Int) Floor_grid,
                                   obj_grid_ :: Array (Int, Int, Int) Obj_grid, gplcPrograms :: Array Int GPLC_program}
@@ -66,12 +66,13 @@ writeObjGrid server_state args =
       u = read (args !! 1)
       v = read (args !! 2)
       obj_type = read (args !! 3)
+      program_name = args !! 4
       boundsCheck = IW.boundsCheck (obj_grid_ server_state) (w, u, v) "writeObjGrid"
   in
   if isNothing boundsCheck then
     (Just server_state {obj_grid_ = (obj_grid_ server_state) // [((w, u, v), Obj_grid {objType = obj_type,
-                                                                                       program = constructProgBlock (drop 4 args),
-                                                                                       programName = []})]},
+                                                                                       program = constructProgBlock (drop 5 args),
+                                                                                       programName = program_name})]},
      "writeObjGrid succeeded.  Arguments passed were w: " ++ (args !! 0) ++ " u: " ++ (args !! 1) ++ " v: " ++ (args !! 2) ++ " obj_type: " ++ (args !! 3))
   else (Nothing, fromJust boundsCheck)
 
@@ -284,7 +285,8 @@ compileProgram name source =
 queryProgram :: Server_state -> [[Char]] -> (Maybe Server_state, [Char])
 queryProgram server_state args =
   let i = read (args !! 0)
-      program = (gplcPrograms server_state) ! i
+      program = if i >= 0 then (gplcPrograms server_state) ! i
+                else empty_gplc_program
   in (Nothing,
       "{\n"
       ++ "  \"name\": " ++ show (name program) ++ ",\n"
@@ -295,7 +297,7 @@ queryProgram server_state args =
 
 -- This function allows the client to view a list of the GPLC programs the server compiled at its last start time.
 listProgram :: Server_state -> [[Char]] -> (Maybe Server_state, [Char])
-listProgram server_state args = (Nothing, "\nloaded programs: " ++ show (map name (elems (gplcPrograms server_state))))
+listProgram server_state args = (Nothing, show (map name (elems (gplcPrograms server_state))))
 
 -- This function allows the client to query the dimensions of the map.
 getMetaData :: Server_state -> [[Char]] -> (Maybe Server_state, [Char])
