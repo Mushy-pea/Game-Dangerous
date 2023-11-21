@@ -5,9 +5,9 @@
 The map development editor can now be used to view and edit wall structures through the web based 
 client, as demonstrated in the latest video below.
 
-Engine version: 0.9.0
+Engine version: 1.0.0
 
-Server version: 1.0.5
+Server version: 1.1.0
 
 [![Preview unavailable](https://img.youtube.com/vi/wOSQ1cYoZXM/default.jpg)](https://youtu.be/wOSQ1cYoZXM)
 
