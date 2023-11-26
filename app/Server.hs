@@ -20,20 +20,20 @@ import OpenMap
 import HandleInput
 import PreprocessMap
 
-loadMap :: [Char] -> Int -> Int -> Int -> (Array (Int, Int, Int) Wall_grid, Array (Int, Int, Int) Floor_grid, Array (Int, Int, Int) Obj_grid)
-loadMap comp_map_text u_max v_max w_max =
+loadMap :: [Char] -> Int -> Int -> Int -> Array Int [Char] -> (Array (Int, Int, Int) Wall_grid, Array (Int, Int, Int) Floor_grid, Array (Int, Int, Int) Obj_grid)
+loadMap comp_map_text u_max v_max w_max conf_reg =
   let proc_map' = procMap (splitOn "\n~\n" comp_map_text) u_max v_max w_max
       pm'' = fst proc_map'
       pm''' = snd proc_map'
       mc = \i -> (splitOn "\n~\n" comp_map_text) !! i
       map_text = ".~.~.~.~" ++ pm'' ++ "~" ++ pm''' ++ mc 10 ++ "~" ++ mc 11 ++ "~" ++ mc 12 ++ "~" ++ mc 13 ++ "~" ++ mc 14 ++ "~" ++ mc 15
-  in openMap 1 map_text u_max v_max w_max
+  in openMap 1 map_text u_max v_max w_max conf_reg
 
 main = do
   args <- getArgs
   cfg_file <- bracket (openFile (args !! 0) ReadMode) (hClose)
                       (\h -> do c <- hGetContents h; putStr ("\ncfg file size: " ++ show (length c)); return c)
-  initServer (listArray (0, 89) (splitOneOf "=\n" (tailFile cfg_file))) args
+  initServer (listArray (0, 91) (splitOneOf "=\n" (tailFile cfg_file))) args
 
 initServer :: Array Int [Char] -> [[Char]] -> IO ()
 initServer conf_reg args =
@@ -51,18 +51,18 @@ initServer conf_reg args =
     (h_in, h_out, _, _) <- createProcess (shell "node .\\node_server\\server.js") {std_in = CreatePipe, std_out = CreatePipe}
     forkIO (consoleInterface input_ref console_output)
     forkIO (networkInterface input_ref network_output (fromJust h_in) (fromJust h_out))
-    handleInput Nothing (tailFile comp_map_text) [(args !! 1), "GPLC_Programs\\"] [] (fromJust h_in) input_ref console_output network_output 0
+    handleInput Nothing (tailFile comp_map_text) [(args !! 1), "GPLC_Programs\\"] [] (fromJust h_in) input_ref console_output network_output 0 conf_reg
   else if (splitOn " " (cfg' "version_and_platform_string")) !! 0 == "Linux" then do
     putStr "\nPlease use Ctrl + C when you want to shut down the server."
     (h_in, h_out, _, _) <- createProcess (shell "node ./node_server/server.js") {std_in = CreatePipe, std_out = CreatePipe}
     forkIO (consoleInterface input_ref console_output)
     forkIO (networkInterface input_ref network_output (fromJust h_in) (fromJust h_out))
-    handleInput Nothing (tailFile comp_map_text) [(args !! 1), "GPLC_Programs/"] [] (fromJust h_in) input_ref console_output network_output 0
+    handleInput Nothing (tailFile comp_map_text) [(args !! 1), "GPLC_Programs/"] [] (fromJust h_in) input_ref console_output network_output 0 conf_reg
   else error ("Unsupported platform found in version_and_platform_string")
 
 handleInput :: Maybe Server_state -> [Char] -> [[Char]] -> [[Char]] -> Handle -> MVar (Int, [Char]) -> MVar [Char] -> MVar [Char]
-               -> Int -> IO ()
-handleInput server_state comp_map_text asset_path command h_in input_ref console_output network_output output_mode
+               -> Int -> Array Int [Char] -> IO ()
+handleInput server_state comp_map_text asset_path command h_in input_ref console_output network_output output_mode conf_reg
   | isNothing server_state = do
     prog_set <- bracket (openFile ((asset_path !! 0) ++ (asset_path !! 1) ++ "GPLC_Programs.txt") ReadMode) hClose
                         (\h -> do c <- hGetContents h; putStr ("\nprogram list file size: " ++ show (length c)); return c)
@@ -75,11 +75,11 @@ handleInput server_state comp_map_text asset_path command h_in input_ref console
                                     f_grid_ = snd__ new_game_state,
                                     obj_grid_ = third_ new_game_state,
                                     gplcPrograms = gplc_programs})
-                comp_map_text asset_path command h_in input_ref console_output network_output 0
+                comp_map_text asset_path command h_in input_ref console_output network_output 0 conf_reg
   | command == [] = do
     input <- takeMVar input_ref
     putStr ("\ncommand received: " ++ show (splitOn " " (snd input)))
-    handleInput server_state comp_map_text asset_path (splitOn " " (snd input)) h_in input_ref console_output network_output (fst input)
+    handleInput server_state comp_map_text asset_path (splitOn " " (snd input)) h_in input_ref console_output network_output (fst input) conf_reg
   | head command == "exit" = do
     putStr "\nExit command received ... closing server."
     hPutStrLn h_in "exit"
@@ -91,17 +91,16 @@ handleInput server_state comp_map_text asset_path command h_in input_ref console
             (\h -> hPutStr h (encoded_wall_grid ++ encoded_floor_grid ++ template ++ encoded_obj_grid ++ encoded_sub_wall_grid ++ footer))
     if output_mode == 0 then putMVar console_output "\nMap file saved."
     else putMVar network_output "Map file saved."
-    handleInput server_state comp_map_text asset_path [] h_in input_ref console_output network_output 0
+    handleInput server_state comp_map_text asset_path [] h_in input_ref console_output network_output 0 conf_reg
   | otherwise = do
     result <- applyCommand (fromJust server_state) command
     if output_mode == 0 then putMVar console_output (snd result)
     else putMVar network_output (snd result)
-    handleInput (Just (fst result)) comp_map_text asset_path [] h_in input_ref console_output network_output 0
+    handleInput (Just (fst result)) comp_map_text asset_path [] h_in input_ref console_output network_output 0 conf_reg
   where tf = tailFile
         u_max = read ((splitOn "\n~\n" comp_map_text) !! 12)
         v_max = read ((splitOn "\n~\n" comp_map_text) !! 13)
         w_max = read ((splitOn "\n~\n" comp_map_text) !! 14)
-        new_game_state = loadMap comp_map_text u_max v_max w_max
         w_bd = bounds (w_grid_ (fromJust server_state))
         f_bd = bounds (f_grid_ (fromJust server_state))
         server_state' = applyAugmentations (fromJust server_state) (snd__ (snd w_bd), third_ (snd w_bd)) (snd__ (snd f_bd), third_ (snd f_bd))
@@ -110,6 +109,7 @@ handleInput server_state comp_map_text asset_path command h_in input_ref console
         encoded_obj_grid = encodeObjGrid (obj_grid_ server_state') 0 0 0 (snd__ (snd w_bd)) (third_ (snd w_bd)) []
         encoded_sub_wall_grid = encodeSubWallGrid (w_grid_ server_state') (-1) 0 0 (snd__ (snd w_bd)) (third_ (snd w_bd)) True []
         footer = show (snd__ (snd w_bd)) ++ "\n~\n" ++ show (third_ (snd w_bd)) ++ "\n~\n2\n~\nunlocked"
+        new_game_state = loadMap comp_map_text u_max v_max w_max conf_reg
 
 -- These two functions each run on their own GHC thread and thereby allow the server to respectively receive requests 
 -- through its console and network interfaces, which can then be handled asynchronously.

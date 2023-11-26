@@ -13,6 +13,7 @@ module BuildModel where
 import Prelude hiding ((!!))
 import IndexWrapper0
 import Data.Word
+import Data.List hiding ((!!), intersect)
 import Data.List.Split
 import Data.Matrix hiding ((!))
 import Data.Array.IArray
@@ -212,7 +213,7 @@ instance Binary NPC_state where
                    lastDir = i, dir_list = j, node_num = k, end_node = l, head_index = m, reversed = n, target_u' = o, target_v' = p, target_w' = q, speed = r,
                    avoid_dist = s, attack_mode = t, finalAppr = u, fire_prob = v, fireball_state = w})
 
-data Obj_grid = Obj_grid {objType :: Int, program :: [Int], programName :: [Char]} deriving (Eq)
+data Obj_grid = Obj_grid {objType :: Int, program :: [Int], programName :: [Char]} deriving (Eq, Show)
 
 instance Binary Obj_grid where
   put Obj_grid {objType = a, program = b, programName = c} = put a >> put b >> put c
@@ -311,7 +312,9 @@ procElements (x:xs) = (read x :: GLushort) : procElements xs
 
 procInts :: [[Char]] -> [Int]
 procInts [] = []
-procInts (x:xs) = (read x :: Int) : procInts xs
+procInts (x:xs)
+  | x == "\n" = procInts xs
+  | otherwise = (read x :: Int) : procInts xs
 
 procIntsPlus :: [[Char]] -> [Int]
 procIntsPlus [] = []
@@ -742,21 +745,36 @@ loadObject0 :: [[Char]] -> [Object]
 loadObject0 [] = []
 loadObject0 (x:xs) = loadObject1 (splitOn ", " x) : loadObject0 xs
 
--- These functions are also used to genarate the environment map from a map file.
 emptyObjGrid :: Int -> Int -> Int -> Array (Int, Int, Int) Obj_grid
 emptyObjGrid u_max v_max w_max = array ((0, 0, 0), (w_max, u_max, v_max)) [((w, u, v), def_obj_grid) | w <- [0..w_max], u <- [0..u_max], v <- [0..v_max]]
 
-loadObjGrid :: Int -> [[Char]] -> [((Int, Int, Int), Obj_grid)]
-loadObjGrid mode [] = []
-loadObjGrid mode (x0:x1:x2:x3:x4:xs)
+-- The function that loads the Obj_grid part of the map file (loadObjGrid) has been replaced with two versions, 
+-- loadObjGrid09 and loadObjGrid10.  This is so the map file formats tied to engine versions 0.9.0 and 1.0.0 can both be loaded.
+loadObjGrid09 :: Int -> [[Char]] -> [((Int, Int, Int), Obj_grid)]
+loadObjGrid09 mode [] = []
+loadObjGrid09 mode (x0:x1:x2:x3:x4:xs)
   | xs == [] = [((read x0, read x1, read x2),
                 Obj_grid {objType = read x3, program = [], programName = "null"})]
   | isDigit (head (head xs)) = ((read x0, read x1, read x2),
                                 Obj_grid {objType = read x3, program = read_program (take (read x4) xs), programName = "null"})
-                                : loadObjGrid mode (drop (read x4) xs)
+                                : loadObjGrid09 mode (drop (read x4) xs)
   | otherwise = ((read x0, read x1, read x2),
                  Obj_grid {objType = read x3, program = read_program (take ((read x4) - 1) (tail xs)), programName = head xs})
-                 : loadObjGrid mode (drop (read x4) xs)
+                 : loadObjGrid09 mode (drop (read x4) xs)
+  where read_program = \prog -> if mode == 0 then procInts prog
+                                else procIntsPlus prog
+
+loadObjGrid10 :: Int -> [[Char]] -> [((Int, Int, Int), Obj_grid)]
+loadObjGrid10 mode [] = []
+loadObjGrid10 mode (x0:x1:x2:x3:x4:xs)
+  | xs == [] = [((read x0 , read x1, read x2),
+                Obj_grid {objType = read x3, program = [], programName = "null"})]
+  | read x4 == 0 = ((read x0, read x1, read x2),
+                    Obj_grid {objType = read x3, program = [], programName = "null"})
+                   : loadObjGrid10 mode (drop 1 xs)
+  | otherwise = ((read x0, read x1, read x2),
+                 Obj_grid {objType = read x3, program = read_program (take ((read x4) - 1) (tail xs)), programName = head xs})
+                 : loadObjGrid10 mode (drop (read x4) xs)
   where read_program = \prog -> if mode == 0 then procInts prog
                                 else procIntsPlus prog
 
@@ -782,21 +800,21 @@ viewCircle a b r t lookUp = (a + r * lookUp ! (2, t), b + r * lookUp ! (1, t))
 -- Used to query the conf_reg array, which holds startup parameters passed at the command line or from the engine's configuration file.
 cfg :: Array Int [Char] -> Int -> [Char] -> [Char]
 cfg conf_reg i query =
-  if i > 88 then error ("Invalid conf_reg field in query operation: " ++ query ++ "!")
+  if i > 90 then error ("Invalid conf_reg field in query operation: " ++ query ++ "!")
   else if conf_reg ! i == query then conf_reg ! (i + 1)
   else cfg conf_reg (i + 2) query
 
 -- Used to update the conf_reg array.
 updateCfg :: Array Int [Char] -> [Char] -> [Char] -> Int -> Array Int [Char]
 updateCfg conf_reg field update i =
-  if i > 86 then error ("Invalid conf_reg field in update operation: " ++ field ++ "!")
+  if i > 90 then error ("Invalid conf_reg field in update operation: " ++ field ++ "!")
   else if conf_reg ! i == field then conf_reg // [((i + 1), update)]
   else updateCfg conf_reg field update (i + 2)
 
 -- Used to construct a string representation of the conf_reg array so that an updated version can be saved to disk.
 writeCfg :: Array Int [Char] -> Int -> [Char]
 writeCfg conf_reg i =
-  if i > 86 then []
+  if i > 90 then []
   else (conf_reg ! i) ++ "=" ++ (conf_reg ! (i + 1)) ++ "\n" ++ writeCfg conf_reg (i + 2)
 
 -- Used to initialise the p_bind array, which contains references to all the OpenGL vertex array objects and texture objects used in the current map.

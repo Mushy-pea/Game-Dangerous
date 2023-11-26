@@ -289,10 +289,6 @@ startGame control_ref uniform p_bind map_text conf_reg mode u v w g f mag_r mag_
   let u_limit = (read (((splitOn "~" map_text), 56) !! 8))
       v_limit = (read (((splitOn "~" map_text), 57) !! 9))
       w_limit = (read (((splitOn "~" map_text), 58) !! 10))
-      map = openMap 0 map_text u_limit v_limit w_limit
-      w_grid = fst__ map
-      f_grid = snd__ map
-      obj_grid = third_ map
       look_up_ = lookUp [makeTable 0 0, makeTable 1 0, makeTable 2 0, makeTable 3 0]
       cfg' = cfg conf_reg 0
       setup_music = if cfg' "music" == "off" then 0
@@ -302,6 +298,10 @@ startGame control_ref uniform p_bind map_text conf_reg mode u v w g f mag_r mag_
       s1 = ps1_init {verbose_mode = selectVerboseMode (cfg' "verbose_mode")}
       unlocked_state = unlockWrapper (cfg' "map_unlock_code") s0 s1
       lock_flag = ((splitOn "~" map_text), 635) !! 11
+      map = openMap 0 map_text u_limit v_limit w_limit conf_reg
+      w_grid = fst__ map
+      f_grid = snd__ map
+      obj_grid = third_ map
   in do
   if mode == -1 then do
     if cfg' "splash_image" == "on" then do

@@ -123,7 +123,13 @@ encodeObjGrid obj_grid w u v u_max v_max acc
   where voxel = obj_grid ! (w, u, v)
         separator = if (w, u, v) == (0, 0, 0) then []
                     else ", "
-        encoded_voxel = intercalate ", " (formatBytecode ([w, u, v, objType voxel, length (program voxel)] ++ program voxel) [])
+        program_name = if programName voxel == "" then ["null"]
+                       else [programName voxel]
+        program_length = if programName voxel == "" then 0
+                         else length (program voxel) + 1
+        encoded_voxel = intercalate ", " ((map (show) [w, u, v, objType voxel, program_length]) ++ 
+                                         program_name ++
+                                         (formatBytecode (program voxel) []))
 
 -- This function encodes the Wall_grid array (for w < 0) into the engine's map file format.
 encodeSubWallGrid :: Array (Int, Int, Int) Wall_grid -> Int -> Int -> Int -> Int -> Int -> Bool -> [Char] -> [Char]
