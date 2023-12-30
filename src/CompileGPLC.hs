@@ -116,7 +116,7 @@ rowsToJump instruction_length j_size =
 
 genSignalBlock :: Array (Int, Int) Token -> Int -> Int -> Int -> Int -> SEQ.Seq Int -> [[Char]] -> (SEQ.Seq Int, [[Char]])
 genSignalBlock token_arr i i_max size offset signal_block error_list
-  | i > i_max = (signal_block SEQ.|> size SEQ.|> 536870911 SEQ.|> 536870912, error_list)
+  | i > i_max = ((SEQ.fromList [0, 0] SEQ.>< signal_block) SEQ.|> size SEQ.|> 536870911 SEQ.|> 536870912, error_list)
   | content keyword == "pass_msg" && not (all isDigit (content first_arg)) = (signal_block, error_list ++ [first_arg_error])
   | content keyword == "pass_msg" = genSignalBlock token_arr (i + rows_to_jump) i_max (size + first_arg_int) offset signal_block error_list
   | content keyword == "--signal" && not (all isDigit (content first_arg)) = (signal_block, error_list ++ [first_arg_error])

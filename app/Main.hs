@@ -48,9 +48,13 @@ main = do
   if length args == 0 then do
     contents <- bracket (openFile "config.txt" ReadMode) (hClose) (\h -> do c <- hGetContents h; putStr ("\ncfg file size: " ++ show (length c)); return c)
     openWindow (listArray (0, 91) (splitOneOf "=\n" (tailFile contents)))
-  else do
+  else if length args == 1 then do
     contents <- bracket (openFile ((args, 1) !! 0) ReadMode) (hClose) (\h -> do c <- hGetContents h; putStr ("\ncfg file size: " ++ show (length c)); return c)
     openWindow (listArray (0, 91) (splitOneOf "=\n" (tailFile contents)))
+  else if length args > 2 && (args, 655) !! 1 == "--debugSet" then do
+    contents <- bracket (openFile ((args, 656) !! 0) ReadMode) (hClose) (\h -> do c <- hGetContents h; putStr ("\ncfg file size: " ++ show (length c)); return c)
+    openWindow (listArray (0, 91 - 2 + length args) (splitOneOf "=\n" (tailFile contents) ++ drop 2 args))
+  else error "\nInvalid set of command line arguments passed."
 
 -- This function initialises the GLUT runtime system, which in turn is used to initialise a window and OpenGL context.
 openWindow :: Array Int [Char] -> IO ()
@@ -295,7 +299,8 @@ startGame control_ref uniform p_bind map_text conf_reg mode u v w g f mag_r mag_
                     else read (cfg' "music_period")
       s0 = ps0_init {pos_u = u, pos_v = v, pos_w = w, on_screen_metrics = selectMetricMode (cfg' "on_screen_metrics"),
                      prob_seq = genProbSeq 0 239 (read (cfg' "prob_c")) r_gen}
-      s1 = ps1_init {verbose_mode = selectVerboseMode (cfg' "verbose_mode")}
+      s1 = if cfg' "verbose_mode" == "n" || cfg' "verbose_mode" == "y" then ps1_init {verbose_mode = cfg' "verbose_mode"}
+           else ps1_init {verbose_mode = "filter", debugSet = array (0, snd (bounds conf_reg) - 92) [(i, conf_reg ! (i + 92)) | i <- [0..snd (bounds conf_reg) - 92]]}
       unlocked_state = unlockWrapper (cfg' "map_unlock_code") s0 s1
       lock_flag = ((splitOn "~" map_text), 635) !! 11
       map = openMap 0 map_text u_limit v_limit w_limit conf_reg
@@ -303,6 +308,7 @@ startGame control_ref uniform p_bind map_text conf_reg mode u v w g f mag_r mag_
       f_grid = snd__ map
       obj_grid = third_ map
   in do
+  putStr ("\ndebugSet: " ++ show (debugSet s1))
   if mode == -1 then do
     if cfg' "splash_image" == "on" then do
       glDisable GL_DEPTH_TEST
@@ -330,7 +336,7 @@ startGame control_ref uniform p_bind map_text conf_reg mode u v w g f mag_r mag_
     tid <- forkIO (updatePlayWrapper0 (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref}) state_ref
                               (selectState mode lock_flag s0 (fst unlocked_state)
                                            ((s0_ save_state) {on_screen_metrics = selectMetricMode (cfg' "on_screen_metrics")}))
-                              (selectState mode lock_flag s1 (snd unlocked_state) ((s1_ save_state) {verbose_mode = selectVerboseMode (cfg' "verbose_mode")}))
+                              (selectState mode lock_flag s1 (snd unlocked_state) ((s1_ save_state) {verbose_mode = "n"}))
                               False (read (cfg' "min_frame_t")) (g, f, mag_r, mag_j)
                               (selectState mode lock_flag w_grid w_grid (w_grid_ save_state)) (selectState mode lock_flag f_grid f_grid (f_grid_ save_state))
                               (selectState mode lock_flag obj_grid obj_grid (obj_grid_ save_state)) look_up_ save_state (sound_array, setup_music)
