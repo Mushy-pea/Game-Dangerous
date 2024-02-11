@@ -15,9 +15,16 @@ import Data.Maybe
 import qualified Data.Sequence as SEQ
 import BuildModel
 
-data Token = Token {line :: Int, column :: Int, content :: [Char], textColour :: [Char]} deriving (Eq, Show)
+data Token = Token {line :: Int, column :: Int, content :: [Char], textColour :: [Char], blockLevel :: BlockLevel} deriving (Eq, Show)
 
-defToken = Token {line = 0, column = 0, content = [], textColour = []}
+defToken = Token {line = 0, column = 0, content = [], textColour = [], blockLevel = BlockLevel 0}
+
+data BlockRegister = BlockRegister {zone :: Int, c1 :: Int, c2 :: Int, pass :: Int} deriving Show
+
+newtype BlockLevel = BlockLevel Int deriving Eq
+
+instance Show BlockLevel where
+  show (BlockLevel a) = show a
 
 -- The readRefKey and writeRefKey bind a symbolic reference to a value in GPLC source code to its in memory representation 
 -- at engine runtime.  They thereby allow for reference based argument passing to the engine functions that implement 
@@ -27,6 +34,64 @@ data Symbol_binding = Symbol_binding {symbol :: [Char], initialValue :: Int, rea
 data Instruction_arg_type = RefRead | RefWrite | Const deriving Eq
 
 data Instruction = Instruction {opcode :: Int, instructionLength :: Int, arguments :: [Instruction_arg_type]}
+
+-- These functions determine the if block structure of a GPLC program.  In GPLC source code the block sizes are manually 
+-- given as the last two arguments of if statements and there is no use of whitespace or blocks within braces.  The meta 
+-- data added to the token array through these functions allows the client to present an annotated version of the source 
+-- code with visible blocks.
+nullBlockCombiner :: BlockLevel -> BlockLevel -> BlockLevel
+nullBlockCombiner a b = a
+
+blockCombiner :: BlockLevel -> BlockLevel -> BlockLevel
+blockCombiner (BlockLevel a) (BlockLevel b)
+  | b == 1 && (a == 0 || a == -1) = BlockLevel 1
+  | b == 2 && (a == 0 || a == -1) = BlockLevel 2
+  | b == 1 && a == 1 = BlockLevel 3
+  | b == 1 && a == 2 = BlockLevel 4
+  | b == 2 && a == 1 = BlockLevel 5
+  | b == 2 && a == 2 = BlockLevel 6
+  | otherwise = BlockLevel 0
+
+traverseSymbols :: Int -> [Char] -> BlockRegister -> BlockRegister
+traverseSymbols index symbol state
+  | zone state == 0 && pass state == 1 && symbol == "if" =
+    BlockRegister {zone = -1, c1 = index + 4, c2 = index + 5, pass = pass state}
+  | zone state == 0 && pass state == 2 && symbol == "if_" =
+    BlockRegister {zone = -1, c1 = index + 4, c2 = index + 5, pass = pass state}
+  | zone state == -1 && index == c1 state =
+    BlockRegister {zone = -1, c1 = read symbol, c2 = c2 state, pass = pass state}
+  | zone state == -1 && index == c2 state =
+    BlockRegister {zone = 1, c1 = c1 state, c2 = read symbol, pass = pass state}
+  | zone state == -1 =
+    BlockRegister {zone = -1, c1 = c1 state, c2 = c2 state, pass = pass state}
+  | zone state == 1 && c1 state > 0 =
+    BlockRegister {zone = 1, c1 = c1 state - 1, c2 = c2 state, pass = pass state}
+  | zone state == 1 && c1 state == 0 =
+    BlockRegister {zone = 2, c1 = 0, c2 = c2 state, pass = pass state}
+  | zone state == 2 && c2 state > 0 =
+    BlockRegister {zone = 2, c1 = 0, c2 = c2 state - 1, pass = pass state}
+  | otherwise =
+    BlockRegister {zone = 0, c1 = 0, c2 = 0, pass = pass state}
+
+traverseIfBlocks :: [[Char]] -> Array (Int, Int) BlockLevel -> Array (Int, Int) BlockLevel -> (BlockLevel -> BlockLevel -> BlockLevel) -> BlockRegister
+                 -> Int -> Int -> Int -> Array (Int, Int) BlockLevel
+traverseIfBlocks [] block_arr_a block_arr_b block_combiner state i j index = block_arr_a
+traverseIfBlocks (x:xs) block_arr_a block_arr_b block_combiner state i j index
+  | x == "\n" = traverseIfBlocks xs block_arr_a block_arr_b block_combiner state (i + 1) 0 index
+  | otherwise = traverseIfBlocks xs (block_arr_a // [((i, j), combined_blocks)]) block_arr_b block_combiner next_state i (j + 1) (index + 1)
+  where next_state = traverseSymbols index x state
+        combined_blocks = block_combiner (BlockLevel (zone next_state)) (block_arr_b ! (i, j))
+
+labelIfBlocks :: [[Char]] -> Int -> Int -> Array (Int, Int) BlockLevel
+labelIfBlocks split_source i_max j_max =
+  let empty_block_arr_a = array ((0, 0), (i_max, j_max)) [((i, j), BlockLevel 0) | i <- [0..i_max], j <- [0..j_max]]
+      empty_block_arr_b = array ((0, 0), (i_max, j_max)) [((i, j), BlockLevel 0) | i <- [0..i_max], j <- [0..j_max]]
+      init_state = BlockRegister {zone = 0, c1 = 0, c2 = 0, pass = 0}
+      fst_pass = traverseIfBlocks split_source empty_block_arr_a empty_block_arr_b nullBlockCombiner (init_state {pass = 1})
+                                  0 0 0
+      snd_pass = traverseIfBlocks split_source empty_block_arr_a fst_pass blockCombiner (init_state {pass = 2})
+                                  0 0 0
+  in snd_pass
 
 -- The GPLC source code is parsed into lexical tokens and placed in an array, ready to be passed to the interpreter functions.
 -- These two functions determine an appropriate size for that array and perform the parsing, respectively.
@@ -42,12 +107,12 @@ detArrayDim (x:xs) current_length longest_line line_index
   | otherwise = detArrayDim xs (current_length + 1) longest_line line_index
   where error_string = ("A line in a GPLC program can't be longer than 16 tokens (line " ++ show (line_index + 1) ++ ").")
 
-tokenise :: [[Char]] -> Array (Int, Int) Token -> Int -> Int -> Int -> Array (Int, Int) Token
-tokenise [] token_arr col i j = token_arr
-tokenise (x:xs) token_arr col i j
-  | x == "\n" = tokenise xs token_arr 1 (i + 1) 0
-  | otherwise = tokenise xs (token_arr // [((i, j), token_added)]) (col + length x + 1) i (j + 1)
-  where token_added = Token {line = 0, column = col + col_correction, content = x, textColour = "White"}
+tokenise :: [[Char]] -> Array (Int, Int) Token -> Array (Int, Int) BlockLevel -> Int -> Int -> Int -> Array (Int, Int) Token
+tokenise [] token_arr block_arr col i j = token_arr
+tokenise (x:xs) token_arr block_arr col i j
+  | x == "\n" = tokenise xs token_arr block_arr 1 (i + 1) 0
+  | otherwise = tokenise xs (token_arr // [((i, j), token_added)]) block_arr (col + length x + 1) i (j + 1)
+  where token_added = Token {line = 0, column = col + col_correction, content = x, textColour = "Black", blockLevel = block_arr ! (i, j)}
         col_correction = if i == 0 then 0
                          else 1
 
@@ -76,6 +141,7 @@ genSymbolBindings token_arr binding_set error_list i j ref_key i_max
 -- keywords at source code level and opcodes at bytecode level.  See the GPLC Specification for more details.
 matchKeyword :: [Char] -> Maybe Instruction
 matchKeyword "if" = Just Instruction {opcode = 1, instructionLength = 6, arguments = [Const, RefRead, RefRead, Const, Const]}
+matchKeyword "if_" = Just Instruction {opcode = 1, instructionLength = 6, arguments = [Const, RefRead, RefRead, Const, Const]}
 matchKeyword "chg_state" = Just Instruction {opcode = 2, instructionLength = 10, arguments = [RefRead, RefRead, RefRead, RefRead,
                                                                                          RefRead, RefRead, RefRead, RefRead, RefRead]}
 matchKeyword "chg_grid" = Just Instruction {opcode = 3, instructionLength = 8, arguments = [RefRead, RefRead, RefRead, RefRead, RefRead, RefRead, RefRead]}
@@ -216,7 +282,7 @@ genDataBlock (x:xs) data_block = genDataBlock xs (data_block SEQ.|> initialValue
 mapColour :: Instruction_arg_type -> [Char]
 mapColour RefRead = "Green"
 mapColour RefWrite = "Red"
-mapColour Const = "White"
+mapColour Const = "Black"
 
 addColour :: Array (Int, Int) Token -> Int -> Int -> [((Int, Int), Token)] -> [((Int, Int), Token)]
 addColour token_arr i i_max token_arr_upd

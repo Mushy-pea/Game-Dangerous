@@ -183,7 +183,8 @@ instance Serialise Token where
     ++ "    \"line\": " ++ show (line a) ++ ",\n"
     ++ "    \"column\": " ++ show (column a) ++ ",\n"
     ++ "    \"content\": " ++ show (content a) ++ ",\n"
-    ++ "    \"textColour\": " ++ show (textColour a)
+    ++ "    \"textColour\": " ++ show (textColour a) ++ ",\n"
+    ++ "    \"blockLevel\": " ++ show (blockLevel a)
     ++ "\n  }"
 
 -- These three functions read the state of a set of voxels in the map, which is serialised and sent to the client.
@@ -249,11 +250,12 @@ formatHash binaryHash hexTable i hexHash
 -- programs to bytecode.
 compileProgram :: [Char] -> [Char] -> IO GPLC_program
 compileProgram name source =
-  let split_contents = splitOn " " source
-      array_dim = detArrayDim split_contents 0 0 0
+  let split_source = splitOn " " source
+      array_dim = detArrayDim split_source 0 0 0
       empty_token_array = array ((0, 0), (fst__ array_dim, (snd__ array_dim) - 1))
                                 [((i, j), defToken) | i <- [0..fst__ array_dim], j <- [0..(snd__ array_dim) - 1]]
-      token_arr = tokenise split_contents empty_token_array 1 0 0
+      block_arr = labelIfBlocks split_source (fst__ array_dim) ((snd__ array_dim) - 1)
+      token_arr = tokenise split_source empty_token_array block_arr 1 0 0
       bound_symbols = genSymbolBindings token_arr [] [] 0 0 0 (fst__ array_dim)
       signal_block = genSignalBlock token_arr (snd__ bound_symbols) (fst__ array_dim) 0 0 SEQ.empty []
       signal_code_block_size = sizeSignalCodeBlock (fst signal_block) 2 (SEQ.length (fst signal_block) - 1) 0
