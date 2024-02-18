@@ -19,7 +19,7 @@ data Token = Token {line :: Int, column :: Int, content :: [Char], textColour ::
 
 defToken = Token {line = 0, column = 0, content = [], textColour = [], blockLevel = BlockLevel 0}
 
-data BlockRegister = BlockRegister {zone :: Int, c1 :: Int, c2 :: Int, pass :: Int} deriving Show
+data BlockRegister = BlockRegister {zone :: Int, c1 :: Int, c2 :: Int, c3 :: Int, pass :: Int} deriving Show
 
 newtype BlockLevel = BlockLevel Int deriving Eq
 
@@ -55,23 +55,25 @@ blockCombiner (BlockLevel a) (BlockLevel b)
 traverseSymbols :: Int -> [Char] -> BlockRegister -> BlockRegister
 traverseSymbols index symbol state
   | zone state == 0 && pass state == 1 && symbol == "if" =
-    BlockRegister {zone = -1, c1 = index + 4, c2 = index + 5, pass = pass state}
+    BlockRegister {zone = -1, c1 = index + 4, c2 = index + 5, c3 = index + 6, pass = pass state}
   | zone state == 0 && pass state == 2 && symbol == "if_" =
-    BlockRegister {zone = -1, c1 = index + 4, c2 = index + 5, pass = pass state}
+    BlockRegister {zone = -1, c1 = index + 4, c2 = index + 5, c3 = index + 6, pass = pass state}
   | zone state == -1 && index == c1 state =
-    BlockRegister {zone = -1, c1 = read symbol, c2 = c2 state, pass = pass state}
+    BlockRegister {zone = -1, c1 = read symbol, c2 = c2 state, c3 = c3 state, pass = pass state}
   | zone state == -1 && index == c2 state =
-    BlockRegister {zone = 1, c1 = c1 state, c2 = read symbol, pass = pass state}
+    BlockRegister {zone = -1, c1 = c1 state, c2 = read symbol, c3 = c3 state, pass = pass state}
+  | zone state == -1 && index == c3 state =
+    BlockRegister {zone = 1, c1 = c1 state - 1, c2 = c2 state, c3 = 0, pass = pass state}
   | zone state == -1 =
-    BlockRegister {zone = -1, c1 = c1 state, c2 = c2 state, pass = pass state}
+    BlockRegister {zone = -1, c1 = c1 state, c2 = c2 state, c3 = c3 state, pass = pass state}
   | zone state == 1 && c1 state > 0 =
-    BlockRegister {zone = 1, c1 = c1 state - 1, c2 = c2 state, pass = pass state}
+    BlockRegister {zone = 1, c1 = c1 state - 1, c2 = c2 state, c3 = 0, pass = pass state}
   | zone state == 1 && c1 state == 0 =
-    BlockRegister {zone = 2, c1 = 0, c2 = c2 state, pass = pass state}
+    BlockRegister {zone = 2, c1 = 0, c2 = c2 state - 1, c3 = 0, pass = pass state}
   | zone state == 2 && c2 state > 0 =
-    BlockRegister {zone = 2, c1 = 0, c2 = c2 state - 1, pass = pass state}
+    BlockRegister {zone = 2, c1 = 0, c2 = c2 state - 1, c3 = 0, pass = pass state}
   | otherwise =
-    BlockRegister {zone = 0, c1 = 0, c2 = 0, pass = pass state}
+    BlockRegister {zone = 0, c1 = 0, c2 = 0, c3 = 0, pass = pass state}
 
 traverseIfBlocks :: [[Char]] -> Array (Int, Int) BlockLevel -> Array (Int, Int) BlockLevel -> (BlockLevel -> BlockLevel -> BlockLevel) -> BlockRegister
                  -> Int -> Int -> Int -> Array (Int, Int) BlockLevel
@@ -86,7 +88,7 @@ labelIfBlocks :: [[Char]] -> Int -> Int -> Array (Int, Int) BlockLevel
 labelIfBlocks split_source i_max j_max =
   let empty_block_arr_a = array ((0, 0), (i_max, j_max)) [((i, j), BlockLevel 0) | i <- [0..i_max], j <- [0..j_max]]
       empty_block_arr_b = array ((0, 0), (i_max, j_max)) [((i, j), BlockLevel 0) | i <- [0..i_max], j <- [0..j_max]]
-      init_state = BlockRegister {zone = 0, c1 = 0, c2 = 0, pass = 0}
+      init_state = BlockRegister {zone = 0, c1 = 0, c2 = 0, c3 = 0, pass = 0}
       fst_pass = traverseIfBlocks split_source empty_block_arr_a empty_block_arr_b nullBlockCombiner (init_state {pass = 1})
                                   0 0 0
       snd_pass = traverseIfBlocks split_source empty_block_arr_a fst_pass blockCombiner (init_state {pass = 2})
@@ -97,8 +99,8 @@ labelIfBlocks split_source i_max j_max =
 -- These two functions determine an appropriate size for that array and perform the parsing, respectively.
 detArrayDim :: [[Char]] -> Int -> Int -> Int -> (Int, Int, [[Char]])
 detArrayDim [] current_length longest_line line_index
-  | current_length > longest_line = (line_index, current_length, [])
-  | otherwise = (line_index, longest_line, [])
+  | current_length > longest_line = (line_index + 1, 16, [])
+  | otherwise = (line_index + 1, 16, [])
 detArrayDim (x:xs) current_length longest_line line_index
   | x == "\n" =
     if current_length > 16 then (line_index, current_length, [error_string])
@@ -108,7 +110,8 @@ detArrayDim (x:xs) current_length longest_line line_index
   where error_string = ("A line in a GPLC program can't be longer than 16 tokens (line " ++ show (line_index + 1) ++ ").")
 
 tokenise :: [[Char]] -> Array (Int, Int) Token -> Array (Int, Int) BlockLevel -> Int -> Int -> Int -> Array (Int, Int) Token
-tokenise [] token_arr block_arr col i j = token_arr
+tokenise [] token_arr block_arr col i j =
+  token_arr // [((i + 1, 0), Token {line = 0, column = 1, content = "", textColour = "Black", blockLevel = BlockLevel 0})]
 tokenise (x:xs) token_arr block_arr col i j
   | x == "\n" = tokenise xs token_arr block_arr 1 (i + 1) 0
   | otherwise = tokenise xs (token_arr // [((i, j), token_added)]) block_arr (col + length x + 1) i (j + 1)
@@ -182,7 +185,7 @@ rowsToJump instruction_length j_size =
 
 genSignalBlock :: Array (Int, Int) Token -> Int -> Int -> Int -> Int -> SEQ.Seq Int -> [[Char]] -> (SEQ.Seq Int, [[Char]])
 genSignalBlock token_arr i i_max size offset signal_block error_list
-  | i > i_max = ((SEQ.fromList [0, 0] SEQ.>< signal_block) SEQ.|> size SEQ.|> 536870911 SEQ.|> 536870912, error_list)
+  | i == i_max = ((SEQ.fromList [0, 0] SEQ.>< signal_block) SEQ.|> size SEQ.|> 536870911 SEQ.|> 536870912, error_list)
   | content keyword == "pass_msg" && not (all isDigit (content first_arg)) = (signal_block, error_list ++ [first_arg_error])
   | content keyword == "pass_msg" = genSignalBlock token_arr (i + rows_to_jump) i_max (size + first_arg_int) offset signal_block error_list
   | content keyword == "--signal" && not (all isDigit (content first_arg)) = (signal_block, error_list ++ [first_arg_error])
@@ -251,7 +254,7 @@ interpretArgs (x:xs) token_arr bound_symbols i j result error_list
 -- This function transforms each instruction line in the source code (keyword plus argument set) into bytecode output.
 genCodeBlock :: Array (Int, Int) Token -> [Symbol_binding] -> Int -> Int -> SEQ.Seq Int -> [[Char]] -> (SEQ.Seq Int, [[Char]])
 genCodeBlock token_arr bound_symbols i i_max code_block error_list
-  | i > i_max = (code_block SEQ.|> 536870911, error_list)
+  | i == i_max = (code_block SEQ.|> 536870911, error_list)
   | content keyword == "--signal" = genCodeBlock token_arr bound_symbols (i + 1) i_max code_block error_list
   | content keyword == "pass_msg" && isNothing read_msg =
     genCodeBlock token_arr bound_symbols (i + rows_to_jump) i_max code_block (error_list ++ ["Message read error"])
