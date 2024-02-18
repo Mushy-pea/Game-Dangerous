@@ -5,7 +5,7 @@ cabal-version: 1.12
 -- see: https://github.com/sol/hpack
 
 name:           Game-Dangerous
-version:        0.9.0
+version:        2.0.0
 description:    Please see the README on GitHub at <https://github.com/Mushy-pea/Game-Dangerous#readme>
 homepage:       https://github.com/Mushy-pea/Game-Dangerous#readme
 bug-reports:    https://github.com/Mushy-pea/Game-Dangerous/issues

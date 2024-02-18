@@ -125,17 +125,19 @@ genSymbolBindings token_arr binding_set error_list i j ref_key i_max
   | i > i_max = (binding_set, i + 1, error_list ++ ["No code block found."])
   | j > j_max || symbol_token == defToken = genSymbolBindings token_arr binding_set error_list (i + 1) 0 ref_key i_max
   | content symbol_token == "~" = (binding_set, i + 1, error_list)
-  | isDigit (head (content symbol_token)) = genSymbolBindings token_arr binding_set (error_list ++ [symbol_error]) i (j + 2) ref_key i_max
+  | isDigit (head (content symbol_token)) = genSymbolBindings token_arr binding_set (error_list ++ [symbol_error]) i (j + 3) ref_key i_max
   | head (content value_token) == '-' && not (all isDigit (tail (content value_token))) =
-    genSymbolBindings token_arr binding_set (error_list ++ [value_error]) i (j + 2) ref_key i_max
+    genSymbolBindings token_arr binding_set (error_list ++ [value_error]) i (j + 3) ref_key i_max
   | not (head (content value_token) == '-') && not (all isDigit (content value_token)) =
-    genSymbolBindings token_arr binding_set (error_list ++ [value_error]) i (j + 2) ref_key i_max
-  | otherwise = genSymbolBindings token_arr (binding_set ++ [bound_symbol]) error_list i (j + 2) (ref_key + 1) i_max
+    genSymbolBindings token_arr binding_set (error_list ++ [value_error]) i (j + 3) ref_key i_max
+  | content (token_arr ! (i, j + 1)) /= "=" = genSymbolBindings token_arr binding_set (error_list ++ [separator_error]) i (j + 3) ref_key i_max
+  | otherwise = genSymbolBindings token_arr (binding_set ++ [bound_symbol]) error_list i (j + 3) (ref_key + 1) i_max
   where symbol_token = token_arr ! (i, j)
-        value_token = token_arr ! (i, j + 1)
+        value_token = token_arr ! (i, j + 2)
         error_location = "(" ++ show (i + 1) ++ ", " ++ show (column symbol_token) ++ "): "
         symbol_error = error_location ++ "A symbolic binding can't start with a numeric character."
         value_error = error_location ++ "The initial value bound to a symbol must be an integer."
+        separator_error = error_location ++ "Symbol bindings must be of the form \"symbol = value\""
         bound_symbol = Symbol_binding {symbol = content symbol_token, initialValue = read (content value_token),
                                        readRefKey = ref_key, writeRefKey = 0}
         j_max = snd (snd (bounds token_arr))

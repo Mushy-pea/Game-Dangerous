@@ -42,9 +42,15 @@ Thanks everyone for your continued interest in the project.  Have as good a 2024
 
 Engine version: 1.0.0
 
-Server version: 1.1.1
+Server version: 2.0.0
 
 ![Lore image 1: Ben and Sarah](https://github.com/Mushy-pea/The-Perils-of-Gem-Mining/blob/master/images/Ben_and_Sarah.png)
+
+Lore image 1: Ben and Sarah
+
+![GPLC console example](https://github.com/Mushy-pea/The-Perils-of-Gem-Mining/blob/master/images/GPLC_Console.png)
+
+Example of GPLC console output (screen grabbed from the map development editor)
 
 [![Preview unavailable](https://img.youtube.com/vi/wOSQ1cYoZXM/default.jpg)](https://youtu.be/wOSQ1cYoZXM)
 
