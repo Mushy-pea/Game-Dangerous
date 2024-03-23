@@ -184,7 +184,7 @@ instance Serialise Token where
     ++ "    \"column\": " ++ show (column a) ++ ",\n"
     ++ "    \"content\": " ++ show (content a) ++ ",\n"
     ++ "    \"textColour\": " ++ show (textColour a) ++ ",\n"
-    ++ "    \"blockLevel\": " ++ show (blockLevel a)
+    ++ "    \"blockNumber\": " ++ show (blockNumber a)
     ++ "\n  }"
 
 -- These three functions read the state of a set of voxels in the map, which is serialised and sent to the client.

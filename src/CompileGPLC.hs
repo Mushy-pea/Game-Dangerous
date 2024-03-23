@@ -15,16 +15,16 @@ import Data.Maybe
 import qualified Data.Sequence as SEQ
 import BuildModel
 
-data Token = Token {line :: Int, column :: Int, content :: [Char], textColour :: [Char], blockLevel :: BlockLevel} deriving (Eq, Show)
+newtype BlockNumber = BlockNumber Int deriving Eq
 
-defToken = Token {line = 0, column = 0, content = [], textColour = [], blockLevel = BlockLevel 0}
+data Token = Token {line :: Int, column :: Int, content :: [Char], textColour :: [Char], blockNumber :: BlockNumber} deriving (Eq, Show)
+
+defToken = Token {line = 0, column = 0, content = [], textColour = [], blockNumber = BlockNumber 0}
 
 data BlockRegister = BlockRegister {zone :: Int, c1 :: Int, c2 :: Int, c3 :: Int, pass :: Int} deriving Show
 
-newtype BlockLevel = BlockLevel Int deriving Eq
-
-instance Show BlockLevel where
-  show (BlockLevel a) = show a
+instance Show BlockNumber where
+  show (BlockNumber a) = show a
 
 -- The readRefKey and writeRefKey bind a symbolic reference to a value in GPLC source code to its in memory representation 
 -- at engine runtime.  They thereby allow for reference based argument passing to the engine functions that implement 
@@ -39,18 +39,18 @@ data Instruction = Instruction {opcode :: Int, instructionLength :: Int, argumen
 -- given as the last two arguments of if statements and there is no use of whitespace or blocks within braces.  The meta 
 -- data added to the token array through these functions allows the client to present an annotated version of the source 
 -- code with visible blocks.
-nullBlockCombiner :: BlockLevel -> BlockLevel -> BlockLevel
+nullBlockCombiner :: BlockNumber -> BlockNumber -> BlockNumber
 nullBlockCombiner a b = a
 
-blockCombiner :: BlockLevel -> BlockLevel -> BlockLevel
-blockCombiner (BlockLevel a) (BlockLevel b)
-  | b == 1 && (a == 0 || a == -1) = BlockLevel 1
-  | b == 2 && (a == 0 || a == -1) = BlockLevel 2
-  | b == 1 && a == 1 = BlockLevel 3
-  | b == 1 && a == 2 = BlockLevel 4
-  | b == 2 && a == 1 = BlockLevel 5
-  | b == 2 && a == 2 = BlockLevel 6
-  | otherwise = BlockLevel 0
+blockCombiner :: BlockNumber -> BlockNumber -> BlockNumber
+blockCombiner (BlockNumber a) (BlockNumber b)
+  | b == 1 && (a == 0 || a == -1) = BlockNumber 1
+  | b == 2 && (a == 0 || a == -1) = BlockNumber 2
+  | b == 1 && a == 1 = BlockNumber 3
+  | b == 1 && a == 2 = BlockNumber 4
+  | b == 2 && a == 1 = BlockNumber 5
+  | b == 2 && a == 2 = BlockNumber 6
+  | otherwise = BlockNumber 0
 
 traverseSymbols :: Int -> [Char] -> BlockRegister -> BlockRegister
 traverseSymbols index symbol state
@@ -69,26 +69,26 @@ traverseSymbols index symbol state
   | zone state == 1 && c1 state > 0 =
     BlockRegister {zone = 1, c1 = c1 state - 1, c2 = c2 state, c3 = 0, pass = pass state}
   | zone state == 1 && c1 state == 0 =
-    BlockRegister {zone = 2, c1 = 0, c2 = c2 state - 1, c3 = 0, pass = pass state}
+    BlockRegister {zone = 2, c1 = 0, c2 = c2 state - 2, c3 = 0, pass = pass state}
   | zone state == 2 && c2 state > 0 =
     BlockRegister {zone = 2, c1 = 0, c2 = c2 state - 1, c3 = 0, pass = pass state}
   | otherwise =
     BlockRegister {zone = 0, c1 = 0, c2 = 0, c3 = 0, pass = pass state}
 
-traverseIfBlocks :: [[Char]] -> Array (Int, Int) BlockLevel -> Array (Int, Int) BlockLevel -> (BlockLevel -> BlockLevel -> BlockLevel) -> BlockRegister
-                 -> Int -> Int -> Int -> Array (Int, Int) BlockLevel
+traverseIfBlocks :: [[Char]] -> Array (Int, Int) BlockNumber -> Array (Int, Int) BlockNumber -> (BlockNumber -> BlockNumber -> BlockNumber) -> BlockRegister
+                 -> Int -> Int -> Int -> Array (Int, Int) BlockNumber
 traverseIfBlocks [] block_arr_a block_arr_b block_combiner state i j index = block_arr_a
 traverseIfBlocks (x:xs) block_arr_a block_arr_b block_combiner state i j index
   | x == "\n" = traverseIfBlocks xs block_arr_a block_arr_b block_combiner state (i + 1) 0 index
   | otherwise = traverseIfBlocks xs (block_arr_a // [((i, j), combined_blocks)]) block_arr_b block_combiner next_state i (j + 1) (index + 1)
   where next_state = traverseSymbols index x state
-        combined_blocks = block_combiner (BlockLevel (zone next_state)) (block_arr_b ! (i, j))
+        combined_blocks = block_combiner (BlockNumber (zone next_state)) (block_arr_b ! (i, j))
 
-labelIfBlocks :: [[Char]] -> Int -> Int -> Array (Int, Int) BlockLevel
+labelIfBlocks :: [[Char]] -> Int -> Int -> Array (Int, Int) BlockNumber
 labelIfBlocks split_source i_max j_max =
-  let empty_block_arr_a = array ((0, 0), (i_max, j_max)) [((i, j), BlockLevel 0) | i <- [0..i_max], j <- [0..j_max]]
-      empty_block_arr_b = array ((0, 0), (i_max, j_max)) [((i, j), BlockLevel 0) | i <- [0..i_max], j <- [0..j_max]]
-      init_state = BlockRegister {zone = 0, c1 = 0, c2 = 0, c3 = 0, pass = 0}
+  let empty_block_arr_a = array ((0, 0), (i_max, j_max)) [((i, j), BlockNumber 0) | i <- [0..i_max], j <- [0..j_max]]
+      empty_block_arr_b = array ((0, 0), (i_max, j_max)) [((i, j), BlockNumber 0) | i <- [0..i_max], j <- [0..j_max]]
+      init_state = BlockRegister {zone = 3, c1 = 0, c2 = 0, c3 = 0, pass = 0}
       fst_pass = traverseIfBlocks split_source empty_block_arr_a empty_block_arr_b nullBlockCombiner (init_state {pass = 1})
                                   0 0 0
       snd_pass = traverseIfBlocks split_source empty_block_arr_a fst_pass blockCombiner (init_state {pass = 2})
@@ -99,8 +99,8 @@ labelIfBlocks split_source i_max j_max =
 -- These two functions determine an appropriate size for that array and perform the parsing, respectively.
 detArrayDim :: [[Char]] -> Int -> Int -> Int -> (Int, Int, [[Char]])
 detArrayDim [] current_length longest_line line_index
-  | current_length > longest_line = (line_index + 1, 16, [])
-  | otherwise = (line_index + 1, 16, [])
+  | current_length > longest_line = (line_index, 16, [])
+  | otherwise = (line_index, 16, [])
 detArrayDim (x:xs) current_length longest_line line_index
   | x == "\n" =
     if current_length > 16 then (line_index, current_length, [error_string])
@@ -109,13 +109,12 @@ detArrayDim (x:xs) current_length longest_line line_index
   | otherwise = detArrayDim xs (current_length + 1) longest_line line_index
   where error_string = ("A line in a GPLC program can't be longer than 16 tokens (line " ++ show (line_index + 1) ++ ").")
 
-tokenise :: [[Char]] -> Array (Int, Int) Token -> Array (Int, Int) BlockLevel -> Int -> Int -> Int -> Array (Int, Int) Token
-tokenise [] token_arr block_arr col i j =
-  token_arr // [((i + 1, 0), Token {line = 0, column = 1, content = "", textColour = "Black", blockLevel = BlockLevel 0})]
+tokenise :: [[Char]] -> Array (Int, Int) Token -> Array (Int, Int) BlockNumber -> Int -> Int -> Int -> Array (Int, Int) Token
+tokenise [] token_arr block_arr col i j = token_arr
 tokenise (x:xs) token_arr block_arr col i j
   | x == "\n" = tokenise xs token_arr block_arr 1 (i + 1) 0
   | otherwise = tokenise xs (token_arr // [((i, j), token_added)]) block_arr (col + length x + 1) i (j + 1)
-  where token_added = Token {line = 0, column = col + col_correction, content = x, textColour = "Black", blockLevel = block_arr ! (i, j)}
+  where token_added = Token {line = 0, column = col + col_correction, content = x, textColour = "Black", blockNumber = block_arr ! (i, j)}
         col_correction = if i == 0 then 0
                          else 1
 
@@ -173,6 +172,7 @@ matchKeyword "npc_decision" = Just Instruction {opcode = 20, instructionLength =
 matchKeyword "npc_move" = Just Instruction {opcode = 21, instructionLength = 2, arguments = [RefWrite]}
 matchKeyword "npc_damage" = Just Instruction {opcode = 22, instructionLength = 2, arguments = [Const]}
 matchKeyword "cpede_move" = Just Instruction {opcode = 23, instructionLength = 3, arguments = [RefWrite, Const]}
+matchKeyword "do_nothing" = Just Instruction {opcode = 24, instructionLength = 2, arguments = [Const]}
 matchKeyword _ = Nothing
 
 -- These two functions generate the signal block part of the bytecode output.
@@ -187,7 +187,7 @@ rowsToJump instruction_length j_size =
 
 genSignalBlock :: Array (Int, Int) Token -> Int -> Int -> Int -> Int -> SEQ.Seq Int -> [[Char]] -> (SEQ.Seq Int, [[Char]])
 genSignalBlock token_arr i i_max size offset signal_block error_list
-  | i == i_max = ((SEQ.fromList [0, 0] SEQ.>< signal_block) SEQ.|> size SEQ.|> 536870911 SEQ.|> 536870912, error_list)
+  | i > i_max = ((SEQ.fromList [0, 0] SEQ.>< signal_block) SEQ.|> size SEQ.|> 536870911 SEQ.|> 536870912, error_list)
   | content keyword == "pass_msg" && not (all isDigit (content first_arg)) = (signal_block, error_list ++ [first_arg_error])
   | content keyword == "pass_msg" = genSignalBlock token_arr (i + rows_to_jump) i_max (size + first_arg_int) offset signal_block error_list
   | content keyword == "--signal" && not (all isDigit (content first_arg)) = (signal_block, error_list ++ [first_arg_error])
@@ -256,7 +256,7 @@ interpretArgs (x:xs) token_arr bound_symbols i j result error_list
 -- This function transforms each instruction line in the source code (keyword plus argument set) into bytecode output.
 genCodeBlock :: Array (Int, Int) Token -> [Symbol_binding] -> Int -> Int -> SEQ.Seq Int -> [[Char]] -> (SEQ.Seq Int, [[Char]])
 genCodeBlock token_arr bound_symbols i i_max code_block error_list
-  | i == i_max = (code_block SEQ.|> 536870911, error_list)
+  | i > i_max = (code_block SEQ.|> 536870911, error_list)
   | content keyword == "--signal" = genCodeBlock token_arr bound_symbols (i + 1) i_max code_block error_list
   | content keyword == "pass_msg" && isNothing read_msg =
     genCodeBlock token_arr bound_symbols (i + rows_to_jump) i_max code_block (error_list ++ ["Message read error"])
@@ -265,8 +265,11 @@ genCodeBlock token_arr bound_symbols i i_max code_block error_list
                  ((code_block SEQ.|> 13) SEQ.>< fst interpreted_args_ SEQ.>< (fromJust read_msg SEQ.|> line_term))
                  (error_list ++ snd interpreted_args_)
   | otherwise =
-    genCodeBlock token_arr bound_symbols (i + 1) i_max ((code_block SEQ.|> opcode matched_keyword) SEQ.>< (fst interpreted_args SEQ.|> line_term))
-                 (error_list ++ snd interpreted_args)
+    if opcode matched_keyword == 24 then
+      genCodeBlock token_arr bound_symbols (i + 1) i_max code_block (error_list ++ snd interpreted_args)
+    else
+      genCodeBlock token_arr bound_symbols (i + 1) i_max ((code_block SEQ.|> opcode matched_keyword) SEQ.>< (fst interpreted_args SEQ.|> line_term))
+                   (error_list ++ snd interpreted_args)
   where keyword = token_arr ! (i, 0)
         matched_keyword = fromJust (matchKeyword (content keyword))
         l_arg = read (content (token_arr ! (i, 1)))
