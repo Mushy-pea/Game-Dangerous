@@ -172,7 +172,7 @@ matchKeyword "npc_decision" = Just Instruction {opcode = 20, instructionLength =
 matchKeyword "npc_move" = Just Instruction {opcode = 21, instructionLength = 2, arguments = [RefWrite]}
 matchKeyword "npc_damage" = Just Instruction {opcode = 22, instructionLength = 2, arguments = [Const]}
 matchKeyword "cpede_move" = Just Instruction {opcode = 23, instructionLength = 3, arguments = [RefWrite, Const]}
-matchKeyword "do_nothing" = Just Instruction {opcode = 24, instructionLength = 2, arguments = [Const]}
+matchKeyword "do_nothing" = Just Instruction {opcode = 24, instructionLength = 0, arguments = [Const]}
 matchKeyword _ = Nothing
 
 -- These two functions generate the signal block part of the bytecode output.
@@ -296,6 +296,7 @@ addColour :: Array (Int, Int) Token -> Int -> Int -> [((Int, Int), Token)] -> [(
 addColour token_arr i i_max token_arr_upd
   | i > i_max = token_arr_upd
   | isNothing matched_keyword = addColour token_arr (i + 1) i_max token_arr_upd
+  | opcode (fromJust matched_keyword) == 24 = addColour token_arr (i + 1) i_max token_arr_upd
   | otherwise = addColour token_arr (i + 1) i_max (update ++ token_arr_upd)
   where matched_keyword = matchKeyword (content (token_arr ! (i, 0)))
         target = \j -> token_arr ! (i, j)
