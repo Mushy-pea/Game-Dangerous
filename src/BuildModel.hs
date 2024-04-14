@@ -800,21 +800,21 @@ viewCircle a b r t lookUp = (a + r * lookUp ! (2, t), b + r * lookUp ! (1, t))
 -- Used to query the conf_reg array, which holds startup parameters passed at the command line or from the engine's configuration file.
 cfg :: Array Int [Char] -> Int -> [Char] -> [Char]
 cfg conf_reg i query =
-  if i > 90 then error ("Invalid conf_reg field in query operation: " ++ query ++ "!")
+  if i > 94 then error ("Invalid conf_reg field in query operation: " ++ query ++ "!")
   else if conf_reg ! i == query then conf_reg ! (i + 1)
   else cfg conf_reg (i + 2) query
 
 -- Used to update the conf_reg array.
 updateCfg :: Array Int [Char] -> [Char] -> [Char] -> Int -> Array Int [Char]
 updateCfg conf_reg field update i =
-  if i > 90 then error ("Invalid conf_reg field in update operation: " ++ field ++ "!")
+  if i > 94 then error ("Invalid conf_reg field in update operation: " ++ field ++ "!")
   else if conf_reg ! i == field then conf_reg // [((i + 1), update)]
   else updateCfg conf_reg field update (i + 2)
 
 -- Used to construct a string representation of the conf_reg array so that an updated version can be saved to disk.
 writeCfg :: Array Int [Char] -> Int -> [Char]
 writeCfg conf_reg i =
-  if i > 90 then []
+  if i > 94 then []
   else (conf_reg ! i) ++ "=" ++ (conf_reg ! (i + 1)) ++ "\n" ++ writeCfg conf_reg (i + 2)
 
 -- Used to initialise the p_bind array, which contains references to all the OpenGL vertex array objects and texture objects used in the current map.

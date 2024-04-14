@@ -47,13 +47,13 @@ main = do
   args <- getArgs
   if length args == 0 then do
     contents <- bracket (openFile "config.txt" ReadMode) (hClose) (\h -> do c <- hGetContents h; putStr ("\ncfg file size: " ++ show (length c)); return c)
-    openWindow (listArray (0, 91) (splitOneOf "=\n" (tailFile contents)))
+    openWindow (listArray (0, 95) (splitOneOf "=\n" (tailFile contents)))
   else if length args == 1 then do
     contents <- bracket (openFile ((args, 1) !! 0) ReadMode) (hClose) (\h -> do c <- hGetContents h; putStr ("\ncfg file size: " ++ show (length c)); return c)
-    openWindow (listArray (0, 91) (splitOneOf "=\n" (tailFile contents)))
+    openWindow (listArray (0, 95) (splitOneOf "=\n" (tailFile contents)))
   else if length args > 2 && (args, 655) !! 1 == "--debugSet" then do
     contents <- bracket (openFile ((args, 656) !! 0) ReadMode) (hClose) (\h -> do c <- hGetContents h; putStr ("\ncfg file size: " ++ show (length c)); return c)
-    openWindow (listArray (0, 91 - 2 + length args) (splitOneOf "=\n" (tailFile contents) ++ drop 2 args))
+    openWindow (listArray (0, 95 - 2 + length args) (splitOneOf "=\n" (tailFile contents) ++ drop 2 args))
   else error "\nInvalid set of command line arguments passed."
 
 -- This function initialises the GLUT runtime system, which in turn is used to initialise a window and OpenGL context.
@@ -86,7 +86,21 @@ openWindow conf_reg =
   keyboardCallback $= (Just (getInput control_ref key_set))
   contents <- bracket (openFile filePath ReadMode) (hClose) (\h -> do c <- hGetContents h; putStr ("\nmap file size: " ++ show (length c)); return c)
   screen_res <- readIORef screenRes
-  setupGame (tailFile contents) conf_reg screen_res control_ref
+  setupGame_ conf_reg (tailFile contents) screen_res control_ref
+
+setupGame_ :: Array Int [Char] -> [Char] -> Size -> IORef Int -> IO ()
+setupGame_ conf_reg comp_map_text (Size w h) control_ref
+  | fromIntegral w / fromIntegral h > 1.77 = do
+    putStr ("\nResolution: " ++ show w ++ " * " ++ show h)
+    putStr ("\nField of view: " ++ show (field_of_view 190))
+    setupGame (conf_reg'' (conf_reg' conf_reg (-95)) 190) comp_map_text (Size w h) control_ref
+  | otherwise = do
+    putStr ("\nResolution: " ++ show w ++ " * " ++ show h)
+    putStr ("\nField of view: " ++ show (field_of_view 160))
+    setupGame (conf_reg'' (conf_reg' conf_reg (-80)) 160) comp_map_text (Size w h) control_ref
+  where field_of_view = \angular_size -> (angular_size / 629) * 360
+        conf_reg' = \conf_reg survey_start -> updateCfg conf_reg "survey_start" (show survey_start) 0
+        conf_reg'' = \conf_reg survey_size -> updateCfg conf_reg "survey_size" (show survey_size) 0
 
 -- This is the callback that GLUT calls each time mainLoopEvent has been called and there is keyboard input in the window message queue.
 getInput :: IORef Int -> Array Int Char -> Char -> Position -> IO ()
@@ -115,8 +129,8 @@ repaintWindow = return ()
 
 -- This function initialises the OpenAL context, decompresses the map file, manages the compilation of GLSL shaders, loading of 3D models, loading of the
 -- light map and loading of sound effects.
-setupGame :: [Char] -> Array Int [Char] -> Size -> IORef Int -> IO ()
-setupGame comp_map_text conf_reg (Size w h) control_ref =
+setupGame :: Array Int [Char] -> [Char] -> Size -> IORef Int -> IO ()
+setupGame conf_reg comp_map_text (Size w h) control_ref =
   let m0 = "mod_to_world"
       m1 = "world_to_clip"
       m2 = "world_to_mod"
@@ -696,9 +710,11 @@ showFrame :: (UArray Int Word32, Int) -> UArray Int Int32 -> (Ptr GLfloat, Ptr G
              -> Array Int [Char] -> Int -> IO (Int, Game_state)
 showFrame p_bind uniform (p_mt_matrix, p_light_buffer) filter_table u v w a a' state_ref w_grid f_grid obj_grid lookUp camera_to_clip msg_queue
           conf_reg ray_offset =
-  let survey0 = multiSurvey (modAngle a (-92 + ray_offset)) 183 u v (truncate u) (truncate v) w_grid f_grid obj_grid lookUp 2 0 [] []
-      survey1 = multiSurvey (modAngle (modAngle a' a) (222 + ray_offset)) 183 (fst view_circle') (snd view_circle') (truncate (fst view_circle')) (truncate (snd view_circle'))
-                            w_grid f_grid obj_grid lookUp 2 0 [] []
+  let survey_start = read (cfg' "survey_start")
+      survey_size = read (cfg' "survey_size")
+      survey0 = multiSurvey (modAngle a (survey_start + ray_offset)) survey_size u v (truncate u) (truncate v) w_grid f_grid obj_grid lookUp 2 0 [] []
+      survey1 = multiSurvey (modAngle (modAngle a' a) (survey_start + 314 + ray_offset)) survey_size (fst view_circle') (snd view_circle')
+                            (truncate (fst view_circle')) (truncate (snd view_circle')) w_grid f_grid obj_grid lookUp 2 0 [] []
       view_circle' = viewCircle u v 2 (modAngle a a') lookUp
       world_to_clip0 = multStd camera_to_clip (worldToCamera (-u) (-v) (-w) a lookUp)
       world_to_clip1 = multStd camera_to_clip (worldToCamera (- (fst view_circle')) (- (snd view_circle')) (-w) (modAngle (modAngle a' a) 314) lookUp)
