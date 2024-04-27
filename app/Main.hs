@@ -43,6 +43,11 @@ import GameLogic
 import GameSound
 import EncodeStatus
 
+patchConfReg :: [[Char]] -> Array Int [Char] -> Array Int [Char]
+patchConfReg [] conf_reg = conf_reg
+patchConfReg (x0:x1:xs) conf_reg =
+  patchConfReg xs (updateCfg conf_reg (drop 2 x0) x1 0)
+
 main = do
   args <- getArgs
   if length args == 0 then do
@@ -54,7 +59,9 @@ main = do
   else if length args > 2 && (args, 655) !! 1 == "--debugSet" then do
     contents <- bracket (openFile ((args, 656) !! 0) ReadMode) (hClose) (\h -> do c <- hGetContents h; putStr ("\ncfg file size: " ++ show (length c)); return c)
     openWindow (listArray (0, 95 - 2 + length args) (splitOneOf "=\n" (tailFile contents) ++ drop 2 args))
-  else error "\nInvalid set of command line arguments passed."
+  else do
+    contents <- bracket (openFile ((args, 657) !! 0) ReadMode) (hClose) (\h -> do c <- hGetContents h; putStr ("\ncfg file size: " ++ show (length c)); return c)
+    openWindow (patchConfReg (drop 1 args) (listArray (0, 95) (splitOneOf "=\n" (tailFile contents))))
 
 -- This function initialises the GLUT runtime system, which in turn is used to initialise a window and OpenGL context.
 openWindow :: Array Int [Char] -> IO ()
@@ -88,20 +95,6 @@ openWindow conf_reg =
   screen_res <- readIORef screenRes
   setupGame_ conf_reg (tailFile contents) screen_res control_ref
 
-setupGame_ :: Array Int [Char] -> [Char] -> Size -> IORef Int -> IO ()
-setupGame_ conf_reg comp_map_text (Size w h) control_ref
-  | fromIntegral w / fromIntegral h > 1.77 = do
-    putStr ("\nResolution: " ++ show w ++ " * " ++ show h)
-    putStr ("\nField of view: " ++ show (field_of_view 190))
-    setupGame (conf_reg'' (conf_reg' conf_reg (-95)) 190) comp_map_text (Size w h) control_ref
-  | otherwise = do
-    putStr ("\nResolution: " ++ show w ++ " * " ++ show h)
-    putStr ("\nField of view: " ++ show (field_of_view 160))
-    setupGame (conf_reg'' (conf_reg' conf_reg (-80)) 160) comp_map_text (Size w h) control_ref
-  where field_of_view = \angular_size -> (angular_size / 629) * 360
-        conf_reg' = \conf_reg survey_start -> updateCfg conf_reg "survey_start" (show survey_start) 0
-        conf_reg'' = \conf_reg survey_size -> updateCfg conf_reg "survey_size" (show survey_size) 0
-
 -- This is the callback that GLUT calls each time mainLoopEvent has been called and there is keyboard input in the window message queue.
 getInput :: IORef Int -> Array Int Char -> Char -> Position -> IO ()
 getInput ref key_set key pos = do
@@ -126,6 +119,22 @@ getInput ref key_set key pos = do
 -- or resizes the window, or it is overlapped by another window.  For standard frame rendering, showFrame and runMenu repaint the rendered area of the window.
 repaintWindow :: IO ()
 repaintWindow = return ()
+
+-- This was added to implement auto alignment of the ray caster field of view with the frustum field of view.
+-- 4 : 3 and 16 : 9 aspect ratios are supported.
+setupGame_ :: Array Int [Char] -> [Char] -> Size -> IORef Int -> IO ()
+setupGame_ conf_reg comp_map_text (Size w h) control_ref
+  | fromIntegral w / fromIntegral h > 1.77 = do
+    putStr ("\nResolution: " ++ show w ++ " * " ++ show h)
+    putStr ("\nField of view: " ++ show (field_of_view 190))
+    setupGame (conf_reg'' (conf_reg' conf_reg (-95)) 190) comp_map_text (Size w h) control_ref
+  | otherwise = do
+    putStr ("\nResolution: " ++ show w ++ " * " ++ show h)
+    putStr ("\nField of view: " ++ show (field_of_view 160))
+    setupGame (conf_reg'' (conf_reg' conf_reg (-80)) 160) comp_map_text (Size w h) control_ref
+  where field_of_view = \angular_size -> (angular_size / 629) * 360
+        conf_reg' = \conf_reg survey_start -> updateCfg conf_reg "survey_start" (show survey_start) 0
+        conf_reg'' = \conf_reg survey_size -> updateCfg conf_reg "survey_size" (show survey_size) 0
 
 -- This function initialises the OpenAL context, decompresses the map file, manages the compilation of GLSL shaders, loading of 3D models, loading of the
 -- light map and loading of sound effects.
@@ -356,7 +365,7 @@ startGame control_ref uniform p_bind map_text conf_reg mode u v w g f mag_r mag_
                               (selectState mode lock_flag obj_grid obj_grid (obj_grid_ save_state)) look_up_ save_state (sound_array, setup_music)
                               0 t_log (SEQ.empty) 60)
     result <- showFrame p_bind uniform (p_mt_matrix, p_light_buffer) (p_f_table0, p_f_table1) 0 0 0 0 0 state_ref w_grid f_grid obj_grid look_up_
-                        camera_to_clip (array (0, 5) [(i, (0, [])) | i <- [0..5]]) conf_reg 0
+                        camera_to_clip (array (0, 5) [(i, (0, [])) | i <- [0..5]]) conf_reg
     free p_mt_matrix
     free p_f_table0
     free p_f_table1
@@ -707,20 +716,18 @@ detBufferLen s0 mode component_size =
 showFrame :: (UArray Int Word32, Int) -> UArray Int Int32 -> (Ptr GLfloat, Ptr GLfloat) -> (Ptr Int, Ptr Int) -> Float -> Float -> Float -> Int -> Int
              -> MVar (Play_state0, Array (Int, Int, Int) Wall_grid, Game_state) -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid
              -> Array (Int, Int, Int) Obj_grid -> UArray (Int, Int) Float -> Matrix Float -> Array Int (Int, [Int])
-             -> Array Int [Char] -> Int -> IO (Int, Game_state)
+             -> Array Int [Char] -> IO (Int, Game_state)
 showFrame p_bind uniform (p_mt_matrix, p_light_buffer) filter_table u v w a a' state_ref w_grid f_grid obj_grid lookUp camera_to_clip msg_queue
-          conf_reg ray_offset =
+          conf_reg =
   let survey_start = read (cfg' "survey_start")
       survey_size = read (cfg' "survey_size")
-      survey0 = multiSurvey (modAngle a (survey_start + ray_offset)) survey_size u v (truncate u) (truncate v) w_grid f_grid obj_grid lookUp 2 0 [] []
-      survey1 = multiSurvey (modAngle (modAngle a' a) (survey_start + 314 + ray_offset)) survey_size (fst view_circle') (snd view_circle')
+      survey0 = multiSurvey (modAngle a survey_start) survey_size u v (truncate u) (truncate v) w_grid f_grid obj_grid lookUp 2 0 [] []
+      survey1 = multiSurvey (modAngle (modAngle a' a) (survey_start + 314)) survey_size (fst view_circle') (snd view_circle')
                             (truncate (fst view_circle')) (truncate (snd view_circle')) w_grid f_grid obj_grid lookUp 2 0 [] []
       view_circle' = viewCircle u v 2 (modAngle a a') lookUp
       world_to_clip0 = multStd camera_to_clip (worldToCamera (-u) (-v) (-w) a lookUp)
       world_to_clip1 = multStd camera_to_clip (worldToCamera (- (fst view_circle')) (- (snd view_circle')) (-w) (modAngle (modAngle a' a) 314) lookUp)
       cfg' = cfg conf_reg 0
-      ray_offset' = if ray_offset == 0 then 1
-                    else 0
   in do
   p_state <- takeMVar state_ref
   glClear (GL_COLOR_BUFFER_BIT .|. GL_DEPTH_BUFFER_BIT)
@@ -788,7 +795,7 @@ showFrame p_bind uniform (p_mt_matrix, p_light_buffer) filter_table u v w a a' s
     swapBuffers
     showFrame p_bind uniform (p_mt_matrix, p_light_buffer) filter_table (pos_u (fst__ p_state)) (pos_v (fst__ p_state)) (pos_w (fst__ p_state))
               (angle (fst__ p_state)) (view_angle (fst__ p_state)) state_ref (snd__ p_state) f_grid obj_grid lookUp camera_to_clip (snd msg_residue)
-              conf_reg ray_offset'
+              conf_reg
 
 -- These two functions iterate through the message queue received from the game logic thread.  They manage the appearance and expiry of on screen messages
 -- and detect special event messages, such as are received when the user opts to return to the main menu.

@@ -654,7 +654,7 @@ surveyView a da limit u v u_block v_block w_grid f_grid lookUp w_block acc0 acc1
       ray = rayTrace0 u v (fst__ proc_angle_) (snd__ proc_angle_) (third_ proc_angle_) u_block v_block w_grid f_grid w_grid lookUp w_block [] 0 0 0 0
   in
   if da > limit then (acc0, acc1)
-  else surveyView (modAngle a 2) (da + 2) limit u v u_block v_block w_grid f_grid lookUp w_block (acc0 ++ [fst__ ray]) (acc1 ++ snd__ ray)
+  else surveyView (modAngle a 1) (da + 1) limit u v u_block v_block w_grid f_grid lookUp w_block ([fst__ ray] ++ acc0) (snd__ ray ++ acc1)
 
 multiSurvey :: Int -> Int -> Float -> Float -> Int -> Int -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid
                -> Array (Int, Int, Int) Obj_grid -> UArray (Int, Int) Float -> Int -> Int -> [Wall_place] -> [Obj_place] -> ([Wall_place], [Obj_place])
@@ -662,7 +662,7 @@ multiSurvey a a_limit u v u_block v_block w_grid f_grid obj_grid lookUp w_limit 
   let survey = (surveyView a 0 a_limit u v u_block v_block w_grid f_grid lookUp w_block [] [])
   in
   if w_block > w_limit then (acc0, acc1)
-  else multiSurvey a a_limit u v u_block v_block w_grid f_grid obj_grid lookUp w_limit (w_block + 1) (acc0 ++ fst survey) (acc1 ++ snd survey)
+  else multiSurvey a a_limit u v u_block v_block w_grid f_grid obj_grid lookUp w_limit (w_block + 1) (fst survey ++ acc0) (snd survey ++ acc1)
 
 -- This function filters the output of the ray tracer to avoid multiple rendering.  It has been implemented using direct memory access because of the
 -- performance critical role of this logic.
@@ -676,7 +676,7 @@ filterSurv mode (x:xs) acc p_table game_t = do
     if test == game_t then filterSurv mode xs acc p_table game_t
     else do
       pokeElemOff p_table (theFlag x) game_t
-      filterSurv mode xs (acc ++ [x]) p_table game_t
+      filterSurv mode xs ([x] ++ acc) p_table game_t
 
 -- These functions process the wall and floor grid data from the level map file before it is used to form the environment map.
 loadGrid1 :: [Char] -> Bool
