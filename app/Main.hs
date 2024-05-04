@@ -126,13 +126,13 @@ setupGame_ :: Array Int [Char] -> [Char] -> Size -> IORef Int -> IO ()
 setupGame_ conf_reg comp_map_text (Size w h) control_ref
   | fromIntegral w / fromIntegral h > 1.77 = do
     putStr ("\nResolution: " ++ show w ++ " * " ++ show h)
-    putStr ("\nField of view: " ++ show (field_of_view 190))
+    putStr ("\nField of view: " ++ field_of_view 190)
     setupGame (conf_reg'' (conf_reg' conf_reg (-95)) 190) comp_map_text (Size w h) control_ref
   | otherwise = do
     putStr ("\nResolution: " ++ show w ++ " * " ++ show h)
-    putStr ("\nField of view: " ++ show (field_of_view 160))
+    putStr ("\nField of view: " ++ field_of_view 160)
     setupGame (conf_reg'' (conf_reg' conf_reg (-80)) 160) comp_map_text (Size w h) control_ref
-  where field_of_view = \angular_size -> (angular_size / 629) * 360
+  where field_of_view = \angular_size -> take 5 (show ((angular_size / 629) * 360)) ++ " degrees"
         conf_reg' = \conf_reg survey_start -> updateCfg conf_reg "survey_start" (show survey_start) 0
         conf_reg'' = \conf_reg survey_size -> updateCfg conf_reg "survey_size" (show survey_size) 0
 

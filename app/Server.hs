@@ -33,7 +33,7 @@ main = do
   args <- getArgs
   cfg_file <- bracket (openFile (args !! 0) ReadMode) (hClose)
                       (\h -> do c <- hGetContents h; putStr ("\ncfg file size: " ++ show (length c)); return c)
-  initServer (listArray (0, 91) (splitOneOf "=\n" (tailFile cfg_file))) args
+  initServer (listArray (0, 95) (splitOneOf "=\n" (tailFile cfg_file))) args
 
 initServer :: Array Int [Char] -> [[Char]] -> IO ()
 initServer conf_reg args =
