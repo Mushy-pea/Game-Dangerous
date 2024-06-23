@@ -133,11 +133,12 @@ instance Binary Floor_grid where
 
 data Play_state0 = Play_state0 {pos_u :: Float, pos_v :: Float, pos_w :: Float, vel :: [Float], angle :: Int, angle_ :: Float, message_ :: [(Int, [Int])],
 rend_mode :: Int, view_mode :: Int, view_angle :: Int, gameClock :: (Int, Float, Int), torch_t0 :: Int, torch_t_limit :: Int, on_screen_metrics :: Int,
-prob_seq :: UArray Int Int, mobile_lights :: ([Float], [Float])} deriving (Eq, Show)
+prob_seq :: UArray Int Int, mobile_lights :: ([Float], [Float]), currentMap :: [Char]} deriving (Eq, Show)
 
 instance Binary Play_state0 where
-  put Play_state0 {pos_u = a, pos_v = b, pos_w = c, vel = d, angle = e, angle_ = f, rend_mode = g, view_mode = h, view_angle = i, gameClock = j, torch_t0 = k, torch_t_limit = l} =
-    put a >> put b >> put c >> put d >> put e >> put f >> put g >> put h >> put i >> put j >> put k >> put l
+  put Play_state0 {pos_u = a, pos_v = b, pos_w = c, vel = d, angle = e, angle_ = f, rend_mode = g, view_mode = h, view_angle = i, gameClock = j, torch_t0 = k,
+                   torch_t_limit = l, currentMap = m} =
+    put a >> put b >> put c >> put d >> put e >> put f >> put g >> put h >> put i >> put j >> put k >> put l >> put m
 
   get = do a <- get
            b <- get
@@ -151,8 +152,9 @@ instance Binary Play_state0 where
            j <- get
            k <- get
            l <- get
+           m <- get
            return (Play_state0 {pos_u = a, pos_v = b, pos_w = c, vel = d, angle = e, angle_ = f, message_ = [], rend_mode = g, view_mode = h, view_angle = i,
-                   gameClock = j, torch_t0 = k, torch_t_limit = l, on_screen_metrics = 0, prob_seq = def_prob_seq, mobile_lights = ([], [])})
+                   gameClock = j, torch_t0 = k, torch_t_limit = l, on_screen_metrics = 0, prob_seq = def_prob_seq, mobile_lights = ([], []), currentMap = m})
 
 data Play_state1 = Play_state1 {health :: Int, ammo :: Int, gems :: Int, torches :: Int, keys :: [Int], region :: [Int], difficulty :: ([Char], Int, Int, Int),
 sig_q :: [Int], next_sig_q :: [Int], message :: [Int], state_chg :: Int, verbose_mode :: [Char], debugSet :: Array Int [Char], debugGplc :: Bool, npc_states :: Array Int NPC_state,
@@ -234,7 +236,7 @@ data EngineError = Invalid_wall_flag | Invalid_obj_flag | Invalid_GPLC_opcode | 
 instance Exception EngineError
 
 ps0_init = Play_state0 {pos_u = 0, pos_v = 0, pos_w = 0, vel = [0, 0, 0], angle = 0, angle_ = 0, message_ = [], rend_mode = 0, view_mode = 0, view_angle = 0,
-gameClock = (1, 1, 1), torch_t0 = 1, torch_t_limit = 0, on_screen_metrics = 0, prob_seq = def_prob_seq, mobile_lights = ([], [])}
+gameClock = (1, 1, 1), torch_t0 = 1, torch_t_limit = 0, on_screen_metrics = 0, prob_seq = def_prob_seq, mobile_lights = ([], []), currentMap = "null"}
 
 ps1_init = Play_state1 {health = 100, ammo = 0, gems = 0, torches = 0, keys = [63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63],
 region = [19,46,41,44,27,33,31,63,28,27,51,63,4], difficulty = ("Plenty of danger please", 6, 10, 14), sig_q = [], next_sig_q = [], message = [], state_chg = 0,
@@ -836,15 +838,15 @@ checkMapLayer w u v u_limit v_limit grid flag =
 
 -- This function determines the differential between an original map state array (Wall_grid, Floor_grid or Obj_grid) and a newer map state.  It is part of the
 -- implementation of the game state saving system.
-genArrayDiff :: Eq a => Int -> Int -> Int -> Int -> Int -> Array (Int, Int, Int) a -> Array (Int, Int, Int) a -> SEQ.Seq ((Int, Int, Int), a)
+genArrayDiff :: Eq a => Int -> Int -> Int -> Int -> Int -> (Int, Int) -> Array (Int, Int, Int) a -> Array (Int, Int, Int) a -> SEQ.Seq ((Int, Int, Int), a)
                 -> SEQ.Seq ((Int, Int, Int), a)
-genArrayDiff w u v u_limit v_limit arr0 arr1 acc =
+genArrayDiff w u v u_limit v_limit (u_offset, v_offset) arr0 arr1 acc =
   if w == 2 && u > u_limit then acc
-  else if u > u_limit then genArrayDiff (w + 1) 0 0 u_limit v_limit arr0 arr1 acc
-  else if v > v_limit then genArrayDiff w (u + 1) 0 u_limit v_limit arr0 arr1 acc
+  else if u > u_limit then genArrayDiff (w + 1) 0 0 u_limit v_limit (u_offset, v_offset) arr0 arr1 acc
+  else if v > v_limit then genArrayDiff w (u + 1) 0 u_limit v_limit (u_offset, v_offset) arr0 arr1 acc
   else
-    if arr0 ! (w, u, v) == arr1 ! (w, u, v) then genArrayDiff w u (v + 1) u_limit v_limit arr0 arr1 acc
-    else genArrayDiff w u (v + 1) u_limit v_limit arr0 arr1 (acc SEQ.>< (SEQ.singleton ((w, u, v), (arr1 ! (w, u, v)))))
+    if arr0 ! (w, u, v) == arr1 ! (w, u, v) then genArrayDiff w u (v + 1) u_limit v_limit (u_offset, v_offset) arr0 arr1 acc
+    else genArrayDiff w u (v + 1) u_limit v_limit (u_offset, v_offset) arr0 arr1 (acc SEQ.>< (SEQ.singleton ((w, u + u_offset, v + v_offset), (arr1 ! (w, u, v)))))
 
 -- This function processes text from input files to return a result that is independent on whether the file has the Windows or Unix end of file format.
 tailFile :: [Char] -> [Char]

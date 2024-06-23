@@ -309,6 +309,17 @@ cameraToClip frustumScale0 frustumScale1 =
   in
   y [frustumScale0, 0, 0, 0, 0, frustumScale1, 0, 0, 0, 0, ((zFar + zNear) / (zNear - zFar)), ((2 * zFar * zNear) / (zNear - zFar)), 0, 0, -1, 0]
 
+detMapTransform :: [Char] -> [Char] -> Int -> Int -> (Int, Int)
+detMapTransform map operation u_max v_max
+  | map == "map1.dan" && operation == "save" = (0, 0)
+  | map == "map1.dan" && operation == "load" = (0, 0)
+  | map == "map2.dan" && operation == "save" = (0, - (v_max + 1))
+  | map == "map2.dan" && operation == "load" = (0, v_max + 1)
+  | map == "map3.dan" && operation == "save" = ( - (u_max + 1), - (v_max + 1))
+  | map == "map3.dan" && operation == "load" = (u_max + 1, v_max + 1)
+  | map == "map4.dan" && operation == "save" = (- (u_max + 1), 0)
+  | map == "map4.dan" && operation == "load" = (u_max + 1, 0)
+
 -- This function initialises the game logic thread each time a new game is started and handles user input from the main menu.
 startGame :: RandomGen g => IORef Int -> UArray Int Int32 -> (UArray Int Word32, Int) -> [Char] -> Array Int [Char] -> Int -> Float -> Float -> Float -> Float
              -> Float -> Float -> Float -> Game_state -> Array Int Source -> Matrix Float -> g -> IO ()
@@ -321,7 +332,7 @@ startGame control_ref uniform p_bind map_text conf_reg mode u v w g f mag_r mag_
       setup_music = if cfg' "music" == "off" then 0
                     else read (cfg' "music_period")
       s0 = ps0_init {pos_u = u, pos_v = v, pos_w = w, on_screen_metrics = selectMetricMode (cfg' "on_screen_metrics"),
-                     prob_seq = genProbSeq 0 239 (read (cfg' "prob_c")) r_gen}
+                     prob_seq = genProbSeq 0 239 (read (cfg' "prob_c")) r_gen, currentMap = cfg' "map_file"}
       s1 = if cfg' "verbose_mode" == "n" || cfg' "verbose_mode" == "y" then ps1_init {verbose_mode = cfg' "verbose_mode"}
            else ps1_init {verbose_mode = "filter", debugSet = array (0, snd (bounds conf_reg) - 92) [(i, conf_reg ! (i + 92)) | i <- [0..snd (bounds conf_reg) - 92]]}
       unlocked_state = unlockWrapper (cfg' "map_unlock_code") s0 s1
@@ -330,8 +341,9 @@ startGame control_ref uniform p_bind map_text conf_reg mode u v w g f mag_r mag_
       w_grid = fst__ map
       f_grid = snd__ map
       obj_grid = third_ map
+      save_transform = detMapTransform (cfg' "map_file") "save" u_limit v_limit
+      load_transform = detMapTransform (cfg' "map_file") "load" u_limit v_limit
   in do
-  putStr ("\ndebugSet: " ++ show (debugSet s1))
   if mode == -1 then do
     if cfg' "splash_image" == "on" then do
       glDisable GL_DEPTH_TEST
@@ -380,19 +392,23 @@ startGame control_ref uniform p_bind map_text conf_reg mode u v w g f mag_r mag_
       state_choice <- runMenu (genLoadMenu (tail (splitOn "\n" (tailFile contents))) [] 1) [] (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref})
                               (-0.75) (-0.75) 1 0 0 ps0_init 1
       loaded_state <- loadSavedGame 0 (tail (splitOn "\n" (tailFile contents))) [] 1 state_choice (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = control_ref})
-                                    w_grid f_grid obj_grid conf_reg
-      if isNothing loaded_state == True then startGame control_ref uniform p_bind map_text conf_reg 2 u v w g f mag_r mag_j def_save_state sound_array
-                                                       camera_to_clip r_gen
-      else startGame control_ref uniform p_bind map_text conf_reg 1 u v w g f mag_r mag_j (fromJust loaded_state) sound_array camera_to_clip r_gen
+                                    w_grid f_grid obj_grid conf_reg load_transform
+      if isNothing loaded_state then startGame control_ref uniform p_bind map_text conf_reg 2 u v w g f mag_r mag_j def_save_state sound_array
+                                               camera_to_clip r_gen
+      else if isNothing loaded_state == False && currentMap (s0_ (fromJust loaded_state)) == cfg' "map_file" then
+        startGame control_ref uniform p_bind map_text conf_reg 1 u v w g f mag_r mag_j (fromJust loaded_state) sound_array camera_to_clip r_gen
+      else do
+        putStr ("\nMap file required: " ++ currentMap (s0_ (fromJust loaded_state)))
+        exitSuccess
     else exitSuccess
   else if mode == 3 then do
     if is_set save_state == True then startGame control_ref uniform p_bind map_text conf_reg 1 u v w g f mag_r mag_j save_state sound_array camera_to_clip r_gen
     else startGame control_ref uniform p_bind map_text conf_reg 0 u v w g f mag_r mag_j save_state sound_array camera_to_clip r_gen
   else if mode == 4 then exitSuccess
   else if mode == 5 then do
-    saveArrayDiff0 0 ([], []) (wrappedSaveArrayDiff1 (genArrayDiff (-3) 0 0 u_limit v_limit w_grid (w_grid_ save_state) SEQ.empty))
-                   (wrappedSaveArrayDiff1 (genArrayDiff 0 0 0 ((div (u_limit + 1) 2) - 1) ((div (v_limit + 1) 2) - 1) f_grid (f_grid_ save_state) SEQ.empty))
-                   (wrappedSaveArrayDiff1 (genArrayDiff 0 0 0 u_limit v_limit obj_grid (obj_grid_ save_state) SEQ.empty))
+    saveArrayDiff0 0 ([], []) (wrappedSaveArrayDiff1 (genArrayDiff (-3) 0 0 u_limit v_limit save_transform w_grid (w_grid_ save_state) SEQ.empty))
+                   (wrappedSaveArrayDiff1 (genArrayDiff 0 0 0 ((div (u_limit + 1) 2) - 1) ((div (v_limit + 1) 2) - 1) save_transform f_grid (f_grid_ save_state) SEQ.empty))
+                   (wrappedSaveArrayDiff1 (genArrayDiff 0 0 0 u_limit v_limit save_transform obj_grid (obj_grid_ save_state) SEQ.empty))
                    (labelPlayStateEncoding (encode (s0_ save_state))) (labelPlayStateEncoding (encode (s1_ save_state))) conf_reg (s0_ save_state)
     startGame control_ref uniform p_bind map_text conf_reg 1 u v w g f mag_r mag_j save_state sound_array camera_to_clip r_gen
   else if mode == 6 then do
@@ -400,7 +416,7 @@ startGame control_ref uniform p_bind map_text conf_reg mode u v w g f mag_r mag_
     h <- openFile "save_log.log" WriteMode
     hPutStr h def_save_log
     hClose h
-    putStr ("\n\nConfiguration file updated due to map transit event.")
+    putStr ("\n\nMap transit event.")
     exitSuccess
   else return ()
 
@@ -444,25 +460,32 @@ procWGridUpd :: SEQ.Seq ((Int, Int, Int), Maybe Obj_place) -> Array (Int, Int, I
 procWGridUpd SEQ.Empty w_grid = []
 procWGridUpd (x SEQ.:<| xs) w_grid = (fst x, (w_grid ! (fst x)) {obj = snd x}) : procWGridUpd xs w_grid
 
+applyLoadTransform :: [((Int, Int, Int), a)] -> (Int, Int) -> [((Int, Int, Int), a)]
+applyLoadTransform [] (u_offset, v_offset) = []
+applyLoadTransform (((w, u, v), y):xs) (u_offset, v_offset) = ((w, u + u_offset, v + v_offset), y) : applyLoadTransform xs (u_offset, v_offset)
+
 loadGameStateFile :: Int -> LBS.ByteString -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) Obj_grid
                      -> SEQ.Seq ((Int, Int, Int), Maybe Obj_place) -> SEQ.Seq ((Int, Int, Int), Floor_grid) -> SEQ.Seq ((Int, Int, Int), Obj_grid)
-                     -> Play_state0 -> Play_state1 -> Game_state
-loadGameStateFile c bs w_grid f_grid obj_grid w_grid_upd f_grid_upd obj_grid_upd s0 s1 =
+                     -> Play_state0 -> Play_state1 -> (Int, Int) -> Game_state
+loadGameStateFile c bs w_grid f_grid obj_grid w_grid_upd f_grid_upd obj_grid_upd s0 s1 load_offset =
   if c == 0 then loadGameStateFile (c + 1) (LBS.drop (8 + fromIntegral ((decode (LBS.take 8 bs)) :: Int)) bs) w_grid f_grid obj_grid
                                    (decodeSequence 0 def_obj_place_ (LBS.take (fromIntegral ((decode (LBS.take 8 bs)) :: Int)) (LBS.drop 8 bs)) SEQ.empty)
-                                   f_grid_upd obj_grid_upd s0 s1
+                                   f_grid_upd obj_grid_upd s0 s1 load_offset
   else if c == 1 then loadGameStateFile (c + 1) (LBS.drop (8 + fromIntegral ((decode (LBS.take 8 bs)) :: Int)) bs) w_grid f_grid obj_grid w_grid_upd
                                         (decodeSequence 0 def_f_grid_ (LBS.take (fromIntegral ((decode (LBS.take 8 bs)) :: Int)) (LBS.drop 8 bs)) SEQ.empty)
-                                        obj_grid_upd  s0 s1
+                                        obj_grid_upd  s0 s1 load_offset
   else if c == 2 then loadGameStateFile (c + 1) (LBS.drop (8 + fromIntegral ((decode (LBS.take 8 bs)) :: Int)) bs) w_grid f_grid obj_grid w_grid_upd f_grid_upd
                                         (decodeSequence 0 def_obj_grid_ (LBS.take (fromIntegral ((decode (LBS.take 8 bs)) :: Int)) (LBS.drop 8 bs)) SEQ.empty)
-                                        s0 s1
+                                        s0 s1 load_offset
   else if c == 3 then loadGameStateFile (c + 1) (LBS.drop (8 + fromIntegral ((decode (LBS.take 8 bs)) :: Int)) bs) w_grid f_grid obj_grid w_grid_upd f_grid_upd
                                         obj_grid_upd ((decode (LBS.take (fromIntegral ((decode (LBS.take 8 bs)) :: Int)) (LBS.drop 8 bs))) :: Play_state0) s1
+                                        load_offset
   else if c == 4 then loadGameStateFile (c + 1) LBS.empty w_grid f_grid obj_grid w_grid_upd f_grid_upd obj_grid_upd s0
-                                        ((decode (LBS.take (fromIntegral ((decode (LBS.take 8 bs)) :: Int)) (LBS.drop 8 bs))) :: Play_state1)
-  else Game_state {is_set = False, w_grid_ = w_grid // (procWGridUpd w_grid_upd w_grid), f_grid_ = f_grid // (FOLD.toList f_grid_upd),
-                   obj_grid_ = obj_grid // (FOLD.toList obj_grid_upd), s0_ = s0, s1_ = s1}
+                                        ((decode (LBS.take (fromIntegral ((decode (LBS.take 8 bs)) :: Int)) (LBS.drop 8 bs))) :: Play_state1) load_offset
+  else Game_state {is_set = False,
+                   w_grid_ = w_grid // applyLoadTransform (procWGridUpd w_grid_upd w_grid) load_offset,
+                   f_grid_ = f_grid // applyLoadTransform (FOLD.toList f_grid_upd) load_offset,
+                   obj_grid_ = obj_grid // applyLoadTransform (FOLD.toList obj_grid_upd) load_offset, s0_ = s0, s1_ = s1}
 
 -- If an error occurs while attempting to open a save game file the user is informed through the menu system.
 loaderError :: SomeException -> Io_box -> IO LBS.ByteString
@@ -473,16 +496,16 @@ loaderError x box = do
 
 -- This function is the entry point to the game state saving logic and handles user input from the load game menu.
 loadSavedGame :: Int -> [[Char]] -> [Char] -> Int -> Int -> Io_box -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid
-                 -> Array (Int, Int, Int) Obj_grid -> Array Int [Char] -> IO (Maybe Game_state)
-loadSavedGame 0 [] chosen_file c choice box w_grid f_grid obj_grid conf_reg = error "\nload_saved_game: encountered an unexpected log file structure."
-loadSavedGame 0 ((y0:y1:y2:y3:y4:y5:y6:y7:y8:y9:y10:y11:y12:y13:y14:y15:y16:ys):xs) chosen_file c choice box w_grid f_grid obj_grid conf_reg = do
+                 -> Array (Int, Int, Int) Obj_grid -> Array Int [Char] -> (Int, Int) -> IO (Maybe Game_state)
+loadSavedGame 0 [] chosen_file c choice box w_grid f_grid obj_grid conf_reg load_offset = error "\nload_saved_game: encountered an unexpected log file structure."
+loadSavedGame 0 ((y0:y1:y2:y3:y4:y5:y6:y7:y8:y9:y10:y11:y12:y13:y14:y15:y16:ys):xs) chosen_file c choice box w_grid f_grid obj_grid conf_reg load_offset = do
   if choice == 7 then return Nothing
-  else if c == choice then loadSavedGame 1 [] [y1, y2, y3, y4, y5, y6, y7, y8, y9] c choice box w_grid f_grid obj_grid conf_reg
-  else loadSavedGame 0 xs chosen_file (c + 1) choice box w_grid f_grid obj_grid conf_reg
-loadSavedGame 1 [] chosen_file c choice box w_grid f_grid obj_grid conf_reg = do
+  else if c == choice then loadSavedGame 1 [] [y1, y2, y3, y4, y5, y6, y7, y8, y9] c choice box w_grid f_grid obj_grid conf_reg load_offset
+  else loadSavedGame 0 xs chosen_file (c + 1) choice box w_grid f_grid obj_grid conf_reg load_offset
+loadSavedGame 1 [] chosen_file c choice box w_grid f_grid obj_grid conf_reg load_offset = do
   contents <- catch (do contents <- LBS.readFile ((cfg conf_reg 0 "game_save_path") ++ chosen_file); return contents) (\e -> loaderError e box)
   if LBS.length contents == 0 then return Nothing
-  else return (Just (loadGameStateFile 0 contents w_grid f_grid obj_grid SEQ.Empty SEQ.Empty SEQ.Empty ps0_init ps1_init))
+  else return (Just (loadGameStateFile 0 contents w_grid f_grid obj_grid SEQ.Empty SEQ.Empty SEQ.Empty ps0_init ps1_init load_offset))
 
 -- Sequential saves of the same game produce a sequence of save game files up to a preset maximum.
 -- The automation of this feature is done in the two functions below.

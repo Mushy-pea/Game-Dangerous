@@ -70,6 +70,15 @@ executables:
     dependencies:
     - Game-Dangerous
 
+  Launcher:
+    main:                Launcher.hs
+    other-modules:       []
+    source-dirs:         app
+    ghc-options:
+    - -O
+    dependencies:
+    - Game-Dangerous
+
 tests:
   Game-Dangerous-test:
     main:                Spec.hs
