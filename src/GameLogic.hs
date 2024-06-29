@@ -1587,8 +1587,8 @@ updatePlay io_box state_ref s0 s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_g
       player_voxel = [truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)]
   in do
   mainLoopEvent
-  control <- readIORef (control_ io_box)
-  writeIORef (control_ io_box) 0
+  control <- readIORef (fromJust (control_ io_box))
+  writeIORef (fromJust (control_ io_box)) 0
   link0 <- linkGplc0 (fst game_clock') (drop 4 det) player_voxel w_grid [] f_grid obj_grid [] s0 (s1 {sig_q = prioritiseNpcs (sig_q s1) [] []}) lookUp True
   link1 <- linkGplc1 s0 s1 obj_grid 0
   link1_ <- linkGplc1 s0 s1 obj_grid 1
@@ -1779,8 +1779,8 @@ runMenu [] acc io_box x y c c_max d s0 background = do
   swapBuffers
   threadDelay 16667
   mainLoopEvent
-  control <- readIORef (control_ io_box)
-  writeIORef (control_ io_box) 0
+  control <- readIORef (fromJust (control_ io_box))
+  writeIORef (fromJust (control_ io_box)) 0
   if control == 3 && c > 1 then do
     glClear (GL_COLOR_BUFFER_BIT .|. GL_DEPTH_BUFFER_BIT)
     runMenu acc [] io_box x 0.1 (c - 1) c_max 2 s0 background

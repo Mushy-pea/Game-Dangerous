@@ -38,6 +38,7 @@ library
       IndexWrapper1
       OpenMap
       PreprocessMap
+      SaveGame
   other-modules:
       Paths_Game_Dangerous
   hs-source-dirs:
