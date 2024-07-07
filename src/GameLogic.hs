@@ -1619,7 +1619,8 @@ updatePlay io_box state_ref s0 s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_g
                  (third_ (det_fps t'')) (fst__ (det_fps t''))
     else if choice == 2 then do
       putMVar state_ref (s0 {message_ = [(-4, [])]}, w_grid,
-                         Game_state {is_set = True, w_grid_ = w_grid, f_grid_ = f_grid, obj_grid_ = obj_grid, s0_ = s0, s1_ = s1})
+                         Game_state {is_set = True, w_grid_ = w_grid, f_grid_ = f_grid, obj_grid_ = obj_grid, s0_ = s0, s1_ = s1, map_transit_string = ([], []),
+                                     wGridDiffs = wGridDiffs save_state, fGridDiffs = fGridDiffs save_state, objGridDiffs = objGridDiffs save_state})
       updatePlay io_box state_ref (s0_ s0) s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid lookUp save_state sound_array t'' t_log
                  (third_ (det_fps t'')) (fst__ (det_fps t''))
     else if choice == 3 then do

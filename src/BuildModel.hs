@@ -72,7 +72,7 @@ ptr_size = 8 :: Int -- Corresponds to the 8 byte pointers used on Windows and Li
 -- Data types that store information about the environment and game state, as well as an exception type.
 -- There are also a number of default and initial values for these types.
 data Wall_grid = Wall_grid {u1 :: Bool, u2 :: Bool, v1 :: Bool, v2 :: Bool, u1_bound :: Float, u2_bound :: Float, v1_bound :: Float, v2_bound :: Float,
-w_level :: Float,  wall_flag :: [Int], texture :: [Int], obj :: Maybe Obj_place} deriving (Eq, Show)
+w_level :: Float,  wall_flag :: [Int], texture :: [Int], obj :: Maybe Obj_place} deriving (Eq, Read, Show)
 
 data Object = Object {ident :: Int, att_offset :: Int, num_tex :: Int, tex_w :: GLsizei, tex_h :: GLsizei, behaviours :: [Int]} deriving (Show)
 
@@ -80,7 +80,7 @@ data Wall_place = Wall_place {rotate :: GLint, translate_u :: Float, translate_v
 texture_ :: Int, isNull :: Bool} deriving (Show)
 
 data Obj_place = Obj_place {ident_ :: Int, u__ :: Float, v__ :: Float, w__ :: Float, rotation :: [Int], rotate_ :: Bool, phase :: Float, texture__ :: Int,
-num_elem :: CInt, obj_flag :: Int} deriving (Eq, Show)
+num_elem :: CInt, obj_flag :: Int} deriving (Eq, Read, Show)
 
 instance Binary Obj_place where
   put Obj_place {ident_ = a, u__ = b, v__ = c, w__ = d, texture__ = e, num_elem = f, obj_flag = g} =
@@ -120,7 +120,7 @@ instance Binary Terrain where
              4 -> return Negative_v
              5 -> return Open
 
-data Floor_grid = Floor_grid {w_ :: Float, surface :: Terrain, local_up_ramp :: (Int, Int), local_down_ramp :: (Int, Int)} deriving (Eq, Show)
+data Floor_grid = Floor_grid {w_ :: Float, surface :: Terrain, local_up_ramp :: (Int, Int), local_down_ramp :: (Int, Int)} deriving (Eq, Read, Show)
 
 instance Binary Floor_grid where
   put Floor_grid {w_ = a, surface = b, local_up_ramp = c, local_down_ramp = d} = put a >> put b >> put c >> put d
@@ -157,8 +157,8 @@ instance Binary Play_state0 where
                    gameClock = j, torch_t0 = k, torch_t_limit = l, on_screen_metrics = 0, prob_seq = def_prob_seq, mobile_lights = ([], []), currentMap = m})
 
 data Play_state1 = Play_state1 {health :: Int, ammo :: Int, gems :: Int, torches :: Int, keys :: [Int], region :: [Int], difficulty :: ([Char], Int, Int, Int),
-sig_q :: [Int], next_sig_q :: [Int], message :: [Int], state_chg :: Int, verbose_mode :: [Char], debugSet :: Array Int [Char], debugGplc :: Bool, npc_states :: Array Int NPC_state,
-story_state :: Int} deriving (Eq, Show)
+sig_q :: [Int], next_sig_q :: [Int], message :: [Int], state_chg :: Int, verbose_mode :: [Char], debugSet :: Array Int [Char], debugGplc :: Bool,
+npc_states :: Array Int NPC_state, story_state :: Int} deriving (Eq, Show)
 
 instance Binary Play_state1 where
   put Play_state1 {health = a, ammo = b, gems = c, torches = d, keys = e, region = f, difficulty = g, sig_q = h, message = i, state_chg = j, npc_states = k} =
@@ -215,7 +215,7 @@ instance Binary NPC_state where
                    lastDir = i, dir_list = j, node_num = k, end_node = l, head_index = m, reversed = n, target_u' = o, target_v' = p, target_w' = q, speed = r,
                    avoid_dist = s, attack_mode = t, finalAppr = u, fire_prob = v, fireball_state = w})
 
-data Obj_grid = Obj_grid {objType :: Int, program :: [Int], programName :: [Char]} deriving (Eq, Show)
+data Obj_grid = Obj_grid {objType :: Int, program :: [Int], programName :: [Char]} deriving (Eq, Read, Show)
 
 instance Binary Obj_grid where
   put Obj_grid {objType = a, program = b, programName = c} = put a >> put b >> put c
@@ -226,7 +226,8 @@ instance Binary Obj_grid where
            return (Obj_grid {objType = a, program = b, programName = c})
 
 data Game_state = Game_state {is_set :: Bool, w_grid_ :: Array (Int, Int, Int) Wall_grid, f_grid_ :: Array (Int, Int, Int) Floor_grid,
-                  obj_grid_ :: Array (Int, Int, Int) Obj_grid, s0_ :: Play_state0, s1_ :: Play_state1, map_transit_string :: ([Char], [Char])}
+                              obj_grid_ :: Array (Int, Int, Int) Obj_grid, s0_ :: Play_state0, s1_ :: Play_state1, map_transit_string :: ([Char], [Char]),
+                              wGridDiffs :: WGridDiffContainer, fGridDiffs :: FGridDiffContainer, objGridDiffs :: ObjGridDiffContainer}
 
 data Io_box = Io_box {uniform_ :: UArray Int Int32, p_bind_ :: (UArray Int Word32, Int), control_ :: Maybe (IORef Int)}
 
@@ -266,7 +267,9 @@ texture = [], obj = Just def_obj_place}
 f_grid_flag = Floor_grid {w_ = 3, surface = Flat, local_up_ramp = (0, 0), local_down_ramp = (0, 0)}
 obj_grid_flag = Obj_grid {objType = 5, program = [], programName = []} :: Obj_grid
 
-def_save_state = Game_state {is_set = False, w_grid_ = defWGridArr, f_grid_ = def_f_grid_arr, obj_grid_ = defObjGridArr, s0_ = ps0_init, s1_ = ps1_init}
+def_save_state = Game_state {is_set = False, w_grid_ = defWGridArr, f_grid_ = def_f_grid_arr, obj_grid_ = defObjGridArr, s0_ = ps0_init, s1_ = ps1_init,
+                             map_transit_string = ([], []), wGridDiffs = emptyWGridDiffContainer, fGridDiffs = emptyFGridDiffContainer,
+                             objGridDiffs = emptyObjGridDiffContainer}
 def_wall_place = Wall_place {rotate = 0, translate_u = 0, translate_v = 0, translate_w = 0, wall_flag_ = 0, texture_ = 0, isNull = True}
 def_prob_seq = array (0, 239) [(i, 0) | i <- [0..239]]
 
@@ -284,6 +287,19 @@ ceiling_model = Obj_place {ident_ = 1044, u__ = 0, v__ = 0, w__ = 0, rotation = 
 
 -- This list is used to sequence centipede NPC animation.
 cpede_frames = [0, 1, 2, 3, 4, 5, 4, 3, 2, 1, 0] :: [Int]
+
+data WGridDiffContainer = WGridDiffContainer {map1WDiff :: [((Int, Int, Int), Maybe Obj_place)], map2WDiff :: [((Int, Int, Int), Maybe Obj_place)],
+                                              map3WDiff :: [((Int, Int, Int), Maybe Obj_place)], map4WDiff :: [((Int, Int, Int), Maybe Obj_place)]}
+
+data FGridDiffContainer = FGridDiffContainer {map1FDiff :: [((Int, Int, Int), Floor_grid)], map2FDiff :: [((Int, Int, Int), Floor_grid)],
+                                              map3FDiff :: [((Int, Int, Int), Floor_grid)], map4FDiff :: [((Int, Int, Int), Floor_grid)]}
+
+data ObjGridDiffContainer = ObjGridDiffContainer {map1ODiff :: [((Int, Int, Int), Obj_grid)], map2ODiff :: [((Int, Int, Int), Obj_grid)],
+                                                  map3ODiff :: [((Int, Int, Int), Obj_grid)], map4ODiff :: [((Int, Int, Int), Obj_grid)]}
+
+emptyWGridDiffContainer = WGridDiffContainer {map1WDiff = [], map2WDiff = [], map3WDiff = [], map4WDiff = []}
+emptyFGridDiffContainer = FGridDiffContainer {map1FDiff = [], map2FDiff = [], map3FDiff = [], map4FDiff = []}
+emptyObjGridDiffContainer = ObjGridDiffContainer {map1ODiff = [], map2ODiff = [], map3ODiff = [], map4ODiff = []}
 
 -- This class is used in functions that filter the result of the ray tracer to avoid multiple rendering.
 class Flag a where

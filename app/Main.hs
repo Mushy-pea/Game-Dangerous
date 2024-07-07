@@ -310,23 +310,17 @@ cameraToClip frustumScale0 frustumScale1 =
   in
   y [frustumScale0, 0, 0, 0, 0, frustumScale1, 0, 0, 0, 0, ((zFar + zNear) / (zNear - zFar)), ((2 * zFar * zNear) / (zNear - zFar)), 0, 0, -1, 0]
 
-detMapTransform :: [Char] -> [Char] -> Int -> Int -> (Int, Int)
-detMapTransform map operation u_max v_max
-  | map == "map1.dan" && operation == "save" = (0, 0)
-  | map == "map1.dan" && operation == "load" = (0, 0)
-  | map == "map2.dan" && operation == "save" = (0, - (v_max + 1))
-  | map == "map2.dan" && operation == "load" = (0, v_max + 1)
-  | map == "map3.dan" && operation == "save" = ( - (u_max + 1), - (v_max + 1))
-  | map == "map3.dan" && operation == "load" = (u_max + 1, v_max + 1)
-  | map == "map4.dan" && operation == "save" = (- (u_max + 1), 0)
-  | map == "map4.dan" && operation == "load" = (u_max + 1, 0)
+serialiseWGridDiffs :: WGridDiffContainer -> SEQ.Seq ((Int, Int, Int), Wall_grid)
+serialiseWGridDiffs x = SEQ.fromList (map (\y -> (fst y, def_w_grid {obj = snd y})) (map1WDiff x)) SEQ.><
+                        SEQ.fromList (map (\y -> (fst y, def_w_grid {obj = snd y})) (map2WDiff x)) SEQ.><
+                        SEQ.fromList (map (\y -> (fst y, def_w_grid {obj = snd y})) (map3WDiff x)) SEQ.><
+                        SEQ.fromList (map (\y -> (fst y, def_w_grid {obj = snd y})) (map4WDiff x))
 
-viewSaveFile :: [Char] -> Array (Int, Int, Int) Wall_grid -> IO ()
-viewSaveFile chosen_file w_grid = do
-  result <- viewSavedGame chosen_file w_grid
-  showSavedGame (fst__ result)
-  showSavedGame (snd__ result)
-  showSavedGame (third_ result)
+serialiseFGridDiffs :: FGridDiffContainer -> SEQ.Seq ((Int, Int, Int), Floor_grid)
+serialiseFGridDiffs x = SEQ.fromList (map1FDiff x) SEQ.>< SEQ.fromList (map2FDiff x) SEQ.>< SEQ.fromList (map3FDiff x) SEQ.>< SEQ.fromList (map4FDiff x)
+
+serialiseObjGridDiffs :: ObjGridDiffContainer -> SEQ.Seq ((Int, Int, Int), Obj_grid)
+serialiseObjGridDiffs x = SEQ.fromList (map1ODiff x) SEQ.>< SEQ.fromList (map2ODiff x) SEQ.>< SEQ.fromList (map3ODiff x) SEQ.>< SEQ.fromList (map4ODiff x)
 
 -- This function initialises the game logic thread each time a new game is started and handles user input from the main menu.
 startGame :: RandomGen g => IORef Int -> UArray Int Int32 -> (UArray Int Word32, Int) -> [Char] -> Array Int [Char] -> Int -> Float -> Float -> Float -> Float
@@ -352,8 +346,7 @@ startGame control_ref uniform p_bind map_text conf_reg mode u v w g f mag_r mag_
       save_transform = detMapTransform (cfg' "map_file") "save" u_limit v_limit
       load_transform = detMapTransform (cfg' "map_file") "load" u_limit v_limit
   in do
-  if cfg' "view_save_file" /= "null" then viewSaveFile (cfg' "view_save_file") w_grid
-  else if mode == -1 then do
+  if mode == -1 then do
     if cfg' "splash_image" == "on" then do
       glDisable GL_DEPTH_TEST
       glBindVertexArray (unsafeCoerce ((fst p_bind) ! 1026))
@@ -401,7 +394,7 @@ startGame control_ref uniform p_bind map_text conf_reg mode u v w g f mag_r mag_
       state_choice <- runMenu (genLoadMenu (tail (splitOn "\n" (tailFile contents))) [] 1) [] (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = Just control_ref})
                               (-0.75) (-0.75) 1 0 0 ps0_init 1
       loaded_state <- loadSavedGame 0 (tail (splitOn "\n" (tailFile contents))) [] 1 state_choice (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = Just control_ref})
-                                    w_grid f_grid obj_grid conf_reg load_transform
+                                    w_grid f_grid obj_grid conf_reg load_transform (cfg' "map_file")
       if isNothing loaded_state then startGame control_ref uniform p_bind map_text conf_reg 2 u v w g f mag_r mag_j def_save_state sound_array
                                                camera_to_clip r_gen
       else if isNothing loaded_state == False && currentMap (s0_ (fromJust loaded_state)) == cfg' "map_file" then
@@ -415,9 +408,9 @@ startGame control_ref uniform p_bind map_text conf_reg mode u v w g f mag_r mag_
     else startGame control_ref uniform p_bind map_text conf_reg 0 u v w g f mag_r mag_j save_state sound_array camera_to_clip r_gen
   else if mode == 4 then exitSuccess
   else if mode == 5 then do
-    saveArrayDiff0 0 ([], []) (wrappedSaveArrayDiff1 (genArrayDiff (-3) 0 0 u_limit v_limit save_transform w_grid (w_grid_ save_state) SEQ.empty))
-                   (wrappedSaveArrayDiff1 (genArrayDiff 0 0 0 ((div (u_limit + 1) 2) - 1) ((div (v_limit + 1) 2) - 1) save_transform f_grid (f_grid_ save_state) SEQ.empty))
-                   (wrappedSaveArrayDiff1 (genArrayDiff 0 0 0 u_limit v_limit save_transform obj_grid (obj_grid_ save_state) SEQ.empty))
+    saveArrayDiff0 0 ([], []) (wrappedSaveArrayDiff1 ((genArrayDiff (-3) 0 0 u_limit v_limit save_transform w_grid (w_grid_ save_state) SEQ.empty) SEQ.>< serialiseWGridDiffs (wGridDiffs save_state)))
+                   (wrappedSaveArrayDiff1 ((genArrayDiff 0 0 0 ((div (u_limit + 1) 2) - 1) ((div (v_limit + 1) 2) - 1) save_transform f_grid (f_grid_ save_state) SEQ.empty) SEQ.>< serialiseFGridDiffs (fGridDiffs save_state)))
+                   (wrappedSaveArrayDiff1 ((genArrayDiff 0 0 0 u_limit v_limit save_transform obj_grid (obj_grid_ save_state) SEQ.empty) SEQ.>< serialiseObjGridDiffs (objGridDiffs save_state)))
                    (labelPlayStateEncoding (encode (s0_ save_state))) (labelPlayStateEncoding (encode (s1_ save_state))) conf_reg (s0_ save_state)
     startGame control_ref uniform p_bind map_text conf_reg 1 u v w g f mag_r mag_j save_state sound_array camera_to_clip r_gen
   else if mode == 6 then do
