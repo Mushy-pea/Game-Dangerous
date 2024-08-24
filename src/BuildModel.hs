@@ -226,9 +226,9 @@ instance Binary Obj_grid where
            c <- get
            return (Obj_grid {objType = a, program = b, programName = c})
 
-data ExitContext = None | SaveGame | ReturnMainMenu | ExitGame | PlayerDied deriving Eq
+data EventContext = None | SaveGame | ReturnMainMenu | ExitGame | PlayerDiedSaveExists | PlayerDiedNoSave | LoadGame deriving Eq
 
-data Game_state = Game_state {exit_context :: ExitContext, w_grid_ :: Array (Int, Int, Int) Wall_grid, f_grid_ :: Array (Int, Int, Int) Floor_grid,
+data Game_state = Game_state {event_context :: EventContext, w_grid_ :: Array (Int, Int, Int) Wall_grid, f_grid_ :: Array (Int, Int, Int) Floor_grid,
                               obj_grid_ :: Array (Int, Int, Int) Obj_grid, s0_ :: Play_state0, s1_ :: Play_state1, save_file :: LBS.ByteString}
 
 data Io_box = Io_box {uniform_ :: UArray Int Int32, p_bind_ :: (UArray Int Word32, Int), control_ :: Maybe (IORef Int)}
@@ -269,7 +269,7 @@ texture = [], obj = Just def_obj_place}
 f_grid_flag = Floor_grid {w_ = 3, surface = Flat, local_up_ramp = (0, 0), local_down_ramp = (0, 0)}
 obj_grid_flag = Obj_grid {objType = 5, program = [], programName = []} :: Obj_grid
 
-def_game_state = Game_state {exit_context = None, w_grid_ = defWGridArr, f_grid_ = def_f_grid_arr, obj_grid_ = defObjGridArr, s0_ = ps0_init,
+def_game_state = Game_state {event_context = None, w_grid_ = defWGridArr, f_grid_ = def_f_grid_arr, obj_grid_ = defObjGridArr, s0_ = ps0_init,
                              s1_ = ps1_init, save_file = LBS.empty}
 def_wall_place = Wall_place {rotate = 0, translate_u = 0, translate_v = 0, translate_w = 0, wall_flag_ = 0, texture_ = 0, isNull = True}
 def_prob_seq = array (0, 239) [(i, 0) | i <- [0..239]]

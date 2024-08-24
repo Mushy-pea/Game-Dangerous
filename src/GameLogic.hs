@@ -1566,7 +1566,7 @@ updatePlayWrapper0 io_box state_ref game_state in_flight min_frame_t (g, f, mag_
 updatePlayWrapper1 :: MVar Game_state -> SomeException -> IO ()
 updatePlayWrapper1 state_ref e = do
   putStr ("\n\nGame logic thread exception: " ++ show e)
-  putMVar state_ref (def_game_state {exit_context = ExitGame})
+  putMVar state_ref (def_game_state {event_context = ExitGame})
 
 -- This function recurses once for each recursion of showFrame (and rendering of that frame) and is the central branching point of the game logic thread.
 updatePlay :: Io_box -> MVar Game_state -> Game_state -> Bool -> Integer
@@ -1625,15 +1625,15 @@ updatePlay io_box state_ref game_state in_flight min_frame_t (g, f, mag_r, mag_j
       updatePlay io_box state_ref (game_state {s0_ = s0 {message_ = []}}) in_flight min_frame_t (g, f, mag_r, mag_j) lookUp sound_array t'' t_log
                  (third_ (det_fps t'')) (fst__ (det_fps t''))
     else if choice == 2 then do
-      putMVar state_ref (game_state {exit_context = SaveGame})
+      putMVar state_ref (game_state {event_context = SaveGame})
       updatePlay io_box state_ref (game_state {s0_ = s0 {message_ = []}}) in_flight min_frame_t (g, f, mag_r, mag_j) lookUp sound_array t'' t_log
                  (third_ (det_fps t'')) (fst__ (det_fps t''))
     else if choice == 3 then do
-      putMVar state_ref (game_state {exit_context = ReturnMainMenu})
+      putMVar state_ref (game_state {event_context = ReturnMainMenu})
       updatePlay io_box state_ref (game_state {s0_ = s0 {message_ = []}}) in_flight min_frame_t (g, f, mag_r, mag_j) lookUp sound_array t'' t_log
                  (third_ (det_fps t'')) (fst__ (det_fps t''))
     else do
-      putMVar state_ref (game_state {exit_context = ExitGame})
+      putMVar state_ref (game_state {event_context = ExitGame})
       updatePlay io_box state_ref (game_state {s0_ = s0 {message_ = []}}) in_flight min_frame_t (g, f, mag_r, mag_j) lookUp sound_array t'' t_log
                  (third_ (det_fps t'')) (fst__ (det_fps t''))
   else if control == 10 then do
@@ -1658,8 +1658,8 @@ updatePlay io_box state_ref game_state in_flight min_frame_t (g, f, mag_r, mag_j
                (g, f, mag_r, mag_j) lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
   else if message s1 /= [] then do
     event <- procMsg0 (message s1) s0 s1 io_box (fst sound_array)
-    putMVar state_ref (game_state {exit_context = third_ event, s0_ = fst__ event})
-    updatePlay io_box state_ref (game_state {s0_ = (fst__ event) {message_ = []}, s1_ = snd__ event}) in_flight min_frame_t (g, f, mag_r, mag_j) lookUp
+    putMVar state_ref (game_state {s0_ = fst event})
+    updatePlay io_box state_ref (game_state {s0_ = (fst event) {message_ = []}, s1_ = snd event}) in_flight min_frame_t (g, f, mag_r, mag_j) lookUp
                  sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
   else
     if in_flight == False then
@@ -1737,17 +1737,17 @@ procMsg1 :: [[Int]] -> [(Int, [Int])]
 procMsg1 [] = []
 procMsg1 (x:xs) = (head x, tail x) : procMsg1 xs
 
-procMsg0 :: [Int] -> Play_state0 -> Play_state1 -> Io_box -> Array Int Source -> IO (Play_state0, Play_state1, ExitContext)
-procMsg0 [] s0 s1 io_box sound_array = return (s0, s1 {state_chg = 0, message = []}, None)
+procMsg0 :: [Int] -> Play_state0 -> Play_state1 -> Io_box -> Array Int Source -> IO (Play_state0, Play_state1)
+procMsg0 [] s0 s1 io_box sound_array = return (s0, s1 {state_chg = 0, message = []})
 procMsg0 (x0:x1:xs) s0 s1 io_box sound_array =
   let signal_ = (head (splitOn [-1] (take x1 xs)))
       map_unlock_code = binaryToHex (listArray (0, 127) (encodeStateValues s0 s1)) 0
   in do
-  if x0 == -5 then return (s0, s1, None)
-  else if x0 < 0 then return (s0 {message_ = message_ s0 ++ [(x0, take x1 xs)]}, s1, None)
+  if x0 == -5 then return (s0, s1)
+  else if x0 < 0 then return (s0 {message_ = message_ s0 ++ [(x0, take x1 xs)]}, s1)
   else if x0 == 0 && state_chg s1 == 1 && health s1 <= 0 then do
     play_ (sound_array ! 20)
-    return (s0 {message_ = [(-2, take x1 xs)]}, s1, PlayerDied)
+    return (s0 {message_ = [(-2, take x1 xs)]}, s1)
   else if x0 == 0 && state_chg s1 == 1 then procMsg0 (drop x1 xs) (s0 {message_ = message_ s0 ++ [(600, x0 : take x1 xs ++ msg1 ++ convMsg (health s1))]}) s1
                                                      io_box sound_array
   else if x0 == 0 && state_chg s1 == 2 then procMsg0 (drop x1 xs) (s0 {message_ = message_ s0 ++ [(600, x0 : take x1 xs ++ msg2 ++ convMsg (ammo s1))]}) s1
