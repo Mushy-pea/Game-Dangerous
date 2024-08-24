@@ -23,6 +23,7 @@ import Data.IORef
 import qualified Data.Sequence as SEQ
 import Data.Binary
 import Data.Char
+import qualified Data.ByteString.Lazy as LBS
 import Foreign hiding (rotate)
 import Foreign.C.String
 import Foreign.C.Types
@@ -133,7 +134,7 @@ instance Binary Floor_grid where
 
 data Play_state0 = Play_state0 {pos_u :: Float, pos_v :: Float, pos_w :: Float, vel :: [Float], angle :: Int, angle_ :: Float, message_ :: [(Int, [Int])],
 rend_mode :: Int, view_mode :: Int, view_angle :: Int, gameClock :: (Int, Float, Int), torch_t0 :: Int, torch_t_limit :: Int, on_screen_metrics :: Int,
-prob_seq :: UArray Int Int, mobile_lights :: ([Float], [Float]), currentMap :: [Char]} deriving (Eq, Show)
+prob_seq :: UArray Int Int, mobile_lights :: ([Float], [Float]), currentMap :: Int} deriving (Eq, Show)
 
 instance Binary Play_state0 where
   put Play_state0 {pos_u = a, pos_v = b, pos_w = c, vel = d, angle = e, angle_ = f, rend_mode = g, view_mode = h, view_angle = i, gameClock = j, torch_t0 = k,
@@ -225,9 +226,10 @@ instance Binary Obj_grid where
            c <- get
            return (Obj_grid {objType = a, program = b, programName = c})
 
-data Game_state = Game_state {is_set :: Bool, w_grid_ :: Array (Int, Int, Int) Wall_grid, f_grid_ :: Array (Int, Int, Int) Floor_grid,
-                              obj_grid_ :: Array (Int, Int, Int) Obj_grid, s0_ :: Play_state0, s1_ :: Play_state1, map_transit_string :: ([Char], [Char]),
-                              wGridDiffs :: WGridDiffContainer, fGridDiffs :: FGridDiffContainer, objGridDiffs :: ObjGridDiffContainer}
+data ExitContext = None | SaveGame | ReturnMainMenu | ExitGame | PlayerDied deriving Eq
+
+data Game_state = Game_state {exit_context :: ExitContext, w_grid_ :: Array (Int, Int, Int) Wall_grid, f_grid_ :: Array (Int, Int, Int) Floor_grid,
+                              obj_grid_ :: Array (Int, Int, Int) Obj_grid, s0_ :: Play_state0, s1_ :: Play_state1, save_file :: LBS.ByteString}
 
 data Io_box = Io_box {uniform_ :: UArray Int Int32, p_bind_ :: (UArray Int Word32, Int), control_ :: Maybe (IORef Int)}
 
@@ -239,7 +241,7 @@ data EngineError = Invalid_wall_flag | Invalid_obj_flag | Invalid_GPLC_opcode | 
 instance Exception EngineError
 
 ps0_init = Play_state0 {pos_u = 0, pos_v = 0, pos_w = 0, vel = [0, 0, 0], angle = 0, angle_ = 0, message_ = [], rend_mode = 0, view_mode = 0, view_angle = 0,
-gameClock = (1, 1, 1), torch_t0 = 1, torch_t_limit = 0, on_screen_metrics = 0, prob_seq = def_prob_seq, mobile_lights = ([], []), currentMap = "null"}
+gameClock = (1, 1, 1), torch_t0 = 1, torch_t_limit = 0, on_screen_metrics = 0, prob_seq = def_prob_seq, mobile_lights = ([], []), currentMap = 0}
 
 ps1_init = Play_state1 {health = 100, ammo = 0, gems = 0, torches = 0, keys = [63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63],
 region = [19,46,41,44,27,33,31,63,28,27,51,63,4], difficulty = ("Plenty of danger please", 6, 10, 14), sig_q = [], next_sig_q = [], message = [], state_chg = 0,
@@ -267,9 +269,8 @@ texture = [], obj = Just def_obj_place}
 f_grid_flag = Floor_grid {w_ = 3, surface = Flat, local_up_ramp = (0, 0), local_down_ramp = (0, 0)}
 obj_grid_flag = Obj_grid {objType = 5, program = [], programName = []} :: Obj_grid
 
-def_save_state = Game_state {is_set = False, w_grid_ = defWGridArr, f_grid_ = def_f_grid_arr, obj_grid_ = defObjGridArr, s0_ = ps0_init, s1_ = ps1_init,
-                             map_transit_string = ([], []), wGridDiffs = emptyWGridDiffContainer, fGridDiffs = emptyFGridDiffContainer,
-                             objGridDiffs = emptyObjGridDiffContainer}
+def_game_state = Game_state {exit_context = None, w_grid_ = defWGridArr, f_grid_ = def_f_grid_arr, obj_grid_ = defObjGridArr, s0_ = ps0_init,
+                             s1_ = ps1_init, save_file = LBS.empty}
 def_wall_place = Wall_place {rotate = 0, translate_u = 0, translate_v = 0, translate_w = 0, wall_flag_ = 0, texture_ = 0, isNull = True}
 def_prob_seq = array (0, 239) [(i, 0) | i <- [0..239]]
 

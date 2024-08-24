@@ -9,7 +9,7 @@ import System.IO
 import System.IO.Unsafe
 import System.Exit
 import Graphics.GL.Core33
-import Graphics.UI.GLUT hiding (Flat, texture, GLfloat)
+import Graphics.UI.GLUT hiding (Flat, texture, GLfloat, None)
 import Foreign
 import Data.Array.IArray
 import Data.Array.Unboxed
@@ -1298,52 +1298,53 @@ filterDebug s1 program_name i
 -- response to player object collisions and handling the signal queue, which allows programs to signal each other.  The phase_flag argument of linkGplc0
 -- is used by updatePlay to limit the speed of the GPLC interpreter to 40 ticks per second, independent of the variable frame rate.  The exception to this
 -- limit is if a player object collision needs to be handled, in which case an additional interpreter tick is allowed as a special case.
-linkGplc0 :: Bool -> [Float] -> [Int] -> Array (Int, Int, Int) Wall_grid -> [((Int, Int, Int), Wall_grid)] -> Array (Int, Int, Int) Floor_grid
-             -> Array (Int, Int, Int) Obj_grid -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> Play_state0 -> Play_state1 -> UArray (Int, Int) Float -> Bool
-             -> IO (Array (Int, Int, Int) Wall_grid, Array (Int, Int, Int) Floor_grid, Array (Int, Int, Int) Obj_grid, Play_state0, Play_state1)
-linkGplc0 phase_flag (x0:x1:xs) (z0:z1:z2:zs) w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp init_flag =
+linkGplc0 :: Bool -> [Float] -> [Int] -> Game_state -> [((Int, Int, Int), Wall_grid)]
+             -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> UArray (Int, Int) Float -> Bool
+             -> IO Game_state
+linkGplc0 phase_flag (x0:x1:xs) (z0:z1:z2:zs) game_state w_grid_upd obj_grid_upd lookUp init_flag =
   let target0 = linkGplc2 x0 (z0, z1, z2)
-      target1 = (((sig_q s1), 512) !! (1 :: Int), ((sig_q s1), 513) !! (2 :: Int), ((sig_q s1), 514) !! (3 :: Int))
-      prog = program (obj_grid ! target1)
-      obj_grid' = sendSignal 1 (GPLC_int 1) (GPLC_int (fst__ target0), GPLC_int (snd__ target0), GPLC_int (third_ target0)) obj_grid s1 []
-      obj_grid'' = obj_grid // [(target1, Obj_grid {objType = objType (obj_grid ! target1),
-                                                    program = (head__ prog) : (((sig_q s1), 515) !! (0 :: Int)) : drop 2 prog,
-                                                    programName = programName (obj_grid ! target1)})]
-      show_obj_grid = show (((sig_q s1), 519) !! (1 :: Int), ((sig_q s1), 520) !! (2 :: Int), ((sig_q s1), 521) !! (3 :: Int))
-      debug_enabled = \mode -> if mode == 0 then filterDebug s1 (programName (obj_grid ! target0)) 0
-                               else filterDebug s1 (programName (obj_grid ! target1)) 0
-      s1' = s1 {sig_q = drop 4 (sig_q s1), debugGplc = debug_enabled 1}
-      s1'' = s1 {debugGplc = debug_enabled 0}
+      target1 = (((sig_q (s1_ game_state)), 512) !! (1 :: Int), ((sig_q (s1_ game_state)), 513) !! (2 :: Int), ((sig_q (s1_ game_state)), 514) !! (3 :: Int))
+      prog = program ((obj_grid_ game_state) ! target1)
+      obj_grid' = sendSignal 1 (GPLC_int 1) (GPLC_int (fst__ target0), GPLC_int (snd__ target0), GPLC_int (third_ target0)) (obj_grid_ game_state)
+                             (s1_ game_state) []
+      obj_grid'' = (obj_grid_ game_state) // [(target1, Obj_grid {objType = objType ((obj_grid_ game_state) ! target1),
+                                              program = (head__ prog) : (((sig_q (s1_ game_state)), 515) !! (0 :: Int)) : drop 2 prog,
+                                              programName = programName ((obj_grid_ game_state) ! target1)})]
+      show_obj_grid = show (((sig_q (s1_ game_state)), 519) !! (1 :: Int), ((sig_q (s1_ game_state)), 520) !! (2 :: Int), ((sig_q (s1_ game_state)), 521) !! (3 :: Int))
+      debug_enabled = \mode -> if mode == 0 then filterDebug (s1_ game_state) (programName ((obj_grid_ game_state) ! target0)) 0
+                               else filterDebug (s1_ game_state) (programName ((obj_grid_ game_state) ! target1)) 0
+      s1' = (s1_ game_state) {sig_q = drop 4 (sig_q (s1_ game_state)), debugGplc = debug_enabled 1}
+      s1'' = (s1_ game_state) {debugGplc = debug_enabled 0}
   in do
   if init_flag == True then do
-    if (x1 == 1 || x1 == 3) && head (program (obj_grid ! target0)) == 0 then do
-      reportState (debug_enabled 0) 2 [] [] ("\nPlayer starts GPLC program [" ++ programName (obj_grid ! target0) ++ "] at Obj_grid " ++ show target0)
-      run_gplc' <- catch (runGplc (program ((fst obj_grid') ! target0)) [] w_grid w_grid_upd f_grid (fst obj_grid') obj_grid_upd s0 s1'' lookUp 0)
-                         (\e -> gplcError w_grid_upd f_grid obj_grid_upd s0 s1 e)
-      linkGplc0 phase_flag (x0:x1:xs) (z0:z1:z2:zs) w_grid (fst_ run_gplc') (snd_ run_gplc') obj_grid (third run_gplc') (fourth run_gplc') (fifth run_gplc')
-                lookUp False
-    else linkGplc0 phase_flag (x0:x1:xs) (z0:z1:z2:zs) w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp False
+    if (x1 == 1 || x1 == 3) && head (program ((obj_grid_ game_state) ! target0)) == 0 then do
+      reportState (debug_enabled 0) 2 [] [] ("\nPlayer starts GPLC program [" ++ programName ((obj_grid_ game_state) ! target0) ++ "] at Obj_grid " ++ show target0)
+      run_gplc' <- catch (runGplc (program ((fst obj_grid') ! target0)) [] (w_grid_ game_state) w_grid_upd (f_grid_ game_state) (fst obj_grid') obj_grid_upd (s0_ game_state) s1'' lookUp 0)
+                         (\e -> gplcError w_grid_upd (f_grid_ game_state) obj_grid_upd (s0_ game_state) (s1_ game_state) e)
+      linkGplc0 phase_flag (x0:x1:xs) (z0:z1:z2:zs) (game_state {f_grid_ = snd_ run_gplc', s0_ = fourth run_gplc', s1_ = fifth run_gplc'})
+                           (fst_ run_gplc') (third run_gplc') lookUp False
+    else linkGplc0 phase_flag (x0:x1:xs) (z0:z1:z2:zs) game_state w_grid_upd obj_grid_upd lookUp False
   else if phase_flag == True then do
-    if sig_q s1 == [] then do
+    if sig_q (s1_ game_state) == [] then do
       update <- forceUpdate0 w_grid_upd [] 0
-      return (w_grid // update, f_grid, obj_grid // (atomiseObjGridUpd 0 obj_grid_upd [] obj_grid), s0, s1 {sig_q = next_sig_q s1, next_sig_q = []})
+      return game_state {w_grid_ = w_grid_ game_state // update, obj_grid_ = obj_grid_ game_state // (atomiseObjGridUpd 0 obj_grid_upd [] (obj_grid_ game_state))}
     else do
-      reportState ((debug_enabled 1) && sig_q s1 /= []) 2 [] []
-                  ("\n\ngame_t = " ++ show (fst__ (gameClock s0)) ++ "\n----------------\n\nsignal queue: " ++ show (sig_q s1) ++ "\n")
-      if objType (obj_grid ! target1) == 1 || objType (obj_grid ! target1) == 3 then do
+      reportState ((debug_enabled 1) && sig_q (s1_ game_state) /= []) 2 [] []
+                  ("\n\ngame_t = " ++ show (fst__ (gameClock (s0_ game_state))) ++ "\n----------------\n\nsignal queue: " ++ show (sig_q (s1_ game_state)) ++ "\n")
+      if objType ((obj_grid_ game_state) ! target1) == 1 || objType ((obj_grid_ game_state) ! target1) == 3 then do
         reportState (debug_enabled 1) 2 [] []
-                    ("\nGPLC program [" ++ programName (obj_grid ! target1) ++ "] run at Obj_grid "
-                    ++ show (((sig_q s1), 516) !! (1 :: Int), ((sig_q s1), 517) !! (2 :: Int), ((sig_q s1), 518) !! (3 :: Int)))
-        run_gplc' <- catch (runGplc (program (obj_grid'' ! target1)) [] w_grid w_grid_upd f_grid obj_grid'' obj_grid_upd s0 s1' lookUp 0)
-                           (\e -> gplcError w_grid_upd f_grid obj_grid_upd s0 s1 e)
-        linkGplc0 True (x0:x1:xs) (z0:z1:z2:zs) w_grid (fst_ run_gplc') (snd_ run_gplc') obj_grid (third run_gplc') (fourth run_gplc') (fifth run_gplc') lookUp
-                  False
+                    ("\nGPLC program [" ++ programName ((obj_grid_ game_state) ! target1) ++ "] run at Obj_grid "
+                    ++ show (((sig_q (s1_ game_state)), 516) !! (1 :: Int), ((sig_q (s1_ game_state)), 517) !! (2 :: Int), ((sig_q (s1_ game_state)), 518) !! (3 :: Int)))
+        run_gplc' <- catch (runGplc (program (obj_grid'' ! target1)) [] (w_grid_ game_state) w_grid_upd (f_grid_ game_state) obj_grid'' obj_grid_upd (s0_ game_state) s1' lookUp 0)
+                           (\e -> gplcError w_grid_upd (f_grid_ game_state) obj_grid_upd (s0_ game_state) (s1_ game_state) e)
+        linkGplc0 True (x0:x1:xs) (z0:z1:z2:zs) (game_state {f_grid_ = snd_ run_gplc', s0_ = fourth run_gplc', s1_ = fifth run_gplc'})
+                  (fst_ run_gplc') (third run_gplc') lookUp False
       else do
         putStr ("\nSignal addressed to Obj_grid " ++ show_obj_grid ++ " but this element is not set to run programs from.")
-        linkGplc0 True (x0:x1:xs) (z0:z1:z2:zs) w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 (s1 {sig_q = drop 4 (sig_q s1)}) lookUp False
+        linkGplc0 True (x0:x1:xs) (z0:z1:z2:zs) (game_state {s1_ = (s1_ game_state) {sig_q = drop 4 (sig_q (s1_ game_state))}}) w_grid_upd obj_grid_upd lookUp False
   else do
     update <- forceUpdate0 w_grid_upd [] 0
-    return (w_grid // update, f_grid, obj_grid // (atomiseObjGridUpd 0 obj_grid_upd [] obj_grid), s0, s1)
+    return game_state {w_grid_ = w_grid_ game_state // update, obj_grid_ = obj_grid_ game_state // (atomiseObjGridUpd 0 obj_grid_upd [] (obj_grid_ game_state))}
 
 linkGplc1 :: Play_state0 -> Play_state1 -> Array (Int, Int, Int) Obj_grid -> Int -> IO Play_state1
 linkGplc1 s0 s1 obj_grid mode =
@@ -1553,34 +1554,39 @@ s0' pos_uv pos_w0 pos_w1 vel0 vel1 angle' game_clock' mag_r mag_j f_rate f look_
 
 -- updatePlay is called from Main.startGame through the two wrapper functions below.  This means that if an exception occurs
 -- within the game logic thread control is returned to the rendering thread, allowing for the options of a game logic thread restart or engine shutdown.
-updatePlayWrapper0 :: Io_box -> MVar (Play_state0, Array (Int, Int, Int) Wall_grid, Game_state) -> Play_state0
-                      -> Play_state1 -> Bool -> Integer -> (Float, Float, Float, Float) -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid
-                      -> Array (Int, Int, Int) Obj_grid -> UArray (Int, Int) Float -> Game_state -> (Array Int Source, Int) -> Integer -> MVar Integer
+updatePlayWrapper0 :: Io_box -> MVar Game_state -> Game_state
+                      -> Bool -> Integer -> (Float, Float, Float, Float)
+                      -> UArray (Int, Int) Float -> (Array Int Source, Int) -> Integer -> MVar Integer
                       -> SEQ.Seq Integer -> Float -> IO ()
-updatePlayWrapper0 io_box state_ref s0 s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up save_state
+updatePlayWrapper0 io_box state_ref game_state in_flight min_frame_t (g, f, mag_r, mag_j) look_up
                    sound_array t_last t_log t_seq f_rate =
-  catch (updatePlay io_box state_ref s0 s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid look_up save_state sound_array t_last t_log t_seq f_rate)
+  catch (updatePlay io_box state_ref game_state in_flight min_frame_t (g, f, mag_r, mag_j) look_up sound_array t_last t_log t_seq f_rate)
         (\e -> updatePlayWrapper1 state_ref e)
 
-updatePlayWrapper1 :: MVar (Play_state0, Array (Int, Int, Int) Wall_grid, Game_state) -> SomeException -> IO ()
+updatePlayWrapper1 :: MVar Game_state -> SomeException -> IO ()
 updatePlayWrapper1 state_ref e = do
   putStr ("\n\nGame logic thread exception: " ++ show e)
-  putMVar state_ref (ps0_init {message_ = [(-3, [])]}, defWGridArr, def_save_state)
+  putMVar state_ref (def_game_state {exit_context = ExitGame})
 
 -- This function recurses once for each recursion of showFrame (and rendering of that frame) and is the central branching point of the game logic thread.
-updatePlay :: Io_box -> MVar (Play_state0, Array (Int, Int, Int) Wall_grid, Game_state) -> Play_state0 -> Play_state1 -> Bool -> Integer
-              -> (Float, Float, Float, Float) -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) Obj_grid
-              -> UArray (Int, Int) Float -> Game_state -> (Array Int Source, Int) -> Integer -> MVar Integer -> SEQ.Seq Integer -> Float -> IO ()
-updatePlay io_box state_ref s0 s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid lookUp save_state sound_array t_last t_log t_seq f_rate =
-  let det = detectColl (truncate (pos_w s0)) (pos_u s0, pos_v s0) (((vel s0), 522) !! (0 :: Int) / f_rate, ((vel s0), 523) !! (1 :: Int) / f_rate)
+updatePlay :: Io_box -> MVar Game_state -> Game_state -> Bool -> Integer
+              -> (Float, Float, Float, Float)
+              -> UArray (Int, Int) Float -> (Array Int Source, Int) -> Integer -> MVar Integer -> SEQ.Seq Integer -> Float -> IO ()
+updatePlay io_box state_ref game_state in_flight min_frame_t (g, f, mag_r, mag_j) lookUp sound_array t_last t_log t_seq f_rate =
+  let w_grid = w_grid_ game_state
+      f_grid = f_grid_ game_state
+      obj_grid = obj_grid_ game_state
+      s0 = s0_ game_state
+      s1 = s1_ game_state
+      det = detectColl (truncate (pos_w s0)) (pos_u s0, pos_v s0)
+                       (((vel s0), 522) !! (0 :: Int) / f_rate, ((vel s0), 523) !! (1 :: Int) / f_rate)
                        obj_grid w_grid
       pos_w0 = floorSurf0 ((det, 524) !! (0 :: Int)) ((det, 525) !! (1 :: Int)) (pos_w s0) f_grid
       pos_w1 = (pos_w s0 + (((vel s0), 648) !! (2 :: Int)) / f_rate)
       floor = pos_w0
       vel0 = updateVel (vel s0) [0, 0, 0] ((drop 2 det) ++ [0]) f_rate f
       vel1 = updateVel (vel s0) [0, 0, g] ((drop 2 det) ++ [0]) f_rate 0
-      game_clock' = updateGameClock (gameClock s0) (f_rate * 1.25)
-      s0_ = \x -> x {message_ = []}
+      game_clock' = updateGameClock (gameClock (s0_ game_state)) (f_rate * 1.25)
       angle' = modAngle_ (angle_ s0) f_rate
       det_fps = \t_current -> determineFps t_seq t_current
       s0'_ = s0' det pos_w0 pos_w1 vel0 vel1 angle' (snd game_clock') mag_r mag_j f_rate f lookUp t_seq
@@ -1589,12 +1595,12 @@ updatePlay io_box state_ref s0 s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_g
   mainLoopEvent
   control <- readIORef (fromJust (control_ io_box))
   writeIORef (fromJust (control_ io_box)) 0
-  link0 <- linkGplc0 (fst game_clock') (drop 4 det) player_voxel w_grid [] f_grid obj_grid [] s0 (s1 {sig_q = prioritiseNpcs (sig_q s1) [] []}) lookUp True
+  link0 <- linkGplc0 (fst game_clock') (drop 4 det) player_voxel game_state [] [] lookUp True
   link1 <- linkGplc1 s0 s1 obj_grid 0
   link1_ <- linkGplc1 s0 s1 obj_grid 1
   t <- getTime Monotonic
   if t_last == 0 then
-    updatePlay io_box state_ref s0 s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid lookUp save_state sound_array (toNanoSecs t) t_log
+    updatePlay io_box state_ref game_state in_flight min_frame_t (g, f, mag_r, mag_j) lookUp sound_array (toNanoSecs t) t_log
                (third_ (det_fps (toNanoSecs t))) 60
   else do
     if toNanoSecs t - t_last < min_frame_t then do
@@ -1606,109 +1612,103 @@ updatePlay io_box state_ref s0 s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_g
   if mod (fst__ (gameClock s0)) 40 == 0 then do
     if on_screen_metrics s0 > 0 then do
       playMusic (fst__ (gameClock s0)) (snd sound_array) (fst sound_array)
-      updatePlay io_box state_ref (s0'_ (toNanoSecs t) control s0 12) s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid lookUp save_state
+      updatePlay io_box state_ref (game_state {s0_ = s0'_ (toNanoSecs t) control s0 12}) in_flight min_frame_t (g, f, mag_r, mag_j) lookUp
                  sound_array t_last t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
     else do
       playMusic (fst__ (gameClock s0)) (snd sound_array) (fst sound_array)
-      updatePlay io_box state_ref (s0 {gameClock = snd game_clock'}) s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid lookUp save_state
+      updatePlay io_box state_ref (game_state {s0_ = s0 {gameClock = snd game_clock'}}) in_flight min_frame_t (g, f, mag_r, mag_j) lookUp
                  sound_array t_last t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
   else if control == 2 then do
-    choice <- runMenu (pauseText (showGameTime (fst__ (gameClock s0)) [] False) s1 (difficulty s1)) [] io_box (-0.75) (-0.75) 1 0 0 s0 1
+    choice <- runMenu (pauseText (showGameTime (fst__ (gameClock s0)) [] False) s1 (difficulty s1)) [] io_box (-0.75)
+                      (-0.75) 1 0 0 s0 1
     if choice == 1 then
-      updatePlay io_box state_ref (s0_ s0) s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid lookUp save_state sound_array t'' t_log
+      updatePlay io_box state_ref (game_state {s0_ = s0 {message_ = []}}) in_flight min_frame_t (g, f, mag_r, mag_j) lookUp sound_array t'' t_log
                  (third_ (det_fps t'')) (fst__ (det_fps t''))
     else if choice == 2 then do
-      putMVar state_ref (s0 {message_ = [(-4, [])]}, w_grid,
-                         Game_state {is_set = True, w_grid_ = w_grid, f_grid_ = f_grid, obj_grid_ = obj_grid, s0_ = s0, s1_ = s1, map_transit_string = ([], []),
-                                     wGridDiffs = wGridDiffs save_state, fGridDiffs = fGridDiffs save_state, objGridDiffs = objGridDiffs save_state})
-      updatePlay io_box state_ref (s0_ s0) s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid lookUp save_state sound_array t'' t_log
+      putMVar state_ref (game_state {exit_context = SaveGame})
+      updatePlay io_box state_ref (game_state {s0_ = s0 {message_ = []}}) in_flight min_frame_t (g, f, mag_r, mag_j) lookUp sound_array t'' t_log
                  (third_ (det_fps t'')) (fst__ (det_fps t''))
     else if choice == 3 then do
-      putMVar state_ref (s0 {message_ = [(-1, [])]}, w_grid, save_state)
-      updatePlay io_box state_ref (s0_ s0) s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid lookUp save_state sound_array t'' t_log
+      putMVar state_ref (game_state {exit_context = ReturnMainMenu})
+      updatePlay io_box state_ref (game_state {s0_ = s0 {message_ = []}}) in_flight min_frame_t (g, f, mag_r, mag_j) lookUp sound_array t'' t_log
                  (third_ (det_fps t'')) (fst__ (det_fps t''))
     else do
-      putMVar state_ref (s0 {message_ = [(-3, [])]}, w_grid, save_state)
-      updatePlay io_box state_ref (s0_ s0) s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid lookUp save_state sound_array t'' t_log
+      putMVar state_ref (game_state {exit_context = ExitGame})
+      updatePlay io_box state_ref (game_state {s0_ = s0 {message_ = []}}) in_flight min_frame_t (g, f, mag_r, mag_j) lookUp sound_array t'' t_log
                  (third_ (det_fps t'')) (fst__ (det_fps t''))
   else if control == 10 then do
-    putMVar state_ref (s0, w_grid, save_state)
-    updatePlay io_box state_ref (s0_ (fourth link0)) ((fifth link0) {sig_q = sig_q s1 ++ [2, 0, 0, 0]}) in_flight min_frame_t (g, f, mag_r, mag_j) (fst_ link0)
-               (snd_ link0) (third link0) lookUp save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
+    putMVar state_ref game_state
+    updatePlay io_box state_ref (link0 {s0_ = (s0_ link0) {message_ = []}, s1_ = (s1_ link0) {sig_q = sig_q (s1_ link0) ++ [2, 0, 0, 0]}}) in_flight min_frame_t
+               (g, f, mag_r, mag_j) lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
   else if control == 11 then do
-    putMVar state_ref (s0, w_grid, save_state)
+    putMVar state_ref game_state
     if view_mode s0 == 0 then
-      updatePlay io_box state_ref (s0_ ((fourth link0) {view_mode = 1})) (fifth link0) in_flight min_frame_t (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0)
-                 (third link0) lookUp save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
+      updatePlay io_box state_ref (link0 {s0_ = (s0_ link0) {message_ = [], view_mode = 1}}) in_flight min_frame_t (g, f, mag_r, mag_j)
+                 lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
     else
-      updatePlay io_box state_ref (s0_ ((fourth link0) {view_mode = 0})) (fifth link0) in_flight min_frame_t (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0)
-                 (third link0) lookUp save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
+      updatePlay io_box state_ref (link0 {s0_ = (s0_ link0) {message_ = [], view_mode = 0}}) in_flight min_frame_t (g, f, mag_r, mag_j)
+                 lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
   else if control == 12 then do
-    putMVar state_ref (s0, w_grid, save_state)
-    updatePlay io_box state_ref (s0_ ((fourth link0) {view_angle = modAngle (view_angle s0) 5})) (fifth link0) in_flight min_frame_t (g, f, mag_r, mag_j)
-               (fst_ link0) (snd_ link0) (third link0) lookUp save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
+    putMVar state_ref game_state
+    updatePlay io_box state_ref (link0 {s0_ = (s0_ link0) {message_ = [], view_angle = modAngle (view_angle (s0_ link0)) 5}}) in_flight min_frame_t
+               (g, f, mag_r, mag_j) lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
   else if control == 13 then do
-    putMVar state_ref (s0, w_grid, save_state)
-    updatePlay io_box state_ref (s0_ (fourth link0)) ((fifth link0) {sig_q = sig_q s1 ++ [2, 0, 0, 1]}) in_flight min_frame_t (g, f, mag_r, mag_j) (fst_ link0)
-               (snd_ link0) (third link0) lookUp save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
+    putMVar state_ref game_state
+    updatePlay io_box state_ref (link0 {s0_ = (s0_ link0) {message_ = []}, s1_ = (s1_ link0) {sig_q = sig_q (s1_ link0) ++ [2, 0, 0, 1]}}) in_flight min_frame_t
+               (g, f, mag_r, mag_j) lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
   else if message s1 /= [] then do
     event <- procMsg0 (message s1) s0 s1 io_box (fst sound_array)
-    if third_ event /= ([], []) then do
-      putMVar state_ref (s0 {message_ = [(-5, [])]}, w_grid, save_state {map_transit_string = third_ event})
-      updatePlay io_box state_ref (s0_ s0) s1 in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid lookUp save_state sound_array t'' t_log
-                 (third_ (det_fps t'')) (fst__ (det_fps t''))
-    else do
-      putMVar state_ref (fst__ event, w_grid, save_state)
-      updatePlay io_box state_ref (s0_ (fst__ event)) (snd__ event) in_flight min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid lookUp save_state
+    putMVar state_ref (game_state {exit_context = third_ event, s0_ = fst__ event})
+    updatePlay io_box state_ref (game_state {s0_ = (fst__ event) {message_ = []}, s1_ = snd__ event}) in_flight min_frame_t (g, f, mag_r, mag_j) lookUp
                  sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
   else
     if in_flight == False then
       if (pos_w s0) - floor > 0.02 then do
-        putMVar state_ref (s0, w_grid, save_state)
-        updatePlay io_box state_ref (s0'_ 0 control (s0_ (fourth link0)) 0) (fifth link0) True min_frame_t (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0)
-                   (third link0) lookUp save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
+        putMVar state_ref game_state
+        updatePlay io_box state_ref (link0 {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 0}) True min_frame_t (g, f, mag_r, mag_j)
+                   lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
       else if control > 2 && control < 7 then do
-        putMVar state_ref (s0, w_grid, save_state)
-        updatePlay io_box state_ref (s0'_ 0 control (s0_ (fourth link0)) 1) (fifth link0) False min_frame_t (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0)
-                   (third link0) lookUp save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
+        putMVar state_ref game_state
+        updatePlay io_box state_ref (link0 {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 1}) True min_frame_t (g, f, mag_r, mag_j)
+                   lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
       else if control == 7 then do
-        putMVar state_ref (s0, w_grid, save_state)
-        updatePlay io_box state_ref (s0'_ 0 control (s0_ (fourth link0)) 2) (fifth link0) False min_frame_t (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0)
-                   (third link0) lookUp save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
+        putMVar state_ref game_state
+        updatePlay io_box state_ref (link0 {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 2}) True min_frame_t (g, f, mag_r, mag_j)
+                   lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
       else if control == 8 then do
-        putMVar state_ref (s0, w_grid, save_state)
-        updatePlay io_box state_ref (s0'_ 0 control (s0_ (fourth link0)) 3) (fifth link0) False min_frame_t (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0)
-                   (third link0) lookUp save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
+        putMVar state_ref game_state
+        updatePlay io_box state_ref (link0 {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 3}) True min_frame_t (g, f, mag_r, mag_j)
+                   lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
       else if control == 9 && jumpAllowed f_grid s0 == True then do
-        putMVar state_ref (s0, w_grid, save_state)
-        updatePlay io_box state_ref (s0'_ 0 control (s0_ (fourth link0)) 4) (fifth link0) False min_frame_t (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0)
-                   (third link0) lookUp save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
+        putMVar state_ref game_state
+        updatePlay io_box state_ref (link0 {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 4}) True min_frame_t (g, f, mag_r, mag_j)
+                   lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
       else do
-        putMVar state_ref (s0, w_grid, save_state)
-        updatePlay io_box state_ref (s0'_ 0 control (s0_ (fourth link0)) 6) (fifth link0) False min_frame_t (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0)
-                   (third link0) lookUp save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
+        putMVar state_ref game_state
+        updatePlay io_box state_ref (link0 {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 6}) True min_frame_t (g, f, mag_r, mag_j)
+                   lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
     else if in_flight == True && (pos_w s0) > floor then
       if control == 7 then do
-        putMVar state_ref (s0, w_grid, save_state)
-        updatePlay io_box state_ref (s0'_ 0 control (s0_ (fourth link0)) 7) (fifth link0) True min_frame_t (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0)
-                   (third link0) lookUp save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
+        putMVar state_ref game_state
+        updatePlay io_box state_ref (link0 {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 7}) True min_frame_t (g, f, mag_r, mag_j)
+                   lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
       else if control == 8 then do
-        putMVar state_ref (s0, w_grid, save_state)
-        updatePlay io_box state_ref (s0'_ 0 control (s0_ (fourth link0)) 8) (fifth link0) True min_frame_t (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0)
-                   (third link0) lookUp save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
+        putMVar state_ref game_state
+        updatePlay io_box state_ref (link0 {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 8}) True min_frame_t (g, f, mag_r, mag_j)
+                   lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
       else do
-        putMVar state_ref (s0, w_grid, save_state)
-        updatePlay io_box state_ref (s0'_ 0 control (s0_ (fourth link0)) 9) (fifth link0) True min_frame_t (g, f, mag_r, mag_j) (fst_ link0) (snd_ link0)
-                   (third link0) lookUp save_state sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
+        putMVar state_ref game_state
+        updatePlay io_box state_ref (link0 {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 9}) True min_frame_t (g, f, mag_r, mag_j)
+                   lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
     else do
-      putMVar state_ref (s0, w_grid, save_state)
+      putMVar state_ref game_state
       if ((vel s0), 574) !! (2 :: Int) < -4 then do
-        updatePlay io_box state_ref (s0'_ 0 control (s0_ s0) 10) link1_ False min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid lookUp save_state
-                   sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
+        updatePlay io_box state_ref (game_state {s0_ = s0'_ 0 control (s0 {message_ = []}) 10, s1_ = link1_}) False min_frame_t (g, f, mag_r, mag_j)
+                   lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
       else do
-        putMVar state_ref (s0, w_grid, save_state)
-        updatePlay io_box state_ref (s0'_ 0 control (s0_ s0) 11) link1 False min_frame_t (g, f, mag_r, mag_j) w_grid f_grid obj_grid lookUp save_state
-                   sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
+        putMVar state_ref game_state
+        updatePlay io_box state_ref (game_state {s0_ = s0'_ 0 control (s0 {message_ = []}) 11, s1_ = link1}) False min_frame_t (g, f, mag_r, mag_j)
+                   lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
 
 -- This function is used to convert integers to their representation in the engine's message tile reference format.
 convMsg :: Int -> [Int]
@@ -1737,17 +1737,17 @@ procMsg1 :: [[Int]] -> [(Int, [Int])]
 procMsg1 [] = []
 procMsg1 (x:xs) = (head x, tail x) : procMsg1 xs
 
-procMsg0 :: [Int] -> Play_state0 -> Play_state1 -> Io_box -> Array Int Source -> IO (Play_state0, Play_state1, ([Char], [Char]))
-procMsg0 [] s0 s1 io_box sound_array = return (s0, s1 {state_chg = 0, message = []}, ([], []))
+procMsg0 :: [Int] -> Play_state0 -> Play_state1 -> Io_box -> Array Int Source -> IO (Play_state0, Play_state1, ExitContext)
+procMsg0 [] s0 s1 io_box sound_array = return (s0, s1 {state_chg = 0, message = []}, None)
 procMsg0 (x0:x1:xs) s0 s1 io_box sound_array =
   let signal_ = (head (splitOn [-1] (take x1 xs)))
       map_unlock_code = binaryToHex (listArray (0, 127) (encodeStateValues s0 s1)) 0
   in do
-  if x0 == -5 then return (s0, s1, ("map" ++ show ((xs, 636) !! (0 :: Int)) ++ ".dan", map_unlock_code))
-  else if x0 < 0 then return (s0 {message_ = message_ s0 ++ [(x0, take x1 xs)]}, s1, ([], []))
+  if x0 == -5 then return (s0, s1, None)
+  else if x0 < 0 then return (s0 {message_ = message_ s0 ++ [(x0, take x1 xs)]}, s1, None)
   else if x0 == 0 && state_chg s1 == 1 && health s1 <= 0 then do
     play_ (sound_array ! 20)
-    return (s0 {message_ = [(-2, take x1 xs)]}, s1, ([], []))
+    return (s0 {message_ = [(-2, take x1 xs)]}, s1, PlayerDied)
   else if x0 == 0 && state_chg s1 == 1 then procMsg0 (drop x1 xs) (s0 {message_ = message_ s0 ++ [(600, x0 : take x1 xs ++ msg1 ++ convMsg (health s1))]}) s1
                                                      io_box sound_array
   else if x0 == 0 && state_chg s1 == 2 then procMsg0 (drop x1 xs) (s0 {message_ = message_ s0 ++ [(600, x0 : take x1 xs ++ msg2 ++ convMsg (ammo s1))]}) s1

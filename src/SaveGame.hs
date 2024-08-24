@@ -58,30 +58,26 @@ loadGameStateFile1 c bs w_grid_upd f_grid_upd obj_grid_upd s0 s1 =
 loadGameStateFile2 :: [Char] -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) Obj_grid
                       -> WGridDiffContainer -> FGridDiffContainer -> ObjGridDiffContainer -> Play_state0 -> Play_state1 -> (Int, Int) -> Game_state
 loadGameStateFile2 map_file w_grid f_grid obj_grid w_grid_upd f_grid_upd obj_grid_upd s0 s1 (u_offset, v_offset)
-  | map_file == "map1.dan" = Game_state {is_set = False,
+  | map_file == "map1.dan" = Game_state {exit_context = None,
                                          w_grid_ = w_grid // applyLoadTransform (procWGridUpd (map1WDiff w_grid_upd) w_grid u_offset v_offset) (u_offset, v_offset),
                                          f_grid_ = f_grid // applyLoadTransform (map1FDiff f_grid_upd) (u_offset, v_offset),
                                          obj_grid_ = obj_grid // applyLoadTransform (map1ODiff obj_grid_upd) (u_offset, v_offset),
-                                         s0_ = s0, s1_ = s1, map_transit_string = ([], []),
-                                         wGridDiffs = w_grid_upd, fGridDiffs = f_grid_upd, objGridDiffs = obj_grid_upd}
-  | map_file == "map2.dan" = Game_state {is_set = False,
+                                         s0_ = s0, s1_ = s1, save_file = LBS.empty}
+  | map_file == "map2.dan" = Game_state {exit_context = None,
                                          w_grid_ = w_grid // applyLoadTransform (procWGridUpd (map2WDiff w_grid_upd) w_grid u_offset v_offset) (u_offset, v_offset),
                                          f_grid_ = f_grid // applyLoadTransform (map2FDiff f_grid_upd) (u_offset, v_offset),
                                          obj_grid_ = obj_grid // applyLoadTransform (map2ODiff obj_grid_upd) (u_offset, v_offset),
-                                         s0_ = s0, s1_ = s1, map_transit_string = ([], []),
-                                         wGridDiffs = w_grid_upd, fGridDiffs = f_grid_upd, objGridDiffs = obj_grid_upd}
-  | map_file == "map3.dan" = Game_state {is_set = False,
+                                         s0_ = s0, s1_ = s1, save_file = LBS.empty}
+  | map_file == "map3.dan" = Game_state {exit_context = None,
                                          w_grid_ = w_grid // applyLoadTransform (procWGridUpd (map3WDiff w_grid_upd) w_grid u_offset v_offset) (u_offset, v_offset),
                                          f_grid_ = f_grid // applyLoadTransform (map3FDiff f_grid_upd) (u_offset, v_offset),
                                          obj_grid_ = obj_grid // applyLoadTransform (map3ODiff obj_grid_upd) (u_offset, v_offset),
-                                         s0_ = s0, s1_ = s1, map_transit_string = ([], []),
-                                         wGridDiffs = w_grid_upd, fGridDiffs = f_grid_upd, objGridDiffs = obj_grid_upd}
-  | map_file == "map4.dan" = Game_state {is_set = False,
+                                         s0_ = s0, s1_ = s1, save_file = LBS.empty}
+  | map_file == "map4.dan" = Game_state {exit_context = None,
                                          w_grid_ = w_grid // applyLoadTransform (procWGridUpd (map4WDiff w_grid_upd) w_grid u_offset v_offset) (u_offset, v_offset),
                                          f_grid_ = f_grid // applyLoadTransform (map4FDiff f_grid_upd) (u_offset, v_offset),
                                          obj_grid_ = obj_grid // applyLoadTransform (map4ODiff obj_grid_upd) (u_offset, v_offset),
-                                         s0_ = s0, s1_ = s1, map_transit_string = ([], []),
-                                         wGridDiffs = w_grid_upd, fGridDiffs = f_grid_upd, objGridDiffs = obj_grid_upd}
+                                         s0_ = s0, s1_ = s1, save_file = LBS.empty}
 
 loadGameStateFile3 :: LBS.ByteString -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) Obj_grid
                       -> [Char] -> (Int, Int) -> Game_state
