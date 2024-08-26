@@ -1658,8 +1658,8 @@ updatePlay io_box state_ref game_state in_flight min_frame_t (g, f, mag_r, mag_j
                (g, f, mag_r, mag_j) lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
   else if message s1 /= [] then do
     event <- procMsg0 (message s1) s0 s1 io_box (fst sound_array)
-    putMVar state_ref (game_state {s0_ = fst event})
-    updatePlay io_box state_ref (game_state {s0_ = (fst event) {message_ = []}, s1_ = snd event}) in_flight min_frame_t (g, f, mag_r, mag_j) lookUp
+    putMVar state_ref (game_state {event_context = third_ event, s0_ = fst__ event})
+    updatePlay io_box state_ref (game_state {s0_ = (fst__ event) {message_ = []}, s1_ = snd__ event}) in_flight min_frame_t (g, f, mag_r, mag_j) lookUp
                  sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
   else
     if in_flight == False then
@@ -1669,23 +1669,23 @@ updatePlay io_box state_ref game_state in_flight min_frame_t (g, f, mag_r, mag_j
                    lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
       else if control > 2 && control < 7 then do
         putMVar state_ref game_state
-        updatePlay io_box state_ref (link0 {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 1}) True min_frame_t (g, f, mag_r, mag_j)
+        updatePlay io_box state_ref (link0 {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 1}) False min_frame_t (g, f, mag_r, mag_j)
                    lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
       else if control == 7 then do
         putMVar state_ref game_state
-        updatePlay io_box state_ref (link0 {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 2}) True min_frame_t (g, f, mag_r, mag_j)
+        updatePlay io_box state_ref (link0 {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 2}) False min_frame_t (g, f, mag_r, mag_j)
                    lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
       else if control == 8 then do
         putMVar state_ref game_state
-        updatePlay io_box state_ref (link0 {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 3}) True min_frame_t (g, f, mag_r, mag_j)
+        updatePlay io_box state_ref (link0 {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 3}) False min_frame_t (g, f, mag_r, mag_j)
                    lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
       else if control == 9 && jumpAllowed f_grid s0 == True then do
         putMVar state_ref game_state
-        updatePlay io_box state_ref (link0 {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 4}) True min_frame_t (g, f, mag_r, mag_j)
+        updatePlay io_box state_ref (link0 {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 4}) False min_frame_t (g, f, mag_r, mag_j)
                    lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
       else do
         putMVar state_ref game_state
-        updatePlay io_box state_ref (link0 {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 6}) True min_frame_t (g, f, mag_r, mag_j)
+        updatePlay io_box state_ref (link0 {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 6}) False min_frame_t (g, f, mag_r, mag_j)
                    lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
     else if in_flight == True && (pos_w s0) > floor then
       if control == 7 then do
@@ -1737,17 +1737,17 @@ procMsg1 :: [[Int]] -> [(Int, [Int])]
 procMsg1 [] = []
 procMsg1 (x:xs) = (head x, tail x) : procMsg1 xs
 
-procMsg0 :: [Int] -> Play_state0 -> Play_state1 -> Io_box -> Array Int Source -> IO (Play_state0, Play_state1)
-procMsg0 [] s0 s1 io_box sound_array = return (s0, s1 {state_chg = 0, message = []})
+procMsg0 :: [Int] -> Play_state0 -> Play_state1 -> Io_box -> Array Int Source -> IO (Play_state0, Play_state1, EventContext)
+procMsg0 [] s0 s1 io_box sound_array = return (s0, s1 {state_chg = 0, message = []}, None)
 procMsg0 (x0:x1:xs) s0 s1 io_box sound_array =
   let signal_ = (head (splitOn [-1] (take x1 xs)))
       map_unlock_code = binaryToHex (listArray (0, 127) (encodeStateValues s0 s1)) 0
   in do
-  if x0 == -5 then return (s0, s1)
-  else if x0 < 0 then return (s0 {message_ = message_ s0 ++ [(x0, take x1 xs)]}, s1)
+  if x0 == -5 then return (s0, s1, None)
+  else if x0 < 0 then return (s0 {message_ = message_ s0 ++ [(x0, take x1 xs)]}, s1, None)
   else if x0 == 0 && state_chg s1 == 1 && health s1 <= 0 then do
     play_ (sound_array ! 20)
-    return (s0 {message_ = [(-2, take x1 xs)]}, s1)
+    return (s0 {message_ = [(-2, take x1 xs)]}, s1, PlayerDied)
   else if x0 == 0 && state_chg s1 == 1 then procMsg0 (drop x1 xs) (s0 {message_ = message_ s0 ++ [(600, x0 : take x1 xs ++ msg1 ++ convMsg (health s1))]}) s1
                                                      io_box sound_array
   else if x0 == 0 && state_chg s1 == 2 then procMsg0 (drop x1 xs) (s0 {message_ = message_ s0 ++ [(600, x0 : take x1 xs ++ msg2 ++ convMsg (ammo s1))]}) s1

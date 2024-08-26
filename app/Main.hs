@@ -288,8 +288,10 @@ genProbSeq i0 i1 i2 g = listArray (i0, i1) (drop i2 (randomRs (0, 99) g))
 
 selectState :: EventContext -> Game_state -> Game_state -> Game_state
 selectState context game_state save_state
-  | context == None || context == PlayerDiedNoSave = game_state
-  | context == LoadGame || context == PlayerDiedSaveExists = save_state
+  | context == None = game_state
+  | context == PlayerDied && gameClock (s0_ save_state) == (1, 1, 1) = game_state
+  | context == PlayerDied && gameClock (s0_ save_state) /= (1, 1, 1) = save_state {event_context = None}
+  | context == LoadGame = save_state {event_context = None}
 
 -- When a locked map is used to initialise the game state the unlocking logic is applied here.
 unlockWrapper :: [Char] -> Play_state0 -> Play_state1 -> (Play_state0, Play_state1)
@@ -347,7 +349,8 @@ startGame control_ref uniform p_bind map_text conf_reg context u v w g f mag_r m
       save_transform = detMapTransform (cfg' "map_file") "save" u_limit v_limit
       load_transform = detMapTransform (cfg' "map_file") "load" u_limit v_limit
   in do
-  if context == None || context == LoadGame || context == PlayerDiedNoSave || context == PlayerDiedSaveExists then do
+  putStr ("\nEngine event context: " ++ show context)
+  if context == None || context == LoadGame || context == PlayerDied then do
     p_mt_matrix <- mallocBytes (glfloat * 128)
     p_f_table0 <- callocBytes (int_ * 120000)
     p_f_table1 <- callocBytes (int_ * 37500)
@@ -654,7 +657,7 @@ showFrame p_bind uniform (p_mt_matrix, p_light_buffer) filter_table u v w a a' s
     showWalls filtered_surv0 uniform p_bind (plusPtr p_mt_matrix (glfloat * 16)) u v w a lookUp (rend_mode (s0_ game_state))
     showObject (ceiling_model : filtered_surv1) uniform p_bind (plusPtr p_mt_matrix (glfloat * 48)) u v w a lookUp (rend_mode (s0_ game_state))
   msg_residue <- handleMessage0 (handleMessage1 (message_ (s0_ game_state)) msg_queue 0 3) uniform p_bind 0
-  if event_context game_state == PlayerDiedSaveExists || event_context game_state == PlayerDiedNoSave then do
+  if event_context game_state == PlayerDied then do
     threadDelay 5000000
     return game_state
   else if event_context game_state == None then do

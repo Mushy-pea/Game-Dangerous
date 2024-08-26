@@ -226,7 +226,7 @@ instance Binary Obj_grid where
            c <- get
            return (Obj_grid {objType = a, program = b, programName = c})
 
-data EventContext = None | SaveGame | ReturnMainMenu | ExitGame | PlayerDiedSaveExists | PlayerDiedNoSave | LoadGame deriving Eq
+data EventContext = None | SaveGame | ReturnMainMenu | ExitGame | PlayerDied | LoadGame deriving (Eq, Show)
 
 data Game_state = Game_state {event_context :: EventContext, w_grid_ :: Array (Int, Int, Int) Wall_grid, f_grid_ :: Array (Int, Int, Int) Floor_grid,
                               obj_grid_ :: Array (Int, Int, Int) Obj_grid, s0_ :: Play_state0, s1_ :: Play_state1, save_file :: LBS.ByteString}
