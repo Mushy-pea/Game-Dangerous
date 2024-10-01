@@ -27,7 +27,6 @@ import Data.Coerce
 import System.Clock
 import BuildModel
 import GameSound
-import EncodeStatus
 
 -- Used to load C style arrays, which are used with certain OpenGL functions.
 loadArray :: Storable a => [a] -> Ptr a -> Int -> IO ()
@@ -1743,7 +1742,6 @@ procMsg0 :: [Int] -> Play_state0 -> Play_state1 -> Io_box -> Array Int Source ->
 procMsg0 [] s0 s1 io_box sound_array = return (s0, s1 {state_chg = 0, message = []}, None)
 procMsg0 (x0:x1:xs) s0 s1 io_box sound_array =
   let signal_ = (head (splitOn [-1] (take x1 xs)))
-      map_unlock_code = binaryToHex (listArray (0, 127) (encodeStateValues s0 s1)) 0
   in do
   if x0 == -5 then return (s0, s1, None)
   else if x0 < 0 then return (s0 {message_ = message_ s0 ++ [(x0, take x1 xs)]}, s1, None)

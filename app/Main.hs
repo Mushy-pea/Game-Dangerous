@@ -41,7 +41,6 @@ import DecompressMap
 import BuildModel
 import GameLogic
 import GameSound
-import EncodeStatus
 import SaveGame
 
 patchConfReg :: [[Char]] -> Array Int [Char] -> Array Int [Char]
@@ -288,15 +287,6 @@ selectVerboseMode "n" = False
 genProbSeq :: RandomGen g => Int -> Int -> Int -> g -> UArray Int Int
 genProbSeq i0 i1 i2 g = listArray (i0, i1) (drop i2 (randomRs (0, 99) g))
 
--- When a locked map is used to initialise the game state the unlocking logic is applied here.
-unlockWrapper :: [Char] -> Play_state0 -> Play_state1 -> (Play_state0, Play_state1)
-unlockWrapper map_unlock_code s0 s1 =
-  let bit_list = pad (decimalBinary (hexDecimal map_unlock_code 31) (2 ^ 127)) [] 127 0
-      state_values = extractStateValues (listArray (0, 127) bit_list) s0 s1 0
-  in
-  if third_ state_values == True then (fst__ state_values, snd__ state_values)
-  else error "\n\nInvalid map unlock code detected."
-
 -- This function generates the camera to clip transformation matrix that will be passed to the shaders.
 cameraToClip :: Float -> Float -> Matrix Float
 cameraToClip frustumScale0 frustumScale1 =
@@ -410,15 +400,6 @@ startGame context physics control_ref uniform p_bind map_text conf_reg sound_arr
         game_state = Game_state {event_context = None, w_grid_ = w_grid, f_grid_ = f_grid, obj_grid_ = obj_grid, s0_ = s0, s1_ = s1, save_file = LBS.empty}
         save_transform = detMapTransform (cfg' "map_file") "save" u_limit v_limit
         load_transform = detMapTransform (cfg' "map_file") "load" u_limit v_limit
-
--- Used to update the engine's configuration file when a map transit event occurs, such that the targetted map will be loaded the next time the engine is run.
-updConfigFile :: Array Int [Char] -> ([Char], [Char]) -> Bool -> IO ()
-updConfigFile conf_reg (map_file, map_unlock_code) ready_flag = do
-  if ready_flag == False then updConfigFile (updateCfg conf_reg "map_file" map_file 0) (map_file, map_unlock_code) True
-  else do
-    h <- openFile (cfg conf_reg 0 "config_file") WriteMode
-    hPutStr h (init (writeCfg (updateCfg conf_reg "map_unlock_code" map_unlock_code 0) 0))
-    hClose h
 
 -- This function determines the content of the load game menu that allows the user to load a previous game state.
 genLoadMenu :: [[Char]] -> [(Int, [Int])] -> Int -> [(Int, [Int])]
