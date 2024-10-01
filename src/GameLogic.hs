@@ -1327,7 +1327,9 @@ linkGplc0 phase_flag (x0:x1:xs) (z0:z1:z2:zs) game_state w_grid_upd obj_grid_upd
   else if phase_flag == True then do
     if sig_q (s1_ game_state) == [] then do
       update <- forceUpdate0 w_grid_upd [] 0
-      return game_state {w_grid_ = w_grid_ game_state // update, obj_grid_ = obj_grid_ game_state // (atomiseObjGridUpd 0 obj_grid_upd [] (obj_grid_ game_state))}
+      return game_state {w_grid_ = w_grid_ game_state // update,
+                         obj_grid_ = obj_grid_ game_state // (atomiseObjGridUpd 0 obj_grid_upd [] (obj_grid_ game_state)),
+                         s1_ = (s1_ game_state) {sig_q = next_sig_q (s1_ game_state), next_sig_q = []}}
     else do
       reportState ((debug_enabled 1) && sig_q (s1_ game_state) /= []) 2 [] []
                   ("\n\ngame_t = " ++ show (fst__ (gameClock (s0_ game_state))) ++ "\n----------------\n\nsignal queue: " ++ show (sig_q (s1_ game_state)) ++ "\n")
@@ -1555,12 +1557,12 @@ s0' pos_uv pos_w0 pos_w1 vel0 vel1 angle' game_clock' mag_r mag_j f_rate f look_
 -- updatePlay is called from Main.startGame through the two wrapper functions below.  This means that if an exception occurs
 -- within the game logic thread control is returned to the rendering thread, allowing for the options of a game logic thread restart or engine shutdown.
 updatePlayWrapper0 :: Io_box -> MVar Game_state -> Game_state
-                      -> Bool -> Integer -> (Float, Float, Float, Float)
+                      -> Bool -> Integer -> GamePhysics
                       -> UArray (Int, Int) Float -> (Array Int Source, Int) -> Integer -> MVar Integer
                       -> SEQ.Seq Integer -> Float -> IO ()
-updatePlayWrapper0 io_box state_ref game_state in_flight min_frame_t (g, f, mag_r, mag_j) look_up
+updatePlayWrapper0 io_box state_ref game_state in_flight min_frame_t physics look_up
                    sound_array t_last t_log t_seq f_rate =
-  catch (updatePlay io_box state_ref game_state in_flight min_frame_t (g, f, mag_r, mag_j) look_up sound_array t_last t_log t_seq f_rate)
+  catch (updatePlay io_box state_ref game_state in_flight min_frame_t physics look_up sound_array t_last t_log t_seq f_rate)
         (\e -> updatePlayWrapper1 state_ref e)
 
 updatePlayWrapper1 :: MVar Game_state -> SomeException -> IO ()
@@ -1570,9 +1572,9 @@ updatePlayWrapper1 state_ref e = do
 
 -- This function recurses once for each recursion of showFrame (and rendering of that frame) and is the central branching point of the game logic thread.
 updatePlay :: Io_box -> MVar Game_state -> Game_state -> Bool -> Integer
-              -> (Float, Float, Float, Float)
+              -> GamePhysics
               -> UArray (Int, Int) Float -> (Array Int Source, Int) -> Integer -> MVar Integer -> SEQ.Seq Integer -> Float -> IO ()
-updatePlay io_box state_ref game_state in_flight min_frame_t (g, f, mag_r, mag_j) lookUp sound_array t_last t_log t_seq f_rate =
+updatePlay io_box state_ref game_state in_flight min_frame_t physics lookUp sound_array t_last t_log t_seq f_rate =
   let w_grid = w_grid_ game_state
       f_grid = f_grid_ game_state
       obj_grid = obj_grid_ game_state
@@ -1584,12 +1586,12 @@ updatePlay io_box state_ref game_state in_flight min_frame_t (g, f, mag_r, mag_j
       pos_w0 = floorSurf0 ((det, 524) !! (0 :: Int)) ((det, 525) !! (1 :: Int)) (pos_w s0) f_grid
       pos_w1 = (pos_w s0 + (((vel s0), 648) !! (2 :: Int)) / f_rate)
       floor = pos_w0
-      vel0 = updateVel (vel s0) [0, 0, 0] ((drop 2 det) ++ [0]) f_rate f
-      vel1 = updateVel (vel s0) [0, 0, g] ((drop 2 det) ++ [0]) f_rate 0
+      vel0 = updateVel (vel s0) [0, 0, 0] ((drop 2 det) ++ [0]) f_rate (friction physics)
+      vel1 = updateVel (vel s0) [0, 0, gravity physics] ((drop 2 det) ++ [0]) f_rate 0
       game_clock' = updateGameClock (gameClock (s0_ game_state)) (f_rate * 1.25)
       angle' = modAngle_ (angle_ s0) f_rate
       det_fps = \t_current -> determineFps t_seq t_current
-      s0'_ = s0' det pos_w0 pos_w1 vel0 vel1 angle' (snd game_clock') mag_r mag_j f_rate f lookUp t_seq
+      s0'_ = s0' det pos_w0 pos_w1 vel0 vel1 angle' (snd game_clock') (mag_run physics) (mag_jump physics) f_rate (friction physics) lookUp t_seq
       player_voxel = [truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)]
   in do
   mainLoopEvent
@@ -1600,7 +1602,7 @@ updatePlay io_box state_ref game_state in_flight min_frame_t (g, f, mag_r, mag_j
   link1_ <- linkGplc1 s0 s1 obj_grid 1
   t <- getTime Monotonic
   if t_last == 0 then
-    updatePlay io_box state_ref game_state in_flight min_frame_t (g, f, mag_r, mag_j) lookUp sound_array (toNanoSecs t) t_log
+    updatePlay io_box state_ref game_state in_flight min_frame_t physics lookUp sound_array (toNanoSecs t) t_log
                (third_ (det_fps (toNanoSecs t))) 60
   else do
     if toNanoSecs t - t_last < min_frame_t then do
@@ -1612,102 +1614,102 @@ updatePlay io_box state_ref game_state in_flight min_frame_t (g, f, mag_r, mag_j
   if mod (fst__ (gameClock s0)) 40 == 0 then do
     if on_screen_metrics s0 > 0 then do
       playMusic (fst__ (gameClock s0)) (snd sound_array) (fst sound_array)
-      updatePlay io_box state_ref (game_state {s0_ = s0'_ (toNanoSecs t) control s0 12}) in_flight min_frame_t (g, f, mag_r, mag_j) lookUp
+      updatePlay io_box state_ref (game_state {s0_ = s0'_ (toNanoSecs t) control s0 12}) in_flight min_frame_t physics lookUp
                  sound_array t_last t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
     else do
       playMusic (fst__ (gameClock s0)) (snd sound_array) (fst sound_array)
-      updatePlay io_box state_ref (game_state {s0_ = s0 {gameClock = snd game_clock'}}) in_flight min_frame_t (g, f, mag_r, mag_j) lookUp
+      updatePlay io_box state_ref (game_state {s0_ = s0 {gameClock = snd game_clock'}}) in_flight min_frame_t physics lookUp
                  sound_array t_last t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
   else if control == 2 then do
-    choice <- runMenu (pauseText (showGameTime (fst__ (gameClock s0)) [] False) s1 (difficulty s1)) [] io_box (-0.75)
+    choice <- runMenu (-1) (pauseText (showGameTime (fst__ (gameClock s0)) [] False) s1 (difficulty s1)) [] io_box (-0.75)
                       (-0.75) 1 0 0 s0 1
     if choice == 1 then
-      updatePlay io_box state_ref (game_state {s0_ = s0 {message_ = []}}) in_flight min_frame_t (g, f, mag_r, mag_j) lookUp sound_array t'' t_log
+      updatePlay io_box state_ref (game_state {s0_ = s0 {message_ = []}}) in_flight min_frame_t physics lookUp sound_array t'' t_log
                  (third_ (det_fps t'')) (fst__ (det_fps t''))
     else if choice == 2 then do
       putMVar state_ref (game_state {event_context = SaveGame})
-      updatePlay io_box state_ref (game_state {s0_ = s0 {message_ = []}}) in_flight min_frame_t (g, f, mag_r, mag_j) lookUp sound_array t'' t_log
+      updatePlay io_box state_ref (game_state {s0_ = s0 {message_ = []}}) in_flight min_frame_t physics lookUp sound_array t'' t_log
                  (third_ (det_fps t'')) (fst__ (det_fps t''))
     else if choice == 3 then do
       putMVar state_ref (game_state {event_context = ReturnMainMenu})
-      updatePlay io_box state_ref (game_state {s0_ = s0 {message_ = []}}) in_flight min_frame_t (g, f, mag_r, mag_j) lookUp sound_array t'' t_log
+      updatePlay io_box state_ref (game_state {s0_ = s0 {message_ = []}}) in_flight min_frame_t physics lookUp sound_array t'' t_log
                  (third_ (det_fps t'')) (fst__ (det_fps t''))
     else do
       putMVar state_ref (game_state {event_context = ExitGame})
-      updatePlay io_box state_ref (game_state {s0_ = s0 {message_ = []}}) in_flight min_frame_t (g, f, mag_r, mag_j) lookUp sound_array t'' t_log
+      updatePlay io_box state_ref (game_state {s0_ = s0 {message_ = []}}) in_flight min_frame_t physics lookUp sound_array t'' t_log
                  (third_ (det_fps t'')) (fst__ (det_fps t''))
   else if control == 10 then do
     putMVar state_ref game_state
     updatePlay io_box state_ref (link0 {s0_ = (s0_ link0) {message_ = []}, s1_ = (s1_ link0) {sig_q = sig_q (s1_ link0) ++ [2, 0, 0, 0]}}) in_flight min_frame_t
-               (g, f, mag_r, mag_j) lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
+               physics lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
   else if control == 11 then do
     putMVar state_ref game_state
     if view_mode s0 == 0 then
-      updatePlay io_box state_ref (link0 {s0_ = (s0_ link0) {message_ = [], view_mode = 1}}) in_flight min_frame_t (g, f, mag_r, mag_j)
+      updatePlay io_box state_ref (link0 {s0_ = (s0_ link0) {message_ = [], view_mode = 1}}) in_flight min_frame_t physics
                  lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
     else
-      updatePlay io_box state_ref (link0 {s0_ = (s0_ link0) {message_ = [], view_mode = 0}}) in_flight min_frame_t (g, f, mag_r, mag_j)
+      updatePlay io_box state_ref (link0 {s0_ = (s0_ link0) {message_ = [], view_mode = 0}}) in_flight min_frame_t physics
                  lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
   else if control == 12 then do
     putMVar state_ref game_state
     updatePlay io_box state_ref (link0 {s0_ = (s0_ link0) {message_ = [], view_angle = modAngle (view_angle (s0_ link0)) 5}}) in_flight min_frame_t
-               (g, f, mag_r, mag_j) lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
+               physics lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
   else if control == 13 then do
     putMVar state_ref game_state
     updatePlay io_box state_ref (link0 {s0_ = (s0_ link0) {message_ = []}, s1_ = (s1_ link0) {sig_q = sig_q (s1_ link0) ++ [2, 0, 0, 1]}}) in_flight min_frame_t
-               (g, f, mag_r, mag_j) lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
+               physics lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
   else if message s1 /= [] then do
     event <- procMsg0 (message s1) s0 s1 io_box (fst sound_array)
     putMVar state_ref (game_state {event_context = third_ event, s0_ = fst__ event})
-    updatePlay io_box state_ref (game_state {s0_ = (fst__ event) {message_ = []}, s1_ = snd__ event}) in_flight min_frame_t (g, f, mag_r, mag_j) lookUp
-                 sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
+    updatePlay io_box state_ref (game_state {s0_ = (fst__ event) {message_ = []}, s1_ = snd__ event}) in_flight min_frame_t physics lookUp
+               sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
   else
     if in_flight == False then
       if (pos_w s0) - floor > 0.02 then do
         putMVar state_ref game_state
-        updatePlay io_box state_ref (link0 {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 0}) True min_frame_t (g, f, mag_r, mag_j)
+        updatePlay io_box state_ref (link0 {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 0}) True min_frame_t physics
                    lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
       else if control > 2 && control < 7 then do
         putMVar state_ref game_state
-        updatePlay io_box state_ref (link0 {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 1}) False min_frame_t (g, f, mag_r, mag_j)
+        updatePlay io_box state_ref (link0 {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 1}) False min_frame_t physics
                    lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
       else if control == 7 then do
         putMVar state_ref game_state
-        updatePlay io_box state_ref (link0 {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 2}) False min_frame_t (g, f, mag_r, mag_j)
+        updatePlay io_box state_ref (link0 {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 2}) False min_frame_t physics
                    lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
       else if control == 8 then do
         putMVar state_ref game_state
-        updatePlay io_box state_ref (link0 {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 3}) False min_frame_t (g, f, mag_r, mag_j)
+        updatePlay io_box state_ref (link0 {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 3}) False min_frame_t physics
                    lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
       else if control == 9 && jumpAllowed f_grid s0 == True then do
         putMVar state_ref game_state
-        updatePlay io_box state_ref (link0 {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 4}) False min_frame_t (g, f, mag_r, mag_j)
+        updatePlay io_box state_ref (link0 {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 4}) False min_frame_t physics
                    lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
       else do
         putMVar state_ref game_state
-        updatePlay io_box state_ref (link0 {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 6}) False min_frame_t (g, f, mag_r, mag_j)
+        updatePlay io_box state_ref (link0 {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 6}) False min_frame_t physics
                    lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
     else if in_flight == True && (pos_w s0) > floor then
       if control == 7 then do
         putMVar state_ref game_state
-        updatePlay io_box state_ref (link0 {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 7}) True min_frame_t (g, f, mag_r, mag_j)
+        updatePlay io_box state_ref (link0 {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 7}) True min_frame_t physics
                    lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
       else if control == 8 then do
         putMVar state_ref game_state
-        updatePlay io_box state_ref (link0 {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 8}) True min_frame_t (g, f, mag_r, mag_j)
+        updatePlay io_box state_ref (link0 {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 8}) True min_frame_t physics
                    lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
       else do
         putMVar state_ref game_state
-        updatePlay io_box state_ref (link0 {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 9}) True min_frame_t (g, f, mag_r, mag_j)
+        updatePlay io_box state_ref (link0 {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 9}) True min_frame_t physics
                    lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
     else do
       putMVar state_ref game_state
       if ((vel s0), 574) !! (2 :: Int) < -4 then do
-        updatePlay io_box state_ref (game_state {s0_ = s0'_ 0 control (s0 {message_ = []}) 10, s1_ = link1_}) False min_frame_t (g, f, mag_r, mag_j)
+        updatePlay io_box state_ref (game_state {s0_ = s0'_ 0 control (s0 {message_ = []}) 10, s1_ = link1_}) False min_frame_t physics
                    lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
       else do
         putMVar state_ref game_state
-        updatePlay io_box state_ref (game_state {s0_ = s0'_ 0 control (s0 {message_ = []}) 11, s1_ = link1}) False min_frame_t (g, f, mag_r, mag_j)
+        updatePlay io_box state_ref (game_state {s0_ = s0'_ 0 control (s0 {message_ = []}) 11, s1_ = link1}) False min_frame_t physics
                    lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
 
 -- This function is used to convert integers to their representation in the engine's message tile reference format.
@@ -1766,17 +1768,18 @@ procMsg0 (x0:x1:xs) s0 s1 io_box sound_array =
              (s0 {pos_u = intToFloat ((xs, 584) !! (0 :: Int)), pos_v = intToFloat ((xs, 585) !! (1 :: Int)), pos_w = intToFloat ((xs, 586) !! (2 :: Int))})
              s1 io_box sound_array
   else do
-    choice <- runMenu (procMsg1 (tail (splitOn [-1] (take x1 xs)))) [] io_box (-0.96) (-0.2) 1 0 0 s0 (x0 - 3)
+    choice <- runMenu (-1) (procMsg1 (tail (splitOn [-1] (take x1 xs)))) [] io_box (-0.96) (-0.2) 1 0 0 s0 (x0 - 3)
     procMsg0 (drop x1 xs) s0 (s1 {sig_q = sig_q s1 ++ [choice + 1, (signal_, 579) !! (0 :: Int), (signal_, 580) !! (1 :: Int), (signal_, 581) !! (2 :: Int)]})
              io_box sound_array
 
 -- Used by the game logic thread for in game menus and by the main thread for the main menu.
-runMenu :: [(Int, [Int])] -> [(Int, [Int])] -> Io_box -> Float -> Float -> Int -> Int -> Int -> Play_state0 -> Int -> IO Int
-runMenu [] acc io_box x y c c_max 0 s0 background = runMenu acc [] io_box x y c c_max 2 s0 background
-runMenu (n:ns) acc io_box x y c c_max 0 s0 background = do
-  if fst n == 0 then runMenu ns (acc ++ [n]) io_box x y c c_max 0 s0 background
-  else runMenu ns (acc ++ [n]) io_box x y c (c_max + 1) 0 s0 background
-runMenu [] acc io_box x y c c_max d s0 background = do
+runMenu :: Int -> [(Int, [Int])] -> [(Int, [Int])] -> Io_box -> Float -> Float -> Int -> Int -> Int -> Play_state0 -> Int -> IO Int
+runMenu shortcut [] acc io_box x y c c_max 0 s0 background = runMenu shortcut acc [] io_box x y c c_max 2 s0 background
+runMenu shortcut (n:ns) acc io_box x y c c_max 0 s0 background = do
+  if shortcut /= -1 then return shortcut
+  else if fst n == 0 then runMenu shortcut ns (acc ++ [n]) io_box x y c c_max 0 s0 background
+  else runMenu shortcut ns (acc ++ [n]) io_box x y c (c_max + 1) 0 s0 background
+runMenu shortcut [] acc io_box x y c c_max d s0 background = do
   swapBuffers
   threadDelay 16667
   mainLoopEvent
@@ -1784,15 +1787,15 @@ runMenu [] acc io_box x y c c_max d s0 background = do
   writeIORef (fromJust (control_ io_box)) 0
   if control == 3 && c > 1 then do
     glClear (GL_COLOR_BUFFER_BIT .|. GL_DEPTH_BUFFER_BIT)
-    runMenu acc [] io_box x 0.1 (c - 1) c_max 2 s0 background
+    runMenu shortcut acc [] io_box x 0.1 (c - 1) c_max 2 s0 background
   else if control == 5 && c < c_max then do
     glClear (GL_COLOR_BUFFER_BIT .|. GL_DEPTH_BUFFER_BIT)
-    runMenu acc [] io_box x 0.1 (c + 1) c_max 2 s0 background
+    runMenu shortcut acc [] io_box x 0.1 (c + 1) c_max 2 s0 background
   else if control == 2 then return c
   else do
     glClear (GL_COLOR_BUFFER_BIT .|. GL_DEPTH_BUFFER_BIT)
-    runMenu acc [] io_box x 0.1 c c_max 2 s0 background
-runMenu (n:ns) acc io_box x y c c_max d s0 background = do
+    runMenu shortcut acc [] io_box x 0.1 c c_max 2 s0 background
+runMenu shortcut (n:ns) acc io_box x y c c_max d s0 background = do
   if d == 2 then do
     glBindVertexArray (unsafeCoerce ((fst (p_bind_ io_box)) ! 1027))
     glBindTexture GL_TEXTURE_2D (unsafeCoerce ((fst (p_bind_ io_box)) ! (1027 + background)))
@@ -1809,7 +1812,7 @@ runMenu (n:ns) acc io_box x y c c_max d s0 background = do
   if fst n == c then showText (snd n) 1 933 (uniform_ io_box) (p_bind_ io_box) x y zero_ptr
   else showText (snd n) 0 933 (uniform_ io_box) (p_bind_ io_box) x y zero_ptr
   free p_tt_matrix
-  runMenu ns (acc ++ [n]) io_box x (y - 0.04) c c_max 1 s0 background
+  runMenu shortcut ns (acc ++ [n]) io_box x (y - 0.04) c c_max 1 s0 background
 
 -- This function handles the drawing of message tiles (letters and numbers etc) that are used for in game messages and in menus.
 showText :: [Int] -> Int -> Int -> UArray Int Int32 -> (UArray Int Word32, Int) -> Float -> Float -> Ptr GLfloat -> IO ()

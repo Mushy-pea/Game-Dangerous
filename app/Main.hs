@@ -141,7 +141,8 @@ setupGame_ conf_reg comp_map_text (Size w h) control_ref
 -- light map and loading of sound effects.
 setupGame :: Array Int [Char] -> [Char] -> Size -> IORef Int -> IO ()
 setupGame conf_reg comp_map_text (Size w h) control_ref =
-  let m0 = "mod_to_world"
+  let cfg' = cfg conf_reg 0
+      m0 = "mod_to_world"
       m1 = "world_to_clip"
       m2 = "world_to_mod"
       lm0 = "lmap_pos0"
@@ -161,9 +162,11 @@ setupGame conf_reg comp_map_text (Size w h) control_ref =
       pm''' = snd proc_map'
       mc = \i -> ((splitOn "\n~\n" comp_map_text), 637) !! i
       map_text = ".~.~.~.~" ++ pm'' ++ "~" ++ pm''' ++ (mc 10) ++ "~" ++ (mc 11) ++ "~" ++ (mc 12) ++ "~" ++ (mc 13) ++ "~" ++ (mc 14) ++ "~" ++ (mc 15)
-      cfg' = cfg conf_reg 0
       p_bind_limit = (read (((splitOn "\n~\n" comp_map_text), 11) !! 7)) - 1
       frustumScale0 = (read (cfg' "frustumScale1")) / (fromIntegral w / fromIntegral h)
+      physics = GamePhysics {u = read (cfg' "init_u"), v = read (cfg' "init_v"), w = read (cfg' "init_w"),
+                             gravity = read (cfg' "gravity"), friction = read (cfg' "friction"), mag_run = read (cfg' "run_power"),
+                             mag_jump = read (cfg' "jump_power")}
   in do
   glEnable GL_DEPTH_TEST
   glDepthFunc GL_LEQUAL
@@ -251,9 +254,8 @@ setupGame conf_reg comp_map_text (Size w h) control_ref =
   sound_array <- initAlEffect0 (splitOneOf "\n " (tailFile contents2)) (cfg' "sound_data_dir")
                                (array (0, (div (length (splitOneOf "\n " (tailFile contents2))) 2) - 1) [(x, Source 0) | x <- [0..(div (length (splitOneOf "\n " (tailFile contents2))) 2) - 1]])
   r_gen <- getStdGen
-  startGame control_ref (listArray (0, 65) uniform) (p_bind_, p_bind_limit + 1) map_text conf_reg None (read (cfg' "init_u")) (read (cfg' "init_v"))
-            (read (cfg' "init_w")) (read (cfg' "gravity")) (read (cfg' "friction")) (read (cfg' "run_power")) (read (cfg' "jump_power"))
-            def_game_state sound_array (cameraToClip frustumScale0 (read (cfg' "frustumScale1"))) r_gen
+  startGame NewGame physics control_ref (listArray (0, 65) uniform) (p_bind_, p_bind_limit + 1) map_text conf_reg
+            sound_array (cameraToClip frustumScale0 (read (cfg' "frustumScale1"))) r_gen
 
 -- The model file(s) that describe all 3D and 2D models referenced in the current map are loaded here.
 loadModFile :: [[Char]] -> [Char] -> Ptr GLuint -> IO ()
@@ -285,13 +287,6 @@ selectVerboseMode "n" = False
 -- This function generates the pseudorandom number sequence that is exposed to certain GPLC op - codes.
 genProbSeq :: RandomGen g => Int -> Int -> Int -> g -> UArray Int Int
 genProbSeq i0 i1 i2 g = listArray (i0, i1) (drop i2 (randomRs (0, 99) g))
-
-selectState :: EventContext -> Game_state -> Game_state -> Game_state
-selectState context game_state save_state
-  | context == None = game_state
-  | context == PlayerDied && gameClock (s0_ save_state) == (1, 1, 1) = game_state
-  | context == PlayerDied && gameClock (s0_ save_state) /= (1, 1, 1) = save_state {event_context = None}
-  | context == LoadGame = save_state {event_context = None}
 
 -- When a locked map is used to initialise the game state the unlocking logic is applied here.
 unlockWrapper :: [Char] -> Play_state0 -> Play_state1 -> (Play_state0, Play_state1)
@@ -325,78 +320,96 @@ setCurrentMap :: [Char] -> Int
 setCurrentMap map_file = read [(map_file, 659) !! 3] :: Int
 
 -- This function initialises the game logic thread each time a new game is started and handles user input from the main menu.
-startGame :: RandomGen g => IORef Int -> UArray Int Int32 -> (UArray Int Word32, Int) -> [Char] -> Array Int [Char] -> EventContext -> Float -> Float -> Float
-             -> Float -> Float -> Float -> Float -> Game_state -> Array Int Source -> Matrix Float -> g -> IO ()
-startGame control_ref uniform p_bind map_text conf_reg context u v w g f mag_r mag_j save_state sound_array camera_to_clip r_gen =
-  let u_limit = (read (((splitOn "~" map_text), 56) !! 8))
-      v_limit = (read (((splitOn "~" map_text), 57) !! 9))
-      w_limit = (read (((splitOn "~" map_text), 58) !! 10))
-      look_up_ = lookUp [makeTable 0 0, makeTable 1 0, makeTable 2 0, makeTable 3 0]
-      cfg' = cfg conf_reg 0
-      setup_music = if cfg' "music" == "off" then 0
-                    else read (cfg' "music_period")
-      unlocked_state = unlockWrapper (cfg' "map_unlock_code") s0 s1
-      lock_flag = ((splitOn "~" map_text), 635) !! 11
-      map = openMap 0 map_text u_limit v_limit w_limit conf_reg
-      w_grid = fst__ map
-      f_grid = snd__ map
-      obj_grid = third_ map
-      s0 = ps0_init {pos_u = u, pos_v = v, pos_w = w, on_screen_metrics = selectMetricMode (cfg' "on_screen_metrics"),
-                     prob_seq = genProbSeq 0 239 (read (cfg' "prob_c")) r_gen, currentMap = setCurrentMap (cfg' "map_file")}
-      s1 = if cfg' "verbose_mode" == "n" || cfg' "verbose_mode" == "y" then ps1_init {verbose_mode = cfg' "verbose_mode"}
-           else ps1_init {verbose_mode = "filter", debugSet = array (0, snd (bounds conf_reg) - 92) [(i, conf_reg ! (i + 92)) | i <- [0..snd (bounds conf_reg) - 92]]}
-      game_state = Game_state {event_context = None, w_grid_ = w_grid, f_grid_ = f_grid, obj_grid_ = obj_grid, s0_ = s0, s1_ = s1, save_file = LBS.empty}
-      save_transform = detMapTransform (cfg' "map_file") "save" u_limit v_limit
-      load_transform = detMapTransform (cfg' "map_file") "load" u_limit v_limit
-  in do
-  putStr ("\nEngine event context: " ++ show context)
-  if context == None || context == LoadGame || context == PlayerDied then do
+startGame :: RandomGen g => EventContext -> GamePhysics -> IORef Int -> UArray Int Int32 -> (UArray Int Word32, Int) -> [Char] -> Array Int [Char]
+             -> Array Int Source -> Matrix Float -> g -> IO ()
+startGame context physics control_ref uniform p_bind map_text conf_reg sound_array camera_to_clip r_gen
+  | context == NewGame || context == LoadGame = do
+    putStr ("\nEngine event: " ++ show context)
     p_mt_matrix <- mallocBytes (glfloat * 128)
     p_f_table0 <- callocBytes (int_ * 120000)
     p_f_table1 <- callocBytes (int_ * 37500)
     p_light_buffer <- mallocBytes (glfloat * 35)
     state_ref <- newEmptyMVar
     t_log <- newEmptyMVar
-    tid <- forkIO (updatePlayWrapper0 (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = Just control_ref}) state_ref
-                                      (selectState context game_state save_state) False (read (cfg' "min_frame_t")) (g, f, mag_r, mag_j)
-                                      look_up_ (sound_array, setup_music) 0 t_log (SEQ.empty) 60)
-    result <- showFrame p_bind uniform (p_mt_matrix, p_light_buffer) (p_f_table0, p_f_table1) 0 0 0 0 0 state_ref w_grid f_grid obj_grid look_up_
-                        camera_to_clip (array (0, 5) [(i, (0, [])) | i <- [0..5]]) conf_reg
+    result_ <- newEmptyMVar
+    if context == NewGame then do
+      tid <- forkIO (updatePlayWrapper0 (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = Just control_ref}) state_ref
+                                        game_state False (read (cfg' "min_frame_t")) physics
+                                        look_up_ (sound_array, setup_music) 0 t_log (SEQ.empty) 60)
+      result <- showFrame p_bind uniform (p_mt_matrix, p_light_buffer) (p_f_table0, p_f_table1) 0 0 0 0 0 state_ref w_grid f_grid obj_grid look_up_
+                          camera_to_clip (array (0, 5) [(i, (0, [])) | i <- [0..5]]) conf_reg
+      killThread tid
+      putMVar result_ result
+    else do
+      contents <- bracket (openFile "save_log.log" ReadMode) (hClose) (\h -> do c <- hGetContents h; putStr ("\nsave_log size: " ++ show (length c)); return c)
+      state_choice <- runMenu (read (cfg' "current_save")) (genLoadMenu (tail (splitOn "\n" (tailFile contents))) [] 1) []
+                              (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = Just control_ref}) (-0.75) (-0.75) 1 0 0 ps0_init 1
+      loaded_state <- loadSavedGame 0 (tail (splitOn "\n" (tailFile contents))) [] 1 state_choice
+                                      (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = Just control_ref})
+                                      w_grid f_grid obj_grid conf_reg load_transform (cfg' "map_file")
+      if isNothing loaded_state then do
+        free p_mt_matrix
+        free p_f_table0
+        free p_f_table1
+        free p_light_buffer
+        startGame ReturnMainMenu physics control_ref uniform p_bind map_text conf_reg sound_array camera_to_clip r_gen
+      else if isNothing loaded_state == False && currentMap (s0_ (fromJust loaded_state)) == setCurrentMap (cfg' "map_file") then do
+        tid <- forkIO (updatePlayWrapper0 (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = Just control_ref}) state_ref
+                                          (fromJust loaded_state) False (read (cfg' "min_frame_t")) physics
+                                          look_up_ (sound_array, setup_music) 0 t_log (SEQ.empty) 60)
+        result <- showFrame p_bind uniform (p_mt_matrix, p_light_buffer) (p_f_table0, p_f_table1) 0 0 0 0 0 state_ref w_grid f_grid obj_grid look_up_
+                            camera_to_clip (array (0, 5) [(i, (0, [])) | i <- [0..5]]) conf_reg
+        killThread tid
+        putMVar result_ result
+      else do
+        putStr ("\nMap file required: " ++ show (currentMap (s0_ (fromJust loaded_state))) ++ "\n")
+        exitSuccess
     free p_mt_matrix
     free p_f_table0
     free p_f_table1
     free p_light_buffer
-    killThread tid
-    startGame control_ref uniform p_bind map_text conf_reg (event_context result) u v w g f mag_r mag_j result sound_array camera_to_clip r_gen
-  else if context == ReturnMainMenu then do
-    choice <- runMenu mainMenuText [] (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = Just control_ref}) (-0.75) (-0.75) 1 0 0 ps0_init 1
-    if choice == 1 then startGame control_ref uniform p_bind map_text conf_reg None u v w g f mag_r mag_j save_state sound_array camera_to_clip r_gen
-    else if choice == 2 then do
-      contents <- bracket (openFile "save_log.log" ReadMode) (hClose) (\h -> do c <- hGetContents h; putStr ("\nsave_log size: " ++ show (length c)); return c)
-      state_choice <- runMenu (genLoadMenu (tail (splitOn "\n" (tailFile contents))) [] 1) [] (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = Just control_ref})
-                              (-0.75) (-0.75) 1 0 0 ps0_init 1
-      loaded_state <- loadSavedGame 0 (tail (splitOn "\n" (tailFile contents))) [] 1 state_choice (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = Just control_ref})
-                                    w_grid f_grid obj_grid conf_reg load_transform (cfg' "map_file")
-      if isNothing loaded_state then startGame control_ref uniform p_bind map_text conf_reg None u v w g f mag_r mag_j def_game_state sound_array
-                                               camera_to_clip r_gen
-      else if isNothing loaded_state == False && currentMap (s0_ (fromJust loaded_state)) == setCurrentMap (cfg' "map_file") then
-        startGame control_ref uniform p_bind map_text conf_reg LoadGame u v w g f mag_r mag_j (fromJust loaded_state) sound_array camera_to_clip r_gen
+    result <- takeMVar result_
+    if event_context result == SaveGame then do
+      putStr "\nEngine event: SaveGame"
+      save_index <- saveArrayDiff0 0 ([], []) (wrappedSaveArrayDiff1 (genArrayDiff (-3) 0 0 u_limit v_limit save_transform w_grid (w_grid_ result) SEQ.empty))
+                                   (wrappedSaveArrayDiff1 (genArrayDiff 0 0 0 ((div (u_limit + 1) 2) - 1) ((div (v_limit + 1) 2) - 1) save_transform f_grid (f_grid_ result) SEQ.empty))
+                                   (wrappedSaveArrayDiff1 (genArrayDiff 0 0 0 u_limit v_limit save_transform obj_grid (obj_grid_ result) SEQ.empty))
+                                   (labelPlayStateEncoding (encode (s0_ result))) (labelPlayStateEncoding (encode (s1_ result))) conf_reg (s0_ result)
+      if currentMap (s0_ result) == setCurrentMap (cfg' "map_file") then
+        startGame LoadGame physics control_ref uniform p_bind map_text (updateCfg conf_reg "current_save" (show save_index) 0) sound_array camera_to_clip r_gen
       else do
-        putStr ("\nMap file required: \n" ++ show (currentMap (s0_ (fromJust loaded_state))))
+        putStr ("\nMap file required: " ++ show (currentMap (s0_ result)) ++ "\n")
         exitSuccess
+    else startGame (event_context result) physics control_ref uniform p_bind map_text conf_reg sound_array camera_to_clip r_gen
+  | context == ReturnMainMenu = do
+    putStr ("\nEngine event: " ++ show context)
+    choice <- runMenu (-1) mainMenuText [] (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = Just control_ref}) (-0.75) (-0.75) 1 0 0 ps0_init 1
+    if choice == 1 then startGame NewGame physics control_ref uniform p_bind map_text conf_reg sound_array camera_to_clip r_gen
+    else if choice == 2 then
+      startGame LoadGame physics control_ref uniform p_bind map_text (updateCfg conf_reg "current_save" "-1" 0) sound_array camera_to_clip r_gen
     else exitSuccess
-  else if context == ExitGame then exitSuccess
-  else if context == SaveGame then do
-    saveArrayDiff0 0 ([], []) (wrappedSaveArrayDiff1 (genArrayDiff (-3) 0 0 u_limit v_limit save_transform w_grid (w_grid_ save_state) SEQ.empty))
-                   (wrappedSaveArrayDiff1 (genArrayDiff 0 0 0 ((div (u_limit + 1) 2) - 1) ((div (v_limit + 1) 2) - 1) save_transform f_grid (f_grid_ save_state) SEQ.empty))
-                   (wrappedSaveArrayDiff1 (genArrayDiff 0 0 0 u_limit v_limit save_transform obj_grid (obj_grid_ save_state) SEQ.empty))
-                   (labelPlayStateEncoding (encode (s0_ save_state))) (labelPlayStateEncoding (encode (s1_ save_state))) conf_reg (s0_ save_state)
-    if currentMap (s0_ save_state) == setCurrentMap (cfg' "map_file") then
-      startGame control_ref uniform p_bind map_text conf_reg LoadGame u v w g f mag_r mag_j save_state sound_array camera_to_clip r_gen
-    else do
-      putStr ("\nMap file required: \n" ++ show (currentMap (s0_ save_state)))
-      exitSuccess
-  else return ()
+  | context == ExitGame = do
+    putStr ("\nEngine event: " ++ show context)
+    exitSuccess
+  | otherwise = error ("\nInvalid engine event within startGame: " ++ show context)
+  where cfg' = cfg conf_reg 0
+        u_limit = (read (((splitOn "~" map_text), 56) !! 8))
+        v_limit = (read (((splitOn "~" map_text), 57) !! 9))
+        w_limit = (read (((splitOn "~" map_text), 58) !! 10))
+        look_up_ = lookUp [makeTable 0 0, makeTable 1 0, makeTable 2 0, makeTable 3 0]
+        setup_music = if cfg' "music" == "off" then 0
+                    else read (cfg' "music_period")
+        map = openMap 0 map_text u_limit v_limit w_limit conf_reg
+        w_grid = fst__ map
+        f_grid = snd__ map
+        obj_grid = third_ map
+        s0 = ps0_init {pos_u = u physics, pos_v = v physics, pos_w = w physics, on_screen_metrics = selectMetricMode (cfg' "on_screen_metrics"),
+                       prob_seq = genProbSeq 0 239 (read (cfg' "prob_c")) r_gen, currentMap = setCurrentMap (cfg' "map_file")}
+        s1 = if cfg' "verbose_mode" == "n" || cfg' "verbose_mode" == "y" then ps1_init {verbose_mode = cfg' "verbose_mode"}
+             else ps1_init {verbose_mode = "filter", debugSet = array (0, snd (bounds conf_reg) - 92) [(i, conf_reg ! (i + 92)) | i <- [0..snd (bounds conf_reg) - 92]]}
+        game_state = Game_state {event_context = None, w_grid_ = w_grid, f_grid_ = f_grid, obj_grid_ = obj_grid, s0_ = s0, s1_ = s1, save_file = LBS.empty}
+        save_transform = detMapTransform (cfg' "map_file") "save" u_limit v_limit
+        load_transform = detMapTransform (cfg' "map_file") "load" u_limit v_limit
 
 -- Used to update the engine's configuration file when a map transit event occurs, such that the targetted map will be loaded the next time the engine is run.
 updConfigFile :: Array Int [Char] -> ([Char], [Char]) -> Bool -> IO ()
@@ -659,7 +672,7 @@ showFrame p_bind uniform (p_mt_matrix, p_light_buffer) filter_table u v w a a' s
   msg_residue <- handleMessage0 (handleMessage1 (message_ (s0_ game_state)) msg_queue 0 3) uniform p_bind 0
   if event_context game_state == PlayerDied then do
     threadDelay 5000000
-    return game_state
+    return game_state {event_context = ReturnMainMenu}
   else if event_context game_state == None then do
     swapBuffers
     showFrame p_bind uniform (p_mt_matrix, p_light_buffer) filter_table (pos_u (s0_ game_state)) (pos_v (s0_ game_state)) (pos_w (s0_ game_state))

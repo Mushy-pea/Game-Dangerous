@@ -94,7 +94,7 @@ loadGameStateFile3 bs w_grid f_grid obj_grid map_file (u_offset, v_offset) =
 -- If an error occurs while attempting to open a save game file the user is informed through the menu system.
 loaderError :: SomeException -> Io_box -> IO LBS.ByteString
 loaderError x box = do
-  runMenu error_opening_file_text [] box (-0.75) (-0.75) 1 0 0 ps0_init 1
+  runMenu 0 error_opening_file_text [] box (-0.75) (-0.75) 1 0 0 ps0_init 1
   putStr ("\nload_saved_game: " ++ show x)
   return LBS.empty
 
@@ -145,7 +145,7 @@ instance Serialise_diff Obj_grid where
   save_diff ((w, u, v), x) = LBS.append (encode (w, u, v)) (encode x)
 
 saveArrayDiff0 :: Int -> ([Char], [Char]) -> LBS.ByteString -> LBS.ByteString -> LBS.ByteString -> LBS.ByteString -> LBS.ByteString -> Array Int [Char]
-                  -> Play_state0 -> IO ()
+                  -> Play_state0 -> IO Int
 saveArrayDiff0 mode (save_file, save_log) w_grid_bstring f_grid_bstring obj_grid_bstring s0_bstring s1_bstring conf_reg s0 =
   let block0 = LBS.append (LBS.drop 8 w_grid_bstring)
       block1 = LBS.append (LBS.drop 8 f_grid_bstring)
@@ -162,6 +162,7 @@ saveArrayDiff0 mode (save_file, save_log) w_grid_bstring f_grid_bstring obj_grid
     hClose h0
     LBS.writeFile (cfg conf_reg 0 "game_save_path" ++ save_file) (block0 $ block1 $ block2 $ block3 $ s1_bstring)
     putStr ("\n\nGame saved as: " ++ (cfg conf_reg 0 "game_save_path") ++ save_file)
+    return ((read (take 1 (drop 4 save_file))) + 1)
 
 wrappedSaveArrayDiff1 :: Serialise_diff a => SEQ.Seq ((Int, Int, Int), a) -> LBS.ByteString
 wrappedSaveArrayDiff1 x =
