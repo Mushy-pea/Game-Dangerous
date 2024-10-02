@@ -20,6 +20,29 @@ def_obj_place_ = ((0, 0, 0), Nothing) :: ((Int, Int, Int), Maybe Obj_place)
 def_f_grid_ = ((0, 0, 0), def_f_grid) :: ((Int, Int, Int), Floor_grid)
 def_obj_grid_ = ((0, 0, 0), def_obj_grid) :: ((Int, Int, Int), Obj_grid)
 
+saveGame :: SEQ.Seq ((Int, Int, Int), Wall_grid) -> SEQ.Seq ((Int, Int, Int), Wall_grid)
+            -> SEQ.Seq ((Int, Int, Int), Floor_grid) -> SEQ.Seq ((Int, Int, Int), Floor_grid)
+            -> SEQ.Seq ((Int, Int, Int), Obj_grid) -> SEQ.Seq ((Int, Int, Int), Obj_grid)
+            -> Play_state0 -> Play_state1 -> Array Int [Char] -> IO Int
+saveGame w_grid_diffs0 w_grid_diffs1 f_grid_diffs0 f_grid_diffs1 obj_grid_diffs0 obj_grid_diffs1 s0 s1 conf_reg =
+  let w_grid_bstring = wrappedSaveArrayDiff1 (w_grid_diffs0 SEQ.>< w_grid_diffs1)
+      f_grid_bstring = wrappedSaveArrayDiff1 (f_grid_diffs0 SEQ.>< f_grid_diffs1)
+      obj_grid_bstring = wrappedSaveArrayDiff1 (obj_grid_diffs0 SEQ.>< obj_grid_diffs1)
+  in
+  saveArrayDiff0 0 ([], []) w_grid_bstring f_grid_bstring obj_grid_bstring
+                 (labelPlayStateEncoding (encode s0)) (labelPlayStateEncoding (encode s1)) conf_reg s0
+
+-- This function determines the differential between an original map state array (Wall_grid, Floor_grid or Obj_grid) and a newer map state.
+genArrayDiff :: Eq a => Int -> Int -> Int -> Int -> Int -> (Int, Int) -> Array (Int, Int, Int) a -> Array (Int, Int, Int) a -> SEQ.Seq ((Int, Int, Int), a)
+                -> SEQ.Seq ((Int, Int, Int), a)
+genArrayDiff w u v u_limit v_limit (u_offset, v_offset) arr0 arr1 acc =
+  if w == 2 && u > u_limit then acc
+  else if u > u_limit then genArrayDiff (w + 1) 0 0 u_limit v_limit (u_offset, v_offset) arr0 arr1 acc
+  else if v > v_limit then genArrayDiff w (u + 1) 0 u_limit v_limit (u_offset, v_offset) arr0 arr1 acc
+  else
+    if arr0 ! (w, u, v) == arr1 ! (w, u, v) then genArrayDiff w u (v + 1) u_limit v_limit (u_offset, v_offset) arr0 arr1 acc
+    else genArrayDiff w u (v + 1) u_limit v_limit (u_offset, v_offset) arr0 arr1 (acc SEQ.>< (SEQ.singleton ((w, u + u_offset, v + v_offset), (arr1 ! (w, u, v)))))
+
 -- These three functions deal with loading a saved game state and recreating the game state by updating a base map state.
 decodeSequence :: Binary a => Int -> a -> LBS.ByteString -> SEQ.Seq a -> SEQ.Seq a
 decodeSequence c def bs diff_seq =
@@ -62,22 +85,34 @@ loadGameStateFile2 map_file w_grid f_grid obj_grid w_grid_upd f_grid_upd obj_gri
                                          w_grid_ = w_grid // applyLoadTransform (procWGridUpd (map1WDiff w_grid_upd) w_grid u_offset v_offset) (u_offset, v_offset),
                                          f_grid_ = f_grid // applyLoadTransform (map1FDiff f_grid_upd) (u_offset, v_offset),
                                          obj_grid_ = obj_grid // applyLoadTransform (map1ODiff obj_grid_upd) (u_offset, v_offset),
-                                         s0_ = s0, s1_ = s1, save_file = LBS.empty}
+                                         s0_ = s0, s1_ = s1,
+                                         w_grid_save = w_grid_upd {map1WDiff = []},
+                                         f_grid_save = f_grid_upd {map1FDiff = []},
+                                         obj_grid_save = obj_grid_upd {map1ODiff = []}}
   | map_file == "map2.dan" = Game_state {event_context = None,
                                          w_grid_ = w_grid // applyLoadTransform (procWGridUpd (map2WDiff w_grid_upd) w_grid u_offset v_offset) (u_offset, v_offset),
                                          f_grid_ = f_grid // applyLoadTransform (map2FDiff f_grid_upd) (u_offset, v_offset),
                                          obj_grid_ = obj_grid // applyLoadTransform (map2ODiff obj_grid_upd) (u_offset, v_offset),
-                                         s0_ = s0, s1_ = s1, save_file = LBS.empty}
+                                         s0_ = s0, s1_ = s1,
+                                         w_grid_save = w_grid_upd {map2WDiff = []},
+                                         f_grid_save = f_grid_upd {map2FDiff = []},
+                                         obj_grid_save = obj_grid_upd {map2ODiff = []}}
   | map_file == "map3.dan" = Game_state {event_context = None,
                                          w_grid_ = w_grid // applyLoadTransform (procWGridUpd (map3WDiff w_grid_upd) w_grid u_offset v_offset) (u_offset, v_offset),
                                          f_grid_ = f_grid // applyLoadTransform (map3FDiff f_grid_upd) (u_offset, v_offset),
                                          obj_grid_ = obj_grid // applyLoadTransform (map3ODiff obj_grid_upd) (u_offset, v_offset),
-                                         s0_ = s0, s1_ = s1, save_file = LBS.empty}
+                                         s0_ = s0, s1_ = s1,
+                                         w_grid_save = w_grid_upd {map3WDiff = []},
+                                         f_grid_save = f_grid_upd {map3FDiff = []},
+                                         obj_grid_save = obj_grid_upd {map3ODiff = []}}
   | map_file == "map4.dan" = Game_state {event_context = None,
                                          w_grid_ = w_grid // applyLoadTransform (procWGridUpd (map4WDiff w_grid_upd) w_grid u_offset v_offset) (u_offset, v_offset),
                                          f_grid_ = f_grid // applyLoadTransform (map4FDiff f_grid_upd) (u_offset, v_offset),
                                          obj_grid_ = obj_grid // applyLoadTransform (map4ODiff obj_grid_upd) (u_offset, v_offset),
-                                         s0_ = s0, s1_ = s1, save_file = LBS.empty}
+                                         s0_ = s0, s1_ = s1,
+                                         w_grid_save = w_grid_upd {map4WDiff = []},
+                                         f_grid_save = f_grid_upd {map4FDiff = []},
+                                         obj_grid_save = obj_grid_upd {map4ODiff = []}}
 
 loadGameStateFile3 :: LBS.ByteString -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) Obj_grid
                       -> [Char] -> (Int, Int) -> Game_state
@@ -215,4 +250,16 @@ filterObjGridDiffs (((w, u, v), y):xs) diff_container
   | u >= 0 && v < 0 = filterObjGridDiffs xs (diff_container {map2ODiff = ((w, u, v), y) : map1ODiff diff_container})
   | u < 0 && v < 0 = filterObjGridDiffs xs (diff_container {map3ODiff = ((w, u, v), y) : map3ODiff diff_container})
   | otherwise = filterObjGridDiffs xs (diff_container {map4ODiff = ((w, u, v), y) : map4ODiff diff_container})
+
+serialiseWGridDiffs :: WGridDiffContainer -> SEQ.Seq ((Int, Int, Int), Wall_grid)
+serialiseWGridDiffs x = SEQ.fromList (map (\y -> (fst y, def_w_grid {obj = snd y})) (map1WDiff x)) SEQ.><
+                        SEQ.fromList (map (\y -> (fst y, def_w_grid {obj = snd y})) (map2WDiff x)) SEQ.><
+                        SEQ.fromList (map (\y -> (fst y, def_w_grid {obj = snd y})) (map3WDiff x)) SEQ.><
+                        SEQ.fromList (map (\y -> (fst y, def_w_grid {obj = snd y})) (map4WDiff x))
+
+serialiseFGridDiffs :: FGridDiffContainer -> SEQ.Seq ((Int, Int, Int), Floor_grid)
+serialiseFGridDiffs x = SEQ.fromList (map1FDiff x) SEQ.>< SEQ.fromList (map2FDiff x) SEQ.>< SEQ.fromList (map3FDiff x) SEQ.>< SEQ.fromList (map4FDiff x)
+
+serialiseObjGridDiffs :: ObjGridDiffContainer -> SEQ.Seq ((Int, Int, Int), Obj_grid)
+serialiseObjGridDiffs x = SEQ.fromList (map1ODiff x) SEQ.>< SEQ.fromList (map2ODiff x) SEQ.>< SEQ.fromList (map3ODiff x) SEQ.>< SEQ.fromList (map4ODiff x)
 

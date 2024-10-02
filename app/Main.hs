@@ -294,18 +294,6 @@ cameraToClip frustumScale0 frustumScale1 =
   in
   y [frustumScale0, 0, 0, 0, 0, frustumScale1, 0, 0, 0, 0, ((zFar + zNear) / (zNear - zFar)), ((2 * zFar * zNear) / (zNear - zFar)), 0, 0, -1, 0]
 
-serialiseWGridDiffs :: WGridDiffContainer -> SEQ.Seq ((Int, Int, Int), Wall_grid)
-serialiseWGridDiffs x = SEQ.fromList (map (\y -> (fst y, def_w_grid {obj = snd y})) (map1WDiff x)) SEQ.><
-                        SEQ.fromList (map (\y -> (fst y, def_w_grid {obj = snd y})) (map2WDiff x)) SEQ.><
-                        SEQ.fromList (map (\y -> (fst y, def_w_grid {obj = snd y})) (map3WDiff x)) SEQ.><
-                        SEQ.fromList (map (\y -> (fst y, def_w_grid {obj = snd y})) (map4WDiff x))
-
-serialiseFGridDiffs :: FGridDiffContainer -> SEQ.Seq ((Int, Int, Int), Floor_grid)
-serialiseFGridDiffs x = SEQ.fromList (map1FDiff x) SEQ.>< SEQ.fromList (map2FDiff x) SEQ.>< SEQ.fromList (map3FDiff x) SEQ.>< SEQ.fromList (map4FDiff x)
-
-serialiseObjGridDiffs :: ObjGridDiffContainer -> SEQ.Seq ((Int, Int, Int), Obj_grid)
-serialiseObjGridDiffs x = SEQ.fromList (map1ODiff x) SEQ.>< SEQ.fromList (map2ODiff x) SEQ.>< SEQ.fromList (map3ODiff x) SEQ.>< SEQ.fromList (map4ODiff x)
-
 setCurrentMap :: [Char] -> Int
 setCurrentMap map_file = read [(map_file, 659) !! 3] :: Int
 
@@ -361,10 +349,11 @@ startGame context physics control_ref uniform p_bind map_text conf_reg sound_arr
     result <- takeMVar result_
     if event_context result == SaveGame then do
       putStr "\nEngine event: SaveGame"
-      save_index <- saveArrayDiff0 0 ([], []) (wrappedSaveArrayDiff1 (genArrayDiff (-3) 0 0 u_limit v_limit save_transform w_grid (w_grid_ result) SEQ.empty))
-                                   (wrappedSaveArrayDiff1 (genArrayDiff 0 0 0 ((div (u_limit + 1) 2) - 1) ((div (v_limit + 1) 2) - 1) save_transform f_grid (f_grid_ result) SEQ.empty))
-                                   (wrappedSaveArrayDiff1 (genArrayDiff 0 0 0 u_limit v_limit save_transform obj_grid (obj_grid_ result) SEQ.empty))
-                                   (labelPlayStateEncoding (encode (s0_ result))) (labelPlayStateEncoding (encode (s1_ result))) conf_reg (s0_ result)
+      save_index <- saveGame (genArrayDiff (-3) 0 0 u_limit v_limit save_transform w_grid (w_grid_ result) SEQ.empty) (serialiseWGridDiffs (w_grid_save result))
+                             (genArrayDiff 0 0 0 ((div (u_limit + 1) 2) - 1) ((div (v_limit + 1) 2) - 1) save_transform f_grid (f_grid_ result) SEQ.empty)
+                             (serialiseFGridDiffs (f_grid_save result))
+                             (genArrayDiff 0 0 0 u_limit v_limit save_transform obj_grid (obj_grid_ result) SEQ.empty) (serialiseObjGridDiffs (obj_grid_save result))
+                             (s0_ result) (s1_ result) conf_reg
       if currentMap (s0_ result) == setCurrentMap (cfg' "map_file") then
         startGame LoadGame physics control_ref uniform p_bind map_text (updateCfg conf_reg "current_save" (show save_index) 0) sound_array camera_to_clip r_gen
       else do
@@ -397,7 +386,9 @@ startGame context physics control_ref uniform p_bind map_text conf_reg sound_arr
                        prob_seq = genProbSeq 0 239 (read (cfg' "prob_c")) r_gen, currentMap = setCurrentMap (cfg' "map_file")}
         s1 = if cfg' "verbose_mode" == "n" || cfg' "verbose_mode" == "y" then ps1_init {verbose_mode = cfg' "verbose_mode"}
              else ps1_init {verbose_mode = "filter", debugSet = array (0, snd (bounds conf_reg) - 92) [(i, conf_reg ! (i + 92)) | i <- [0..snd (bounds conf_reg) - 92]]}
-        game_state = Game_state {event_context = None, w_grid_ = w_grid, f_grid_ = f_grid, obj_grid_ = obj_grid, s0_ = s0, s1_ = s1, save_file = LBS.empty}
+        game_state = Game_state {event_context = None, w_grid_ = w_grid, f_grid_ = f_grid, obj_grid_ = obj_grid, s0_ = s0, s1_ = s1,
+                                 w_grid_save = emptyWGridDiffContainer, f_grid_save = emptyFGridDiffContainer,
+                                 obj_grid_save = emptyObjGridDiffContainer}
         save_transform = detMapTransform (cfg' "map_file") "save" u_limit v_limit
         load_transform = detMapTransform (cfg' "map_file") "load" u_limit v_limit
 

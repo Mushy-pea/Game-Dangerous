@@ -231,7 +231,8 @@ data EventContext = None | NewGame | LoadGame | SaveGame | ReturnMainMenu | Exit
 data GamePhysics = GamePhysics {u :: Float, v :: Float, w :: Float, gravity :: Float, friction :: Float, mag_run :: Float, mag_jump :: Float}
 
 data Game_state = Game_state {event_context :: EventContext, w_grid_ :: Array (Int, Int, Int) Wall_grid, f_grid_ :: Array (Int, Int, Int) Floor_grid,
-                              obj_grid_ :: Array (Int, Int, Int) Obj_grid, s0_ :: Play_state0, s1_ :: Play_state1, save_file :: LBS.ByteString}
+                              obj_grid_ :: Array (Int, Int, Int) Obj_grid, s0_ :: Play_state0, s1_ :: Play_state1,
+                              w_grid_save :: WGridDiffContainer, f_grid_save :: FGridDiffContainer, obj_grid_save :: ObjGridDiffContainer}
 
 data Io_box = Io_box {uniform_ :: UArray Int Int32, p_bind_ :: (UArray Int Word32, Int), control_ :: Maybe (IORef Int)}
 
@@ -253,15 +254,15 @@ def_w_grid = Wall_grid {u1 = False, u2 = False, v1 = False, v2 = False, u1_bound
 texture = [], obj = Nothing}
 
 defWGridArr :: Array (Int, Int, Int) Wall_grid
-defWGridArr = array ((-1, 0, 0), (-3, 99, 99)) [((w, u, v), def_w_grid) | w <- [(-1)..(-3)], u <- [0..99], v <- [0..99]]
+defWGridArr = array ((0, 0, 0), (1, 1, 1)) [((w, u, v), def_w_grid) | w <- [0..1], u <- [0..1], v <- [0..1]]
 
 def_f_grid = Floor_grid {w_ = 0, surface = Flat, local_up_ramp = (0, 0), local_down_ramp = (0, 0)}
 def_f_grid1 = Floor_grid {w_ = 0, surface = Open, local_up_ramp = (0, 0), local_down_ramp = (0, 0)}
-def_f_grid_arr = array ((0, 0, 0), (2, 9, 9)) [((w, u, v), def_f_grid) | w <- [0..2], u <- [0..9], v <- [0..9]] :: Array (Int, Int, Int) Floor_grid
+def_f_grid_arr = array ((0, 0, 0), (1, 1, 1)) [((w, u, v), def_f_grid) | w <- [0..1], u <- [0..1], v <- [0..1]] :: Array (Int, Int, Int) Floor_grid
 def_obj_grid = Obj_grid {objType = 0, program = [], programName = []}
 
 defObjGridArr :: Array (Int, Int, Int) Obj_grid
-defObjGridArr = array ((0, 0, 0), (2, 99, 99)) [((w, u, v), def_obj_grid) | w <- [0..2], u <- [0..99], v <- [0..99]] :: Array (Int, Int, Int) Obj_grid
+defObjGridArr = array ((0, 0, 0), (1, 1, 1)) [((w, u, v), def_obj_grid) | w <- [0..1], u <- [0..1], v <- [0..1]] :: Array (Int, Int, Int) Obj_grid
 
 def_obj_place = Obj_place {ident_ = 0, u__ = 0, v__ = 0, w__ = 0, rotation = [], rotate_ = False, phase = 0, texture__ = 0, num_elem = 0, obj_flag = 0}
 
@@ -273,7 +274,8 @@ f_grid_flag = Floor_grid {w_ = 3, surface = Flat, local_up_ramp = (0, 0), local_
 obj_grid_flag = Obj_grid {objType = 5, program = [], programName = []} :: Obj_grid
 
 def_game_state = Game_state {event_context = None, w_grid_ = defWGridArr, f_grid_ = def_f_grid_arr, obj_grid_ = defObjGridArr, s0_ = ps0_init,
-                             s1_ = ps1_init, save_file = LBS.empty}
+                             s1_ = ps1_init, w_grid_save = emptyWGridDiffContainer, f_grid_save = emptyFGridDiffContainer,
+                             obj_grid_save = emptyObjGridDiffContainer}
 
 def_wall_place = Wall_place {rotate = 0, translate_u = 0, translate_v = 0, translate_w = 0, wall_flag_ = 0, texture_ = 0, isNull = True}
 def_prob_seq = array (0, 239) [(i, 0) | i <- [0..239]]
@@ -285,13 +287,6 @@ avoid_dist = 0, attack_mode = False, finalAppr = False, fire_prob = 0, fireball_
 empty_npc_array = array (0, 127) [(i, def_npc_state) | i <- [0..127]]
 
 def_save_log = "1\n*save0.sav_000000\n*save1.sav_000000\n*save2.sav_000000\n*save3.sav_000000\n*save4.sav_000000\n*save5.sav_000000"
-
--- The implementation of the environmental ceiling is simple and usea a single model that is rendered in every frame.  The Obj_place value for this model has
--- therefore been hard coded and is added directly to the [Obj_place] taken by Main.show_object, as there is no requirement for the ray tracer to be involved.
-ceiling_model = Obj_place {ident_ = 1044, u__ = 0, v__ = 0, w__ = 0, rotation = [], rotate_ = False, phase = 0, texture__ = 1, num_elem = 36, obj_flag = 0}
-
--- This list is used to sequence centipede NPC animation.
-cpede_frames = [0, 1, 2, 3, 4, 5, 4, 3, 2, 1, 0] :: [Int]
 
 data WGridDiffContainer = WGridDiffContainer {map1WDiff :: [((Int, Int, Int), Maybe Obj_place)], map2WDiff :: [((Int, Int, Int), Maybe Obj_place)],
                                               map3WDiff :: [((Int, Int, Int), Maybe Obj_place)], map4WDiff :: [((Int, Int, Int), Maybe Obj_place)]}
@@ -305,6 +300,13 @@ data ObjGridDiffContainer = ObjGridDiffContainer {map1ODiff :: [((Int, Int, Int)
 emptyWGridDiffContainer = WGridDiffContainer {map1WDiff = [], map2WDiff = [], map3WDiff = [], map4WDiff = []}
 emptyFGridDiffContainer = FGridDiffContainer {map1FDiff = [], map2FDiff = [], map3FDiff = [], map4FDiff = []}
 emptyObjGridDiffContainer = ObjGridDiffContainer {map1ODiff = [], map2ODiff = [], map3ODiff = [], map4ODiff = []}
+
+-- The implementation of the environmental ceiling is simple and usea a single model that is rendered in every frame.  The Obj_place value for this model has
+-- therefore been hard coded and is added directly to the [Obj_place] taken by Main.show_object, as there is no requirement for the ray tracer to be involved.
+ceiling_model = Obj_place {ident_ = 1044, u__ = 0, v__ = 0, w__ = 0, rotation = [], rotate_ = False, phase = 0, texture__ = 1, num_elem = 36, obj_flag = 0}
+
+-- This list is used to sequence centipede NPC animation.
+cpede_frames = [0, 1, 2, 3, 4, 5, 4, 3, 2, 1, 0] :: [Int]
 
 -- This class is used in functions that filter the result of the ray tracer to avoid multiple rendering.
 class Flag a where
@@ -858,18 +860,6 @@ checkMapLayer w u v u_limit v_limit grid flag =
   else
     if grid ! (w, u, v) == flag then throw Invalid_map_element
     else checkMapLayer w u (v + 1) u_limit v_limit grid flag
-
--- This function determines the differential between an original map state array (Wall_grid, Floor_grid or Obj_grid) and a newer map state.  It is part of the
--- implementation of the game state saving system.
-genArrayDiff :: Eq a => Int -> Int -> Int -> Int -> Int -> (Int, Int) -> Array (Int, Int, Int) a -> Array (Int, Int, Int) a -> SEQ.Seq ((Int, Int, Int), a)
-                -> SEQ.Seq ((Int, Int, Int), a)
-genArrayDiff w u v u_limit v_limit (u_offset, v_offset) arr0 arr1 acc =
-  if w == 2 && u > u_limit then acc
-  else if u > u_limit then genArrayDiff (w + 1) 0 0 u_limit v_limit (u_offset, v_offset) arr0 arr1 acc
-  else if v > v_limit then genArrayDiff w (u + 1) 0 u_limit v_limit (u_offset, v_offset) arr0 arr1 acc
-  else
-    if arr0 ! (w, u, v) == arr1 ! (w, u, v) then genArrayDiff w u (v + 1) u_limit v_limit (u_offset, v_offset) arr0 arr1 acc
-    else genArrayDiff w u (v + 1) u_limit v_limit (u_offset, v_offset) arr0 arr1 (acc SEQ.>< (SEQ.singleton ((w, u + u_offset, v + v_offset), (arr1 ! (w, u, v)))))
 
 -- This function processes text from input files to return a result that is independent on whether the file has the Windows or Unix end of file format.
 tailFile :: [Char] -> [Char]
