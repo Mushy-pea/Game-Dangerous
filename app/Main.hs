@@ -377,7 +377,7 @@ startGame context physics control_ref uniform p_bind map_text conf_reg sound_arr
         w_limit = (read (((splitOn "~" map_text), 58) !! 10))
         look_up_ = lookUp [makeTable 0 0, makeTable 1 0, makeTable 2 0, makeTable 3 0]
         setup_music = if cfg' "music" == "off" then 0
-                    else read (cfg' "music_period")
+                      else read (cfg' "music_period")
         map = openMap 0 map_text u_limit v_limit w_limit conf_reg
         w_grid = fst__ map
         f_grid = snd__ map

@@ -240,9 +240,13 @@ chgValue (GPLC_int val) abs (GPLC_int v) (i0, i1, i2) d_list obj_grid obj_grid_u
 
 chgPs0 :: GPLC_int -> GPLC_flag -> GPLC_int -> [Int] -> Play_state0 -> Play_state0
 chgPs0 state_val abs v d_list s0
+  | (d_list, 669) !! state_val == 1 = s0 {pos_w = intToFloat ((d_list, 670) !! v)}
+  | (d_list, 671) !! state_val == 2 = s0 {pos_u = intToFloat ((d_list, 672) !! v)}
+  | (d_list, 673) !! state_val == 3 = s0 {pos_v = intToFloat ((d_list, 674) !! v)}
   | (d_list, 200) !! state_val == 4 = s0 {rend_mode = (d_list, 201) !! v}
   | (d_list, 202) !! state_val == 5 = s0 {torch_t0 = (d_list, 203) !! v}
   | (d_list, 639) !! state_val == 6 = s0 {torch_t_limit = (d_list, 204) !! v}
+  | (d_list, 667) !! state_val == 7 = s0 {currentMap = (d_list, 668) !! v}
   | otherwise = error ("\nchg_ps0: Invalid value passed for argument state_val: " ++ show ((d_list, 640) !! state_val))
 
 chgPs1 :: GPLC_int -> GPLC_int -> GPLC_int -> [Int] -> Play_state1 -> Play_state1
@@ -1063,6 +1067,15 @@ placeLight (GPLC_float colour_r) (GPLC_float colour_g) (GPLC_float colour_b) (GP
       new_positions = [intToFloat ((d_list, 628) !! u), intToFloat ((d_list, 629) !! v), intToFloat ((d_list, 630) !! w)]
   in s0 {mobile_lights = (take 16 (new_colours ++ fst (mobile_lights s0)), take 12 (new_positions ++ snd (mobile_lights s0)))}
 
+setEventContext :: GPLC_int -> [Int] -> EventContext
+setEventContext context d_list
+  | (d_list, 661) !! context == 1 = NewGame
+  | (d_list, 662) !! context == 2 = LoadGame
+  | (d_list, 663) !! context == 3 = SaveGame
+  | (d_list, 664) !! context == 4 = ReturnMainMenu
+  | (d_list, 665) !! context == 5 = ExitGame
+  | (d_list, 666) !! context == 6 = PlayerDied
+
 -- This function is part of the system used to make per GPLC opcode status reports to the console when verbose_mode is on.
 showGplcArgs :: [Char] -> [(Int, Int)] -> [Int] -> Int -> [Char]
 showGplcArgs opcode [] d_list c = []
@@ -1071,132 +1084,140 @@ showGplcArgs opcode (x:xs) d_list c =
   if fst x == 0 then show c ++ ": " ++ show ((d_list, 654) !! (snd x)) ++ " " ++ showGplcArgs opcode xs d_list (c + 1)
   else show c ++ ": " ++ show (snd x) ++ " " ++ showGplcArgs opcode xs d_list (c + 1)
 
+data GPLC_Output = GPLC_Output {event_context_ :: EventContext, w_grid_upd_ :: [((Int, Int, Int), Wall_grid)], f_grid__ :: Array (Int, Int, Int) Floor_grid,
+                                obj_grid_upd_ :: [((Int, Int, Int), (Int, [(Int, Int)]))], s0__ :: Play_state0, s1__ :: Play_state1}
+
 -- Branch on each GPLC op - code to call the corresponding function, with optional per op - code status reports for debugging.
-runGplc :: [Int] -> [Int] -> Array (Int, Int, Int) Wall_grid -> [((Int, Int, Int), Wall_grid)] -> Array (Int, Int, Int) Floor_grid
+runGplc :: [Int] -> [Int] -> EventContext -> Array (Int, Int, Int) Wall_grid -> [((Int, Int, Int), Wall_grid)] -> Array (Int, Int, Int) Floor_grid
            -> Array (Int, Int, Int) Obj_grid -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> Play_state0 -> Play_state1 -> UArray (Int, Int) Float -> Int
-           -> IO ([((Int, Int, Int), Wall_grid)], Array (Int, Int, Int) Floor_grid, [((Int, Int, Int), (Int, [(Int, Int)]))], Play_state0, Play_state1)
-runGplc [] d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp c = return (w_grid_upd, f_grid, obj_grid_upd, s0, s1)
-runGplc code d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 0 =
+           -> IO GPLC_Output
+runGplc [] d_list context w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp c =
+  return GPLC_Output {event_context_ = context, w_grid_upd_ = w_grid_upd, f_grid__ = f_grid, obj_grid_upd_ = obj_grid_upd, s0__ = s0, s1__ = s1}
+runGplc code d_list context w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 0 =
   let location_block = (((splitOn [536870911] code), 407) !! (2 :: Int))
       location = ((location_block, 645) !! (0 :: Int), (location_block, 646) !! (1 :: Int), (location_block, 647) !! (2 :: Int))
   in do
   reportState (debugGplc s1) 2 [] [] "\non_signal run.  Initial state is..."
   reportState (debugGplc s1) 0 (program (obj_grid ! location)) (((splitOn [536870911] code), 411) !! (2 :: Int)) []
   runGplc (onSignal (drop 2 (((splitOn [536870911] code), 412) !! (0 :: Int))) (((splitOn [536870911] code), 413) !! (1 :: Int)) ((code, 414) !! (1 :: Int)))
-          (((splitOn [536870911] code), 415) !! (2 :: Int)) w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 1
-runGplc code d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 1 =
+          (((splitOn [536870911] code), 415) !! (2 :: Int)) context w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 1
+runGplc code d_list context w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 1 =
   let if0' = if0 code d_list
   in do
   reportState (debugGplc s1) 2 [] [] ("\nIf expression folding run.  Branch selected: " ++ show if0')
-  runGplc (tail_ if0') d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp (head_ if0')
-runGplc xs d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 2 =
+  runGplc (tail_ if0') d_list context w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp (head_ if0')
+runGplc xs d_list context w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 2 =
   let update_arr = array (0, 13) [(0, 3), (1, 0), (2, 3), (3, 0), (4, 3), (5, 0), (6, 3), (7, 0), (8, 3), (9, 0), (10, 3), (11, 0), (12, 3), (13, 0)]
       chg_state_ = chgState (2 : xs) (0, 0, 0) (0, 0, 0) w_grid update_arr w_grid_upd d_list
   in do
-  runGplc (tail_ (snd chg_state_)) d_list w_grid (fst chg_state_) f_grid obj_grid obj_grid_upd s0 s1 lookUp (head_ (snd chg_state_))
-runGplc (x0:x1:x2:x3:x4:x5:x6:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 3 = do
+  runGplc (tail_ (snd chg_state_)) d_list context w_grid (fst chg_state_) f_grid obj_grid obj_grid_upd s0 s1 lookUp (head_ (snd chg_state_))
+runGplc (x0:x1:x2:x3:x4:x5:x6:xs) d_list context w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 3 = do
   reportState (debugGplc s1) 2 [] [] (showGplcArgs "chgGrid" [(0, x0), (0, x1), (0, x2), (0, x3), (0, x4), (0, x5), (0, x6)] d_list (-1))
-  runGplc (tail_ xs) d_list w_grid
+  runGplc (tail_ xs) d_list context w_grid
           (chgGrid (GPLC_flag x0) (GPLC_int x1, GPLC_int x2, GPLC_int x3) (GPLC_int x4, GPLC_int x5, GPLC_int x6) w_grid def_w_grid w_grid_upd d_list) f_grid
           obj_grid obj_grid_upd s0 s1 lookUp (head_ xs)
-runGplc (x0:x1:x2:x3:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 4 =
+runGplc (x0:x1:x2:x3:xs) d_list context w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 4 =
   let sig = sendSignal 0 (GPLC_int x0) (GPLC_int x1, GPLC_int x2, GPLC_int x3) obj_grid s1 d_list
   in do
   reportState (debugGplc s1) 2 [] [] (showGplcArgs "send_signal" [(0, x0), (0, x1), (0, x2), (0, x3)] d_list (-1))
-  runGplc (tail_ xs) d_list w_grid w_grid_upd f_grid (fst sig) obj_grid_upd s0 (snd sig) lookUp (head_ xs)
-runGplc (x0:x1:x2:x3:x4:x5:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 5 = do
+  runGplc (tail_ xs) d_list context w_grid w_grid_upd f_grid (fst sig) obj_grid_upd s0 (snd sig) lookUp (head_ xs)
+runGplc (x0:x1:x2:x3:x4:x5:xs) d_list context w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 5 = do
   reportState (debugGplc s1) 2 [] [] (showGplcArgs "chg_value" [(1, x0), (0, x1), (0, x2), (0, x3), (0, x4), (0, x5)] d_list (-1))
-  runGplc (tail_ xs) d_list w_grid w_grid_upd f_grid obj_grid
+  runGplc (tail_ xs) d_list context w_grid w_grid_upd f_grid obj_grid
           (chgValue (GPLC_int x0) (GPLC_flag x1) (GPLC_int x2) (GPLC_int x3, GPLC_int x4, GPLC_int x5) d_list obj_grid obj_grid_upd) s0 s1 lookUp (head_ xs)
-runGplc (x0:x1:x2:x3:x4:x5:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 6 = do
+runGplc (x0:x1:x2:x3:x4:x5:xs) d_list context w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 6 = do
   reportState (debugGplc s1) 2 [] [] (showGplcArgs "chg_floor" [(0, x0), (0, x1), (0, x2), (0, x3), (0, x4), (0, x5)] d_list (-1))
-  runGplc (tail_ xs) d_list w_grid w_grid_upd (chgFloor (GPLC_int x0) (GPLC_flag x1) x2 (GPLC_int x3, GPLC_int x4, GPLC_int x5) f_grid d_list)
+  runGplc (tail_ xs) d_list context w_grid w_grid_upd (chgFloor (GPLC_int x0) (GPLC_flag x1) x2 (GPLC_int x3, GPLC_int x4, GPLC_int x5) f_grid d_list)
           obj_grid obj_grid_upd s0 s1 lookUp (head_ xs)
-runGplc (x0:x1:x2:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 7 = do
+runGplc (x0:x1:x2:xs) d_list context w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 7 = do
   reportState (debugGplc s1) 2 [] [] (showGplcArgs "chg_ps1" [(0, x0), (0, x1), (0, x2)] d_list (-1))
-  runGplc (tail_ xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 (chgPs1 (GPLC_int x0) (GPLC_int x1) (GPLC_int x2) d_list s1) lookUp (head_ xs)
-runGplc (x0:x1:x2:x3:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 8 = do
+  runGplc (tail_ xs) d_list context w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 (chgPs1 (GPLC_int x0) (GPLC_int x1) (GPLC_int x2) d_list s1) lookUp (head_ xs)
+runGplc (x0:x1:x2:x3:xs) d_list context w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 8 = do
   reportState (debugGplc s1) 2 [] [] (showGplcArgs "chg_obj_type" [(0, x0), (0, x1), (0, x2), (0, x3)] d_list (-1))
-  runGplc (tail_ xs) d_list w_grid w_grid_upd f_grid obj_grid (chgObjType (GPLC_int x0) (GPLC_int x1, GPLC_int x2, GPLC_int x3) d_list obj_grid obj_grid_upd)
+  runGplc (tail_ xs) d_list context w_grid w_grid_upd f_grid obj_grid
+          (chgObjType (GPLC_int x0) (GPLC_int x1, GPLC_int x2, GPLC_int x3) d_list obj_grid obj_grid_upd)
           s0 s1 lookUp (head_ xs)
-runGplc (x0:x1:x2:x3:x4:x5:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 9 = do
+runGplc (x0:x1:x2:x3:x4:x5:xs) d_list context w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 9 = do
   reportState (debugGplc s1) 2 [] [] (showGplcArgs "place_light" [(0, x0), (0, x1), (0, x2), (0, x3), (0, x4), (0, x5)] d_list (-1))
-  runGplc (tail_ xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd
+  runGplc (tail_ xs) d_list context w_grid w_grid_upd f_grid obj_grid obj_grid_upd
           (placeLight (GPLC_float x0) (GPLC_float x1) (GPLC_float x2) (GPLC_float x3) (GPLC_float x4) (GPLC_float x5) s0 d_list) s1 lookUp (head_ xs)
-runGplc (x0:x1:x2:x3:x4:x5:x6:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 10 = do
+runGplc (x0:x1:x2:x3:x4:x5:x6:xs) d_list context w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 10 = do
   reportState (debugGplc s1) 2 [] [] (showGplcArgs "chg_grid_" [(0, x0), (0, x1), (0, x2), (0, x3), (0, x4), (0, x5), (0, x6)] d_list (-1))
-  runGplc (tail_ xs) d_list w_grid w_grid_upd f_grid obj_grid
+  runGplc (tail_ xs) d_list context w_grid w_grid_upd f_grid obj_grid
           (chgGrid_ (GPLC_flag x0) (GPLC_int x1, GPLC_int x2, GPLC_int x3) (GPLC_int x4, GPLC_int x5, GPLC_int x6) obj_grid obj_grid_upd d_list) s0 s1 lookUp (head_ xs)
-runGplc (x0:x1:x2:x3:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 11 = do
+runGplc (x0:x1:x2:x3:xs) d_list context w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 11 = do
   reportState (debugGplc s1) 2 [] [] (showGplcArgs "copy_ps1" [(1, x0), (0, x1), (0, x2), (0, x3)] d_list (-1))
-  runGplc (tail_ xs) d_list w_grid w_grid_upd f_grid obj_grid (copyPs1 (GPLC_int x0) (GPLC_int x1, GPLC_int x2, GPLC_int x3) s1 obj_grid obj_grid_upd d_list)
+  runGplc (tail_ xs) d_list context w_grid w_grid_upd f_grid obj_grid (copyPs1 (GPLC_int x0) (GPLC_int x1, GPLC_int x2, GPLC_int x3) s1 obj_grid obj_grid_upd d_list)
           s0 s1 lookUp (head_ xs)
-runGplc (x0:x1:x2:x3:x4:x5:x6:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 12 = do
+runGplc (x0:x1:x2:x3:x4:x5:x6:xs) d_list context w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 12 = do
   reportState (debugGplc s1) 2 [] [] (showGplcArgs "copy_lstate" [(1, x0), (0, x1), (0, x2), (0, x3), (0, x4), (0, x5), (0, x6)] d_list (-1))
-  runGplc (tail_ xs) d_list w_grid w_grid_upd f_grid obj_grid
+  runGplc (tail_ xs) d_list context w_grid w_grid_upd f_grid obj_grid
           (copyLstate (GPLC_int x0) (GPLC_int x1, GPLC_int x2, GPLC_int x3) (GPLC_int x4, GPLC_int x5, GPLC_int x6) w_grid obj_grid obj_grid_upd d_list) s0 s1
           lookUp (head_ xs)
-runGplc (x:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 13 =
+runGplc (x:xs) d_list context w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 13 =
   let pass_msg' = passMsg (GPLC_int x) xs s1 d_list
   in do
   reportState (debugGplc s1) 2 [] []
               ("\npass_msg run with arguments " ++ "msg_length: " ++ show ((d_list, 473) !! x) ++ " message data: " ++ show (take ((d_list, 474) !! x) xs))
-  runGplc (tail_ (fst pass_msg')) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 (snd pass_msg') lookUp (head_ (fst pass_msg'))
-runGplc (x0:x1:x2:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 14 = do
+  runGplc (tail_ (fst pass_msg')) d_list context w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 (snd pass_msg') lookUp (head_ (fst pass_msg'))
+runGplc (x0:x1:x2:xs) d_list context w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 14 = do
   reportState (debugGplc s1) 2 [] [] (showGplcArgs "chg_ps0" [(0, x0), (0, x1), (0, x2)] d_list (-1))
-  runGplc (tail_ xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd (chgPs0 (GPLC_int x0) (GPLC_flag x1) (GPLC_int x2) d_list s0) s1 lookUp (head_ xs)
-runGplc (x0:x1:x2:x3:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 15 = do
+  runGplc (tail_ xs) d_list context w_grid w_grid_upd f_grid obj_grid obj_grid_upd (chgPs0 (GPLC_int x0) (GPLC_flag x1) (GPLC_int x2) d_list s0) s1 lookUp (head_ xs)
+runGplc (x0:x1:x2:x3:xs) d_list context w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 15 = do
   reportState (debugGplc s1) 2 [] [] (showGplcArgs "copy_ps0" [(1, x0), (0, x1), (0, x2), (0, x3)] d_list (-1))
-  runGplc (tail_ xs) d_list w_grid w_grid_upd f_grid obj_grid (copyPs0 (GPLC_int x0) (GPLC_int x1, GPLC_int x2, GPLC_int x3) s0 obj_grid obj_grid_upd d_list)
+  runGplc (tail_ xs) d_list context w_grid w_grid_upd f_grid obj_grid (copyPs0 (GPLC_int x0) (GPLC_int x1, GPLC_int x2, GPLC_int x3) s0 obj_grid obj_grid_upd d_list)
           s0 s1 lookUp (head_ xs)
-runGplc (x0:x1:x2:x3:x4:x5:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 16 = do
+runGplc (x0:x1:x2:x3:x4:x5:xs) d_list context w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 16 = do
   reportState (debugGplc s1) 2 [] [] (showGplcArgs "binary_dice" [(0, x0), (0, x1), (0, x2), (0, x3), (0, x4), (1, x5)] d_list (-1))
-  runGplc (tail_ xs) d_list w_grid w_grid_upd f_grid obj_grid
+  runGplc (tail_ xs) d_list context w_grid w_grid_upd f_grid obj_grid
           (binaryDice (GPLC_int x0) (GPLC_int x1) (GPLC_int x2, GPLC_int x3, GPLC_int x4) (GPLC_int x5) s0 obj_grid obj_grid_upd d_list) s0 s1 lookUp (head_ xs)
-runGplc (x0:x1:x2:x3:x4:x5:x6:x7:x8:x9:x10:x11:x12:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 17 =
+runGplc (x0:x1:x2:x3:x4:x5:x6:x7:x8:x9:x10:x11:x12:xs) d_list context w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 17 =
   let arg_report = [(0, x0), (0, x1), (0, x2), (0, x3), (0, x4), (0, x5), (0, x6), (0, x7), (0, x8), (0, x9), (0, x10), (1, x11), (0, x12)]
   in do
   reportState (debugGplc s1) 2 [] [] (showGplcArgs "project_init" arg_report d_list (-1))
-  runGplc (tail_ xs) d_list w_grid w_grid_upd f_grid obj_grid
+  runGplc (tail_ xs) d_list context w_grid w_grid_upd f_grid obj_grid
           (projectInit (GPLC_float x0) (GPLC_float x1) (GPLC_float x2) (GPLC_int x3) (GPLC_float x4) (GPLC_int x5, GPLC_int x6, GPLC_int x7) (GPLC_int x8, GPLC_int x9, GPLC_int x10) (GPLC_int x11) (GPLC_int x12) obj_grid obj_grid_upd d_list lookUp)
           s0 s1 lookUp (head_ xs)
-runGplc (x0:x1:x2:x3:x4:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 18 =
+runGplc (x0:x1:x2:x3:x4:xs) d_list context w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 18 =
   let project_update' = projectUpdate0 (GPLC_int x0) (GPLC_int x1) (GPLC_int x2, GPLC_int x3, GPLC_int x4) w_grid w_grid_upd obj_grid obj_grid_upd s0 s1 d_list
   in do
   reportState (debugGplc s1) 2 [] [] (showGplcArgs "project_update" [(0, x0), (1, x1), (0, x2), (0, x3), (0, x4)] d_list (-1))
-  runGplc (tail_ xs) d_list w_grid (fst__ project_update') f_grid obj_grid (snd__ project_update') s0 (third_ project_update') lookUp (head_ xs)
-runGplc (x0:x1:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 19 = do
+  runGplc (tail_ xs) d_list context w_grid (fst__ project_update') f_grid obj_grid (snd__ project_update') s0 (third_ project_update') lookUp (head_ xs)
+runGplc (x0:x1:xs) d_list context w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 19 = do
   reportState (debugGplc s1) 2 [] [] (showGplcArgs "init_npc" [(0, x0), (0, x1)] d_list (-1))
   reportNpcState (debugGplc s1) s1 ((d_list, 498) !! (8 :: Int))
-  runGplc (tail_ xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 (initNpc (GPLC_int x0) (GPLC_int x1) s1 d_list) lookUp (head_ xs)
-runGplc (x0:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 20 =
+  runGplc (tail_ xs) d_list context w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 (initNpc (GPLC_int x0) (GPLC_int x1) s1 d_list) lookUp (head_ xs)
+runGplc (x0:xs) d_list context w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 20 =
   let npc_decision_ = npcDecision 0 0 (GPLC_int x0) 0 0 0 d_list (node_locations ((npc_states s1) ! ((d_list, 499) !! (8 :: Int)))) w_grid f_grid obj_grid
                                   obj_grid_upd s0 s1 lookUp
   in do
   reportState (debugGplc s1) 2 [] [] (showGplcArgs "npc_decision" [(1, x0)] d_list (-1))
   reportNpcState (debugGplc s1) s1 ((d_list, 500) !! (8 :: Int))
-  runGplc (tail_ xs) d_list w_grid w_grid_upd f_grid obj_grid (fst npc_decision_) s0 (snd npc_decision_) lookUp (head_ xs)
-runGplc (x0:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 21 =
+  runGplc (tail_ xs) d_list context w_grid w_grid_upd f_grid obj_grid (fst npc_decision_) s0 (snd npc_decision_) lookUp (head_ xs)
+runGplc (x0:xs) d_list context w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 21 =
   let npc_move_ = npcMove (GPLC_int x0) d_list (node_locations ((npc_states s1) ! ((d_list, 501) !! (8 :: Int)))) w_grid w_grid_upd f_grid obj_grid obj_grid_upd
                           s0 s1 lookUp
   in do
   reportState (debugGplc s1) 2 [] [] (showGplcArgs "npc_move" [(1, x0)] d_list (-1))
   reportNpcState (debugGplc s1) s1 ((d_list, 502) !! (8 :: Int))
-  runGplc (tail_ xs) d_list w_grid (fst__ npc_move_) f_grid obj_grid (snd__ npc_move_) s0 (third_ npc_move_) lookUp (head_ xs)
-runGplc (x0:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 22 =
+  runGplc (tail_ xs) d_list context w_grid (fst__ npc_move_) f_grid obj_grid (snd__ npc_move_) s0 (third_ npc_move_) lookUp (head_ xs)
+runGplc (x0:xs) d_list context w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 22 =
   let npc_damage_ = npcDamage (GPLC_flag x0) (node_locations ((npc_states s1) ! ((d_list, 503) !! (8 :: Int)))) w_grid w_grid_upd obj_grid obj_grid_upd
                               s0 s1 d_list
   in do
   reportState (debugGplc s1) 2 [] [] (showGplcArgs "npc_damage" [(1, x0)] d_list (-1))
-  runGplc (tail_ xs) d_list w_grid (fst__ npc_damage_) f_grid obj_grid (snd__ npc_damage_) s0 (third_ npc_damage_) lookUp (head_ xs)
-runGplc (x0:x1:xs) d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 23 =
+  runGplc (tail_ xs) d_list context w_grid (fst__ npc_damage_) f_grid obj_grid (snd__ npc_damage_) s0 (third_ npc_damage_) lookUp (head_ xs)
+runGplc (x0:x1:xs) d_list context w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 23 =
   let cpede_move_ = cpedeMove (GPLC_int x0) (GPLC_flag x1) d_list (node_locations ((npc_states s1) ! ((d_list, 504) !! (8 :: Int)))) w_grid w_grid_upd obj_grid
                               obj_grid_upd s0 s1
   in do
   reportState (debugGplc s1) 2 [] [] (showGplcArgs "cpede_move" [(1, x0), (1, x1)] d_list (-1))
   reportNpcState (debugGplc s1) s1 ((d_list, 505) !! (8 :: Int))
-  runGplc (tail_ xs) d_list w_grid (fst__ cpede_move_) f_grid obj_grid (snd__ cpede_move_) s0 (third_ cpede_move_) lookUp (head_ xs)
-runGplc code d_list w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp c = do
+  runGplc (tail_ xs) d_list context w_grid (fst__ cpede_move_) f_grid obj_grid (snd__ cpede_move_) s0 (third_ cpede_move_) lookUp (head_ xs)
+runGplc (x0:xs) d_list context w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 24 = do
+  reportState (debugGplc s1) 2 [] [] (showGplcArgs "set_event_context" [(0, x0)] d_list (-1))
+  runGplc (tail_ xs) d_list (setEventContext (GPLC_int x0) d_list) w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp (head_ xs)
+runGplc code d_list context w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp c = do
   putStr ("\nInvalid opcode: " ++ show c)
   putStr ("\nremaining code block: " ++ show code)
   throw Invalid_GPLC_opcode
@@ -1216,12 +1237,12 @@ reportNpcState True s1 i = putStr ("\n" ++ show ((npc_states s1) ! i))
 
 gplcError :: [((Int, Int, Int), Wall_grid)] -> Array (Int, Int, Int) Floor_grid -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> Play_state0 -> Play_state1
              -> SomeException
-             -> IO ([((Int, Int, Int), Wall_grid)], Array (Int, Int, Int) Floor_grid, [((Int, Int, Int), (Int, [(Int, Int)]))], Play_state0, Play_state1)
+             -> IO GPLC_Output
 gplcError w_grid_upd f_grid obj_grid_upd s0 s1 e = do
   putStr ("\nA GPLC program has had a runtime exception and Game :: Dangerous engine is designed to shut down in this case.  Exception thrown: " ++ show e)
   putStr "\nPlease see the readme.txt file for details of how to report this bug."
   exitSuccess
-  return (w_grid_upd, f_grid, obj_grid_upd, s0, s1)
+  return GPLC_Output {event_context_ = None, w_grid_upd_ = w_grid_upd, f_grid__ = f_grid, obj_grid_upd_ = obj_grid_upd, s0__ = s0, s1__ = s1}
 
 -- These two functions are to fix a major space leak, which occured when an NPC was active but not in view.  This appears to have been caused by an accumulation
 -- of pending updates to Wall_grid, delayed due to laziness.  Testing showed that nothing short of forcing the update list elements to
@@ -1318,10 +1339,10 @@ linkGplc0 phase_flag (x0:x1:xs) (z0:z1:z2:zs) game_state w_grid_upd obj_grid_upd
   if init_flag == True then do
     if (x1 == 1 || x1 == 3) && head (program ((obj_grid_ game_state) ! target0)) == 0 then do
       reportState (debug_enabled 0) 2 [] [] ("\nPlayer starts GPLC program [" ++ programName ((obj_grid_ game_state) ! target0) ++ "] at Obj_grid " ++ show target0)
-      run_gplc' <- catch (runGplc (program ((fst obj_grid') ! target0)) [] (w_grid_ game_state) w_grid_upd (f_grid_ game_state) (fst obj_grid') obj_grid_upd (s0_ game_state) s1'' lookUp 0)
+      run_gplc' <- catch (runGplc (program ((fst obj_grid') ! target0)) [] (event_context game_state) (w_grid_ game_state) w_grid_upd (f_grid_ game_state) (fst obj_grid') obj_grid_upd (s0_ game_state) s1'' lookUp 0)
                          (\e -> gplcError w_grid_upd (f_grid_ game_state) obj_grid_upd (s0_ game_state) (s1_ game_state) e)
-      linkGplc0 phase_flag (x0:x1:xs) (z0:z1:z2:zs) (game_state {f_grid_ = snd_ run_gplc', s0_ = fourth run_gplc', s1_ = fifth run_gplc'})
-                           (fst_ run_gplc') (third run_gplc') lookUp False
+      linkGplc0 phase_flag (x0:x1:xs) (z0:z1:z2:zs) (game_state {f_grid_ = f_grid__ run_gplc', s0_ = s0__ run_gplc', s1_ = s1__ run_gplc'})
+                           (w_grid_upd_ run_gplc') (obj_grid_upd_ run_gplc') lookUp False
     else linkGplc0 phase_flag (x0:x1:xs) (z0:z1:z2:zs) game_state w_grid_upd obj_grid_upd lookUp False
   else if phase_flag == True then do
     if sig_q (s1_ game_state) == [] then do
@@ -1336,10 +1357,10 @@ linkGplc0 phase_flag (x0:x1:xs) (z0:z1:z2:zs) game_state w_grid_upd obj_grid_upd
         reportState (debug_enabled 1) 2 [] []
                     ("\nGPLC program [" ++ programName ((obj_grid_ game_state) ! target1) ++ "] run at Obj_grid "
                     ++ show (((sig_q (s1_ game_state)), 516) !! (1 :: Int), ((sig_q (s1_ game_state)), 517) !! (2 :: Int), ((sig_q (s1_ game_state)), 518) !! (3 :: Int)))
-        run_gplc' <- catch (runGplc (program (obj_grid'' ! target1)) [] (w_grid_ game_state) w_grid_upd (f_grid_ game_state) obj_grid'' obj_grid_upd (s0_ game_state) s1' lookUp 0)
+        run_gplc' <- catch (runGplc (program (obj_grid'' ! target1)) [] (event_context game_state) (w_grid_ game_state) w_grid_upd (f_grid_ game_state) obj_grid'' obj_grid_upd (s0_ game_state) s1' lookUp 0)
                            (\e -> gplcError w_grid_upd (f_grid_ game_state) obj_grid_upd (s0_ game_state) (s1_ game_state) e)
-        linkGplc0 True (x0:x1:xs) (z0:z1:z2:zs) (game_state {f_grid_ = snd_ run_gplc', s0_ = fourth run_gplc', s1_ = fifth run_gplc'})
-                  (fst_ run_gplc') (third run_gplc') lookUp False
+        linkGplc0 True (x0:x1:xs) (z0:z1:z2:zs) (game_state {f_grid_ = f_grid__ run_gplc', s0_ = s0__ run_gplc', s1_ = s1__ run_gplc'})
+                  (w_grid_upd_ run_gplc') (obj_grid_upd_ run_gplc') lookUp False
       else do
         putStr ("\nSignal addressed to Obj_grid " ++ show_obj_grid ++ " but this element is not set to run programs from.")
         linkGplc0 True (x0:x1:xs) (z0:z1:z2:zs) (game_state {s1_ = (s1_ game_state) {sig_q = drop 4 (sig_q (s1_ game_state))}}) w_grid_upd obj_grid_upd lookUp False
