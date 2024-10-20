@@ -1341,7 +1341,8 @@ linkGplc0 phase_flag (x0:x1:xs) (z0:z1:z2:zs) game_state w_grid_upd obj_grid_upd
       reportState (debug_enabled 0) 2 [] [] ("\nPlayer starts GPLC program [" ++ programName ((obj_grid_ game_state) ! target0) ++ "] at Obj_grid " ++ show target0)
       run_gplc' <- catch (runGplc (program ((fst obj_grid') ! target0)) [] (event_context game_state) (w_grid_ game_state) w_grid_upd (f_grid_ game_state) (fst obj_grid') obj_grid_upd (s0_ game_state) s1'' lookUp 0)
                          (\e -> gplcError w_grid_upd (f_grid_ game_state) obj_grid_upd (s0_ game_state) (s1_ game_state) e)
-      linkGplc0 phase_flag (x0:x1:xs) (z0:z1:z2:zs) (game_state {f_grid_ = f_grid__ run_gplc', s0_ = s0__ run_gplc', s1_ = s1__ run_gplc'})
+      linkGplc0 phase_flag (x0:x1:xs) (z0:z1:z2:zs)
+                           (game_state {event_context = event_context_ run_gplc', f_grid_ = f_grid__ run_gplc', s0_ = s0__ run_gplc', s1_ = s1__ run_gplc'})
                            (w_grid_upd_ run_gplc') (obj_grid_upd_ run_gplc') lookUp False
     else linkGplc0 phase_flag (x0:x1:xs) (z0:z1:z2:zs) game_state w_grid_upd obj_grid_upd lookUp False
   else if phase_flag == True then do
@@ -1359,8 +1360,9 @@ linkGplc0 phase_flag (x0:x1:xs) (z0:z1:z2:zs) game_state w_grid_upd obj_grid_upd
                     ++ show (((sig_q (s1_ game_state)), 516) !! (1 :: Int), ((sig_q (s1_ game_state)), 517) !! (2 :: Int), ((sig_q (s1_ game_state)), 518) !! (3 :: Int)))
         run_gplc' <- catch (runGplc (program (obj_grid'' ! target1)) [] (event_context game_state) (w_grid_ game_state) w_grid_upd (f_grid_ game_state) obj_grid'' obj_grid_upd (s0_ game_state) s1' lookUp 0)
                            (\e -> gplcError w_grid_upd (f_grid_ game_state) obj_grid_upd (s0_ game_state) (s1_ game_state) e)
-        linkGplc0 True (x0:x1:xs) (z0:z1:z2:zs) (game_state {f_grid_ = f_grid__ run_gplc', s0_ = s0__ run_gplc', s1_ = s1__ run_gplc'})
-                  (w_grid_upd_ run_gplc') (obj_grid_upd_ run_gplc') lookUp False
+        linkGplc0 True (x0:x1:xs) (z0:z1:z2:zs)
+                       (game_state {event_context = event_context_ run_gplc', f_grid_ = f_grid__ run_gplc', s0_ = s0__ run_gplc', s1_ = s1__ run_gplc'})
+                       (w_grid_upd_ run_gplc') (obj_grid_upd_ run_gplc') lookUp False
       else do
         putStr ("\nSignal addressed to Obj_grid " ++ show_obj_grid ++ " but this element is not set to run programs from.")
         linkGplc0 True (x0:x1:xs) (z0:z1:z2:zs) (game_state {s1_ = (s1_ game_state) {sig_q = drop 4 (sig_q (s1_ game_state))}}) w_grid_upd obj_grid_upd lookUp False
@@ -1641,29 +1643,12 @@ updatePlay io_box state_ref game_state in_flight min_frame_t physics lookUp soun
       updatePlay io_box state_ref (game_state {s0_ = s0 {gameClock = snd game_clock'}}) in_flight min_frame_t physics lookUp
                  sound_array t_last t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
   else if control == 2 then do
-    choice <- runMenu (-1) (pauseText (showGameTime (fst__ (gameClock s0)) [] False) s1 (difficulty s1)) [] io_box (-0.75)
-                      (-0.75) 1 0 0 s0 1
-    if choice == 1 then
-      updatePlay io_box state_ref (game_state {s0_ = s0 {message_ = []}}) in_flight min_frame_t physics lookUp sound_array t'' t_log
-                 (third_ (det_fps t'')) (fst__ (det_fps t''))
-    else if choice == 2 then do
-      putMVar state_ref (game_state {event_context = SaveGame})
-      updatePlay io_box state_ref (game_state {s0_ = s0 {message_ = []}}) in_flight min_frame_t physics lookUp sound_array t'' t_log
-                 (third_ (det_fps t'')) (fst__ (det_fps t''))
-    else if choice == 3 then do
-      putMVar state_ref (game_state {event_context = ReturnMainMenu})
-      updatePlay io_box state_ref (game_state {s0_ = s0 {message_ = []}}) in_flight min_frame_t physics lookUp sound_array t'' t_log
-                 (third_ (det_fps t'')) (fst__ (det_fps t''))
-    else do
-      putMVar state_ref (game_state {event_context = ExitGame})
-      updatePlay io_box state_ref (game_state {s0_ = s0 {message_ = []}}) in_flight min_frame_t physics lookUp sound_array t'' t_log
-                 (third_ (det_fps t'')) (fst__ (det_fps t''))
+    updatePlay io_box state_ref (link0 {s0_ = (s0_ link0) {message_ = []}, s1_ = (s1_ link0) {sig_q = sig_q (s1_ link0) ++ [16, 0, 0, 2]}}) in_flight min_frame_t
+               physics lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
   else if control == 10 then do
-    putMVar state_ref game_state
     updatePlay io_box state_ref (link0 {s0_ = (s0_ link0) {message_ = []}, s1_ = (s1_ link0) {sig_q = sig_q (s1_ link0) ++ [2, 0, 0, 0]}}) in_flight min_frame_t
                physics lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
   else if control == 11 then do
-    putMVar state_ref game_state
     if view_mode s0 == 0 then
       updatePlay io_box state_ref (link0 {s0_ = (s0_ link0) {message_ = [], view_mode = 1}}) in_flight min_frame_t physics
                  lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
@@ -1671,11 +1656,9 @@ updatePlay io_box state_ref game_state in_flight min_frame_t physics lookUp soun
       updatePlay io_box state_ref (link0 {s0_ = (s0_ link0) {message_ = [], view_mode = 0}}) in_flight min_frame_t physics
                  lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
   else if control == 12 then do
-    putMVar state_ref game_state
     updatePlay io_box state_ref (link0 {s0_ = (s0_ link0) {message_ = [], view_angle = modAngle (view_angle (s0_ link0)) 5}}) in_flight min_frame_t
                physics lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
   else if control == 13 then do
-    putMVar state_ref game_state
     updatePlay io_box state_ref (link0 {s0_ = (s0_ link0) {message_ = []}, s1_ = (s1_ link0) {sig_q = sig_q (s1_ link0) ++ [2, 0, 0, 1]}}) in_flight min_frame_t
                physics lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
   else if message s1 /= [] then do
@@ -1687,49 +1670,60 @@ updatePlay io_box state_ref game_state in_flight min_frame_t physics lookUp soun
     if in_flight == False then
       if (pos_w s0) - floor > 0.02 then do
         putMVar state_ref game_state
-        updatePlay io_box state_ref (link0 {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 0}) True min_frame_t physics
+        link0 <- linkGplc0 (fst game_clock') (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 0}) [] [] lookUp True
+        updatePlay io_box state_ref link0 True min_frame_t physics
                    lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
       else if control > 2 && control < 7 then do
         putMVar state_ref game_state
-        updatePlay io_box state_ref (link0 {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 1}) False min_frame_t physics
+        link0 <- linkGplc0 (fst game_clock') (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 1}) [] [] lookUp True
+        updatePlay io_box state_ref link0 False min_frame_t physics
                    lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
       else if control == 7 then do
         putMVar state_ref game_state
-        updatePlay io_box state_ref (link0 {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 2}) False min_frame_t physics
+        link0 <- linkGplc0 (fst game_clock') (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 2}) [] [] lookUp True
+        updatePlay io_box state_ref link0 False min_frame_t physics
                    lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
       else if control == 8 then do
         putMVar state_ref game_state
-        updatePlay io_box state_ref (link0 {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 3}) False min_frame_t physics
+        link0 <- linkGplc0 (fst game_clock') (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 3}) [] [] lookUp True
+        updatePlay io_box state_ref link0 False min_frame_t physics
                    lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
       else if control == 9 && jumpAllowed f_grid s0 == True then do
         putMVar state_ref game_state
-        updatePlay io_box state_ref (link0 {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 4}) False min_frame_t physics
+        link0 <- linkGplc0 (fst game_clock') (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 4}) [] [] lookUp True
+        updatePlay io_box state_ref link0 False min_frame_t physics
                    lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
       else do
         putMVar state_ref game_state
-        updatePlay io_box state_ref (link0 {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 6}) False min_frame_t physics
+        link0 <- linkGplc0 (fst game_clock') (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 6}) [] [] lookUp True
+        updatePlay io_box state_ref link0 False min_frame_t physics
                    lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
     else if in_flight == True && (pos_w s0) > floor then
       if control == 7 then do
         putMVar state_ref game_state
-        updatePlay io_box state_ref (link0 {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 7}) True min_frame_t physics
+        link0 <- linkGplc0 (fst game_clock') (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 7}) [] [] lookUp True
+        updatePlay io_box state_ref link0 True min_frame_t physics
                    lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
       else if control == 8 then do
         putMVar state_ref game_state
-        updatePlay io_box state_ref (link0 {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 8}) True min_frame_t physics
+        link0 <- linkGplc0 (fst game_clock') (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 8}) [] [] lookUp True
+        updatePlay io_box state_ref link0 True min_frame_t physics
                    lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
       else do
         putMVar state_ref game_state
-        updatePlay io_box state_ref (link0 {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 9}) True min_frame_t physics
+        link0 <- linkGplc0 (fst game_clock') (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 9}) [] [] lookUp True
+        updatePlay io_box state_ref link0 True min_frame_t physics
                    lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
     else do
       putMVar state_ref game_state
+      link0 <- linkGplc0 (fst game_clock') (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 10}) [] [] lookUp True
       if ((vel s0), 574) !! (2 :: Int) < -4 then do
-        updatePlay io_box state_ref (game_state {s0_ = s0'_ 0 control (s0 {message_ = []}) 10, s1_ = link1_}) False min_frame_t physics
+        updatePlay io_box state_ref (link0 {s1_ = link1_}) False min_frame_t physics
                    lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
       else do
         putMVar state_ref game_state
-        updatePlay io_box state_ref (game_state {s0_ = s0'_ 0 control (s0 {message_ = []}) 11, s1_ = link1}) False min_frame_t physics
+        link0 <- linkGplc0 (fst game_clock') (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 11}) [] [] lookUp True
+        updatePlay io_box state_ref (link0 {s1_ = link1}) False min_frame_t physics
                    lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
 
 -- This function is used to convert integers to their representation in the engine's message tile reference format.

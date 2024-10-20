@@ -253,8 +253,12 @@ setupGame conf_reg comp_map_text (Size w h) control_ref =
   sound_array <- initAlEffect0 (splitOneOf "\n " (tailFile contents2)) (cfg' "sound_data_dir")
                                (array (0, (div (length (splitOneOf "\n " (tailFile contents2))) 2) - 1) [(x, Source 0) | x <- [0..(div (length (splitOneOf "\n " (tailFile contents2))) 2) - 1]])
   r_gen <- getStdGen
-  startGame NewGame physics control_ref (listArray (0, 65) uniform) (p_bind_, p_bind_limit + 1) map_text conf_reg
-            sound_array (cameraToClip frustumScale0 (read (cfg' "frustumScale1"))) r_gen
+  if cfg' "current_save" == "-1" then
+    startGame NewGame physics control_ref (listArray (0, 65) uniform) (p_bind_, p_bind_limit + 1) map_text conf_reg
+              sound_array (cameraToClip frustumScale0 (read (cfg' "frustumScale1"))) r_gen
+  else
+    startGame LoadGame physics control_ref (listArray (0, 65) uniform) (p_bind_, p_bind_limit + 1) map_text conf_reg
+              sound_array (cameraToClip frustumScale0 (read (cfg' "frustumScale1"))) r_gen
 
 -- The model file(s) that describe all 3D and 2D models referenced in the current map are loaded here.
 loadModFile :: [[Char]] -> [Char] -> Ptr GLuint -> IO ()

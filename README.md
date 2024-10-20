@@ -47,9 +47,9 @@ risk of centipedes getting stuck but that feels rather limiting.
 The main purpose of a launcher would be to allow users to change engine configuration options without 
 having to modify a config file or use command line parameters.
 
-Engine version: 1.0.2
+Engine version: 1.1.0
 
-Server version: 2.0.0
+Server version: 2.1.0
 
 ![Lore image 1: Ben and Sarah](https://github.com/Mushy-pea/The-Perils-of-Gem-Mining/blob/master/images/Ben_and_Sarah.png)
 
