@@ -26,26 +26,29 @@ head_ ls = head ls
 
 -- This function modifies the collision properties of Obj_grid such that walls are effectively padded with voxels that can't be entered.
 -- This is so that the models for the player and NPCs don't intersect the walls.
-padWalls :: Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) Obj_grid -> Int -> Int -> Int -> Int -> Int
-               -> Array (Int, Int, Int) Obj_grid
-padWalls w_grid f_grid obj_grid w u v u_limit v_limit =
+padWalls :: Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) Obj_grid -> [((Int, Int, Int), Obj_grid)]
+            -> Int -> Int -> Int -> Int -> Int -> [((Int, Int, Int), Obj_grid)]
+padWalls w_grid f_grid obj_grid obj_grid_upd w u v u_limit v_limit =
   let wall_voxel = w_grid ! (w, u, v)
       floor_surface = surface (f_grid ! (w, div u 2, div v 2))
-      prog_present = if program (obj_grid ! (w, u, v)) == [] then False
+      object = obj_grid ! (w, u, v)
+      prog_present = if program object == [] then False
                      else True
       wall_adjacent = u1 wall_voxel || u2 wall_voxel || v1 wall_voxel || v2 wall_voxel
-      obj_grid' = if (floor_surface == Open || floor_surface == Flat) && prog_present == False && wall_adjacent then
-        obj_grid // [((w, u, v), Obj_grid {objType = 4, program = [], programName = []})]
-                  else obj_grid
+      obj_grid_upd' = if (floor_surface == Open || floor_surface == Flat) && prog_present == False && wall_adjacent then
+                        ((w, u, v), Obj_grid {objType = 4, program = [], programName = []}) : obj_grid_upd
+                      else if objType object == 4 then
+                        ((w, u, v), Obj_grid {objType = 0, program = [], programName = []}) : obj_grid_upd
+                      else obj_grid_upd
   in
-  if w == 2 && u == u_limit && v == v_limit then obj_grid'
-  else if u == u_limit && v == v_limit then padWalls w_grid f_grid obj_grid' (w + 1) 0 0 u_limit v_limit
-  else if u == u_limit then padWalls w_grid f_grid obj_grid' w 0 (v + 1) u_limit v_limit
-  else padWalls w_grid f_grid obj_grid' w (u + 1) v u_limit v_limit
+  if w == 2 && u == u_limit && v == v_limit then obj_grid_upd
+  else if u == u_limit && v == v_limit then padWalls w_grid f_grid obj_grid obj_grid_upd' (w + 1) 0 0 u_limit v_limit
+  else if u == u_limit then padWalls w_grid f_grid obj_grid obj_grid_upd' w 0 (v + 1) u_limit v_limit
+  else padWalls w_grid f_grid obj_grid obj_grid_upd' w (u + 1) v u_limit v_limit
 
 -- This function constructs a list of the locations of all the ramps within the map.
 buildRampSet :: Array (Int, Int, Int) Floor_grid -> Int -> Int -> Int -> Int -> Int -> ([(Int, Int, Int)], [(Int, Int, Int)], [(Int, Int, Int)])
-                 -> [(Int, Int, Int)]
+                -> [(Int, Int, Int)]
 buildRampSet f_grid w u v u_limit v_limit acc =
   let surface_ = surface (f_grid ! (w, u, v))
       is_ramp = if surface_ == Open || surface_ == Flat then False
@@ -126,7 +129,7 @@ simFlood0 obj_grid current_set ramp_set up_ramp down_ramp u_limit v_limit =
 -- The flood simulation is applied to each element of Obj_grid where object type is initially 0, which is managed by this function.
 -- note: Obj_grid elements are to be interpreted as (object type, [GPLC program]).
 findRamps :: Array (Int, Int, Int) Obj_grid -> Array (Int, Int, Int) ((Int, Int), (Int, Int)) -> [[(Int, Int, Int)]] -> Int -> Int -> Int -> Int -> Int
-              -> Array (Int, Int, Int) ((Int, Int), (Int, Int))
+             -> Array (Int, Int, Int) ((Int, Int), (Int, Int))
 findRamps obj_grid ramp_map ramp_set w u v u_limit v_limit =
   let ramp_map' = if objType (obj_grid ! (w, u, v)) == 0 then ramp_map // [((w, u, v), simFlood0 obj_grid [(w, u, v)] (ramp_set !! w) [] [] u_limit v_limit)]
                   else ramp_map
@@ -160,7 +163,8 @@ augmentFloorGrid f_grid ramp_map w u v f_u_limit f_v_limit =
 -- This is the intended entry point function for the module.
 applyAugmentations :: Server_state -> (Int, Int) -> (Int, Int) -> Server_state
 applyAugmentations game_state (w_u_limit, w_v_limit) (f_u_limit, f_v_limit) =
-  let obj_grid' = padWalls (w_grid_ game_state) (f_grid_ game_state) (obj_grid_ game_state) 0 0 0 w_u_limit w_v_limit
+  let obj_grid_upd = padWalls (w_grid_ game_state) (f_grid_ game_state) (obj_grid_ game_state) [] 0 0 0 w_u_limit w_v_limit
+      obj_grid' = (obj_grid_ game_state) // obj_grid_upd
       ramp_set = splitOn [(3, 0, 0)] (buildRampSet (f_grid_ game_state) 0 0 0 f_u_limit f_v_limit ([], [], []))
       new_ramp_map = array ((0, 0, 0), (2, w_u_limit, w_v_limit)) [((w, u, v), ((0, 0), (0, 0))) | w <- [0..2], u <- [0..w_u_limit], v <- [0..w_v_limit]]
       ramp_map = findRamps obj_grid' new_ramp_map ramp_set 0 0 0 w_u_limit w_v_limit

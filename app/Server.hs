@@ -91,7 +91,7 @@ handleInput server_state comp_map_text asset_path command h_in input_ref console
             (\h -> hPutStr h (encoded_wall_grid ++ encoded_floor_grid ++ template ++ encoded_obj_grid ++ encoded_sub_wall_grid ++ footer))
     if output_mode == 0 then putMVar console_output "\nMap file saved."
     else putMVar network_output "Map file saved."
-    handleInput server_state comp_map_text asset_path [] h_in input_ref console_output network_output 0 conf_reg
+    handleInput (Just server_state') comp_map_text asset_path [] h_in input_ref console_output network_output 0 conf_reg
   | otherwise = do
     result <- applyCommand (fromJust server_state) command
     if output_mode == 0 then putMVar console_output (snd result)

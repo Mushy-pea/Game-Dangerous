@@ -247,7 +247,7 @@ filterObjGridDiffs :: [((Int, Int, Int), Obj_grid)] -> ObjGridDiffContainer -> O
 filterObjGridDiffs [] diff_container = diff_container
 filterObjGridDiffs (((w, u, v), y):xs) diff_container
   | u >= 0 && v >= 0 = filterObjGridDiffs xs (diff_container {map1ODiff = ((w, u, v), y) : map1ODiff diff_container})
-  | u >= 0 && v < 0 = filterObjGridDiffs xs (diff_container {map2ODiff = ((w, u, v), y) : map1ODiff diff_container})
+  | u >= 0 && v < 0 = filterObjGridDiffs xs (diff_container {map2ODiff = ((w, u, v), y) : map2ODiff diff_container})
   | u < 0 && v < 0 = filterObjGridDiffs xs (diff_container {map3ODiff = ((w, u, v), y) : map3ODiff diff_container})
   | otherwise = filterObjGridDiffs xs (diff_container {map4ODiff = ((w, u, v), y) : map4ODiff diff_container})
 
