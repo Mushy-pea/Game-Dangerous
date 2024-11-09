@@ -387,7 +387,8 @@ startGame context physics control_ref uniform p_bind map_text conf_reg sound_arr
         f_grid = snd__ map
         obj_grid = third_ map
         s0 = ps0_init {pos_u = u physics, pos_v = v physics, pos_w = w physics, on_screen_metrics = selectMetricMode (cfg' "on_screen_metrics"),
-                       prob_seq = genProbSeq 0 239 (read (cfg' "prob_c")) r_gen, currentMap = setCurrentMap (cfg' "map_file")}
+                       prob_seq = genProbSeq 0 239 (read (cfg' "prob_c")) r_gen, currentMap = setCurrentMap (cfg' "map_file"),
+                       previousMap = setCurrentMap (cfg' "map_file")}
         s1 = if cfg' "verbose_mode" == "n" || cfg' "verbose_mode" == "y" then ps1_init {verbose_mode = cfg' "verbose_mode"}
              else ps1_init {verbose_mode = "filter", debugSet = array (0, snd (bounds conf_reg) - 92) [(i, conf_reg ! (i + 92)) | i <- [0..snd (bounds conf_reg) - 92]]}
         game_state = Game_state {event_context = None, w_grid_ = w_grid, f_grid_ = f_grid, obj_grid_ = obj_grid, s0_ = s0, s1_ = s1,

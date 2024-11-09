@@ -352,15 +352,16 @@ passMsg len msg s1 d_list =
   (drop ((d_list, 277) !! len) msg,
    s1 {message = message s1 ++ [head msg] ++ [((d_list, 278) !! len) - 1] ++ take (((d_list, 279) !! len) - 1) (tail msg)})
 
-sendSignal :: Int -> GPLC_int -> (GPLC_int, GPLC_int, GPLC_int) -> Array (Int, Int, Int) Obj_grid -> Play_state1 -> [Int]
+sendSignal :: Int -> GPLC_int -> (GPLC_int, GPLC_int, GPLC_int) -> Array (Int, Int, Int) Obj_grid -> Play_state0 -> Play_state1 -> [Int]
               -> (Array (Int, Int, Int) Obj_grid, Play_state1)
-sendSignal mode (GPLC_int sig) (GPLC_int i0, GPLC_int i1, GPLC_int i2) obj_grid s1 d_list
-  | mode == 0 =
+sendSignal mode (GPLC_int sig) (GPLC_int i0, GPLC_int i1, GPLC_int i2) obj_grid s0 s1 d_list
+  | mode == 0 && currentMap s0 == previousMap s0 =
     if not (isNothing boundsCheck0) then error (fromJust boundsCheck0)
     else (obj_grid, s1 {next_sig_q = [(d_list, 283) !! sig, (d_list, 284) !! i0, (d_list, 285) !! i1, (d_list, 286) !! i2] ++ next_sig_q s1})
   | mode == 1 =
     if not (isNothing boundsCheck1) then error (fromJust boundsCheck1)
     else (obj_grid // [(index1, obj {program = (head prog) : sig : drop 2 prog})], s1)
+  | otherwise = (obj_grid, s1)
   where index0 = ((d_list, 655) !! i0, (d_list, 656) !! i1, (d_list, 657) !! i2)
         index1 = (i0, i1, i2)
         boundsCheck0 = boundsCheck obj_grid (coerce index0 :: (GPLC_int, GPLC_int, GPLC_int)) ("send_signal(0)")
@@ -1117,7 +1118,7 @@ runGplc (x0:x1:x2:x3:x4:x5:x6:xs) d_list context w_grid w_grid_upd f_grid obj_gr
           (chgGrid (GPLC_flag x0) (GPLC_int x1, GPLC_int x2, GPLC_int x3) (GPLC_int x4, GPLC_int x5, GPLC_int x6) w_grid def_w_grid w_grid_upd d_list) f_grid
           obj_grid obj_grid_upd s0 s1 lookUp (head_ xs)
 runGplc (x0:x1:x2:x3:xs) d_list context w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 4 =
-  let sig = sendSignal 0 (GPLC_int x0) (GPLC_int x1, GPLC_int x2, GPLC_int x3) obj_grid s1 d_list
+  let sig = sendSignal 0 (GPLC_int x0) (GPLC_int x1, GPLC_int x2, GPLC_int x3) obj_grid s0 s1 d_list
   in do
   reportState (debugGplc s1) 2 [] [] (showGplcArgs "send_signal" [(0, x0), (0, x1), (0, x2), (0, x3)] d_list (-1))
   runGplc (tail_ xs) d_list context w_grid w_grid_upd f_grid (fst sig) obj_grid_upd s0 (snd sig) lookUp (head_ xs)
@@ -1324,15 +1325,17 @@ linkGplc0 :: Bool -> [Float] -> [Int] -> Game_state -> [((Int, Int, Int), Wall_g
 linkGplc0 phase_flag (x0:x1:xs) (z0:z1:z2:zs) game_state w_grid_upd obj_grid_upd lookUp init_flag =
   let target0 = linkGplc2 x0 (z0, z1, z2)
       target1 = (((sig_q (s1_ game_state)), 512) !! (1 :: Int), ((sig_q (s1_ game_state)), 513) !! (2 :: Int), ((sig_q (s1_ game_state)), 514) !! (3 :: Int))
-      prog = program ((obj_grid_ game_state) ! target1)
+      object = (obj_grid_ game_state) ! target1
+      prog = program object
+      signal = (sig_q (s1_ game_state), 515) !! (0 :: Int)
       obj_grid' = sendSignal 1 (GPLC_int 1) (GPLC_int (fst__ target0), GPLC_int (snd__ target0), GPLC_int (third_ target0)) (obj_grid_ game_state)
-                             (s1_ game_state) []
-      obj_grid'' = (obj_grid_ game_state) // [(target1, Obj_grid {objType = objType ((obj_grid_ game_state) ! target1),
-                                              program = (head__ prog) : (((sig_q (s1_ game_state)), 515) !! (0 :: Int)) : drop 2 prog,
-                                              programName = programName ((obj_grid_ game_state) ! target1)})]
+                             (s0_ game_state) (s1_ game_state) []
+      obj_grid'' = (obj_grid_ game_state) // [(target1, Obj_grid {objType = objType object,
+                                              program = (head__ prog) : signal : drop 2 prog,
+                                              programName = programName object})]
       show_obj_grid = show (((sig_q (s1_ game_state)), 519) !! (1 :: Int), ((sig_q (s1_ game_state)), 520) !! (2 :: Int), ((sig_q (s1_ game_state)), 521) !! (3 :: Int))
       debug_enabled = \mode -> if mode == 0 then filterDebug (s1_ game_state) (programName ((obj_grid_ game_state) ! target0)) 0
-                               else filterDebug (s1_ game_state) (programName ((obj_grid_ game_state) ! target1)) 0
+                               else filterDebug (s1_ game_state) (programName object) 0
       s1' = (s1_ game_state) {sig_q = drop 4 (sig_q (s1_ game_state)), debugGplc = debug_enabled 1}
       s1'' = (s1_ game_state) {debugGplc = debug_enabled 0}
   in do
@@ -1354,9 +1357,9 @@ linkGplc0 phase_flag (x0:x1:xs) (z0:z1:z2:zs) game_state w_grid_upd obj_grid_upd
     else do
       reportState ((debug_enabled 1) && sig_q (s1_ game_state) /= []) 2 [] []
                   ("\n\ngame_t = " ++ show (fst__ (gameClock (s0_ game_state))) ++ "\n----------------\n\nsignal queue: " ++ show (sig_q (s1_ game_state)) ++ "\n")
-      if objType ((obj_grid_ game_state) ! target1) == 1 || objType ((obj_grid_ game_state) ! target1) == 3 then do
+      if objType object == 1 || objType object == 3 then do
         reportState (debug_enabled 1) 2 [] []
-                    ("\nGPLC program [" ++ programName ((obj_grid_ game_state) ! target1) ++ "] run at Obj_grid "
+                    ("\nGPLC program [" ++ programName object ++ "] run at Obj_grid "
                     ++ show (((sig_q (s1_ game_state)), 516) !! (1 :: Int), ((sig_q (s1_ game_state)), 517) !! (2 :: Int), ((sig_q (s1_ game_state)), 518) !! (3 :: Int)))
         run_gplc' <- catch (runGplc (program (obj_grid'' ! target1)) [] (event_context game_state) (w_grid_ game_state) w_grid_upd (f_grid_ game_state) obj_grid'' obj_grid_upd (s0_ game_state) s1' lookUp 0)
                            (\e -> gplcError w_grid_upd (f_grid_ game_state) obj_grid_upd (s0_ game_state) (s1_ game_state) e)
