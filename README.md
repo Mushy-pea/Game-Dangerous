@@ -5,7 +5,7 @@
 Despite my determination to avoid feature creep there are a few last things I feel I can't neglect 
 doing to the engine, before moving on to building a game to run on it.  These are explained below.
 
-**Implement map set based game state saving (in progress)**
+**Implement map set based game state saving (completed 09/11/2024)**
 
 A common feature in game engines is the ability to load and unload game assets as the player moves 
 around, thereby managing CPU and GPU memory usage and allowing for a much larger simulated environment 
@@ -47,7 +47,7 @@ risk of centipedes getting stuck but that feels rather limiting.
 The main purpose of a launcher would be to allow users to change engine configuration options without 
 having to modify a config file or use command line parameters.
 
-Engine version: 1.1.0
+Engine version: 1.2.1
 
 Server version: 2.1.0
 
