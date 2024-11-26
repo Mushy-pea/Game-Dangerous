@@ -344,7 +344,7 @@ startGame context physics control_ref uniform p_bind map_text conf_reg sound_arr
         killThread tid
         putMVar result_ result
       else do
-        putStr ("\nMap file required: " ++ show (currentMap (s0_ (fromJust loaded_state))) ++ "\n")
+        putStr ("\nMap file required: " ++ show (currentMap (s0_ (fromJust loaded_state))))
         exitSuccess
     free p_mt_matrix
     free p_f_table0
@@ -361,7 +361,7 @@ startGame context physics control_ref uniform p_bind map_text conf_reg sound_arr
       if currentMap (s0_ result) == setCurrentMap (cfg' "map_file") then
         startGame LoadGame physics control_ref uniform p_bind map_text (updateCfg conf_reg "current_save" (show save_index) 0) sound_array camera_to_clip r_gen
       else do
-        putStr ("\nMap file required: " ++ show (currentMap (s0_ result)) ++ "\n")
+        putStr ("\nMap file required: " ++ show (currentMap (s0_ result)))
         exitSuccess
     else startGame (event_context result) physics control_ref uniform p_bind map_text conf_reg sound_array camera_to_clip r_gen
   | context == ReturnMainMenu = do
