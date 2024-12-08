@@ -25,10 +25,9 @@ on these coordinates to determine which map the object referred to is within (an
 that map is loaded when the save file is loaded).  This extension doesn't require a change to the save 
 file binary format.
 
-**Implement a proper ceiling and sky box system (pending)**
+**Implement a proper ceiling and sky box system (abandoned 08/12/2024)**
 
-The current single model ceiling system isn't fit for purpose and if I'm going to replace it I might 
-as well allow for a basic simulation of both indoor and outdoor environments.
+Creative use of models will instead address this issue without further engine changes.
 
 **Allow for multiple player character classes (pending)**
 
@@ -42,14 +41,14 @@ In the original ZZT centipedes could swap their heads with their tails in order 
 This is supposed to work in Game :: Dangerous but doesn't yet.  I could design maps that avoid the 
 risk of centipedes getting stuck but that feels rather limiting.
 
-**Create a launcher for the game (optional)**
+**Create a launcher for the game (in progress)**
 
 The main purpose of a launcher would be to allow users to change engine configuration options without 
 having to modify a config file or use command line parameters.
 
 Engine version: 1.2.1
 
-Server version: 2.1.0
+Server version: 2.1.1
 
 ![Lore image 1: Ben and Sarah](https://github.com/Mushy-pea/The-Perils-of-Gem-Mining/blob/master/images/Ben_and_Sarah.png)
 

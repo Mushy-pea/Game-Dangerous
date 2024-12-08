@@ -284,7 +284,7 @@ genCodeBlock token_arr bound_symbols i i_max code_block error_list
 -- The data block part of the bytecode output is the sequence of initial values assigned to bound symbols in the
 -- source code, in the order the symbol bindings appear in the source code.
 genDataBlock :: [Symbol_binding] -> SEQ.Seq Int -> SEQ.Seq Int
-genDataBlock [] data_block = data_block SEQ.|> 536870912
+genDataBlock [] data_block = data_block
 genDataBlock (x:xs) data_block = genDataBlock xs (data_block SEQ.|> initialValue x)
 
 -- These two functions annotate the source code with text colours.

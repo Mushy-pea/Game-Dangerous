@@ -122,7 +122,7 @@ encodeObjGrid obj_grid w u v u_max v_max acc
                 else encodeObjGrid obj_grid w u (v + 1) u_max v_max (encoded_voxel ++ separator ++ acc)
   where voxel = obj_grid ! (w, u, v)
         separator = if (w, u, v) == (0, 0, 0) then []
-                    else ", "
+                    else ", \n"
         program_name = if programName voxel == "" then ["null"]
                        else [programName voxel]
         program_length = if programName voxel == "" then 0

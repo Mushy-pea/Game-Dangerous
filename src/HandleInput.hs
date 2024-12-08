@@ -147,15 +147,18 @@ toJSBool False = "false"
 
 instance Serialise Wall_grid where
   toJSON (Just a) =
+    let tex_index = \x i -> if x == [] then 0
+                            else x !! i
+    in
     "  {\n"
     ++ "    \"u1_structure\": " ++ toJSBool (u1 a) ++ ",\n"
     ++ "    \"u2_structure\": " ++ toJSBool (u2 a) ++ ",\n"
     ++ "    \"v1_structure\": " ++ toJSBool (v1 a) ++ ",\n"
     ++ "    \"v2_structure\": " ++ toJSBool (v2 a) ++ ",\n"
-    ++ "    \"u1_texture\": " ++ show ((texture a) !! 0) ++ ",\n"
-    ++ "    \"u2_texture\": " ++ show ((texture a) !! 1) ++ ",\n"
-    ++ "    \"v1_texture\": " ++ show ((texture a) !! 2) ++ ",\n"
-    ++ "    \"v2_texture\": " ++ show ((texture a) !! 3) ++ ",\n"
+    ++ "    \"u1_texture\": " ++ show (tex_index (texture a) 0) ++ ",\n"
+    ++ "    \"u2_texture\": " ++ show (tex_index (texture a) 1) ++ ",\n"
+    ++ "    \"v1_texture\": " ++ show (tex_index (texture a) 2) ++ ",\n"
+    ++ "    \"v2_texture\": " ++ show (tex_index (texture a) 3) ++ ",\n"
     ++ "    \"objPlace\": \n" ++ toJSON (obj a)
     ++ "\n  }" 
 
@@ -220,12 +223,10 @@ serialiseSourceCode token_arr i j i_max j_max output
   | otherwise = serialiseSourceCode token_arr i (j + 1) i_max j_max (toJSON (Just (token {line = i + 1})) ++ ",\n" ++ output)
   where token = token_arr ! (i, j)
 
--- This function serialises GPLC bytecode for sending to the client.
 serialiseBytecode :: Int -> SEQ.Seq Int -> [Char] -> [Char]
 serialiseBytecode mode SEQ.Empty output = reverse output
-serialiseBytecode mode (x SEQ.:<| xs) output
-  | x == 536870912 = serialiseBytecode mode xs ("\n" ++ output)
-  | otherwise = serialiseBytecode mode xs (delimiter ++ reverse (show x) ++ output)
+serialiseBytecode mode (x SEQ.:<| xs) output =
+  serialiseBytecode mode xs (delimiter ++ reverse (show x) ++ output)
   where delimiter = if mode == 0 then " " else " ,"
 
 -- A hash is generated from the source code of a GPLC program at compile time, which the client will append to the
@@ -280,7 +281,7 @@ compileProgram name source =
                             source = "[\n" ++ serialised_source ++ "\n]",
                             bytecode = "[" ++ serialiseBytecode 1 (fst signal_block) []
                                 ++ serialiseBytecode 1 (fst code_block) []
-                                ++ take ((length show_data_block) - 3) show_data_block ++ "]",
+                                ++ take ((length show_data_block) - 2) show_data_block ++ "]",
                             errors = []}
 
 -- This function allows the client to query the properties of the GPLC programs the server compiled at its last start time.
