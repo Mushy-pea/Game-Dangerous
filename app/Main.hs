@@ -600,7 +600,7 @@ showFrame p_bind uniform (p_mt_matrix, p_light_buffer) filter_table u v w a a' s
     glUniform1i (coerce (uniform ! 50)) (fromIntegral (mod (fst__ (gameClock (s0_ game_state))) 240))
     glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 1)))
     glUniformMatrix4fv (coerce (uniform ! 52)) 1 1 (castPtr p_mt_matrix)
-    showPlayer uniform p_bind (plusPtr p_mt_matrix (glfloat * 80)) u v w a lookUp (rend_mode (s0_ game_state))
+    showPlayer uniform p_bind (plusPtr p_mt_matrix (glfloat * 80)) u v w a lookUp (rend_mode (s0_ game_state)) (s1_ game_state)
   if rend_mode (s0_ game_state) == 0 then do
     loadArray (fst (mobile_lights (s0_ game_state)) ++ snd (mobile_lights (s0_ game_state))) p_light_buffer 0
     glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 7)))
@@ -742,8 +742,9 @@ showObject (x:xs) uniform p_bind p_mt_matrix u v w a lookUp mode = do
   glDrawElements GL_TRIANGLES (coerce (num_elem x)) GL_UNSIGNED_SHORT zero_ptr
   showObject xs uniform p_bind p_mt_matrix u v w a lookUp mode
 
-showPlayer :: UArray Int Int32 -> (UArray Int Word32, Int) -> Ptr GLfloat -> Float -> Float -> Float -> Int -> UArray (Int, Int) Float -> Int -> IO ()
-showPlayer uniform p_bind p_mt_matrix u v w a lookUp mode = do
+showPlayer :: UArray Int Int32 -> (UArray Int Word32, Int) -> Ptr GLfloat -> Float -> Float -> Float -> Int -> UArray (Int, Int) Float -> Int -> Play_state1
+              -> IO ()
+showPlayer uniform p_bind p_mt_matrix u v w a lookUp mode s1 = do
   loadArray (toList (modelToWorld u v w a True lookUp)) (castPtr p_mt_matrix) 0
   loadArray (toList (worldToModel u v w a True lookUp)) (castPtr p_mt_matrix) 16
   loadArray (toList (rotationW a lookUp)) (castPtr p_mt_matrix) 32
@@ -756,7 +757,10 @@ showPlayer uniform p_bind p_mt_matrix u v w a lookUp mode = do
     glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 1)))
     glUniformMatrix4fv (coerce (uniform ! 51)) 1 1 p_mt_matrix
   glBindVertexArray (unsafeCoerce ((fst p_bind) ! 1024))
-  glBindTexture GL_TEXTURE_2D (unsafeCoerce ((fst p_bind) ! 1025))
+  if playerClass s1 == [2, 31, 40, 63, 4, 27, 48, 35, 31, 45] then
+    glBindTexture GL_TEXTURE_2D (unsafeCoerce ((fst p_bind) ! 1025))
+  else
+    glBindTexture GL_TEXTURE_2D (unsafeCoerce ((fst p_bind) ! 1026))
   glDrawElements GL_TRIANGLES 36 GL_UNSIGNED_SHORT zero_ptr
 
 

@@ -173,7 +173,8 @@ matchKeyword "npc_move" = Just Instruction {opcode = 21, instructionLength = 2, 
 matchKeyword "npc_damage" = Just Instruction {opcode = 22, instructionLength = 2, arguments = [Const]}
 matchKeyword "cpede_move" = Just Instruction {opcode = 23, instructionLength = 3, arguments = [RefWrite, Const]}
 matchKeyword "set_event_context" = Just Instruction {opcode = 24, instructionLength = 2, arguments = [RefRead]}
-matchKeyword "do_nothing" = Just Instruction {opcode = 25, instructionLength = 0, arguments = [Const]}
+matchKeyword "set_player_class" = Just Instruction {opcode = 25, instructionLength = 2, arguments = [RefRead]}
+matchKeyword "do_nothing" = Just Instruction {opcode = 26, instructionLength = 0, arguments = [Const]}
 matchKeyword _ = Nothing
 
 -- These two functions generate the signal block part of the bytecode output.
@@ -266,7 +267,7 @@ genCodeBlock token_arr bound_symbols i i_max code_block error_list
                  ((code_block SEQ.|> 13) SEQ.>< fst interpreted_args_ SEQ.>< (fromJust read_msg SEQ.|> line_term))
                  (error_list ++ snd interpreted_args_)
   | otherwise =
-    if opcode matched_keyword == 25 then
+    if opcode matched_keyword == 26 then
       genCodeBlock token_arr bound_symbols (i + 1) i_max code_block (error_list ++ snd interpreted_args)
     else
       genCodeBlock token_arr bound_symbols (i + 1) i_max ((code_block SEQ.|> opcode matched_keyword) SEQ.>< (fst interpreted_args SEQ.|> line_term))

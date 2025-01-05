@@ -286,20 +286,23 @@ copyPs1 :: GPLC_int -> (GPLC_int, GPLC_int, GPLC_int) -> Play_state1 -> Array (I
            -> [((Int, Int, Int), (Int, [(Int, Int)]))]
 copyPs1 (GPLC_int offset) (i0, i1, i2) s1 obj_grid obj_grid_upd d_list
   | not (isNothing boundsCheck_) = error (fromJust boundsCheck_)
-  | otherwise = (((d_list, 236) !! i0, (d_list, 237) !! i1, (d_list, 238) !! i2), (objType target, [v0, v1, v2, v3, v4, v5, v6, v7, v8, v9])) : obj_grid_upd
+  | otherwise = (index, (objType target, [health_, ammo_, gems_, torches_, red_key, green_key, blue_key, yellow_key, purple_key, white_key, player_class]))
+                : obj_grid_upd
   where index = ((d_list, 233) !! i0, (d_list, 234) !! i1, (d_list, 235) !! i2)
         target = obj_grid ! index
         boundsCheck_ = boundsCheck obj_grid (coerce index :: (GPLC_int, GPLC_int, GPLC_int)) "copy_ps1"
-        v0 = (offset, health s1)
-        v1 = (offset + 1, ammo s1)
-        v2 = (offset + 2, gems s1)
-        v3 = (offset + 3, torches s1)
-        v4 = (offset + 4, ((keys s1), 239) !! (0 :: Int))
-        v5 = (offset + 5, ((keys s1), 240) !! (1 :: Int))
-        v6 = (offset + 6, ((keys s1), 241) !! (2 :: Int))
-        v7 = (offset + 7, ((keys s1), 242) !! (3 :: Int))
-        v8 = (offset + 8, ((keys s1), 243) !! (4 :: Int))
-        v9 = (offset + 9, ((keys s1), 244) !! (5 :: Int))
+        health_ = (offset, health s1)
+        ammo_ = (offset + 1, ammo s1)
+        gems_ = (offset + 2, gems s1)
+        torches_ = (offset + 3, torches s1)
+        red_key = (offset + 4, ((keys s1), 239) !! (0 :: Int))
+        green_key = (offset + 5, ((keys s1), 240) !! (1 :: Int))
+        blue_key = (offset + 6, ((keys s1), 241) !! (2 :: Int))
+        yellow_key = (offset + 7, ((keys s1), 242) !! (3 :: Int))
+        purple_key = (offset + 8, ((keys s1), 243) !! (4 :: Int))
+        white_key = (offset + 9, ((keys s1), 244) !! (5 :: Int))
+        player_class = if playerClass s1 == [2, 31, 40, 63, 4, 27, 48, 35, 31, 45] then (offset + 10, 1)
+                       else (offset + 10, 2)
 
 objType_ :: Int -> Int -> Int -> Array (Int, Int, Int) Obj_grid -> Int
 objType_ w u v obj_grid =
@@ -1076,6 +1079,13 @@ setEventContext context d_list
   | (d_list, 664) !! context == 4 = ReturnMainMenu
   | (d_list, 665) !! context == 5 = ExitGame
   | (d_list, 666) !! context == 6 = PlayerDied
+  | otherwise = error ("\nsetEventContext : invalid value passed for context : " ++ show ((d_list, 678) !! context))
+
+setPlayerClass :: GPLC_int -> Play_state1 -> [Int] -> Play_state1
+setPlayerClass player_class s1 d_list
+  | (d_list, 675) !! player_class == 1 = s1 {playerClass = [2, 31, 40, 63, 4, 27, 48, 35, 31, 45]}
+  | (d_list, 676) !! player_class == 2 = s1 {playerClass = [19, 27, 44, 27, 34, 63, 19, 34, 35, 31, 38, 30, 45]}
+  | otherwise = error ("\nsetPlayerClass : invalid value passed for player_class : " ++ show ((d_list, 677) !! player_class))
 
 -- This function is part of the system used to make per GPLC opcode status reports to the console when verbose_mode is on.
 showGplcArgs :: [Char] -> [(Int, Int)] -> [Int] -> Int -> [Char]
@@ -1218,6 +1228,9 @@ runGplc (x0:x1:xs) d_list context w_grid w_grid_upd f_grid obj_grid obj_grid_upd
 runGplc (x0:xs) d_list context w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 24 = do
   reportState (debugGplc s1) 2 [] [] (showGplcArgs "set_event_context" [(0, x0)] d_list (-1))
   runGplc (tail_ xs) d_list (setEventContext (GPLC_int x0) d_list) w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp (head_ xs)
+runGplc (x0:xs) d_list context w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 25 = do
+  reportState (debugGplc s1) 2 [] [] (showGplcArgs "set_player_class" [(0, x0)] d_list (-1))
+  runGplc (tail_ xs) d_list context w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 (setPlayerClass (GPLC_int x0) s1 d_list) lookUp (head_ xs)
 runGplc code d_list context w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp c = do
   putStr ("\nInvalid opcode: " ++ show c)
   putStr ("\nremaining code block: " ++ show code)
@@ -1486,11 +1499,11 @@ updateVel (x:xs) (y:ys) (z:zs) f_rate f =
   else (x + y / 32 + f * x / f_rate) : updateVel xs ys zs f_rate f
 
 -- Used to generate the sequence of message tile references that represent the pause screen text.
-pauseText :: [Char] -> Play_state1 -> ([Char], Int, Int, Int) -> [(Int, [Int])]
-pauseText (x0:x1:x2:x3:x4:x5:xs) s1 (diff, a, b, c) =
-  [(0, msg9), (0, []), (0, msg1 ++ convMsg (health s1)), (0, msg2 ++ convMsg (ammo s1)), (0, msg3 ++ convMsg (gems s1)), (0, msg4 ++ convMsg (torches s1))
-  , (0, msg5 ++ take 6 (keys s1)), (0, msg30 ++ drop 6 (keys s1)), (0, msg6 ++ region s1), (0, convMsg_ ("Difficulty: " ++ diff))
-  , (0, convMsg_ ("Time: " ++ [x0, x1, ':', x2, x3, ':', x4, x5])), (0, []), (1, msg10), (2, msg17), (3, msg11), (4, msg12)]
+-- pauseText :: [Char] -> Play_state1 -> ([Char], Int, Int, Int) -> [(Int, [Int])]
+-- pauseText (x0:x1:x2:x3:x4:x5:xs) s1 (diff, a, b, c) =
+--   [(0, msg9), (0, []), (0, msg1 ++ convMsg (health s1)), (0, msg2 ++ convMsg (ammo s1)), (0, msg3 ++ convMsg (gems s1)), (0, msg4 ++ convMsg (torches s1))
+--   , (0, msg5 ++ take 6 (keys s1)), (0, msg30 ++ drop 6 (keys s1)), (0, msg6 ++ region s1), (0, convMsg_ ("Difficulty: " ++ diff))
+--   , (0, convMsg_ ("Time: " ++ [x0, x1, ':', x2, x3, ':', x4, x5])), (0, []), (1, msg10), (2, msg17), (3, msg11), (4, msg12)]
 
 -- This function ensures that all signals sent to NPC GPLC programs are run before any others.  This is done to fix a corner case problem that occured when an
 -- NPC and projectile tried to enter the same voxel in the same tick.
@@ -1501,14 +1514,25 @@ prioritiseNpcs (x0:x1:x2:x3:xs) acc0 acc1 =
   else prioritiseNpcs xs acc0 (x0 : x1 : x2 : x3 : acc1)
 
 -- This function handles preemptive ceiling collision detection (i.e. stops the player jumping if there is a ceiling directly above).
-jumpAllowed :: Array (Int, Int, Int) Floor_grid -> Play_state0 -> Bool
-jumpAllowed f_grid s0 =
-  let f_grid_voxel0 = f_grid ! (truncate (pos_w s0) + 1, div (truncate (pos_u s0)) 2, div (truncate (pos_v s0)) 2)
-      f_grid_voxel1 = f_grid ! (truncate (pos_w s0), div (truncate (pos_u s0)) 2, div (truncate (pos_v s0)) 2)
-  in
-  if truncate (pos_w s0) == 2 then True
-  else if surface f_grid_voxel0 == Open || surface f_grid_voxel1 /= Flat then True
-  else False
+-- jumpAllowed :: Array (Int, Int, Int) Floor_grid -> Play_state0 -> Play_state1 -> Bool
+-- jumpAllowed f_grid s0 s1 =
+--   let f_grid_voxel0 = f_grid ! (truncate (pos_w s0) + 1, div (truncate (pos_u s0)) 2, div (truncate (pos_v s0)) 2)
+--       f_grid_voxel1 = f_grid ! (truncate (pos_w s0), div (truncate (pos_u s0)) 2, div (truncate (pos_v s0)) 2)
+--       jump_enabled = if playerClass s1 == [2, 31, 40, 63, 4, 27, 48, 35, 31, 45] then False
+--                      else True
+--   in
+--   if truncate (pos_w s0) == 2 && jump_enabled then True
+--   else if (surface f_grid_voxel0 == Open || surface f_grid_voxel1 /= Flat) && jump_enabled then True
+--   else False
+
+jumpAllowed :: Array (Int, Int, Int) Floor_grid -> Play_state0 -> Play_state1 -> Bool
+jumpAllowed f_grid s0 s1
+  | truncate (pos_w s0) == 2 = jump_enabled
+  | surface f_grid_voxel == Open = jump_enabled
+  | otherwise = False
+  where f_grid_voxel = f_grid ! (truncate (pos_w s0) + 1, div (truncate (pos_u s0)) 2, div (truncate (pos_v s0)) 2)
+        jump_enabled = if playerClass s1 == [2, 31, 40, 63, 4, 27, 48, 35, 31, 45] then False
+                       else True
 
 -- The frames per second (FPS) measurements made here are used to drive the optional on screen FPS report and to scale player movement rates in real time,
 -- to allow for a variable frame rate with consistent game play speed.  It is intended that the engine will be limited to ~60 FPS
@@ -1700,7 +1724,7 @@ updatePlay io_box state_ref game_state in_flight min_frame_t physics lookUp soun
         link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 3}) [] [] lookUp
         updatePlay io_box state_ref link0 False min_frame_t physics
                    lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
-      else if control == 9 && jumpAllowed f_grid s0 == True then do
+      else if control == 9 && jumpAllowed f_grid s0 s1 == True then do
         putMVar state_ref game_state
         link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 4}) [] [] lookUp
         updatePlay io_box state_ref link0 False min_frame_t physics

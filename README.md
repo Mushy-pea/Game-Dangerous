@@ -1,9 +1,10 @@
 # Game :: Dangerous (a tribute to ZZT)
 
-## A project update as of 02/10/2024
+## A project update as of 05/01/2025
 
-Despite my determination to avoid feature creep there are a few last things I feel I can't neglect 
-doing to the engine, before moving on to building a game to run on it.  These are explained below.
+I'm almost ready to declare a feature freeze for the project, after which my remaining efforts will go into 
+maintaining the code base and building a map set to run on the engine.  The most recently completed and in progress 
+features are discussed below.
 
 **Implement map set based game state saving (completed 09/11/2024)**
 
@@ -25,30 +26,27 @@ on these coordinates to determine which map the object referred to is within (an
 that map is loaded when the save file is loaded).  This extension doesn't require a change to the save 
 file binary format.
 
-**Implement a proper ceiling and sky box system (abandoned 08/12/2024)**
+**Allow for multiple player character classes (completed 05/01/2025)**
 
-Creative use of models will instead address this issue without further engine changes.
+Only some aspects of this feature are tightly bound within the engine, while the rest will be implemented through 
+GPLC scripts in the relevant maps modifying their behaviour based on the playerClass value the engine exposes to 
+them.  The following table shows how the implementation will be divided.  The available characters will of course 
+be Ben Davies and Sarah Shields (see Lore image 1 further down).
 
-**Allow for multiple player character classes (pending)**
+![Figure 1: How the player character class implementation will be structured](https://github.com/Mushy-pea/The-Perils-of-Gem-Mining/blob/master/images/Classes%20screenshot.png)
 
-As the image below suggests it's intended that the user will have a choice of two playable characters.  
-I've got a rough idea of what the differences will be and believe these can be implemented mostly through 
-the engine's scripting language without any major changes to the engine.  They will have to be.
-
-**Fix centipede NPCs (optional)**
-
-In the original ZZT centipedes could swap their heads with their tails in order to escape from dead ends.  
-This is supposed to work in Game :: Dangerous but doesn't yet.  I could design maps that avoid the 
-risk of centipedes getting stuck but that feels rather limiting.
+Figure 1: How the player character class implementation will be structured
 
 **Create a launcher for the game (in progress)**
 
-The main purpose of a launcher would be to allow users to change engine configuration options without 
-having to modify a config file or use command line parameters.
+As it stands the launcher works cooperatively with the engine to support the map set based game state saving feature, 
+although further work is needed to make this system production ready.  It is also intended that the launcher will 
+allow users to change engine configuration options without having to modify a config file or use command line 
+parameters.
 
-Engine version: 1.2.1
+Engine version: 1.3.0
 
-Server version: 2.1.1
+Server version: 2.2.0
 
 ![Lore image 1: Ben and Sarah](https://github.com/Mushy-pea/The-Perils-of-Gem-Mining/blob/master/images/Ben_and_Sarah.png)
 
@@ -57,6 +55,8 @@ Lore image 1: Ben and Sarah
 ![Map development editor](https://github.com/Mushy-pea/The-Perils-of-Gem-Mining/blob/master/images/Editor.png)
 
 The map development editor
+
+[![Preview unavailable](https://github.com/Mushy-pea/The-Perils-of-Gem-Mining/blob/master/images/Video%20screenshot.png)](https://youtu.be/h-RChZvQUyU&t)
 
 [![Preview unavailable](https://img.youtube.com/vi/wOSQ1cYoZXM/default.jpg)](https://youtu.be/wOSQ1cYoZXM)
 

@@ -158,12 +158,12 @@ instance Binary Play_state0 where
                    gameClock = j, torch_t0 = k, torch_t_limit = l, on_screen_metrics = 0, prob_seq = def_prob_seq, mobile_lights = ([], []), currentMap = m,
                    previousMap = m})
 
-data Play_state1 = Play_state1 {health :: Int, ammo :: Int, gems :: Int, torches :: Int, keys :: [Int], region :: [Int], difficulty :: ([Char], Int, Int, Int),
+data Play_state1 = Play_state1 {health :: Int, ammo :: Int, gems :: Int, torches :: Int, keys :: [Int], playerClass :: [Int], difficulty :: ([Char], Int, Int, Int),
 sig_q :: [Int], next_sig_q :: [Int], message :: [Int], state_chg :: Int, verbose_mode :: [Char], debugSet :: Array Int [Char], debugGplc :: Bool,
-npc_states :: Array Int NPC_state, story_state :: Int} deriving (Eq, Show)
+npc_states :: Array Int NPC_state} deriving (Eq, Show)
 
 instance Binary Play_state1 where
-  put Play_state1 {health = a, ammo = b, gems = c, torches = d, keys = e, region = f, difficulty = g, sig_q = h, message = i, state_chg = j, npc_states = k} =
+  put Play_state1 {health = a, ammo = b, gems = c, torches = d, keys = e, playerClass = f, difficulty = g, sig_q = h, message = i, state_chg = j, npc_states = k} =
     put a >> put b >> put c >> put d >> put e >> put f >> put g >> put h >> put i >> put j >> put k
 
   get = do a <- get
@@ -177,7 +177,7 @@ instance Binary Play_state1 where
            i <- get
            j <- get
            k <- get
-           return Play_state1 {health = a, ammo = b, gems = c, torches = d, keys = e, region = f, difficulty = g, sig_q = h, next_sig_q = [], message = i,
+           return Play_state1 {health = a, ammo = b, gems = c, torches = d, keys = e, playerClass = f, difficulty = g, sig_q = h, next_sig_q = [], message = i,
                   state_chg = j, verbose_mode = "y", npc_states = k}
 
 data NPC_state = NPC_state {npc_type :: Int, c_health :: Int, ticks_left0 :: Int, ticks_left1 :: Int, node_locations :: [Int],
@@ -249,9 +249,8 @@ ps0_init = Play_state0 {pos_u = 0, pos_v = 0, pos_w = 0, vel = [0, 0, 0], angle 
                         currentMap = 0, previousMap = 0}
 
 ps1_init = Play_state1 {health = 100, ammo = 0, gems = 0, torches = 0, keys = [63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63],
-                        region = [19,46,41,44,27,33,31,63,28,27,51,63,4], difficulty = ("Plenty of danger please", 6, 10, 14), sig_q = [], next_sig_q = [],
-                        message = [], state_chg = 0, verbose_mode = "", debugSet = array (0, 0) [(0, "")], debugGplc = False, npc_states = empty_npc_array,
-                        story_state = 0}
+                        playerClass = [2, 31, 40, 63, 4, 27, 48, 35, 31, 45], difficulty = ("Plenty of danger please", 6, 10, 14), sig_q = [], next_sig_q = [],
+                        message = [], state_chg = 0, verbose_mode = "", debugSet = array (0, 0) [(0, "")], debugGplc = False, npc_states = empty_npc_array}
 
 def_w_grid = Wall_grid {u1 = False, u2 = False, v1 = False, v2 = False, u1_bound = 0, u2_bound = 0, v1_bound = 0, v2_bound = 0, w_level = 0,  wall_flag = [],
 texture = [], obj = Nothing}
