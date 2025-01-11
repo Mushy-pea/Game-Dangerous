@@ -20,38 +20,28 @@ newtype GPLC_general = GPLC_general PREL.Int
 -- This class acts as an interface to the listIndexWrapper and arrayBoundsCheck functions.  These functions provide debugging information for list index (!!)
 -- exceptions and bounds checking for array read / write operations, respectively.
 class Index b where
-  (!!) :: ([a], PREL.Int) -> b -> a
+  (!!) :: [a] -> b -> a
 
   boundsCheck :: Array (PREL.Int, PREL.Int, PREL.Int) a -> (b, b, b) -> [PREL.Char] -> Maybe [PREL.Char]
 
 instance Index PREL.Int where
-  (ls, location) !! i = listIndexWrapper ls location i
+  ls !! i = ls PREL.!! i
   
   boundsCheck arr (w, u, v) function = arrayBoundsCheck arr (w, u, v) function PREL.False
 
 instance Index GPLC_int where
-  (ls, location) !! (GPLC_int i) = listIndexWrapper ls location i
+  ls !! (GPLC_int i) = ls PREL.!! i
   
   boundsCheck arr (GPLC_int w, GPLC_int u, GPLC_int v) function = arrayBoundsCheck arr (w, u, v) function PREL.True
 
 instance Index GPLC_flag where
-  (ls, location) !! (GPLC_flag i) = listIndexWrapper ls location i
+  ls !! (GPLC_flag i) = ls PREL.!! i
 
 instance Index GPLC_float where
-  (ls, location) !! (GPLC_float i) = listIndexWrapper ls location i
+  ls !! (GPLC_float i) = ls PREL.!! i
   
 instance Index GPLC_general where
-  (ls, location) !! (GPLC_general i) = listIndexWrapper ls location i
-
-errString0 = "List index too large.  location: "
-errString1 = " index: "
-errString2 = " max: "
-
-listIndexWrapper :: [a] -> PREL.Int -> PREL.Int -> a
-listIndexWrapper ls location i
-  | i PREL.>= PREL.length ls =
-    PREL.error (errString0 PREL.++ PREL.show location PREL.++ errString1 PREL.++ PREL.show i PREL.++ errString2 PREL.++ PREL.show ((PREL.length ls) PREL.- 1))
-  | PREL.otherwise = ls PREL.!! i
+  ls !! (GPLC_general i) = ls PREL.!! i
 
 arrayBoundsCheck :: Array (PREL.Int, PREL.Int, PREL.Int) a -> (PREL.Int, PREL.Int, PREL.Int) -> [PREL.Char] -> PREL.Bool -> Maybe [PREL.Char]
 arrayBoundsCheck arr (w, u, v) function context_GPLC
@@ -65,7 +55,4 @@ arrayBoundsCheck arr (w, u, v) function context_GPLC
             " index: " PREL.++ PREL.show (w, u, v))
   | PREL.otherwise = Nothing
   where bd = bounds arr
-
--- current max location: 678
-
 

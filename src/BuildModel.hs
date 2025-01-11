@@ -10,10 +10,8 @@
 
 module BuildModel where
 
-import Prelude hiding ((!!))
-import IndexWrapper0
 import Data.Word
-import Data.List hiding ((!!), intersect)
+import Data.List hiding (intersect)
 import Data.List.Split
 import Data.Matrix hiding ((!))
 import Data.Array.IArray
@@ -61,7 +59,7 @@ makeTable 3 a =
   else tan a : makeTable 3 (a + 0.01)
 
 lookUp :: [[Float]] -> UArray (Int, Int) Float
-lookUp a = array ((0, 0), (3, 628)) [((x, y), realToFrac ((((a, 611) !! x), 612) !! y)) | x <- [0..3], y <- [0..628]]
+lookUp a = array ((0, 0), (3, 628)) [((x, y), realToFrac ((a !! x) !! y)) | x <- [0..3], y <- [0..628]]
 
 glfloat_ = 0 :: GLfloat; glfloat = sizeOf glfloat_
 gluint_ = 0 :: GLuint; gluint = sizeOf gluint_
@@ -643,23 +641,23 @@ rayTrace0 u v a u_positive v_positive u_block v_block w_grid f_grid grid lookUp 
   else if fst result == Corner2 then rayTrace0 (u2_bound grid_i) (v1_bound grid_i) a u_positive v_positive (u_block + 1) (v_block - 1) w_grid f_grid grid lookUp
                                                w_block found target_u target_v seek_mode (c + 1)
   else if fst result == U1_hit then (Wall_place {rotate = 0, translate_u = u1_bound grid_i, translate_v = v1_bound grid_i, translate_w = w_level grid_i,
-                                                 wall_flag_ = ((wall_flag grid_i), 74) !! 3, texture_ = ((texture grid_i), 75) !! 3, isNull = False}, found, 0)
+                                                 wall_flag_ = (wall_flag grid_i) !! 3, texture_ = (texture grid_i) !! 3, isNull = False}, found, 0)
   else if fst result == U2_hit then (Wall_place {rotate = 1, translate_u = u2_bound grid_i, translate_v = v1_bound grid_i, translate_w = w_level grid_i,
-                                                 wall_flag_ = ((wall_flag grid_i), 76) !! 1, texture_ = ((texture grid_i), 77) !! 1, isNull = False}, found, 0)
+                                                 wall_flag_ = (wall_flag grid_i) !! 1, texture_ = (texture grid_i) !! 1, isNull = False}, found, 0)
   else if fst result == V1_hit then (Wall_place {rotate = 2, translate_u = u1_bound grid_i, translate_v = v1_bound grid_i, translate_w = w_level grid_i,
-                                                 wall_flag_ = ((wall_flag grid_i), 78) !! 2, texture_ = ((texture grid_i), 79) !! 2, isNull = False}, found, 0)
+                                                 wall_flag_ = (wall_flag grid_i) !! 2, texture_ = (texture grid_i) !! 2, isNull = False}, found, 0)
   else if fst result == V2_hit then (Wall_place {rotate = 3, translate_u = u1_bound grid_i, translate_v = v2_bound grid_i, translate_w = w_level grid_i,
-                                                 wall_flag_ = ((wall_flag grid_i), 80) !! 0, texture_ = ((texture grid_i), 81) !! 0, isNull = False}, found, 0)
+                                                 wall_flag_ = (wall_flag grid_i) !! 0, texture_ = (texture grid_i) !! 0, isNull = False}, found, 0)
   else if fst result == Corner0_hit then (Wall_place {rotate = 3, translate_u = u1_bound grid_i, translate_v = v2_bound grid_i, translate_w = w_level grid_i,
-                                          wall_flag_ = ((wall_flag grid_i), 82) !! 0, texture_ = ((texture grid_i), 83) !! 0, isNull = False}, found, 0)
+                                          wall_flag_ = (wall_flag grid_i) !! 0, texture_ = (texture grid_i) !! 0, isNull = False}, found, 0)
   else if fst result == Corner1_hit then (Wall_place {rotate = 1, translate_u = u2_bound grid_i, translate_v = v1_bound grid_i, translate_w = w_level grid_i,
-                                                      wall_flag_ = ((wall_flag grid_i), 84) !! 1, texture_ = ((texture grid_i), 85) !! 1, isNull = False},
+                                                      wall_flag_ = (wall_flag grid_i) !! 1, texture_ = (texture grid_i) !! 1, isNull = False},
                                          found, 0)
   else if fst result == Corner2_hit then (Wall_place {rotate = 2, translate_u = u1_bound grid_i, translate_v = v1_bound grid_i, translate_w = w_level grid_i,
-                                                      wall_flag_ = ((wall_flag grid_i), 86) !! 2, texture_ = ((texture grid_i), 87) !! 2, isNull = False},
+                                                      wall_flag_ = (wall_flag grid_i) !! 2, texture_ = (texture grid_i) !! 2, isNull = False},
                                          found, 0)
   else if fst result == Corner3_hit then (Wall_place {rotate = 0, translate_u = u1_bound grid_i, translate_v = v1_bound grid_i, translate_w = w_level grid_i,
-                                                      wall_flag_ = ((wall_flag grid_i), 88) !! 3, texture_ = ((texture grid_i), 89) !! 3, isNull = False},
+                                                      wall_flag_ = (wall_flag grid_i) !! 3, texture_ = (texture grid_i) !! 3, isNull = False},
                                          found, 0)
   else if fst result == Object_hit then (def_wall_place, [], c)
   else if fst result == Ramp_found then (def_wall_place, [], snd result)
@@ -721,9 +719,9 @@ loadGrid0 (x0:x1:x2:x3:x4:x5:x6:x7:x8:x9:x10:x11:x12:x13:x14:x15:x16:x17:xs) =
                                             texture = procInts [x13, x14, x15, x16], obj = Nothing} : loadGrid0 xs
   else Wall_grid {u1 = loadGrid1 x0, u2 = loadGrid1 x1, v1 = loadGrid1 x2, v2 = loadGrid1 x3, u1_bound = read x4, u2_bound = read x5, v1_bound = read x6,
                   v2_bound = read x7, w_level = read x8, wall_flag = procInts [x9, x10, x11, x12], texture = procInts [x13, x14, x15, x16],
-                  obj =  Just Obj_place {ident_ = read ((xs, 90) !! 0), u__ = read ((xs, 91) !! 1), v__ = read ((xs, 92) !! 2), w__ = read ((xs, 93) !! 3),
-                  rotation = procInts (take 3 (drop 4 xs)), rotate_ = loadGrid1 ((xs, 94) !! 7), phase = read ((xs, 95) !! 8), texture__ = read ((xs, 96) !! 9),
-                  num_elem = read ((xs, 97) !! 10), obj_flag = read ((xs, 98) !! 11)}} : loadGrid0 (drop 12 xs)
+                  obj =  Just Obj_place {ident_ = read (xs !! 0), u__ = read (xs !! 1), v__ = read (xs !! 2), w__ = read (xs !! 3),
+                  rotation = procInts (take 3 (drop 4 xs)), rotate_ = loadGrid1 (xs !! 7), phase = read (xs !! 8), texture__ = read (xs !! 9),
+                  num_elem = read (xs !! 10), obj_flag = read (xs !! 11)}} : loadGrid0 (drop 12 xs)
 
 sortGrid1 :: [[Char]] -> [[Wall_grid]]
 sortGrid1 [] = []
@@ -738,11 +736,11 @@ makeArray2 i0 i1 = (i1 - i0)
 
 makeArray1 :: [[[a]]] -> Int -> Int -> Int -> Array (Int, Int, Int) a
 makeArray1 grid u_max v_max w_max = array ((0, 0, 0), (w_max, u_max, v_max))
-                                          [((w, u, v), ((((((grid, 613) !! w), 614) !! u), 615) !! v)) |w <- [0..w_max], u <- [0..u_max], v <- [0..v_max]]
+                                          [((w, u, v), (((grid !! w) !! u) !! v)) |w <- [0..w_max], u <- [0..u_max], v <- [0..v_max]]
 
 makeArray0 :: [[[a]]] -> Int -> Int -> Int -> Array (Int, Int, Int) a
 makeArray0 grid u_max v_max w_max = array ((-w_max - 1, 0, 0), (w_max, u_max, v_max))
-                                          [((w, u, v), ((((((grid, 616) !! (makeArray2 (-w_max - 1) w)), 617) !! u), 618) !! v)) |w <- [-w_max - 1..w_max], u <- [0..u_max], v <- [0..v_max]]
+                                          [((w, u, v), (((grid !! (makeArray2 (-w_max - 1) w)) !! u) !! v)) |w <- [-w_max - 1..w_max], u <- [0..u_max], v <- [0..v_max]]
 
 loadFloor2 :: [[Char]] -> [Floor_grid]
 loadFloor2 [] = []

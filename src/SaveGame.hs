@@ -1,7 +1,5 @@
 module SaveGame where
 
-import Prelude hiding ((!!))
-import IndexWrapper0
 import System.IO
 import Control.Exception
 import Data.Array.IArray
@@ -159,10 +157,10 @@ addTimeStamp ((y0:y1:y2:y3:y4:y5:y6:y7:y8:y9:y10:y11:y12:y13:y14:y15:y16:ys):xs)
 
 selectSaveFile :: [[Char]] -> Play_state0 -> Int -> ([Char], [Char])
 selectSaveFile file_list s0 limit =
-  let i = read ((file_list, 631) !! 0)
+  let i = read (file_list !! 0)
   in
-  if i == limit then (take 9 (tail ((file_list, 632) !! limit)), "1\n" ++ init (addTimeStamp (tail file_list) s0 i 1))
-  else (take 9 (tail ((file_list, 633) !! i)), show (i + 1) ++ "\n" ++ init (addTimeStamp (tail file_list) s0 i 1))
+  if i == limit then (take 9 (tail (file_list !! limit)), "1\n" ++ init (addTimeStamp (tail file_list) s0 i 1))
+  else (take 9 (tail (file_list !! i)), show (i + 1) ++ "\n" ++ init (addTimeStamp (tail file_list) s0 i 1))
 
 -- This class and the four other functions below deal with generating a save game file.
 -- The Serialise_diff class is used so that the Obj_place type gets extracted from Wall_grid.  This is done because the rest of the Wall_grid structure is

@@ -8,8 +8,6 @@
 
 module DecompressMap where
 
-import Prelude hiding ((!!))
-import IndexWrapper0
 import Data.Maybe
 import Data.List.Split
 import Data.Sequence hiding (take, length)
@@ -45,17 +43,17 @@ d_obj = Obj_place {ident_ = 0, u__ = 4, v__ = 4, w__ = -1, rotation = [0, 0, 0],
 -- See section 2 of the map file specification.
 mapObject :: Char -> [Obj_place] -> Int -> Int -> Int -> Int -> Maybe Obj_place
 mapObject '0' obj u v w c = Nothing
-mapObject 'a' obj u v w c = Just (((obj, 588) !! 0) {u__ = fromIntegral u, v__ = fromIntegral v, w__ = fromIntegral w, obj_flag = c})
-mapObject 'b' obj u v w c = Just (((obj, 589) !! 1) {u__ = fromIntegral u, v__ = fromIntegral v, w__ = fromIntegral w, obj_flag = c})
-mapObject 'c' obj u v w c = Just (((obj, 590) !! 2) {u__ = fromIntegral u, v__ = fromIntegral v, w__ = fromIntegral w, obj_flag = c})
-mapObject 'd' obj u v w c = Just (((obj, 591) !! 3) {u__ = fromIntegral u, v__ = fromIntegral v, w__ = fromIntegral w, obj_flag = c})
-mapObject 'e' obj u v w c = Just (((obj, 592) !! 4) {u__ = fromIntegral u, v__ = fromIntegral v, w__ = fromIntegral w, obj_flag = c})
-mapObject 'f' obj u v w c = Just (((obj, 593) !! 5) {u__ = fromIntegral u, v__ = fromIntegral v, w__ = fromIntegral w, obj_flag = c})
-mapObject 'g' obj u v w c = Just (((obj, 594) !! 6) {u__ = fromIntegral u, v__ = fromIntegral v, w__ = fromIntegral w, obj_flag = c})
-mapObject 'h' obj u v w c = Just (((obj, 595) !! 7) {u__ = fromIntegral u, v__ = fromIntegral v, w__ = fromIntegral w, obj_flag = c})
-mapObject 'i' obj u v w c = Just (((obj, 596) !! 8) {u__ = fromIntegral u, v__ = fromIntegral v, w__ = fromIntegral w, obj_flag = c})
-mapObject 'j' obj u v w c = Just (((obj, 597) !! 9) {u__ = fromIntegral u, v__ = fromIntegral v, w__ = fromIntegral w, obj_flag = c})
-mapObject '1' obj u v w c = Just (((obj, 598) !! 0) {u__ = fromIntegral u, v__ = fromIntegral v, w__ = fromIntegral w, obj_flag = c})
+mapObject 'a' obj u v w c = Just ((obj !! 0) {u__ = fromIntegral u, v__ = fromIntegral v, w__ = fromIntegral w, obj_flag = c})
+mapObject 'b' obj u v w c = Just ((obj !! 1) {u__ = fromIntegral u, v__ = fromIntegral v, w__ = fromIntegral w, obj_flag = c})
+mapObject 'c' obj u v w c = Just ((obj !! 2) {u__ = fromIntegral u, v__ = fromIntegral v, w__ = fromIntegral w, obj_flag = c})
+mapObject 'd' obj u v w c = Just ((obj !! 3) {u__ = fromIntegral u, v__ = fromIntegral v, w__ = fromIntegral w, obj_flag = c})
+mapObject 'e' obj u v w c = Just ((obj !! 4) {u__ = fromIntegral u, v__ = fromIntegral v, w__ = fromIntegral w, obj_flag = c})
+mapObject 'f' obj u v w c = Just ((obj !! 5) {u__ = fromIntegral u, v__ = fromIntegral v, w__ = fromIntegral w, obj_flag = c})
+mapObject 'g' obj u v w c = Just ((obj !! 6) {u__ = fromIntegral u, v__ = fromIntegral v, w__ = fromIntegral w, obj_flag = c})
+mapObject 'h' obj u v w c = Just ((obj !! 7) {u__ = fromIntegral u, v__ = fromIntegral v, w__ = fromIntegral w, obj_flag = c})
+mapObject 'i' obj u v w c = Just ((obj !! 8) {u__ = fromIntegral u, v__ = fromIntegral v, w__ = fromIntegral w, obj_flag = c})
+mapObject 'j' obj u v w c = Just ((obj !! 9) {u__ = fromIntegral u, v__ = fromIntegral v, w__ = fromIntegral w, obj_flag = c})
+mapObject '1' obj u v w c = Just ((obj !! 0) {u__ = fromIntegral u, v__ = fromIntegral v, w__ = fromIntegral w, obj_flag = c})
 
 loadObject :: [[Char]] -> [Obj_place]
 loadObject [] = []
@@ -101,7 +99,7 @@ gridSetup1 :: [Char] -> [Int] -> [Obj_place] -> Int -> Int -> Int -> Int -> Int 
 gridSetup1 [] _ obj u v w v_max c = []
 gridSetup1 (x0:x1:x2:x3:x4:x5:x6:xs) (y:ys) obj u v w v_max c =
   let ws = wallSetup x0
-      w_grid = Wall_grid {u1 = (ws, 599) !! 0, u2 = (ws, 600) !! 1, v1 = (ws, 601) !! 2, v2 = (ws, 602) !! 3, u1_bound = fromIntegral u,
+      w_grid = Wall_grid {u1 = ws !! 0, u2 = ws !! 1, v1 = ws !! 2, v2 = ws !! 3, u1_bound = fromIntegral u,
                           u2_bound = fromIntegral (u + 1), v1_bound = fromIntegral v, v2_bound = fromIntegral (v + 1), w_level = fromIntegral w,
                           wall_flag = [c, c + 1, c + 2, c + 3], texture = [read [x1], read [x2], read [x3], read [x4]],
                           obj = mapObject x5 obj ((div u 2) * 2) ((div v 2) * 2) w y}
@@ -115,7 +113,7 @@ gridSetup0 (x:xs) u v w u_max v_max w_max acc0 =
                ++ (show (v1_bound x)) ++ ", " ++ (show (v2_bound x)) ++ ", " ++ (show (w_level x)) ++ ", " ++ (showInts (wall_flag x)) ++ (showInts (texture x))
                ++ maybeObject (fromMaybe d_obj (obj x))
   in
-  if ((wall_flag x), 603) !! 3 > 119999 then throw Invalid_wall_flag
+  if (wall_flag x) !! 3 > 119999 then throw Invalid_wall_flag
   else if u == u_max && v == v_max && w == w_max then acc0 >< fromList (init_ w_grid ++ "~")
   else if u == u_max && v == v_max then gridSetup0 xs 0 0 (w + 1) u_max v_max w_max (acc0 >< fromList (init_ w_grid ++ "&"))
   else if v == v_max then gridSetup0 xs (u + 1) 0 w u_max v_max w_max (acc0 >< fromList (init_ w_grid ++ ":"))
@@ -147,9 +145,9 @@ procMap pre_map u_max v_max w_max =
   let next_c = div ((u_max + 1) * (v_max + 1)) 4
       flag_seq = concat [gridSetup2 c c 0 0 0 u_max v_max | c <- [0, next_c..(next_c * w_max)]]
       c_max = 4 * (u_max + 1) * (v_max + 1) - 1
-      floor = makeFloor0 (splitOn " " (map filter0 (concat [(pre_map, 604) !! w | w <- [(w_max + 2)..(w_max + 2 + w_max)]]))) 0 0 0 ((div (u_max + 1) 2) - 1)
+      floor = makeFloor0 (splitOn " " (map filter0 (concat [pre_map !! w | w <- [(w_max + 2)..(w_max + 2 + w_max)]]))) 0 0 0 ((div (u_max + 1) 2) - 1)
                          ((div (v_max + 1) 2) - 1) w_max
-      w_grid = gridSetup0 (concat [gridSetup1 ((pre_map, 605) !! (w + 1)) (gridSetup2 (next_c * w) (next_c * w) 0 0 0 u_max v_max) (loadObject (splitOn ", " (filter1 ((pre_map, 606) !! 0)))) 0 0 w v_max ((u_max + 1) * (v_max + 1) * w * 4) | w <- [0..w_max]]) 0 0 0 u_max v_max w_max empty
+      w_grid = gridSetup0 (concat [gridSetup1 (pre_map !! (w + 1)) (gridSetup2 (next_c * w) (next_c * w) 0 0 0 u_max v_max) (loadObject (splitOn ", " (filter1 (pre_map !! 0)))) 0 0 w v_max ((u_max + 1) * (v_max + 1) * w * 4) | w <- [0..w_max]]) 0 0 0 u_max v_max w_max empty
   in (toList w_grid ++ floor, [])
 
 

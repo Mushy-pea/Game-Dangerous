@@ -33,7 +33,6 @@ library
       GameLogic
       GameSound
       HandleInput
-      IndexWrapper0
       IndexWrapper1
       OpenMap
       PreprocessMap
