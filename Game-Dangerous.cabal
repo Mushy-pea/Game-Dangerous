@@ -35,6 +35,7 @@ library
       HandleInput
       IndexWrapper1
       OpenMap
+      PauseMenu
       PreprocessMap
       SaveGame
   other-modules:

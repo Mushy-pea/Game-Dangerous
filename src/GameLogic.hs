@@ -27,6 +27,7 @@ import Data.Coerce
 import System.Clock
 import BuildModel
 import GameSound
+import PauseMenu
 
 -- Used to load C style arrays, which are used with certain OpenGL functions.
 loadArray :: Storable a => [a] -> Ptr a -> Int -> IO ()
@@ -1497,13 +1498,6 @@ updateVel (x:xs) (y:ys) (z:zs) f_rate f =
   if z == 1 then 0 : updateVel xs ys zs f_rate f
   else (x + y / 32 + f * x / f_rate) : updateVel xs ys zs f_rate f
 
--- Used to generate the sequence of message tile references that represent the pause screen text.
--- pauseText :: [Char] -> Play_state1 -> ([Char], Int, Int, Int) -> [(Int, [Int])]
--- pauseText (x0:x1:x2:x3:x4:x5:xs) s1 (diff, a, b, c) =
---   [(0, msg9), (0, []), (0, msg1 ++ convMsg (health s1)), (0, msg2 ++ convMsg (ammo s1)), (0, msg3 ++ convMsg (gems s1)), (0, msg4 ++ convMsg (torches s1))
---   , (0, msg5 ++ take 6 (keys s1)), (0, msg30 ++ drop 6 (keys s1)), (0, msg6 ++ region s1), (0, convMsg_ ("Difficulty: " ++ diff))
---   , (0, convMsg_ ("Time: " ++ [x0, x1, ':', x2, x3, ':', x4, x5])), (0, []), (1, msg10), (2, msg17), (3, msg11), (4, msg12)]
-
 -- This function ensures that all signals sent to NPC GPLC programs are run before any others.  This is done to fix a corner case problem that occured when an
 -- NPC and projectile tried to enter the same voxel in the same tick.
 prioritiseNpcs :: [Int] -> [Int] -> [Int] -> [Int]
@@ -1553,16 +1547,6 @@ updateGameClock (game_t, fl_game_t, frame_num) f_rate =
   in
   if truncate fl_game_t == truncate fl_game_t' then (False, (game_t, fl_game_t', frame_num + 1))
   else (True, (truncate fl_game_t', fl_game_t', frame_num + 1))
-
-showGameTime :: Int -> [Char] -> Bool -> [Char]
-showGameTime t result True = reverse (take 6 (reverse ("00000" ++ result)))
-showGameTime t result False =
-  if t < 400 then showGameTime 0 (result ++ "0" ++ show (div t 40)) True
-  else if t < 2400 then showGameTime 0 (result ++ show (div t 40)) True
-  else if t < 24000 then showGameTime (mod t 2400) (result ++ "0" ++ show (div t 2400)) False
-  else if t < 144000 then showGameTime (mod t 2400) (result ++ show (div t 2400)) False
-  else if t < 146400 then showGameTime (mod t 144000) (show (div t 144000) ++ "00") False
-  else showGameTime (mod t 144000) (show (div t 144000)) False
 
 -- This function generates a report of the player position within the map using the message tile system.
 showMapPos :: Play_state0 -> [Int]
@@ -1678,8 +1662,9 @@ updatePlay io_box state_ref game_state in_flight min_frame_t physics lookUp soun
       updatePlay io_box state_ref (game_state {s0_ = s0 {gameClock = snd game_clock'}}) in_flight min_frame_t physics lookUp
                  sound_array t_last t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
   else if control == 2 then do
-    updatePlay io_box state_ref (link0 {s0_ = (s0_ link0) {message_ = []}, s1_ = (s1_ link0) {sig_q = sig_q (s1_ link0) ++ [16, 0, 0, 2]}}) in_flight min_frame_t
-               physics lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
+    updatePlay io_box state_ref 
+               (link0 {obj_grid_ = pauseMenu link0, s0_ = (s0_ link0) {message_ = []}, s1_ = (s1_ link0) {sig_q = sig_q (s1_ link0) ++ [16, 0, 0, 2]}})
+               in_flight min_frame_t physics lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
   else if control == 10 then do
     updatePlay io_box state_ref (link0 {s0_ = (s0_ link0) {message_ = []}, s1_ = (s1_ link0) {sig_q = sig_q (s1_ link0) ++ [2, 0, 0, 0]}}) in_flight min_frame_t
                physics lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
@@ -1760,15 +1745,6 @@ updatePlay io_box state_ref game_state in_flight min_frame_t physics lookUp soun
         link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 11}) [] [] lookUp
         updatePlay io_box state_ref (link0 {s1_ = link1}) False min_frame_t physics
                    lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
-
--- This function is used to convert integers to their representation in the engine's message tile reference format.
-convMsg :: Int -> [Int]
-convMsg v0 =
-  let v1 = mod v0 100
-  in
-  if v0 < 10 then [(mod v0 10) + 53]
-  else if v0 < 100 then [(div v0 10) + 53, (mod v0 10) + 53]
-  else [(div v0 100) + 53, (div v1 10) + 53, (mod v1 10) + 53]
 
 char_list = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 ,'.?;:+-=!()<>"
 

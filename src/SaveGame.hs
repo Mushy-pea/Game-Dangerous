@@ -12,6 +12,7 @@ import qualified Data.Foldable as FOLD
 import Data.List.Split
 import BuildModel
 import GameLogic
+import PauseMenu
 
 -- Constants used to fix the types decoded from save game files.
 def_obj_place_ = ((0, 0, 0), Nothing) :: ((Int, Int, Int), Maybe Obj_place)
