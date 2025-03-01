@@ -37,18 +37,21 @@ controlKeyQuestionText = "Which control key would you like to change? :\n"
                          ++ "pause\n"
                          ++ "forward\n"
                          ++ "back\n"
-                         ++  "strafe left\n"
-                         ++  "strafe right\n"
-                         ++  "turn left\n"
-                         ++  "turn right\n"
-                         ++  "jump\n"
-                         ++  "light torch\n"
-                         ++  "switch view (Toggle 1st and 3rd person camera view)\n"
-                         ++  "rotate view\n"
-                         ++  "fire"
+                         ++ "strafe left\n"
+                         ++ "strafe right\n"
+                         ++ "turn left\n"
+                         ++ "turn right\n"
+                         ++ "jump\n"
+                         ++ "light torch\n"
+                         ++ "switch view (Toggle 1st and 3rd person camera view)\n"
+                         ++ "rotate view\n"
+                         ++ "fire\n"
+                         ++ "menu up\n"
+                         ++ "menu down"
 
 controlKeyQuestionPointers = [("pause", 5), ("forward", 6), ("back", 7), ("strafe left", 8), ("strafe right", 9), ("turn left", 10), 
-                              ("turn right", 11), ("jump", 12), ("light torch", 13), ("switch view", 14), ("rotate view", 15), ("fire", 16)]
+                              ("turn right", 11), ("jump", 12), ("light torch", 13), ("switch view", 14), ("rotate view", 15), ("fire", 16),
+                              ("menu up", 23), ("menu down", 24)]
 
 resolutionQuestionText = "Which of the following resolutions do you wish the engine to attempt at launch? :\n"
                           ++ "[1024 * 768]\n"
@@ -93,6 +96,10 @@ rotateViewQuestion = Question {questionText = "Enter key to bind to [Rotate view
 
 fireQuestion = Question {questionText = "Enter key to bind to [Fire]: ", questionPointers = []}
 
+menuUpQuestion = Question {questionText = "Enter key to bind to [Menu up]: ", questionPointers = []}
+
+menuDownQuestion = Question {questionText = "Enter key to bind to [Menu down]: ", questionPointers = []}
+
 resolution768 = Question {questionText = "[1024 * 768] resolution selected.", questionPointers = []}
 
 resolution1080 = Question {questionText = "[1920 * 1080] resolution selected.", questionPointers = []}
@@ -105,12 +112,19 @@ resolution2160 = Question {questionText = "[3840 * 2160] resolution selected.", 
 
 startGamePrompt = Question {questionText = "Press [Enter] to start the game ...", questionPointers = []}
 
-questionNodes = array (0, 22) [(0, rootQuestion), (1, mapQuestion), (2, saveQuestion), (3, controlKeyQuestion),
+questionNodes = array (0, 24) [(0, rootQuestion), (1, mapQuestion), (2, saveQuestion), (3, controlKeyQuestion),
                                (4, resolutionQuestion), (5, pauseQuestion), (6, forwardQuestion), (7, backQuestion),
                                (8, strafeLeftQuestion), (9, strafeRightQuestion), (10, turnLeftQuestion), (11, turnRightQuestion),
                                (12, jumpQuestion), (13, lightTorchQuestion), (14, switchViewQuestion), (15, rotateViewQuestion),
                                (16, fireQuestion), (17, resolution768), (18, resolution1080), (19, resolution1440),
-                               (20, resolution1800), (21, resolution2160), (22, startGamePrompt)]
+                               (20, resolution1800), (21, resolution2160), (22, startGamePrompt), (23, menuUpQuestion), (24, menuDownQuestion)]
+
+mapKeyBinding :: Array Int ([Char], [Char]) -> [Char] -> Int -> [Char]
+mapKeyBinding bindings user_choice i
+  | i > 79 = "UNBOUND"
+  | user_choice == fst bound_pair = snd bound_pair
+  | otherwise = mapKeyBinding bindings user_choice (i + 1)
+  where bound_pair = bindings ! i
 
 mapNode :: [Char] -> [Char] -> [Char]
 mapNode cmd_line answer = cmd_line ++ " --map_file " ++ answer ++ ".dan"
@@ -119,40 +133,46 @@ saveFileNode :: [Char] -> [Char] -> [Char]
 saveFileNode cmd_line answer = cmd_line ++ " --current_save " ++ answer
 
 pauseNode :: [Char] -> [Char] -> [Char]
-pauseNode cmd_line answer = cmd_line ++ " --cb_PAUSE " ++ answer
+pauseNode cmd_line answer = cmd_line ++ " --cb_PAUSE " ++ mapKeyBinding keyBindings answer 0
 
 forwardNode :: [Char] -> [Char] -> [Char]
-forwardNode cmd_line answer = cmd_line ++ " --cb_FORWARD " ++ answer
+forwardNode cmd_line answer = cmd_line ++ " --cb_FORWARD " ++ mapKeyBinding keyBindings answer 0
 
 backNode :: [Char] -> [Char] -> [Char]
-backNode cmd_line answer = cmd_line ++ " --cb_BACK " ++ answer
+backNode cmd_line answer = cmd_line ++ " --cb_BACK " ++ mapKeyBinding keyBindings answer 0
 
 strafeLeftNode :: [Char] -> [Char] -> [Char]
-strafeLeftNode cmd_line answer = cmd_line ++ " --cb_STRAFE_LEFT " ++ answer
+strafeLeftNode cmd_line answer = cmd_line ++ " --cb_STRAFE_LEFT " ++ mapKeyBinding keyBindings answer 0
 
 strafeRightNode :: [Char] -> [Char] -> [Char]
-strafeRightNode cmd_line answer = cmd_line ++ " --cb_STRAFE_RIGHT " ++ answer
+strafeRightNode cmd_line answer = cmd_line ++ " --cb_STRAFE_RIGHT " ++ mapKeyBinding keyBindings answer 0
 
 turnLeftNode :: [Char] -> [Char] -> [Char]
-turnLeftNode cmd_line answer = cmd_line ++ " --cb_TURN_LEFT " ++ answer
+turnLeftNode cmd_line answer = cmd_line ++ " --cb_TURN_LEFT " ++ mapKeyBinding keyBindings answer 0
 
 turnRightNode :: [Char] -> [Char] -> [Char]
-turnRightNode cmd_line answer = cmd_line ++ " --cb_TURN_RIGHT " ++ answer
+turnRightNode cmd_line answer = cmd_line ++ " --cb_TURN_RIGHT " ++ mapKeyBinding keyBindings answer 0
 
 jumpNode :: [Char] -> [Char] -> [Char]
-jumpNode cmd_line answer = cmd_line ++ " --cb_JUMP " ++ answer
+jumpNode cmd_line answer = cmd_line ++ " --cb_JUMP " ++ mapKeyBinding keyBindings answer 0
 
 lightTorchNode :: [Char] -> [Char] -> [Char]
-lightTorchNode cmd_line answer = cmd_line ++ " --cb_LIGHT_TORCH " ++ answer
+lightTorchNode cmd_line answer = cmd_line ++ " --cb_LIGHT_TORCH " ++ mapKeyBinding keyBindings answer 0
 
 switchViewNode :: [Char] -> [Char] -> [Char]
-switchViewNode cmd_line answer = cmd_line ++ " --cb_SWITCH_VIEW " ++ answer
+switchViewNode cmd_line answer = cmd_line ++ " --cb_SWITCH_VIEW " ++ mapKeyBinding keyBindings answer 0
 
 rotateViewNode :: [Char] -> [Char] -> [Char]
-rotateViewNode cmd_line answer = cmd_line ++ " --cb_ROTATE VIEW " ++ answer
+rotateViewNode cmd_line answer = cmd_line ++ " --cb_ROTATE VIEW " ++ mapKeyBinding keyBindings answer 0
 
 fireNode :: [Char] -> [Char] -> [Char]
-fireNode cmd_line answer = cmd_line ++ " --cb_FIRE " ++ answer
+fireNode cmd_line answer = cmd_line ++ " --cb_FIRE " ++ mapKeyBinding keyBindings answer 0
+
+menuUpNode :: [Char] -> [Char] -> [Char]
+menuUpNode cmd_line answer = cmd_line ++ " --cb_MENU_UP " ++ mapKeyBinding keyBindings answer 0
+
+menuDownNode :: [Char] -> [Char] -> [Char]
+menuDownNode cmd_line answer = cmd_line ++ " --cb_MENU_DOWN " ++ mapKeyBinding keyBindings answer 0
 
 resolution768Node :: [Char] -> [Char] -> [Char]
 resolution768Node cmd_line answer = cmd_line ++ " --resolution_x 1024 --resolution_y 768"
@@ -172,12 +192,12 @@ resolution2160Node cmd_line answer = cmd_line ++ " --resolution_x 3840 --resolut
 nullNode :: [Char] -> [Char] -> [Char]
 nullNode cmd_line answer = cmd_line
 
-actionNodes = array (0, 22) [(0, nullNode), (1, mapNode), (2, saveFileNode), (3, nullNode),
+actionNodes = array (0, 24) [(0, nullNode), (1, mapNode), (2, saveFileNode), (3, nullNode),
                              (4, nullNode), (5, pauseNode), (6, forwardNode), (7, backNode), 
                              (8, strafeLeftNode), (9, strafeRightNode), (10, turnLeftNode), (11, turnRightNode), 
                              (12, jumpNode), (13, lightTorchNode), (14, switchViewNode), (15, rotateViewNode), 
                              (16, fireNode), (17, resolution768Node), (18, resolution1080Node), (19, resolution1440Node), 
-                             (20, resolution1800Node), (21, resolution2160Node), (22, nullNode)]
+                             (20, resolution1800Node), (21, resolution2160Node), (22, nullNode), (23, menuUpNode), (24, menuDownNode)]
 
 identifyAnswer :: [([Char], Int)] -> [Char] -> Int
 identifyAnswer [] answer = -1
@@ -199,7 +219,7 @@ main = do
   cfg_file <- bracket (openFile (args !! 0) ReadMode) (hClose)
                       (\h -> do c <- hGetContents h; putStr ("\ncfg file size: " ++ show (length c)); return c)
   putStr "\n\nThanks for choosing to play Game :: Dangerous!  This interactive launcher allows game engine options to be set before starting."
-  startEngine (listArray (0, 97) (splitOneOf "=\n" (tailFile cfg_file)))
+  startEngine (listArray (0, 91) (splitOneOf "=\n" (tailFile cfg_file)))
 
 startEngine :: Array Int [Char] -> IO ()
 startEngine conf_reg =
@@ -216,8 +236,11 @@ startEngine conf_reg =
     putStr ("\nUnsupported platform specified in configuration file.")
     exitSuccess
   cmd_line <- readIORef cmdLine
-  putStr ("\nStarting engine with command line: " ++ cmd_line)
-  (h_in, h_out, _, ph) <- createProcess (shell cmd_line) {std_in = CreatePipe, std_out = CreatePipe}
+  putStr "\nWould you like these settings to be saved as the default? (y / n)"
+  hFlush stdout
+  default_answer <- getLine
+  putStr ("\nStarting engine with command line: " ++ cmd_line ++ " --save_config " ++ default_answer)
+  (h_in, h_out, _, ph) <- createProcess (shell (cmd_line ++ " --save_config " ++ default_answer)) {std_in = CreatePipe, std_out = CreatePipe}
   next_map <- getSignalTrace (fromJust h_out) ph
   if next_map == 0 then return ()
   else putStr ("\nMap required: " ++ show next_map)

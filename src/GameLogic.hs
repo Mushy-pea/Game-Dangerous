@@ -1809,10 +1809,10 @@ runMenu shortcut [] acc io_box x y c c_max d s0 background = do
   mainLoopEvent
   control <- readIORef (fromJust (control_ io_box))
   writeIORef (fromJust (control_ io_box)) 0
-  if control == 3 && c > 1 then do
+  if control == 14 && c > 1 then do
     glClear (GL_COLOR_BUFFER_BIT .|. GL_DEPTH_BUFFER_BIT)
     runMenu shortcut acc [] io_box x 0.1 (c - 1) c_max 2 s0 background
-  else if control == 5 && c < c_max then do
+  else if control == 15 && c < c_max then do
     glClear (GL_COLOR_BUFFER_BIT .|. GL_DEPTH_BUFFER_BIT)
     runMenu shortcut acc [] io_box x 0.1 (c + 1) c_max 2 s0 background
   else if control == 2 then return c

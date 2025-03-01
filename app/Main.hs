@@ -50,25 +50,33 @@ main = do
   args <- getArgs
   if length args == 0 then do
     contents <- bracket (openFile "config.txt" ReadMode) (hClose) (\h -> do c <- hGetContents h; putStr ("\ncfg file size: " ++ show (length c)); return c)
-    openWindow (listArray (0, 97) (splitOneOf "=\n" (tailFile contents)))
+    openWindow (listArray (0, 91) (splitOneOf "=\n" (tailFile contents)))
   else if length args == 1 then do
     contents <- bracket (openFile (args !! 0) ReadMode) (hClose) (\h -> do c <- hGetContents h; putStr ("\ncfg file size: " ++ show (length c)); return c)
-    openWindow (listArray (0, 97) (splitOneOf "=\n" (tailFile contents)))
+    openWindow (listArray (0, 91) (splitOneOf "=\n" (tailFile contents)))
   else if length args > 2 && args !! 1 == "--debugSet" then do
     contents <- bracket (openFile (args !! 0) ReadMode) (hClose) (\h -> do c <- hGetContents h; putStr ("\ncfg file size: " ++ show (length c)); return c)
-    openWindow (listArray (0, 97 - 2 + length args) (splitOneOf "=\n" (tailFile contents) ++ drop 2 args))
+    openWindow (listArray (0, 91 - 2 + length args) (splitOneOf "=\n" (tailFile contents) ++ drop 2 args))
   else do
     contents <- bracket (openFile (args !! 0) ReadMode) (hClose) (\h -> do c <- hGetContents h; putStr ("\ncfg file size: " ++ show (length c)); return c)
-    openWindow (patchConfReg (drop 1 args) (listArray (0, 97) (splitOneOf "=\n" (tailFile contents))))
+    openWindow (patchConfReg (drop 1 args) (listArray (0, 91) (splitOneOf "=\n" (tailFile contents))))
+
+mapKeyBinding :: Array Int ([Char], [Char]) -> Int -> [Char] -> [Char]
+mapKeyBinding bindings i user_choice
+  | i > 79 = "UNBOUND"
+  | user_choice == snd bound_pair = fst bound_pair
+  | otherwise = mapKeyBinding bindings (i + 1) user_choice
+  where bound_pair = bindings ! i
 
 -- This function initialises the GLUT runtime system, which in turn is used to initialise a window and OpenGL context.
 openWindow :: Array Int [Char] -> IO ()
 openWindow conf_reg =
   let cfg' = cfg conf_reg 0
-      cb = \x -> head (cfg' x)
-      key_set = listArray (0, 14) [cb "cb_PAUSE", cb "cb_FORWARD", cb "cb_STRAFE_RIGHT", cb "cb_BACK", cb "cb_STRAFE_LEFT", cb "cb_TURN_LEFT"
-                                  , cb "cb_TURN_RIGHT", cb "cb_JUMP", cb "cb_LIGHT_TORCH", cb "cb_SWITCH_VIEW", cb "cb_ROTATE_VIEW", cb "cb_FIRE"
-                                  , cb "cb_MENU_SELECT", cb "cb_MENU_BACK", cb "cb_MENU_HOME"]
+      key_set = [cfg' "cb_PAUSE", cfg' "cb_FORWARD", cfg' "cb_STRAFE_RIGHT", cfg' "cb_BACK", cfg' "cb_STRAFE_LEFT", cfg' "cb_TURN_LEFT", 
+                 cfg' "cb_TURN_RIGHT", cfg' "cb_JUMP", cfg' "cb_LIGHT_TORCH", cfg' "cb_SWITCH_VIEW", cfg' "cb_ROTATE_VIEW", cfg' "cb_FIRE",
+                 cfg' "cb_MENU_UP", cfg' "cb_MENU_DOWN"]
+      remapped_key_set = map (mapKeyBinding keyBindings 0) key_set
+      key_set_arr = listArray (0, 13) remapped_key_set
       filePath = cfg' "map_file_path" ++ cfg' "map_file"
   in do
   putStr ("\n\nGame :: Dangerous engine starting.  Version and platform: " ++ cfg' "version_and_platform_string")
@@ -88,29 +96,47 @@ openWindow conf_reg =
   actionOnWindowClose $= Exit
   displayCallback $= repaintWindow
   control_ref <- newIORef 0
-  keyboardCallback $= (Just (getInput control_ref key_set))
+  keyboardCallback $= (Just (getKeyInput control_ref key_set_arr))
+  specialCallback $= (Just (getSpecialKeyInput control_ref key_set_arr))
   contents <- bracket (openFile filePath ReadMode) (hClose) (\h -> do c <- hGetContents h; putStr ("\nmap file size: " ++ show (length c)); return c)
   screen_res <- readIORef screenRes
   setupGame_ conf_reg (tailFile contents) screen_res control_ref
 
--- This is the callback that GLUT calls each time mainLoopEvent has been called and there is keyboard input in the window message queue.
-getInput :: IORef Int -> Array Int Char -> Char -> Position -> IO ()
-getInput ref key_set key pos = do
-  if key == key_set ! 0 then writeIORef ref 2         -- Pause
-  else if key == key_set ! 1 then writeIORef ref 3    -- Forward
-  else if key == key_set ! 2 then writeIORef ref 4    -- Strafe right
-  else if key == key_set ! 3 then writeIORef ref 5    -- Back
-  else if key == key_set ! 4 then writeIORef ref 6    -- Strafe Left
-  else if key == key_set ! 5 then writeIORef ref 7    -- Turn left
-  else if key == key_set ! 6 then writeIORef ref 8    -- Turn right
-  else if key == key_set ! 7 then writeIORef ref 9    -- Jump
-  else if key == key_set ! 8 then writeIORef ref 10   -- Light torch
-  else if key == key_set ! 9 then writeIORef ref 11   -- Switch view mode
-  else if key == key_set ! 10 then writeIORef ref 12  -- Rotate 3rd person view
-  else if key == key_set ! 11 then writeIORef ref 13  -- Fire
-  else if key == key_set ! 12 then writeIORef ref 14  -- Select menu option
-  else if key == key_set ! 13 then writeIORef ref 15  -- Go back one level in menu
-  else if key == key_set ! 14 then writeIORef ref 16  -- Return to menu root
+-- One of these two callbacks is called by GLUT each time mainLoopEvent has been called and there is keyboard input in the window message queue.
+getKeyInput :: IORef Int -> Array Int [Char] -> Char -> Position -> IO ()
+getKeyInput ref key_set key pos = do
+  if key == head (key_set ! 0) then writeIORef ref 2         -- Pause
+  else if key == head (key_set ! 1) then writeIORef ref 3    -- Forward
+  else if key == head (key_set ! 2) then writeIORef ref 4    -- Strafe right
+  else if key == head (key_set ! 3) then writeIORef ref 5    -- Back
+  else if key == head (key_set ! 4) then writeIORef ref 6    -- Strafe Left
+  else if key == head (key_set ! 5) then writeIORef ref 7    -- Turn left
+  else if key == head (key_set ! 6) then writeIORef ref 8    -- Turn right
+  else if key == head (key_set ! 7) then writeIORef ref 9    -- Jump
+  else if key == head (key_set ! 8) then writeIORef ref 10   -- Light torch
+  else if key == head (key_set ! 9) then writeIORef ref 11   -- Switch view mode
+  else if key == head (key_set ! 10) then writeIORef ref 12  -- Rotate 3rd person view
+  else if key == head (key_set ! 11) then writeIORef ref 13  -- Fire
+  else if key == head (key_set ! 12) then writeIORef ref 14  -- Up in menu
+  else if key == head (key_set ! 13) then writeIORef ref 15  -- Down in menu
+  else writeIORef ref 0
+
+getSpecialKeyInput :: IORef Int -> Array Int [Char] -> SpecialKey -> Position -> IO ()
+getSpecialKeyInput ref key_set key pos = do
+  if show key == key_set ! 0 then writeIORef ref 2         -- Pause
+  else if show key == key_set ! 1 then writeIORef ref 3    -- Forward
+  else if show key == key_set ! 2 then writeIORef ref 4    -- Strafe right
+  else if show key == key_set ! 3 then writeIORef ref 5    -- Back
+  else if show key == key_set ! 4 then writeIORef ref 6    -- Strafe Left
+  else if show key == key_set ! 5 then writeIORef ref 7    -- Turn left
+  else if show key == key_set ! 6 then writeIORef ref 8    -- Turn right
+  else if show key == key_set ! 7 then writeIORef ref 9    -- Jump
+  else if show key == key_set ! 8 then writeIORef ref 10   -- Light torch
+  else if show key == key_set ! 9 then writeIORef ref 11   -- Switch view mode
+  else if show key == key_set ! 10 then writeIORef ref 12  -- Rotate 3rd person view
+  else if show key == key_set ! 11 then writeIORef ref 13  -- Fire
+  else if show key == key_set ! 12 then writeIORef ref 14  -- Up in menu
+  else if show key == key_set ! 13 then writeIORef ref 15  -- Down in menu
   else writeIORef ref 0
 
 -- This is the callback that GLUT calls when it detects a window repaint is necessary.  This should only happen when the window is first opened, the user moves
@@ -371,6 +397,10 @@ startGame context physics control_ref uniform p_bind map_text conf_reg sound_arr
     else exitSuccess
   | context == ExitGame = do
     putStr ("\nEngine event: " ++ show context)
+    if cfg' "save_config" == "y" then do
+      bracket (openFile (cfg' "config_file") WriteMode) (hClose)
+              (\h -> hPutStr h (writeCfg conf_reg 0))
+    else return ()
     exitSuccess
   | otherwise = error ("\nInvalid engine event within startGame: " ++ show context)
   where cfg' = cfg conf_reg 0
@@ -388,7 +418,7 @@ startGame context physics control_ref uniform p_bind map_text conf_reg sound_arr
                        prob_seq = genProbSeq 0 239 (read (cfg' "prob_c")) r_gen, currentMap = setCurrentMap (cfg' "map_file"),
                        previousMap = setCurrentMap (cfg' "map_file")}
         s1 = if cfg' "verbose_mode" == "n" || cfg' "verbose_mode" == "y" then ps1_init {verbose_mode = cfg' "verbose_mode"}
-             else ps1_init {verbose_mode = "filter", debugSet = array (0, snd (bounds conf_reg) - 92) [(i, conf_reg ! (i + 92)) | i <- [0..snd (bounds conf_reg) - 92]]}
+             else ps1_init {verbose_mode = "filter", debugSet = array (0, snd (bounds conf_reg) - 94) [(i, conf_reg ! (i + 94)) | i <- [0..snd (bounds conf_reg) - 94]]}
         game_state = Game_state {event_context = None, w_grid_ = w_grid, f_grid_ = f_grid, obj_grid_ = obj_grid, s0_ = s0, s1_ = s1,
                                  w_grid_save = emptyWGridDiffContainer, f_grid_save = emptyFGridDiffContainer,
                                  obj_grid_save = emptyObjGridDiffContainer}

@@ -827,21 +827,21 @@ viewCircle a b r t lookUp = (a + r * lookUp ! (2, t), b + r * lookUp ! (1, t))
 -- Used to query the conf_reg array, which holds startup parameters passed at the command line or from the engine's configuration file.
 cfg :: Array Int [Char] -> Int -> [Char] -> [Char]
 cfg conf_reg i query =
-  if i > 96 then error ("Invalid conf_reg field in query operation: " ++ query ++ "!")
+  if i > 90 then error ("Invalid conf_reg field in query operation: " ++ query)
   else if conf_reg ! i == query then conf_reg ! (i + 1)
   else cfg conf_reg (i + 2) query
 
 -- Used to update the conf_reg array.
 updateCfg :: Array Int [Char] -> [Char] -> [Char] -> Int -> Array Int [Char]
 updateCfg conf_reg field update i =
-  if i > 96 then error ("Invalid conf_reg field in update operation: " ++ field ++ "!")
+  if i > 90 then error ("Invalid conf_reg field in update operation: " ++ field)
   else if conf_reg ! i == field then conf_reg // [((i + 1), update)]
   else updateCfg conf_reg field update (i + 2)
 
 -- Used to construct a string representation of the conf_reg array so that an updated version can be saved to disk.
 writeCfg :: Array Int [Char] -> Int -> [Char]
 writeCfg conf_reg i =
-  if i > 96 then []
+  if i > 90 then []
   else (conf_reg ! i) ++ "=" ++ (conf_reg ! (i + 1)) ++ "\n" ++ writeCfg conf_reg (i + 2)
 
 -- Used to initialise the p_bind array, which contains references to all the OpenGL vertex array objects and texture objects used in the current map.
@@ -866,4 +866,22 @@ tailFile :: [Char] -> [Char]
 tailFile contents =
   if last (splitOn "\n" contents) == [] then init contents
   else contents
+
+keyBindings = array (0, 79) [(0, ("0", "0")), (1, ("1", "1")), (2, ("2", "2")), (3, ("3", "3")), (4, ("4", "4")), (5, ("5", "5")),
+                             (6, ("6", "6")), (7, ("7", "7")), (8, ("8", "8")), (9, ("9", "9")), (10, ("a", "a")), (11, ("b", "b")),
+                             (12, ("c", "c")), (13, ("d", "d")), (14, ("e", "e")), (15, ("f", "f")), (16, ("g", "g")), (17, ("h", "h")),
+                             (18, ("i", "i")), (19, ("j", "j")), (20, ("k", "k")), (21, ("l", "l")), (22, ("m", "m")), (23, ("n", "n")),
+                             (24, ("o", "o")), (25, ("p", "p")), (26, ("q", "q")), (27, ("r", "r")), (28, ("s", "s")), (29, ("t", "t")),
+                             (30, ("u", "u")), (31, ("v", "v")), (32, ("w", "w")), (33, ("x", "x")), (34, ("y", "y")), (35, ("z", "z")),
+                             (36, ("`", "BACK_QUOTE")), (37, ("-", "MINUS")), (38, ("=", "EQUALS")), (39, ("[", "LEFT_SQUARE")), (40, ("]", "RIGHT_SQUARE")),
+                             (41, (";", "SEMI_COLON")), (42, ("'", "APOSTROPHE")), (43, ("#", "HASH")), (44, ("\\", "BACK_SLASH")), (45, (",", "COMMA")),
+                             (46, (".", "FULL_STOP")), (47, ("/", "FORWARD_SLASH")), (48, (" ", "SPACE")), (49, ("KeyF1", "KeyF1")), (49, ("KeyF1", "KeyF1")),
+                             (49, ("KeyF1", "KeyF1")), (50, ("KeyF2", "KeyF2")), (51, ("KeyF3", "KeyF3")), (52, ("KeyF4", "KeyF4")), (53, ("KeyF5", "KeyF5")),
+                             (54, ("KeyF6", "KeyF6")), (55, ("KeyF7", "KeyF7")), (56, ("KeyF8", "KeyF8")), (57, ("KeyF9", "KeyF9")),
+                             (58, ("KeyF10", "KeyF10")), (59, ("KeyF11", "KeyF11")), (60, ("KeyF12", "KeyF12")), (61, ("KeyInsert", "KeyInsert")),
+                             (62, ("KeyHome", "KeyHome")), (63, ("KeyPageUp", "KeyPageUp")), (64, ("KeyDelete", "KeyDelete")), (65, ("KeyEnd", "KeyEnd")),
+                             (66, ("KeyPageDown", "KeyPageDown")), (67, ("KeyNumLock", "KeyNumLock")), (68, ("*", "*")), (69, ("+", "+")),
+                             (70, ("KeyUp", "KeyUp")), (71, ("KeyLeft", "KeyLeft")), (72, ("KeyDown", "KeyDown")), (73, ("KeyRight", "KeyRight")),
+                             (74, ("KeyShiftL", "KeyShiftL")), (75, ("KeyShiftR", "KeyShiftR")), (76, ("KeyCtrlL", "KeyCtrlL")), (77, ("KeyAltL", "KeyAltL")),
+                             (78, ("KeyAltR", "KeyAltR")), (79, ("KeyCtrlR", "KeyCtrlR"))] :: Array Int ([Char], [Char])
 
