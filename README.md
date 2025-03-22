@@ -1,10 +1,8 @@
 # Game :: Dangerous (a tribute to ZZT)
 
-## A project update as of 05/01/2025
+## A project update as of 22/03/2025 : Project kind of completed in 9 years 7 months
 
-I'm almost ready to declare a feature freeze for the project, after which my remaining efforts will go into 
-maintaining the code base and building a map set to run on the engine.  The most recently completed and in progress 
-features are discussed below.
+In time I'll post further updates here about my ongoing efforts to build a game using the engine.
 
 **Implement map set based game state saving (completed 09/11/2024)**
 
@@ -37,14 +35,14 @@ be Ben Davies and Sarah Shields (see Lore image 1 further down).
 
 Figure 1: How the player character class implementation will be structured
 
-**Create a launcher for the game (in progress)**
+**Create a launcher for the game (completed 22/03/2025)**
 
 As it stands the launcher works cooperatively with the engine to support the map set based game state saving feature, 
 although further work is needed to make this system production ready.  It is also intended that the launcher will 
 allow users to change engine configuration options without having to modify a config file or use command line 
 parameters.
 
-Engine version: 1.3.0
+Engine version: 1.3.2
 
 Server version: 2.2.0
 

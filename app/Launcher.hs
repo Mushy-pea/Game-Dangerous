@@ -163,7 +163,7 @@ switchViewNode :: [Char] -> [Char] -> [Char]
 switchViewNode cmd_line answer = cmd_line ++ " --cb_SWITCH_VIEW " ++ mapKeyBinding keyBindings answer 0
 
 rotateViewNode :: [Char] -> [Char] -> [Char]
-rotateViewNode cmd_line answer = cmd_line ++ " --cb_ROTATE VIEW " ++ mapKeyBinding keyBindings answer 0
+rotateViewNode cmd_line answer = cmd_line ++ " --cb_ROTATE_VIEW " ++ mapKeyBinding keyBindings answer 0
 
 fireNode :: [Char] -> [Char] -> [Char]
 fireNode cmd_line answer = cmd_line ++ " --cb_FIRE " ++ mapKeyBinding keyBindings answer 0
@@ -219,65 +219,55 @@ main = do
   cfg_file <- bracket (openFile (args !! 0) ReadMode) (hClose)
                       (\h -> do c <- hGetContents h; putStr ("\ncfg file size: " ++ show (length c)); return c)
   putStr "\n\nThanks for choosing to play Game :: Dangerous!  This interactive launcher allows game engine options to be set before starting."
-  startEngine (listArray (0, 91) (splitOneOf "=\n" (tailFile cfg_file)))
+  startEngineLoop (listArray (0, 91) (splitOneOf "=\n" (tailFile cfg_file))) 1 (-1) False
 
-startEngine :: Array Int [Char] -> IO ()
-startEngine conf_reg =
+startEngineLoop :: Array Int [Char] -> Int -> Int -> Bool -> IO ()
+startEngineLoop conf_reg map_num save_index quick_start = do
+  next_map <- startEngine conf_reg map_num save_index quick_start
+  if next_map == 0 then return ()
+  else startEngineLoop conf_reg next_map (cycleSaveIndex save_index) True
+
+startEngine :: Array Int [Char] -> Int -> Int -> Bool -> IO Int
+startEngine conf_reg map_num save_index quick_start =
   let cfg' = cfg conf_reg 0
+      map_file = " --map_file map" ++ show map_num ++ ".dan"
+      current_save = " --current_save " ++ show save_index
   in do
   cmdLine <- newIORef ""
   if (splitOn " " (cfg' "version_and_platform_string")) !! 0 == "Windows" then do
-    cmd_line <- interactiveLoop questionNodes actionNodes "Game-Dangerous-exe config.txt"
+    cmd_line <- interactiveLoop questionNodes actionNodes ("Game-Dangerous-exe config.txt" ++ map_file ++ current_save) quick_start
     writeIORef cmdLine cmd_line
   else if (splitOn " " (cfg' "version_and_platform_string")) !! 0 == "Linux" then do
-    cmd_line <- interactiveLoop questionNodes actionNodes "./Game-Dangerous-exe config.txt"
+    cmd_line <- interactiveLoop questionNodes actionNodes ("./Game-Dangerous-exe config.txt" ++ map_file ++ current_save) quick_start
     writeIORef cmdLine cmd_line
   else do
     putStr ("\nUnsupported platform specified in configuration file.")
     exitSuccess
   cmd_line <- readIORef cmdLine
-  putStr "\nWould you like these settings to be saved as the default? (y / n)"
-  hFlush stdout
-  default_answer <- getLine
-  putStr ("\nStarting engine with command line: " ++ cmd_line ++ " --save_config " ++ default_answer)
-  (h_in, h_out, _, ph) <- createProcess (shell (cmd_line ++ " --save_config " ++ default_answer)) {std_in = CreatePipe, std_out = CreatePipe}
-  next_map <- getSignalTrace (fromJust h_out) ph
-  if next_map == 0 then return ()
-  else putStr ("\nMap required: " ++ show next_map)
+  if quick_start then do
+    putStr ("\nStarting engine with command line: " ++ cmd_line)
+    (h_in, h_out, _, ph) <- createProcess (shell cmd_line) {std_in = CreatePipe, std_out = CreatePipe}
+    next_map <- getSignalTrace (fromJust h_out) ph
+    return next_map
+  else do
+    putStr "\nWould you like these settings to be saved as the default? (y / n)"
+    hFlush stdout
+    default_answer <- getLine
+    putStr ("\nStarting engine with command line: " ++ cmd_line ++ " --save_config " ++ default_answer)
+    (h_in, h_out, _, ph) <- createProcess (shell (cmd_line ++ " --save_config " ++ default_answer)) {std_in = CreatePipe, std_out = CreatePipe}
+    next_map <- getSignalTrace (fromJust h_out) ph
+    return next_map
 
--- engineStartLoop :: Array Int [Char] -> [Char] -> Int -> Int -> Bool -> IO ()
--- engineStartLoop conf_reg cmd_line map_index save_index auto_start =
---   let cfg' = cfg conf_reg 0
---       auto_start_args = " --map_file " show map_index ++ ".dan" ++ " --current_save " ++ show save_index
---   in do
---   if auto_start then do
---     putStr ("\nStarting engine with command line: " ++ cmd_line ++ auto_start_args)
---     (h_in, h_out, _, ph) <- createProcess (shell (cmd_line ++ auto_start_args)) {std_in = CreatePipe, std_out = CreatePipe}
---     next_map <- getSignalTrace (fromJust h_out) ph
---     if next_map == 0 then return ()
---     else engineStartLoop conf_reg cmd_line next_map (cycleSaveIndex save_index) True
---   else if (splitOn " " (cfg' "version_and_platform_string")) !! 0 == "Windows" then do
---     cmd_line <- interactiveLoop questionNodes actionNodes "Game-Dangerous-exe config.txt"
---     putStr ("\nStarting engine with command line: " ++ cmd_line)
---   else if (splitOn " " (cfg' "version_and_platform_string")) !! 0 == "Linux" then do
---     putStr ("\nStarting engine with command line: " ++ "./Game-Dangerous-exe " ++ cfg' "config_file" ++ " " ++ arg0 ++ " " ++ arg1)
---     (h_in, h_out, _, ph) <- createProcess (shell ("./Game-Dangerous-exe " ++ cfg' "config_file" ++ " " ++ arg0 ++ " " ++ arg1)) {std_in = CreatePipe, std_out = CreatePipe}
---     next_map <- getSignalTrace (fromJust h_out) ph
---     if next_map == 0 then return ()
---     else do
---       putStr ("\nsave_index: " ++ show save_index)
---       startEngine conf_reg next_map (cycleSaveIndex save_index)
---   else
---     putStr ("\nUnsupported platform specified in configuration file.")
-
-interactiveLoop :: Array Int Question -> Array Int ([Char] -> [Char] -> [Char]) -> [Char] -> IO [Char]
-interactiveLoop questions actions cmd_line = do
-  choice <- questionTree questionNodes False 0 ""
-  if fst choice == -1 then do
-    putStr "\nThe launcher can't understand the input.  Please refer to the README file for guidance."
-    interactiveLoop questions actions cmd_line
-  else if fst choice == 22 then return cmd_line
-  else interactiveLoop questions actions (((actions ! (fst choice)) cmd_line) $ (snd choice))
+interactiveLoop :: Array Int Question -> Array Int ([Char] -> [Char] -> [Char]) -> [Char] -> Bool -> IO [Char]
+interactiveLoop questions actions cmd_line quick_start = do
+  if quick_start then return cmd_line
+  else do
+    choice <- questionTree questionNodes False 0 ""
+    if fst choice == -1 then do
+      putStr "\nThe launcher can't understand the input.  Please refer to the README file for guidance."
+      interactiveLoop questions actions cmd_line quick_start
+    else if fst choice == 22 then return cmd_line
+    else interactiveLoop questions actions (((actions ! (fst choice)) cmd_line) $ (snd choice)) quick_start
 
 questionTree :: Array Int Question -> Bool -> Int -> [Char] -> IO (Int, [Char])
 questionTree nodes endNode i answer =

@@ -176,7 +176,7 @@ instance Binary Play_state1 where
            j <- get
            k <- get
            return Play_state1 {health = a, ammo = b, gems = c, torches = d, keys = e, playerClass = f, difficulty = g, sig_q = h, next_sig_q = [], message = i,
-                  state_chg = j, verbose_mode = "y", npc_states = k}
+                  state_chg = j, verbose_mode = "n", npc_states = k}
 
 data NPC_state = NPC_state {npc_type :: Int, c_health :: Int, ticks_left0 :: Int, ticks_left1 :: Int, node_locations :: [Int],
 fg_position :: (Float, Float, Float), dir_vector :: (Float, Float), direction :: Int, lastDir :: Int, dir_list :: [Int], node_num :: Int, end_node :: Int,
