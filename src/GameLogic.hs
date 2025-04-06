@@ -1507,17 +1507,6 @@ prioritiseNpcs (x0:x1:x2:x3:xs) acc0 acc1 =
   else prioritiseNpcs xs acc0 (x0 : x1 : x2 : x3 : acc1)
 
 -- This function handles preemptive ceiling collision detection (i.e. stops the player jumping if there is a ceiling directly above).
--- jumpAllowed :: Array (Int, Int, Int) Floor_grid -> Play_state0 -> Play_state1 -> Bool
--- jumpAllowed f_grid s0 s1 =
---   let f_grid_voxel0 = f_grid ! (truncate (pos_w s0) + 1, div (truncate (pos_u s0)) 2, div (truncate (pos_v s0)) 2)
---       f_grid_voxel1 = f_grid ! (truncate (pos_w s0), div (truncate (pos_u s0)) 2, div (truncate (pos_v s0)) 2)
---       jump_enabled = if playerClass s1 == [2, 31, 40, 63, 4, 27, 48, 35, 31, 45] then False
---                      else True
---   in
---   if truncate (pos_w s0) == 2 && jump_enabled then True
---   else if (surface f_grid_voxel0 == Open || surface f_grid_voxel1 /= Flat) && jump_enabled then True
---   else False
-
 jumpAllowed :: Array (Int, Int, Int) Floor_grid -> Play_state0 -> Play_state1 -> Bool
 jumpAllowed f_grid s0 s1
   | truncate (pos_w s0) == 2 = jump_enabled
@@ -1530,20 +1519,20 @@ jumpAllowed f_grid s0 s1
 -- The frames per second (FPS) measurements made here are used to drive the optional on screen FPS report and to scale player movement rates in real time,
 -- to allow for a variable frame rate with consistent game play speed.  It is intended that the engine will be limited to ~60 FPS
 -- (set via the "min_frame_t" field of the conf_reg array) with movement scaling applied between 40 - 60 FPS.  Below 40 FPS game play slow down will be seen.
-determineFps :: SEQ.Seq Integer -> Integer -> (Float, [Int], SEQ.Seq Integer)
-determineFps t_seq t_current =
+determineFps :: SEQ.Seq Integer -> Float -> Integer -> (Float, [Int], SEQ.Seq Integer)
+determineFps t_seq scaling t_current =
   let frame_rate0 = 1000000000 / (fromIntegral (t_current - SEQ.index t_seq 0) / 40)
       frame_rate1 = if frame_rate0 >= 40 then frame_rate0
                     else 40
   in
   if SEQ.length t_seq < 40 then (48, [-1, 6, 16, 19, 69, 63] ++ convMsg 0, t_seq SEQ.|> t_current)
-  else (frame_rate1 / 1.25, [-1, 6, 16, 19, 69, 63] ++ convMsg (truncate frame_rate0), (SEQ.drop 1 (t_seq SEQ.|> t_current)))
+  else (frame_rate1 / scaling, [-1, 6, 16, 19, 69, 63] ++ convMsg (truncate frame_rate0), (SEQ.drop 1 (t_seq SEQ.|> t_current)))
 
 -- Game time is now composed of game_t (GPLC interpreter ticks) and frame_num (number of the next frame to be rendered).  These two functions deal with updating
 -- game time and preparing a user readable representation of it, respectively.
-updateGameClock :: (Int, Float, Int) -> Float -> (Bool, (Int, Float, Int))
-updateGameClock (game_t, fl_game_t, frame_num) f_rate =
-  let fl_game_t' = fl_game_t + (1 / f_rate) / (1 / 40)
+updateGameClock :: (Int, Float, Int) -> Float -> Float -> (Bool, (Int, Float, Int))
+updateGameClock (game_t, fl_game_t, frame_num) f_rate scaling =
+  let fl_game_t' = fl_game_t + (1 / f_rate) / (1 / scaling)
   in
   if truncate fl_game_t == truncate fl_game_t' then (False, (game_t, fl_game_t', frame_num + 1))
   else (True, (truncate fl_game_t', fl_game_t', frame_num + 1))
@@ -1573,9 +1562,9 @@ playMusic t period sound_array = do
   else return ()
 
 -- This function is used by updatePlay to update the physics related fields of the Play_state0 structure.
-s0' :: [Float] -> Float -> Float -> [Float] -> [Float] -> (Bool -> Float) -> (Int, Float, Int) -> Float -> Float -> Float -> Float -> UArray (Int, Int) Float
+s0' :: [Float] -> Float -> Float -> [Float] -> [Float] -> (Bool -> Float) -> (Int, Float, Int) -> Float -> Float -> Float -> Float -> Float -> UArray (Int, Int) Float
        -> SEQ.Seq Integer -> Integer -> Int -> Play_state0 -> Int -> Play_state0
-s0' pos_uv pos_w0 pos_w1 vel0 vel1 angle' game_clock' mag_r mag_j f_rate f look_up t_seq t_current control s0 mode
+s0' pos_uv pos_w0 pos_w1 vel0 vel1 angle' game_clock' mag_r mag_j scaling f_rate f look_up t_seq t_current control s0 mode
   | mode == 0 = s0 {pos_u = pos_uv !! (0 :: Int), pos_v = pos_uv !! (1 :: Int), vel = vel0, gameClock = game_clock'}
   | mode == 1 = s0 {pos_u = pos_uv !! (0 :: Int), pos_v = pos_uv !! (1 :: Int), pos_w = pos_w0,
                     vel = updateVel (vel s0) (take 3 (thrust (fromIntegral control) (angle s0) mag_r look_up)) ((drop 2 pos_uv) ++ [0]) f_rate f,
@@ -1591,7 +1580,7 @@ s0' pos_uv pos_w0 pos_w1 vel0 vel1 angle' game_clock' mag_r mag_j f_rate f look_
   | mode == 8 = s0 {pos_u = pos_uv !! (0 :: Int), pos_v = pos_uv !! (1 :: Int), pos_w = pos_w1, vel = vel1, angle = truncate (angle' True),
                     angle_ = (angle' True), gameClock = game_clock'}
   | mode == 9 = s0 {pos_u = pos_uv !! (0 :: Int), pos_v = pos_uv !! (1 :: Int), pos_w = pos_w1, vel = vel1, gameClock = game_clock'}
-  | mode == 12 = s0 {message_ = collectMetrics (snd__ (determineFps t_seq t_current)) (showMapPos s0) (showGameTime (fst__ (gameClock s0)) [] False) s0,
+  | mode == 12 = s0 {message_ = collectMetrics (snd__ (determineFps t_seq scaling t_current)) (showMapPos s0) (showGameTime (fst__ (gameClock s0)) [] False) s0,
                      gameClock = game_clock'}
   | otherwise = s0 {pos_u = pos_uv !! (0 :: Int), pos_v = pos_uv !! (1 :: Int), pos_w = pos_w0, vel = vel0, gameClock = game_clock'}
 
@@ -1629,10 +1618,11 @@ updatePlay io_box state_ref game_state in_flight min_frame_t physics lookUp soun
       floor = pos_w0
       vel0 = updateVel (vel s0) [0, 0, 0] ((drop 2 det) ++ [0]) f_rate (friction physics)
       vel1 = updateVel (vel s0) [0, 0, gravity physics] ((drop 2 det) ++ [0]) f_rate 0
-      game_clock' = updateGameClock (gameClock (s0_ game_state)) (f_rate * 1.25)
+      game_clock' = updateGameClock (gameClock (s0_ game_state)) (f_rate * speedScaling physics) (30 * speedScaling physics)
       angle' = modAngle_ (angle_ s0) f_rate
-      det_fps = \t_current -> determineFps t_seq t_current
-      s0'_ = s0' det pos_w0 pos_w1 vel0 vel1 angle' (snd game_clock') (mag_run physics) (mag_jump physics) f_rate (friction physics) lookUp t_seq
+      det_fps = \t_current -> determineFps t_seq (speedScaling physics) t_current
+      s0'_ = s0' det pos_w0 pos_w1 vel0 vel1 angle' (snd game_clock') (magRun physics) (magJump physics) (speedScaling physics) f_rate (friction physics)
+                 lookUp t_seq
       player_voxel = [truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)]
   in do
   mainLoopEvent

@@ -227,7 +227,8 @@ instance Binary Obj_grid where
 
 data EventContext = None | NewGame | LoadGame | SaveGame | ReturnMainMenu | ExitGame | PlayerDied deriving (Eq, Show)
 
-data GamePhysics = GamePhysics {u :: Float, v :: Float, w :: Float, gravity :: Float, friction :: Float, mag_run :: Float, mag_jump :: Float}
+data GamePhysics = GamePhysics {u :: Float, v :: Float, w :: Float, gravity :: Float, friction :: Float, magRun :: Float, magJump :: Float,
+                                speedScaling :: Float}
 
 data Game_state = Game_state {event_context :: EventContext, w_grid_ :: Array (Int, Int, Int) Wall_grid, f_grid_ :: Array (Int, Int, Int) Floor_grid,
                               obj_grid_ :: Array (Int, Int, Int) Obj_grid, s0_ :: Play_state0, s1_ :: Play_state1,
@@ -406,12 +407,14 @@ mod_angle' a b = b
 -- which allows for fine grain frame rate dependent changes to the player angle to be made.
 modAngle_ :: Float -> Float -> Bool -> Float
 modAngle_ a f_rate clockwise =
-  if clockwise == True then
-    if a - 5 < 0 then 200 * pi + (a - 5)
-    else a - 5
+  let delta_a = 5 * (60 / f_rate)
+  in
+  if clockwise then
+    if a - delta_a < 0 then 200 * pi + (a - delta_a)
+    else a - delta_a
   else
-    if a + 5 > 200 * pi then 5 - (200 * pi - a)
-    else a + 5
+    if a + delta_a > 200 * pi then delta_a - (200 * pi - a)
+    else a + delta_a
 
 -- These functions implement a ray tracing algorhythm, which is part of the visible surface determination (VSD) system and is used for line of sight checks by
 -- the non - player character logic.  The Ray_test class exists so that the ray tracer can conveniently provide differing functionality when called from the
@@ -827,21 +830,21 @@ viewCircle a b r t lookUp = (a + r * lookUp ! (2, t), b + r * lookUp ! (1, t))
 -- Used to query the conf_reg array, which holds startup parameters passed at the command line or from the engine's configuration file.
 cfg :: Array Int [Char] -> Int -> [Char] -> [Char]
 cfg conf_reg i query =
-  if i > 90 then error ("Invalid conf_reg field in query operation: " ++ query)
+  if i > 92 then error ("Invalid conf_reg field in query operation: " ++ query)
   else if conf_reg ! i == query then conf_reg ! (i + 1)
   else cfg conf_reg (i + 2) query
 
 -- Used to update the conf_reg array.
 updateCfg :: Array Int [Char] -> [Char] -> [Char] -> Int -> Array Int [Char]
 updateCfg conf_reg field update i =
-  if i > 90 then error ("Invalid conf_reg field in update operation: " ++ field)
+  if i > 92 then error ("Invalid conf_reg field in update operation: " ++ field)
   else if conf_reg ! i == field then conf_reg // [((i + 1), update)]
   else updateCfg conf_reg field update (i + 2)
 
 -- Used to construct a string representation of the conf_reg array so that an updated version can be saved to disk.
 writeCfg :: Array Int [Char] -> Int -> [Char]
 writeCfg conf_reg i =
-  if i > 90 then []
+  if i > 92 then []
   else (conf_reg ! i) ++ "=" ++ (conf_reg ! (i + 1)) ++ "\n" ++ writeCfg conf_reg (i + 2)
 
 -- Used to initialise the p_bind array, which contains references to all the OpenGL vertex array objects and texture objects used in the current map.
@@ -875,7 +878,7 @@ keyBindings = array (0, 79) [(0, ("0", "0")), (1, ("1", "1")), (2, ("2", "2")), 
                              (30, ("u", "u")), (31, ("v", "v")), (32, ("w", "w")), (33, ("x", "x")), (34, ("y", "y")), (35, ("z", "z")),
                              (36, ("`", "BACK_QUOTE")), (37, ("-", "MINUS")), (38, ("=", "EQUALS")), (39, ("[", "LEFT_SQUARE")), (40, ("]", "RIGHT_SQUARE")),
                              (41, (";", "SEMI_COLON")), (42, ("'", "APOSTROPHE")), (43, ("#", "HASH")), (44, ("\\", "BACK_SLASH")), (45, (",", "COMMA")),
-                             (46, (".", "FULL_STOP")), (47, ("/", "FORWARD_SLASH")), (48, (" ", "SPACE")), (49, ("KeyF1", "KeyF1")), (49, ("KeyF1", "KeyF1")),
+                             (46, (".", "FULL_STOP")), (47, ("/", "FORWARD_SLASH")), (48, (" ", " ")), (49, ("KeyF1", "KeyF1")), (49, ("KeyF1", "KeyF1")),
                              (49, ("KeyF1", "KeyF1")), (50, ("KeyF2", "KeyF2")), (51, ("KeyF3", "KeyF3")), (52, ("KeyF4", "KeyF4")), (53, ("KeyF5", "KeyF5")),
                              (54, ("KeyF6", "KeyF6")), (55, ("KeyF7", "KeyF7")), (56, ("KeyF8", "KeyF8")), (57, ("KeyF9", "KeyF9")),
                              (58, ("KeyF10", "KeyF10")), (59, ("KeyF11", "KeyF11")), (60, ("KeyF12", "KeyF12")), (61, ("KeyInsert", "KeyInsert")),

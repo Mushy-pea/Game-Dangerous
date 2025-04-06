@@ -50,16 +50,16 @@ main = do
   args <- getArgs
   if length args == 0 then do
     contents <- bracket (openFile "config.txt" ReadMode) (hClose) (\h -> do c <- hGetContents h; putStr ("\ncfg file size: " ++ show (length c)); return c)
-    openWindow (listArray (0, 91) (splitOneOf "=\n" (tailFile contents)))
+    openWindow (listArray (0, 93) (splitOneOf "=\n" (tailFile contents)))
   else if length args == 1 then do
     contents <- bracket (openFile (args !! 0) ReadMode) (hClose) (\h -> do c <- hGetContents h; putStr ("\ncfg file size: " ++ show (length c)); return c)
-    openWindow (listArray (0, 91) (splitOneOf "=\n" (tailFile contents)))
+    openWindow (listArray (0, 93) (splitOneOf "=\n" (tailFile contents)))
   else if length args > 2 && args !! 1 == "--debugSet" then do
     contents <- bracket (openFile (args !! 0) ReadMode) (hClose) (\h -> do c <- hGetContents h; putStr ("\ncfg file size: " ++ show (length c)); return c)
-    openWindow (listArray (0, 91 - 2 + length args) (splitOneOf "=\n" (tailFile contents) ++ drop 2 args))
+    openWindow (listArray (0, 93 - 2 + length args) (splitOneOf "=\n" (tailFile contents) ++ drop 2 args))
   else do
     contents <- bracket (openFile (args !! 0) ReadMode) (hClose) (\h -> do c <- hGetContents h; putStr ("\ncfg file size: " ++ show (length c)); return c)
-    openWindow (patchConfReg (drop 1 args) (listArray (0, 91) (splitOneOf "=\n" (tailFile contents))))
+    openWindow (patchConfReg (drop 1 args) (listArray (0, 93) (splitOneOf "=\n" (tailFile contents))))
 
 mapKeyBinding :: Array Int ([Char], [Char]) -> Int -> [Char] -> [Char]
 mapKeyBinding bindings i user_choice
@@ -188,8 +188,8 @@ setupGame conf_reg comp_map_text (Size w h) control_ref =
       p_bind_limit = (read ((splitOn "\n~\n" comp_map_text) !! 7)) - 1
       frustumScale0 = (read (cfg' "frustumScale1")) / (fromIntegral w / fromIntegral h)
       physics = GamePhysics {u = read (cfg' "init_u"), v = read (cfg' "init_v"), w = read (cfg' "init_w"),
-                             gravity = read (cfg' "gravity"), friction = read (cfg' "friction"), mag_run = read (cfg' "run_power"),
-                             mag_jump = read (cfg' "jump_power")}
+                             gravity = read (cfg' "gravity"), friction = read (cfg' "friction"), magRun = read (cfg' "run_power"),
+                             magJump = read (cfg' "jump_power"), speedScaling = read (cfg' "speed_scaling")}
   in do
   glEnable GL_DEPTH_TEST
   glDepthFunc GL_LEQUAL
