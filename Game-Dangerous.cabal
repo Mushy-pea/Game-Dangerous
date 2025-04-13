@@ -30,6 +30,7 @@ library
       CompileGPLC
       CompressMap
       DecompressMap
+      ExtraGPLC_Debug
       GameLogic
       GameSound
       HandleInput

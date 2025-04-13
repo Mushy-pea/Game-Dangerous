@@ -91,5 +91,5 @@ pauseMenuScript s0 s1 =
 pauseMenu :: Game_state -> Array (Int, Int, Int) Obj_grid
 pauseMenu game_state =
   let pause_menu_voxel = Obj_grid {objType = 3, program = pauseMenuScript (s0_ game_state) (s1_ game_state), programName = "PauseMenu"}
-  in (obj_grid_ game_state) // [((0, 0, 2), pause_menu_voxel)]
+  in (obj_grid_ game_state) // [((2, 0, 0), pause_menu_voxel)]
 
