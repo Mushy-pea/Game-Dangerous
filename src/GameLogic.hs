@@ -369,8 +369,8 @@ sendSignal mode (GPLC_int sig) (GPLC_int i0, GPLC_int i1, GPLC_int i2) obj_grid 
   | mode == 0 && currentMap s0 == previousMap s0 =
     if not (isNothing boundsCheck0) then error (fromJust boundsCheck0)
     else (obj_grid,
-          s1 {next_sig_q = Signal {sigNum = d_list !! sig, seqNum = sigSequence s1, target = (d_list !! i0, d_list !! i1, d_list !! i2)} : next_sig_q s1,
-              sigSequence = sigSequence s1 + 1})
+          s1 {next_sig_q = Signal {sigNum = d_list !! sig, originGameT = fst__ (gameClock s0), target = (d_list !! i0, d_list !! i1, d_list !! i2)}
+              : next_sig_q s1})
   | mode == 1 =
     if not (isNothing boundsCheck1) then error (fromJust boundsCheck1)
     else (obj_grid // [(index1, obj {program = (head prog) : sig : drop 2 prog})], s1)
@@ -825,7 +825,7 @@ s1'' s1 d_list dir_vector' dir_list' fg_position' ticks_left0' fireball_state' n
       dir_list = fromMaybe (dir_list char_state) dir_list',
       fg_position = fromMaybe (fg_position char_state) fg_position', ticks_left0 = fromMaybe (ticks_left0 char_state) ticks_left0',
       fireball_state = fromMaybe (fireball_state char_state) fireball_state', node_locations = fromMaybe (node_locations char_state) node_locations',
-      direction = fromMaybe (direction char_state) direction'})], next_sig_q = fromMaybe (next_sig_q s1) next_sig_q', sigSequence = sigSequence s1 + 1}
+      direction = fromMaybe (direction char_state) direction'})], next_sig_q = fromMaybe (next_sig_q s1) next_sig_q'}
 
 npcMove :: GPLC_int -> [Int] -> [Int] -> Array (Int, Int, Int) Wall_grid -> [((Int, Int, Int), Wall_grid)] -> Array (Int, Int, Int) Floor_grid
            -> Array (Int, Int, Int) Obj_grid -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> Play_state0 -> Play_state1 -> UArray (Int, Int) Float
@@ -862,15 +862,15 @@ npcMove (GPLC_int offset) d_list (w:u:v:w1:u1:v1:blocks) w_grid w_grid_upd f_gri
       obj_grid'3 = take 4 (rampFill w u v (direction char_state) (0, []) (surface (f_grid ! (w, div u 2, div v 2)))) ++ [((w, u, v), (-2, [])), ramp_fill' 1]
       obj_grid'4 = take 4 (rampFill w u v (direction char_state) (0, []) (surface (f_grid ! (w, div u 2, div v 2)))) ++ [((w, u, v), (-2, [])), ramp_fill' 0]
       s1_1 = s1'' s1 d_list n n (j (adjustFgPosition w (u'' 0) (v'' 0) (direction char_state))) (j 41) n (j [w, u'' 0, v'' 0, 0, 0, 0]) n
-                  (j (Signal {sigNum = 129, seqNum = sigSequence s1, target = (w, u'' 0, v'' 0)} : next_sig_q s1))
+                  (j (Signal {sigNum = 129, originGameT = fst__ (gameClock s0), target = (w, u'' 0, v'' 0)} : next_sig_q s1))
       s1_2 = s1'' s1 d_list n n (j (adjustFgPosition w (u'' 1) (v'' 1) (direction char_state))) (j 41) n (j [w - 1, u'' 1, v'' 1, 0, 0, 0]) n
-                  (j (Signal {sigNum = 129, seqNum = sigSequence s1, target = (w - 1, u'' 1, v'' 1)} : next_sig_q s1))
+                  (j (Signal {sigNum = 129, originGameT = fst__ (gameClock s0), target = (w - 1, u'' 1, v'' 1)} : next_sig_q s1))
       s1_3 = s1'' s1 d_list n n (j (add_vel_pos fgp (dir_vector char_state))) n n n n
-                  (j (Signal {sigNum = 129, seqNum = sigSequence s1, target = (w, u, v)} : next_sig_q s1))
+                  (j (Signal {sigNum = 129, originGameT = fst__ (gameClock s0), target = (w, u, v)} : next_sig_q s1))
       s1_4 = s1'' s1 d_list n n (j ramp_climb_) (j 1) n (j (conv_ramp_fill0 ++ [0, 0, 0])) (j (npc_dir_remap (direction char_state)))
-                  (j (Signal {sigNum = 129, seqNum = sigSequence s1, target = (conv_ramp_fill0 !! (0 :: Int), conv_ramp_fill0 !! (1 :: Int), conv_ramp_fill0 !! (2 :: Int))} : next_sig_q s1))
+                  (j (Signal {sigNum = 129, originGameT = fst__ (gameClock s0), target = (conv_ramp_fill0 !! (0 :: Int), conv_ramp_fill0 !! (1 :: Int), conv_ramp_fill0 !! (2 :: Int))} : next_sig_q s1))
       s1_5 = s1'' s1 d_list n n (j ramp_climb_) (j 1) n (j (conv_ramp_fill1 ++ [0, 0, 0])) (j (npc_dir_remap (direction char_state)))
-                  (j (Signal {sigNum = 129, seqNum = sigSequence s1, target = (conv_ramp_fill1 !! (0 :: Int), conv_ramp_fill1 !! (1 :: Int), conv_ramp_fill1 !! (2 :: Int))} : next_sig_q s1))
+                  (j (Signal {sigNum = 129, originGameT = fst__ (gameClock s0), target = (conv_ramp_fill1 !! (0 :: Int), conv_ramp_fill1 !! (1 :: Int), conv_ramp_fill1 !! (2 :: Int))} : next_sig_q s1))
       damage = detDamage (difficulty s1) s0
   in
   if ticks_left0 char_state == 0 then
@@ -879,44 +879,44 @@ npcMove (GPLC_int offset) d_list (w:u:v:w1:u1:v1:blocks) w_grid w_grid_upd f_gri
         if health s1 - damage <= 0 then (w_grid_upd, obj_grid_upd, s1 {health = 0, state_chg = 1, message = 0 : msg8})
         else (w_grid_upd, obj_grid_upd,
               s1 {health = health s1 - damage, message = 0 : msg25 ++ message s1,
-                  next_sig_q = Signal {sigNum = 129, seqNum = sigSequence s1, target = (w, u, v)} : next_sig_q s1, sigSequence = sigSequence s1 + 1})
+                  next_sig_q = Signal {sigNum = 129, originGameT = fst__ (gameClock s0), target = (w, u, v)} : next_sig_q s1})
       else (w_grid_upd, obj_grid_upd,
-            s1 {next_sig_q = Signal {sigNum = 129, seqNum = sigSequence s1, target = (w, u, v)} : next_sig_q s1, sigSequence = sigSequence s1 + 1})
+            s1 {next_sig_q = Signal {sigNum = 129, originGameT = fst__ (gameClock s0), target = (w, u, v)} : next_sig_q s1})
     else if direction char_state >= 0 then
       if isNothing (obj (w_grid ! (-w - 1, u', v'))) == True || (u, v) == (u', v') then
         (w_grid'2 ++ w_grid_upd,
          ((w, u, v), (-2, [])) : ((w, u', v'), (-2, [(offset - 10, w), (offset - 9, u'), (offset - 8, v')] ++ fireball_state char_state)) : obj_grid_upd,
          s1'' s1 d_list (j (dir_vector')) n (j (add_vel_pos fgp dir_vector')) (j 1) (j []) (j [w, u', v', 0, 0, 0]) n 
-              (j (Signal {sigNum = 129, seqNum = sigSequence s1, target = (w, u', v')} : next_sig_q s1)))
+              (j (Signal {sigNum = 129, originGameT = fst__ (gameClock s0), target = (w, u', v')} : next_sig_q s1)))
       else (w_grid_upd, obj_grid_upd,
-            s1 {next_sig_q = Signal {sigNum = 129, seqNum = sigSequence s1, target = (w, u, v)} : next_sig_q s1, sigSequence = sigSequence s1 + 1})
+            s1 {next_sig_q = Signal {sigNum = 129, originGameT = fst__ (gameClock s0), target = (w, u, v)} : next_sig_q s1})
     else if direction char_state < -4 then ([((-w - 1, u, v), def_w_grid), ((-w - 1, u'' 0, v'' 0), w_grid'6)] ++ w_grid_upd, obj_grid'1 ++ obj_grid_upd, s1_1)
     else
       if (w - 1, u', v') == (truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)) then
         (w_grid_upd, obj_grid_upd,
-         s1'' s1 d_list n n n n n n (j (lastDir char_state)) (j (Signal {sigNum = 129, seqNum = sigSequence s1, target = (w, u, v)} : next_sig_q s1)))
+         s1'' s1 d_list n n n n n n (j (lastDir char_state)) (j (Signal {sigNum = 129, originGameT = fst__ (gameClock s0), target = (w, u, v)} : next_sig_q s1)))
       else ([((-w - 1, u, v), def_w_grid), ((-w, (u'' 1), (v'' 1)), w_grid'7)] ++ w_grid_upd, obj_grid'2 ++ obj_grid_upd, s1_2)
   else if ticks_left0 char_state == 1 then
     if direction char_state >= 0 then (w_grid'1 : w_grid_upd, obj_grid_upd, s1_3)
     else if direction char_state < -4 then
       if (w + 1, conv_ramp_fill0 !! (1 :: Int), conv_ramp_fill0 !! (2 :: Int)) == (truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)) then
         (w_grid_upd, obj_grid_upd,
-         s1 {next_sig_q = Signal {sigNum = 129, seqNum = sigSequence s1, target = (w, u, v)} : next_sig_q s1, sigSequence = sigSequence s1 + 1})
+         s1 {next_sig_q = Signal {sigNum = 129, originGameT = fst__ (gameClock s0), target = (w, u, v)} : next_sig_q s1})
       else if objType (obj_grid ! (w + 1, conv_ramp_fill0 !! (1 :: Int), conv_ramp_fill0 !! (2 :: Int))) > 0 then
         (w_grid_upd, obj_grid_upd,
-         s1 {next_sig_q = Signal {sigNum = 129, seqNum = sigSequence s1, target = (w, u, v)} : next_sig_q s1, sigSequence = sigSequence s1 + 1})
+         s1 {next_sig_q = Signal {sigNum = 129, originGameT = fst__ (gameClock s0), target = (w, u, v)} : next_sig_q s1})
       else (w_grid'4 (-1) ++ w_grid_upd, obj_grid'3 ++ obj_grid_upd, s1_4)
     else
       if (w, conv_ramp_fill1 !! (1 :: Int), conv_ramp_fill1 !! (2 :: Int)) == (truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)) then
         (w_grid_upd, obj_grid_upd,
-         s1 {next_sig_q = Signal {sigNum = 129, seqNum = sigSequence s1, target = (w, u, v)} : next_sig_q s1, sigSequence = sigSequence s1 + 1})
+         s1 {next_sig_q = Signal {sigNum = 129, originGameT = fst__ (gameClock s0), target = (w, u, v)} : next_sig_q s1})
       else if objType (obj_grid ! (w, conv_ramp_fill1 !! (1 :: Int), conv_ramp_fill1 !! (2 :: Int))) > 0 then
         (w_grid_upd, obj_grid_upd,
-         s1 {next_sig_q = Signal {sigNum = 129, seqNum = sigSequence s1, target = (w, u, v)} : next_sig_q s1, sigSequence = sigSequence s1 + 1})
+         s1 {next_sig_q = Signal {sigNum = 129, originGameT = fst__ (gameClock s0), target = (w, u, v)} : next_sig_q s1})
       else (w_grid'4 0 ++ w_grid_upd, obj_grid'4 ++ obj_grid_upd, s1_5)
   else if ticks_left0 char_state > 1 then
     (w_grid'3 : w_grid_upd, obj_grid_upd, s1'' s1 d_list n n n (j (ticks_left0 char_state - 1)) n n n 
-                                          (j (Signal {sigNum = 129, seqNum = sigSequence s1, target = (w, u, v)} : next_sig_q s1)))
+                                          (j (Signal {sigNum = 129, originGameT = fst__ (gameClock s0), target = (w, u, v)} : next_sig_q s1)))
   else throw NPC_feature_not_implemented
 
 
@@ -1074,8 +1074,8 @@ npcDamage (GPLC_flag mode) (w:u:v:blocks) w_grid w_grid_upd obj_grid obj_grid_up
       h_char_state = (npc_states s1) ! (head_index char_state)
       o_target = fromJust (obj (w_grid ! (-w - 1, u, v)))
       s1_1 = s1 {npc_states = chs3 (head_index char_state) (npc_states s1), message = message s1 ++ [2, 4, 14],
-                 next_sig_q = Signal {sigNum = 131, seqNum = sigSequence s1, target = (nlcs !! (0 :: Int), nlcs !! (1 :: Int), nlcs !! (2 :: Int))} : next_sig_q s1,
-                 sigSequence = sigSequence s1 + 1}
+                 next_sig_q = Signal {sigNum = 131, originGameT = fst__ (gameClock s0), target = (nlcs !! (0 :: Int), nlcs !! (1 :: Int), nlcs !! (2 :: Int))}
+                              : next_sig_q s1}
       s1_2 = s1 {npc_states = (npc_states s1) // [(head_index char_state, h_char_state {c_health = (c_health h_char_state) - damage})],
                  message = message s1 ++ [2, 4, 16]}
       s1_3 = s1 {message = message s1 ++ [2, 4, 14]}
@@ -1377,24 +1377,25 @@ clearMobileLights False s0 = s0
 -- is used by updatePlay to limit the speed of the GPLC interpreter to 40 ticks per second, independent of the variable frame rate.  The exception to this
 -- limit is if a player object collision needs to be handled, in which case an additional interpreter tick is allowed as a special case.
 linkGplc0 :: Bool -> Bool -> Bool -> [Float] -> [Int] -> Game_state -> [((Int, Int, Int), Wall_grid)]
-             -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> UArray (Int, Int) Float
+             -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> UArray (Int, Int) Float -> Int
              -> IO Game_state
-linkGplc0 phase_flag init_flag queue_start (x0:x1:xs) (z0:z1:z2:zs) game_state w_grid_upd obj_grid_upd lookUp =
+linkGplc0 phase_flag init_flag queue_start (x0:x1:xs) (z0:z1:z2:zs) game_state w_grid_upd obj_grid_upd lookUp c =
   let target0 = linkGplc2 x0 (z0, z1, z2)
       target1 = target (head (sig_q (s1_ game_state)))
+      game_t = fst__ (gameClock (s0_ game_state))
       object = (obj_grid_ game_state) ! target1
       prog = program object
-      signal = sigNum (head (sig_q (s1_ game_state)))
+      signal = head (sig_q (s1_ game_state))
+      signal_age = fst__ (gameClock (s0_ game_state)) - originGameT signal
       obj_grid' = sendSignal 1 (GPLC_int 1) (GPLC_int (fst__ target0), GPLC_int (snd__ target0), GPLC_int (third_ target0)) (obj_grid_ game_state)
                              (s0_ game_state) (s1_ game_state) []
       obj_grid'' = (obj_grid_ game_state) // [(target1, Obj_grid {objType = objType object,
-                                              program = (head__ prog) : signal : drop 2 prog,
+                                              program = (head__ prog) : sigNum signal : drop 2 prog,
                                               programName = programName object})]
       debug_enabled = \mode -> if mode == 0 then filterDebug (s1_ game_state) (programName ((obj_grid_ game_state) ! target0)) 0
                                else filterDebug (s1_ game_state) (programName object) 0
       s1' = (s1_ game_state) {sig_q = drop 1 (sig_q (s1_ game_state)), debugGplc = debug_enabled 1}
       s1'' = (s1_ game_state) {debugGplc = debug_enabled 0}
-      signal_age = sigSequence (s1_ game_state) - seqNum (head (sig_q (s1_ game_state)))
   in do
   if init_flag == True then do
     if (x1 == 1 || x1 == 3) && head (program ((obj_grid_ game_state) ! target0)) == 0 then do
@@ -1405,19 +1406,19 @@ linkGplc0 phase_flag init_flag queue_start (x0:x1:xs) (z0:z1:z2:zs) game_state w
                          (\e -> gplcError w_grid_upd (f_grid_ game_state) obj_grid_upd (s0_ game_state) (s1_ game_state) e)
       linkGplc0 phase_flag False True (x0:x1:xs) (z0:z1:z2:zs)
                 (game_state {event_context = event_context_ run_gplc', f_grid_ = f_grid__ run_gplc', s0_ = s0__ run_gplc', s1_ = s1__ run_gplc'})
-                (w_grid_upd_ run_gplc') (obj_grid_upd_ run_gplc') lookUp
-    else linkGplc0 phase_flag False True (x0:x1:xs) (z0:z1:z2:zs) game_state w_grid_upd obj_grid_upd lookUp
+                (w_grid_upd_ run_gplc') (obj_grid_upd_ run_gplc') lookUp c
+    else linkGplc0 phase_flag False True (x0:x1:xs) (z0:z1:z2:zs) game_state w_grid_upd obj_grid_upd lookUp c
   else if phase_flag == True then do
     if sig_q (s1_ game_state) == [] then do
+      putStr ("\nActive GPLC scripts: " ++ show c)
       update <- forceUpdate0 w_grid_upd [] 0
       return game_state {w_grid_ = w_grid_ game_state // update,
                          obj_grid_ = obj_grid_ game_state // (atomiseObjGridUpd 0 obj_grid_upd [] (obj_grid_ game_state)),
-                         s1_ = (s1_ game_state) {sig_q = next_sig_q (s1_ game_state), next_sig_q = [], sigSequence = sigSequence (s1_ game_state) + 256}}
+                         s1_ = (s1_ game_state) {sig_q = next_sig_q (s1_ game_state), next_sig_q = []}}
     else do
       reportState ((debug_enabled 1) && sig_q (s1_ game_state) /= []) 2 [] []
-                  ("\n\ngame_t = " ++ show (fst__ (gameClock (s0_ game_state))) ++ "\n----------------\n\nsignal queue: " ++ show (sig_q (s1_ game_state)) ++ "\n") []
-      if (objType object == 1 || objType object == 3) && signal_age < 512 then do
-        putStr ("\n: signal_age: " ++ show signal_age ++ " sigSequence: " ++ show (sigSequence (s1_ game_state)) ++ " seqNum: " ++ show (seqNum (head (sig_q (s1_ game_state)))))
+                  ("\n\ngame_t = " ++ show game_t ++ "\n----------------\n\nsignal queue: " ++ show (sig_q (s1_ game_state)) ++ "\n") []
+      if (objType object == 1 || objType object == 3) && signal_age > 0 then do
         reportState (debug_enabled 1) 2 [] []
                     ("\nGPLC program [" ++ programName object ++ "] run at Obj_grid " ++ show target1) []
         run_gplc' <- catch (runGplc (program (obj_grid'' ! target1)) [] (event_context game_state) (w_grid_ game_state) w_grid_upd (f_grid_ game_state)
@@ -1425,11 +1426,19 @@ linkGplc0 phase_flag init_flag queue_start (x0:x1:xs) (z0:z1:z2:zs) game_state w
                            (\e -> gplcError w_grid_upd (f_grid_ game_state) obj_grid_upd (s0_ game_state) (s1_ game_state) e)
         linkGplc0 True False False (x0:x1:xs) (z0:z1:z2:zs)
                   (game_state {event_context = event_context_ run_gplc', f_grid_ = f_grid__ run_gplc', s0_ = s0__ run_gplc', s1_ = s1__ run_gplc'})
-                  (w_grid_upd_ run_gplc') (obj_grid_upd_ run_gplc') lookUp
-      else do
+                  (w_grid_upd_ run_gplc') (obj_grid_upd_ run_gplc') lookUp (c + 1)
+      else if not (objType object == 1 || objType object == 3) then do
         putStr ("\nSignal addressed to Obj_grid " ++ show target1 ++ " but this element is not set to run programs from.")
-        linkGplc0 True False False (x0:x1:xs) (z0:z1:z2:zs) (game_state {s1_ = (s1_ game_state) {sig_q = drop 1 (sig_q (s1_ game_state))}}) w_grid_upd
-                  obj_grid_upd lookUp
+        linkGplc0 True False False (x0:x1:xs) (z0:z1:z2:zs) (game_state {s1_ = (s1_ game_state) {sig_q = tail (sig_q (s1_ game_state))}}) w_grid_upd
+                  obj_grid_upd lookUp c
+      else if signal_age == 0 then
+        linkGplc0 True False False (x0:x1:xs) (z0:z1:z2:zs)
+                  (game_state {s1_ = (s1_ game_state) {sig_q = tail (sig_q (s1_ game_state)),
+                                                       next_sig_q = signal : next_sig_q (s1_ game_state)}}) w_grid_upd obj_grid_upd lookUp c
+      else do
+        putStr ("\nSignal dropped from queue due to failing multiple requirements: " ++ show signal)
+        linkGplc0 True False False (x0:x1:xs) (z0:z1:z2:zs) (game_state {s1_ = (s1_ game_state) {sig_q = tail (sig_q (s1_ game_state))}}) w_grid_upd
+                  obj_grid_upd lookUp c
   else do
     update <- forceUpdate0 w_grid_upd [] 0
     return game_state {w_grid_ = w_grid_ game_state // update, obj_grid_ = obj_grid_ game_state // (atomiseObjGridUpd 0 obj_grid_upd [] (obj_grid_ game_state))}
@@ -1441,13 +1450,13 @@ linkGplc1 s0 s1 obj_grid mode =
   in do
   if mode == 0 then 
     if objType (obj_grid ! dest0) == 1 || objType (obj_grid ! dest0) == 3 then
-      return s1 {sig_q = sig_q s1 ++ [Signal {sigNum = 1, seqNum = sigSequence s1, target = dest1}], sigSequence = sigSequence s1 + 1}
+      return s1 {sig_q = sig_q s1 ++ [Signal {sigNum = 1, originGameT = fst__ (gameClock s0), target = dest1}]}
     else return s1
   else
     if objType (obj_grid ! dest0) == 1 || objType (obj_grid ! dest0) == 3 then do
       if health s1 <= detDamage (difficulty s1) s0 then return s1 {health = 0, state_chg = 1, message = 0 : msg26}
-      else return s1 {sig_q = sig_q s1 ++ [Signal {sigNum = 1, seqNum = sigSequence s1, target = dest1}], health = (health s1) - detDamage (difficulty s1) s0,
-                      state_chg = 1, message = 0 : msg13, sigSequence = sigSequence s1 + 1}
+      else return s1 {sig_q = sig_q s1 ++ [Signal {sigNum = 1, originGameT = fst__ (gameClock s0), target = dest1}], health = (health s1) - detDamage (difficulty s1) s0,
+                      state_chg = 1, message = 0 : msg13}
     else do
       if health s1 <= detDamage (difficulty s1) s0 then return s1 {health = 0, state_chg = 1, message = 0 : msg26}
       else return s1 {health = health s1 - detDamage (difficulty s1) s0, state_chg = 1, message = 0 : msg13}
@@ -1669,7 +1678,7 @@ updatePlay io_box state_ref game_state in_flight min_frame_t physics lookUp soun
   mainLoopEvent
   control <- readIORef (fromJust (control_ io_box))
   writeIORef (fromJust (control_ io_box)) 0
-  link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel game_state [] [] lookUp
+  link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel game_state [] [] lookUp 0
   link1 <- linkGplc1 s0 s1 obj_grid 0
   link1_ <- linkGplc1 s0 s1 obj_grid 1
   t <- getTime Monotonic
@@ -1698,8 +1707,7 @@ updatePlay io_box state_ref game_state in_flight min_frame_t physics lookUp soun
 #endif
     updatePlay io_box state_ref 
                (link0 {obj_grid_ = pauseMenu link0, s0_ = (s0_ link0) {message_ = []},
-                       s1_ = (s1_ link0) {next_sig_q = Signal {sigNum = 16, seqNum = sigSequence (s1_ link0), target = (2, 0, 0)} : next_sig_q (s1_ link0),
-                                          sigSequence = sigSequence (s1_ link0) + 1}})
+                       s1_ = (s1_ link0) {sig_q = Signal {sigNum = 16, originGameT = fst__ (gameClock s0), target = (2, 0, 0)} : sig_q (s1_ link0)}})
                in_flight min_frame_t physics lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
   else if control == 10 then do
 #if REPORT_CONTROL_INPUTS == 1
@@ -1707,8 +1715,7 @@ updatePlay io_box state_ref game_state in_flight min_frame_t physics lookUp soun
 #endif
     updatePlay io_box state_ref
                (link0 {s0_ = (s0_ link0) {message_ = []},
-                       s1_ = (s1_ link0) {next_sig_q = Signal {sigNum = 2, seqNum = sigSequence (s1_ link0), target = (0, 0, 0)} : next_sig_q (s1_ link0),
-                                          sigSequence = sigSequence (s1_ link0) + 1}})
+                       s1_ = (s1_ link0) {sig_q = Signal {sigNum = 2, originGameT = fst__ (gameClock s0), target = (0, 0, 0)} : sig_q (s1_ link0)}})
                in_flight min_frame_t physics lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
   else if control == 11 then do
 #if REPORT_CONTROL_INPUTS == 1
@@ -1732,9 +1739,8 @@ updatePlay io_box state_ref game_state in_flight min_frame_t physics lookUp soun
 #endif
     updatePlay io_box state_ref
                (link0 {s0_ = (s0_ link0) {message_ = []},
-                       s1_ = (s1_ link0) {next_sig_q = Signal {sigNum = 2, seqNum = sigSequence (s1_ link0), target = (0, 0, 1)} : next_sig_q (s1_ link0),
-                                          sigSequence = sigSequence (s1_ link0) + 1}}) in_flight min_frame_t
-                                          physics lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
+                       s1_ = (s1_ link0) {sig_q = Signal {sigNum = 2, originGameT = fst__ (gameClock s0), target = (0, 0, 1)} : sig_q (s1_ link0)}})
+                       in_flight min_frame_t physics lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
   else if message s1 /= [] then do
     event <- procMsg0 (message s1) s0 s1 io_box (fst sound_array)
     putMVar state_ref (game_state {event_context = third_ event, s0_ = fst__ event})
@@ -1744,7 +1750,7 @@ updatePlay io_box state_ref game_state in_flight min_frame_t physics lookUp soun
     if in_flight == False then
       if (pos_w s0) - floor > 0.02 then do
         putMVar state_ref game_state
-        link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 0}) [] [] lookUp
+        link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 0}) [] [] lookUp 0
         updatePlay io_box state_ref link0 True min_frame_t physics
                    lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
       else if control > 2 && control < 7 then do
@@ -1752,7 +1758,7 @@ updatePlay io_box state_ref game_state in_flight min_frame_t physics lookUp soun
         putStr ("\ncontrol: " ++ show control ++ " game_t: " ++ show (fst__ (gameClock s0)) ++ " frame_num: " ++ show (third_ (gameClock s0)))
 #endif
         putMVar state_ref game_state
-        link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 1}) [] [] lookUp
+        link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 1}) [] [] lookUp 0
         updatePlay io_box state_ref link0 False min_frame_t physics
                    lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
       else if control == 7 then do
@@ -1760,7 +1766,7 @@ updatePlay io_box state_ref game_state in_flight min_frame_t physics lookUp soun
         putStr ("\ncontrol: 7 game_t: " ++ show (fst__ (gameClock s0)) ++ " frame_num: " ++ show (third_ (gameClock s0)))
 #endif
         putMVar state_ref game_state
-        link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 2}) [] [] lookUp
+        link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 2}) [] [] lookUp 0
         updatePlay io_box state_ref link0 False min_frame_t physics
                    lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
       else if control == 8 then do
@@ -1768,7 +1774,7 @@ updatePlay io_box state_ref game_state in_flight min_frame_t physics lookUp soun
         putStr ("\ncontrol: 8 game_t: " ++ show (fst__ (gameClock s0)) ++ " frame_num: " ++ show (third_ (gameClock s0)))
 #endif
         putMVar state_ref game_state
-        link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 3}) [] [] lookUp
+        link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 3}) [] [] lookUp 0
         updatePlay io_box state_ref link0 False min_frame_t physics
                    lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
       else if control == 9 && jumpAllowed f_grid s0 s1 == True then do
@@ -1776,12 +1782,12 @@ updatePlay io_box state_ref game_state in_flight min_frame_t physics lookUp soun
         putStr ("\ncontrol: 9 game_t: " ++ show (fst__ (gameClock s0)) ++ " frame_num: " ++ show (third_ (gameClock s0)))
 #endif
         putMVar state_ref game_state
-        link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 4}) [] [] lookUp
+        link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 4}) [] [] lookUp 0
         updatePlay io_box state_ref link0 False min_frame_t physics
                    lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
       else do
         putMVar state_ref game_state
-        link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 6}) [] [] lookUp
+        link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 6}) [] [] lookUp 0
         updatePlay io_box state_ref link0 False min_frame_t physics
                    lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
     else if in_flight == True && (pos_w s0) > floor then
@@ -1790,7 +1796,7 @@ updatePlay io_box state_ref game_state in_flight min_frame_t physics lookUp soun
         putStr ("\ncontrol: 7 game_t: " ++ show (fst__ (gameClock s0)) ++ " frame_num: " ++ show (third_ (gameClock s0)))
 #endif
         putMVar state_ref game_state
-        link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 7}) [] [] lookUp
+        link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 7}) [] [] lookUp 0
         updatePlay io_box state_ref link0 True min_frame_t physics
                    lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
       else if control == 8 then do
@@ -1798,23 +1804,23 @@ updatePlay io_box state_ref game_state in_flight min_frame_t physics lookUp soun
         putStr ("\ncontrol: 8 game_t: " ++ show (fst__ (gameClock s0)) ++ " frame_num: " ++ show (third_ (gameClock s0)))
 #endif
         putMVar state_ref game_state
-        link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 8}) [] [] lookUp
+        link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 8}) [] [] lookUp 0
         updatePlay io_box state_ref link0 True min_frame_t physics
                    lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
       else do
         putMVar state_ref game_state
-        link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 9}) [] [] lookUp
+        link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 9}) [] [] lookUp 0
         updatePlay io_box state_ref link0 True min_frame_t physics
                    lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
     else do
       putMVar state_ref game_state
-      link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 10}) [] [] lookUp
+      link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 10}) [] [] lookUp 0
       if (vel s0) !! (2 :: Int) < -4 then do
         updatePlay io_box state_ref (link0 {s1_ = link1_}) False min_frame_t physics
                    lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
       else do
         putMVar state_ref game_state
-        link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 11}) [] [] lookUp
+        link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 11}) [] [] lookUp 0
         updatePlay io_box state_ref (link0 {s1_ = link1}) False min_frame_t physics
                    lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
 
@@ -1866,8 +1872,8 @@ procMsg0 (x0:x1:xs) s0 s1 io_box sound_array =
   else do
     choice <- runMenu (-1) (procMsg1 (tail (splitOn [-1] (take x1 xs)))) [] io_box (-0.96) (-0.2) 1 0 0 s0 (x0 - 3)
     procMsg0 (drop x1 xs) s0
-             (s1 {next_sig_q = Signal {sigNum = choice + 1, seqNum = sigSequence s1, target = (signal_ !! (0 :: Int), signal_ !! (1 :: Int), signal_ !! (2 :: Int))} : next_sig_q s1,
-                  sigSequence = sigSequence s1 + 1})
+             (s1 {sig_q = Signal {sigNum = choice + 1, originGameT = fst__ (gameClock s0),
+                                  target = (signal_ !! (0 :: Int), signal_ !! (1 :: Int), signal_ !! (2 :: Int))} : sig_q s1})
              io_box sound_array
 
 -- Used by the game logic thread for in game menus and by the main thread for the main menu.

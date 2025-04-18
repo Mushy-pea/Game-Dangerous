@@ -69,7 +69,7 @@ padProgram c
 pauseMenuScript :: Play_state0 -> Play_state1 -> [Int]
 pauseMenuScript s0 s1 =
   let proc_time = \(x0:x1:x2:x3:x4:x5:xs) -> [read [x0] + 53, read [x1] + 53, 69, read [x2] + 53, read [x3] + 53, 69, read [x4] + 53, read [x5] + 53]
-      header = [0, 0, 16, 0, 303, 3, 303, 2, 4, 305, 2, 5, 307, 2, 536870911, 13, 3, 4, 0, 0, 2]
+      header = [0, 0, 16, 0, 303, 3, 303, 2, 4, 305, 2, 5, 307, 2, 536870911, 13, 3, 4, 2, 0, 0]
       game_paused = [-1, 0, 7, 1, 13, 5, 63, 16, 1, 21, 19, 5, 4, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63]
       blank_line = [-1, 0, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63]
       health_ = [-1, 0, 8, 31, 27, 38, 46, 34, 69, 63] ++ convMsg (health s1)
@@ -83,7 +83,7 @@ pauseMenuScript s0 s1 =
       save_game = [-1, 2, 19, 27, 48, 31, 63, 33, 27, 39, 31, 63, 63, 63, 63, 63]
       return_main_menu = [-1, 3, 18, 31, 46, 47, 44, 40, 63, 46, 41, 63, 39, 27, 35, 40, 63, 39, 31, 40, 47, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63]
       exit_game = [-1, 4, 5, 50, 35, 46, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63]
-      footer = [24, 4, 24, 5, 24, 6, 536870911, 0, 0, 2, 301, 3, 4, 5]
+      footer = [24, 4, 24, 5, 24, 6, 536870911, 2, 0, 0, 301, 3, 4, 5]
       program = header ++ game_paused ++ blank_line ++ health_ ++ ammo_ ++ gems_ ++ torches_ ++ keys_ ++ blank_line ++ playing ++ time ++ blank_line ++ resume
                 ++ save_game ++ return_main_menu ++ exit_game
   in program ++ padProgram (318 - (length program)) ++ footer
