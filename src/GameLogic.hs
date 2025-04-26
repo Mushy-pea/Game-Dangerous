@@ -2,7 +2,6 @@
 -- If you wish to redistribute it or use it as part of your own work, this is permitted as long as you acknowledge the work is by the abovementioned author.
 
 {-# LANGUAGE CPP #-}
-#define REPORT_CONTROL_INPUTS 1
 #define EXTRA_GPLC_DEBUG 1
 
 module GameLogic where
@@ -1377,16 +1376,15 @@ clearMobileLights False s0 = s0
 -- is used by updatePlay to limit the speed of the GPLC interpreter to 40 ticks per second, independent of the variable frame rate.  The exception to this
 -- limit is if a player object collision needs to be handled, in which case an additional interpreter tick is allowed as a special case.
 linkGplc0 :: Bool -> Bool -> Bool -> [Float] -> [Int] -> Game_state -> [((Int, Int, Int), Wall_grid)]
-             -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> UArray (Int, Int) Float -> Int
+             -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> UArray (Int, Int) Float
              -> IO Game_state
-linkGplc0 phase_flag init_flag queue_start (x0:x1:xs) (z0:z1:z2:zs) game_state w_grid_upd obj_grid_upd lookUp c =
+linkGplc0 phase_flag init_flag queue_start (x0:x1:xs) (z0:z1:z2:zs) game_state w_grid_upd obj_grid_upd lookUp =
   let target0 = linkGplc2 x0 (z0, z1, z2)
       target1 = target (head (sig_q (s1_ game_state)))
       game_t = fst__ (gameClock (s0_ game_state))
       object = (obj_grid_ game_state) ! target1
       prog = program object
       signal = head (sig_q (s1_ game_state))
-      signal_age = fst__ (gameClock (s0_ game_state)) - originGameT signal
       obj_grid' = sendSignal 1 (GPLC_int 1) (GPLC_int (fst__ target0), GPLC_int (snd__ target0), GPLC_int (third_ target0)) (obj_grid_ game_state)
                              (s0_ game_state) (s1_ game_state) []
       obj_grid'' = (obj_grid_ game_state) // [(target1, Obj_grid {objType = objType object,
@@ -1406,11 +1404,10 @@ linkGplc0 phase_flag init_flag queue_start (x0:x1:xs) (z0:z1:z2:zs) game_state w
                          (\e -> gplcError w_grid_upd (f_grid_ game_state) obj_grid_upd (s0_ game_state) (s1_ game_state) e)
       linkGplc0 phase_flag False True (x0:x1:xs) (z0:z1:z2:zs)
                 (game_state {event_context = event_context_ run_gplc', f_grid_ = f_grid__ run_gplc', s0_ = s0__ run_gplc', s1_ = s1__ run_gplc'})
-                (w_grid_upd_ run_gplc') (obj_grid_upd_ run_gplc') lookUp c
-    else linkGplc0 phase_flag False True (x0:x1:xs) (z0:z1:z2:zs) game_state w_grid_upd obj_grid_upd lookUp c
+                (w_grid_upd_ run_gplc') (obj_grid_upd_ run_gplc') lookUp
+    else linkGplc0 phase_flag False True (x0:x1:xs) (z0:z1:z2:zs) game_state w_grid_upd obj_grid_upd lookUp
   else if phase_flag == True then do
     if sig_q (s1_ game_state) == [] then do
-      putStr ("\nActive GPLC scripts: " ++ show c)
       update <- forceUpdate0 w_grid_upd [] 0
       return game_state {w_grid_ = w_grid_ game_state // update,
                          obj_grid_ = obj_grid_ game_state // (atomiseObjGridUpd 0 obj_grid_upd [] (obj_grid_ game_state)),
@@ -1418,7 +1415,7 @@ linkGplc0 phase_flag init_flag queue_start (x0:x1:xs) (z0:z1:z2:zs) game_state w
     else do
       reportState ((debug_enabled 1) && sig_q (s1_ game_state) /= []) 2 [] []
                   ("\n\ngame_t = " ++ show game_t ++ "\n----------------\n\nsignal queue: " ++ show (sig_q (s1_ game_state)) ++ "\n") []
-      if (objType object == 1 || objType object == 3) && signal_age > 0 then do
+      if objType object == 1 || objType object == 3 then do
         reportState (debug_enabled 1) 2 [] []
                     ("\nGPLC program [" ++ programName object ++ "] run at Obj_grid " ++ show target1) []
         run_gplc' <- catch (runGplc (program (obj_grid'' ! target1)) [] (event_context game_state) (w_grid_ game_state) w_grid_upd (f_grid_ game_state)
@@ -1426,19 +1423,11 @@ linkGplc0 phase_flag init_flag queue_start (x0:x1:xs) (z0:z1:z2:zs) game_state w
                            (\e -> gplcError w_grid_upd (f_grid_ game_state) obj_grid_upd (s0_ game_state) (s1_ game_state) e)
         linkGplc0 True False False (x0:x1:xs) (z0:z1:z2:zs)
                   (game_state {event_context = event_context_ run_gplc', f_grid_ = f_grid__ run_gplc', s0_ = s0__ run_gplc', s1_ = s1__ run_gplc'})
-                  (w_grid_upd_ run_gplc') (obj_grid_upd_ run_gplc') lookUp (c + 1)
-      else if not (objType object == 1 || objType object == 3) then do
+                  (w_grid_upd_ run_gplc') (obj_grid_upd_ run_gplc') lookUp
+      else do
         putStr ("\nSignal addressed to Obj_grid " ++ show target1 ++ " but this element is not set to run programs from.")
         linkGplc0 True False False (x0:x1:xs) (z0:z1:z2:zs) (game_state {s1_ = (s1_ game_state) {sig_q = tail (sig_q (s1_ game_state))}}) w_grid_upd
-                  obj_grid_upd lookUp c
-      else if signal_age == 0 then
-        linkGplc0 True False False (x0:x1:xs) (z0:z1:z2:zs)
-                  (game_state {s1_ = (s1_ game_state) {sig_q = tail (sig_q (s1_ game_state)),
-                                                       next_sig_q = signal : next_sig_q (s1_ game_state)}}) w_grid_upd obj_grid_upd lookUp c
-      else do
-        putStr ("\nSignal dropped from queue due to failing multiple requirements: " ++ show signal)
-        linkGplc0 True False False (x0:x1:xs) (z0:z1:z2:zs) (game_state {s1_ = (s1_ game_state) {sig_q = tail (sig_q (s1_ game_state))}}) w_grid_upd
-                  obj_grid_upd lookUp c
+                  obj_grid_upd lookUp
   else do
     update <- forceUpdate0 w_grid_upd [] 0
     return game_state {w_grid_ = w_grid_ game_state // update, obj_grid_ = obj_grid_ game_state // (atomiseObjGridUpd 0 obj_grid_upd [] (obj_grid_ game_state))}
@@ -1678,7 +1667,6 @@ updatePlay io_box state_ref game_state in_flight min_frame_t physics lookUp soun
   mainLoopEvent
   control <- readIORef (fromJust (control_ io_box))
   writeIORef (fromJust (control_ io_box)) 0
-  link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel game_state [] [] lookUp 0
   link1 <- linkGplc1 s0 s1 obj_grid 0
   link1_ <- linkGplc1 s0 s1 obj_grid 1
   t <- getTime Monotonic
@@ -1702,25 +1690,19 @@ updatePlay io_box state_ref game_state in_flight min_frame_t physics lookUp soun
       updatePlay io_box state_ref (game_state {s0_ = s0 {gameClock = snd game_clock'}}) in_flight min_frame_t physics lookUp
                  sound_array t_last t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
   else if control == 2 then do
-#if REPORT_CONTROL_INPUTS == 1
-    putStr ("\ncontrol: 2 game_t: " ++ show (fst__ (gameClock s0)) ++ " frame_num: " ++ show (third_ (gameClock s0)))
-#endif
+    link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ game_state) {message_ = []}) 6}) [] [] lookUp
     updatePlay io_box state_ref 
                (link0 {obj_grid_ = pauseMenu link0, s0_ = (s0_ link0) {message_ = []},
                        s1_ = (s1_ link0) {sig_q = Signal {sigNum = 16, originGameT = fst__ (gameClock s0), target = (2, 0, 0)} : sig_q (s1_ link0)}})
                in_flight min_frame_t physics lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
   else if control == 10 then do
-#if REPORT_CONTROL_INPUTS == 1
-    putStr ("\ncontrol: 10 game_t: " ++ show (fst__ (gameClock s0)) ++ " frame_num: " ++ show (third_ (gameClock s0)))
-#endif
+    link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ game_state) {message_ = []}) 6}) [] [] lookUp
     updatePlay io_box state_ref
                (link0 {s0_ = (s0_ link0) {message_ = []},
                        s1_ = (s1_ link0) {sig_q = Signal {sigNum = 2, originGameT = fst__ (gameClock s0), target = (0, 0, 0)} : sig_q (s1_ link0)}})
                in_flight min_frame_t physics lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
   else if control == 11 then do
-#if REPORT_CONTROL_INPUTS == 1
-    putStr ("\ncontrol: 11 game_t: " ++ show (fst__ (gameClock s0)) ++ " frame_num: " ++ show (third_ (gameClock s0)))
-#endif
+    link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ game_state) {message_ = []}) 6}) [] [] lookUp
     if view_mode s0 == 0 then
       updatePlay io_box state_ref (link0 {s0_ = (s0_ link0) {message_ = [], view_mode = 1}}) in_flight min_frame_t physics
                  lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
@@ -1728,15 +1710,11 @@ updatePlay io_box state_ref game_state in_flight min_frame_t physics lookUp soun
       updatePlay io_box state_ref (link0 {s0_ = (s0_ link0) {message_ = [], view_mode = 0}}) in_flight min_frame_t physics
                  lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
   else if control == 12 then do
-#if REPORT_CONTROL_INPUTS == 1
-    putStr ("\ncontrol: 12 game_t: " ++ show (fst__ (gameClock s0)) ++ " frame_num: " ++ show (third_ (gameClock s0)))
-#endif
+    link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ game_state) {message_ = []}) 6}) [] [] lookUp
     updatePlay io_box state_ref (link0 {s0_ = (s0_ link0) {message_ = [], view_angle = modAngle (view_angle (s0_ link0)) 5}}) in_flight min_frame_t
                physics lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
   else if control == 13 then do
-#if REPORT_CONTROL_INPUTS == 1
-    putStr ("\ncontrol: 13 game_t: " ++ show (fst__ (gameClock s0)) ++ " frame_num: " ++ show (third_ (gameClock s0)))
-#endif
+    link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ game_state) {message_ = []}) 6}) [] [] lookUp
     updatePlay io_box state_ref
                (link0 {s0_ = (s0_ link0) {message_ = []},
                        s1_ = (s1_ link0) {sig_q = Signal {sigNum = 2, originGameT = fst__ (gameClock s0), target = (0, 0, 1)} : sig_q (s1_ link0)}})
@@ -1750,77 +1728,59 @@ updatePlay io_box state_ref game_state in_flight min_frame_t physics lookUp soun
     if in_flight == False then
       if (pos_w s0) - floor > 0.02 then do
         putMVar state_ref game_state
-        link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 0}) [] [] lookUp 0
+        link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ game_state) {message_ = []}) 0}) [] [] lookUp
         updatePlay io_box state_ref link0 True min_frame_t physics
                    lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
       else if control > 2 && control < 7 then do
-#if REPORT_CONTROL_INPUTS == 1
-        putStr ("\ncontrol: " ++ show control ++ " game_t: " ++ show (fst__ (gameClock s0)) ++ " frame_num: " ++ show (third_ (gameClock s0)))
-#endif
         putMVar state_ref game_state
-        link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 1}) [] [] lookUp 0
+        link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ game_state) {message_ = []}) 1}) [] [] lookUp
         updatePlay io_box state_ref link0 False min_frame_t physics
                    lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
       else if control == 7 then do
-#if REPORT_CONTROL_INPUTS == 1
-        putStr ("\ncontrol: 7 game_t: " ++ show (fst__ (gameClock s0)) ++ " frame_num: " ++ show (third_ (gameClock s0)))
-#endif
         putMVar state_ref game_state
-        link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 2}) [] [] lookUp 0
+        link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ game_state) {message_ = []}) 2}) [] [] lookUp
         updatePlay io_box state_ref link0 False min_frame_t physics
                    lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
       else if control == 8 then do
-#if REPORT_CONTROL_INPUTS == 1
-        putStr ("\ncontrol: 8 game_t: " ++ show (fst__ (gameClock s0)) ++ " frame_num: " ++ show (third_ (gameClock s0)))
-#endif
         putMVar state_ref game_state
-        link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 3}) [] [] lookUp 0
+        link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ game_state) {message_ = []}) 3}) [] [] lookUp
         updatePlay io_box state_ref link0 False min_frame_t physics
                    lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
       else if control == 9 && jumpAllowed f_grid s0 s1 == True then do
-#if REPORT_CONTROL_INPUTS == 1
-        putStr ("\ncontrol: 9 game_t: " ++ show (fst__ (gameClock s0)) ++ " frame_num: " ++ show (third_ (gameClock s0)))
-#endif
         putMVar state_ref game_state
-        link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 4}) [] [] lookUp 0
+        link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ game_state) {message_ = []}) 4}) [] [] lookUp
         updatePlay io_box state_ref link0 False min_frame_t physics
                    lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
       else do
         putMVar state_ref game_state
-        link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 6}) [] [] lookUp 0
+        link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ game_state) {message_ = []}) 6}) [] [] lookUp
         updatePlay io_box state_ref link0 False min_frame_t physics
                    lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
     else if in_flight == True && (pos_w s0) > floor then
       if control == 7 then do
-#if REPORT_CONTROL_INPUTS == 1
-        putStr ("\ncontrol: 7 game_t: " ++ show (fst__ (gameClock s0)) ++ " frame_num: " ++ show (third_ (gameClock s0)))
-#endif
         putMVar state_ref game_state
-        link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 7}) [] [] lookUp 0
+        link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ game_state) {message_ = []}) 7}) [] [] lookUp
         updatePlay io_box state_ref link0 True min_frame_t physics
                    lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
       else if control == 8 then do
-#if REPORT_CONTROL_INPUTS == 1
-        putStr ("\ncontrol: 8 game_t: " ++ show (fst__ (gameClock s0)) ++ " frame_num: " ++ show (third_ (gameClock s0)))
-#endif
         putMVar state_ref game_state
-        link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 8}) [] [] lookUp 0
+        link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ game_state) {message_ = []}) 8}) [] [] lookUp
         updatePlay io_box state_ref link0 True min_frame_t physics
                    lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
       else do
         putMVar state_ref game_state
-        link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 9}) [] [] lookUp 0
+        link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ game_state) {message_ = []}) 9}) [] [] lookUp
         updatePlay io_box state_ref link0 True min_frame_t physics
                    lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
     else do
       putMVar state_ref game_state
-      link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 10}) [] [] lookUp 0
+      link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ game_state) {message_ = []}) 10}) [] [] lookUp
       if (vel s0) !! (2 :: Int) < -4 then do
         updatePlay io_box state_ref (link0 {s1_ = link1_}) False min_frame_t physics
                    lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
       else do
         putMVar state_ref game_state
-        link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ link0) {message_ = []}) 11}) [] [] lookUp 0
+        link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ game_state) {message_ = []}) 11}) [] [] lookUp
         updatePlay io_box state_ref (link0 {s1_ = link1}) False min_frame_t physics
                    lookUp sound_array t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
 
