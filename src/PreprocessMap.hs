@@ -87,34 +87,32 @@ checkVoxel0 ((w, u, v):xs) ramp_set up_ramp down_ramp =
 simFlood1 :: Array (Int, Int, Int) Obj_grid -> [(Int, Int, Int)] -> [(Int, Int, Int)] -> Int -> Int -> [(Int, Int, Int)]
 simFlood1 obj_grid [] acc u_limit v_limit = acc
 simFlood1 obj_grid ((w, u, v):xs) acc u_limit v_limit =
-  let pos_u = if objType (obj_grid ! (w, u + 1, v)) > 0 then []
+  let pos_u = if u == u_limit || objType (obj_grid ! (w, u + 1, v)) > 0 then []
               else [(w, u + 1, v)]
-      pos_v = if objType (obj_grid ! (w, u, v + 1)) > 0 then []
+      pos_v = if v == v_limit || objType (obj_grid ! (w, u, v + 1)) > 0 then []
               else [(w, u, v + 1)]
-      neg_u = if objType (obj_grid ! (w, u - 1, v)) > 0 then []
+      neg_u = if u == 0 || objType (obj_grid ! (w, u - 1, v)) > 0 then []
               else [(w, u - 1, v)]
-      neg_v = if objType (obj_grid ! (w, u, v - 1)) > 0 then []
+      neg_v = if v == 0 || objType (obj_grid ! (w, u, v - 1)) > 0 then []
               else [(w, u, v - 1)]
-      pos_uv = if objType (obj_grid ! (w, u + 1, v + 1)) > 0 then []
+      pos_uv = if u == u_limit || v == v_limit || objType (obj_grid ! (w, u + 1, v + 1)) > 0 then []
                else [(w, u + 1, v + 1)]
-      pos_v_neg_u = if objType (obj_grid ! (w, u - 1, v + 1)) > 0 then []
+      pos_v_neg_u = if u == 0 || v == v_limit || objType (obj_grid ! (w, u - 1, v + 1)) > 0 then []
                     else [(w, u - 1, v + 1)]
-      neg_uv = if objType (obj_grid ! (w, u - 1, v - 1)) > 0 then []
+      neg_uv = if u == 0 || v == 0 || objType (obj_grid ! (w, u - 1, v - 1)) > 0 then []
                     else [(w, u - 1, v - 1)]
-      pos_u_neg_v = if objType (obj_grid ! (w, u + 1, v - 1)) > 0 then []
+      pos_u_neg_v = if u == u_limit || v == 0 || objType (obj_grid ! (w, u + 1, v - 1)) > 0 then []
                     else [(w, u + 1, v - 1)]
       unique_add = \new set -> if new == [] then set
                                else new ++ filter (/= head new) set
-  in
-  if u == u_limit || v == v_limit then error ("\nEdge of map reached at (" ++ show w ++ ", " ++ show u ++ ", " ++ show v ++ ").")
-  else simFlood1 obj_grid xs ((unique_add pos_u) $
-                              (unique_add pos_v) $
-                              (unique_add neg_u) $
-                              (unique_add neg_v) $
-                              (unique_add pos_uv) $
-                              (unique_add pos_v_neg_u) $
-                              (unique_add neg_uv) $
-                              (unique_add pos_u_neg_v acc)) u_limit v_limit
+  in simFlood1 obj_grid xs ((unique_add pos_u) $
+                            (unique_add pos_v) $
+                            (unique_add neg_u) $
+                            (unique_add neg_v) $
+                            (unique_add pos_uv) $
+                            (unique_add pos_v_neg_u) $
+                            (unique_add neg_uv) $
+                            (unique_add pos_u_neg_v acc)) u_limit v_limit
 
 simFlood0 :: Array (Int, Int, Int) Obj_grid -> [(Int, Int, Int)] -> [(Int, Int, Int)] -> [(Int, Int)] -> [(Int, Int)] -> Int -> Int
              -> ((Int, Int), (Int, Int))
