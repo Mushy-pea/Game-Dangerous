@@ -118,7 +118,7 @@ encodeObjGrid obj_grid w u v u_max v_max acc
   | w > 2 = acc ++ "\n~\n"
   | u > u_max = encodeObjGrid obj_grid (w + 1) 0 0 u_max v_max acc
   | v > v_max = encodeObjGrid obj_grid w (u + 1) 0 u_max v_max acc
-  | otherwise = if voxel == def_obj_grid then encodeObjGrid obj_grid w u (v + 1) u_max v_max acc
+  | otherwise = if objType voxel == 0 then encodeObjGrid obj_grid w u (v + 1) u_max v_max acc
                 else encodeObjGrid obj_grid w u (v + 1) u_max v_max (encoded_voxel ++ separator ++ acc)
   where voxel = obj_grid ! (w, u, v)
         separator = if (w, u, v) == (0, 0, 0) then []
