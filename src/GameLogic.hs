@@ -258,16 +258,22 @@ chgPs0 state_val abs v d_list s0
 
 chgPs1 :: GPLC_int -> GPLC_int -> GPLC_int -> [Int] -> Play_state1 -> Play_state1
 chgPs1 state_val abs v d_list s1
-  | d_list !! state_val == 0 = s1 {health = upd (d_list !! abs) (health s1) (d_list !! v), state_chg = 1}
+  | d_list !! state_val == 0 =
+    if playerClass s1 == [2, 31, 40, 63, 4, 27, 48, 35, 31, 45] && newHealth > 100 then
+      s1 {health = 100, state_chg = 1}
+    else if playerClass s1 == [19, 27, 44, 27, 34, 63, 19, 34, 35, 31, 38, 30, 45] && newHealth > 80 then
+      s1 {health = 80, state_chg = 1}
+    else s1 {health = upd (d_list !! abs) (health s1) (d_list !! v), state_chg = 1}
   | d_list !! state_val == 1 = s1 {ammo = upd (d_list !! abs) (ammo s1) (d_list !! v), state_chg = 2}
   | d_list !! state_val == 2 = s1 {gems = upd (d_list !! abs) (gems s1) (d_list !! v), state_chg = 3}
   | d_list !! state_val == 3 = s1 {torches = upd (d_list !! abs) (torches s1) (d_list !! v), state_chg = 4}
   | d_list !! state_val == 4 =
     s1 {keys = (take (d_list !! abs) (keys s1)) ++ [d_list !! v] ++ drop ((d_list !! abs) + 1) (keys s1), state_chg = 5}
-  | d_list !! state_val == 5 = s1 {difficulty = ("Hey, not too risky!", 6, 8, 10)}
-  | d_list !! state_val == 6 = s1 {difficulty = ("Plenty of danger please.", 6, 10, 14)}
-  | d_list !! state_val == 7 = s1 {difficulty = ("Ultra danger.", 10, 15, 20)}
-  | otherwise = s1 {difficulty = ("Health and safety nightmare!", 15, 20, 25)}
+  | d_list !! state_val == 5 = s1 {difficulty = ("Hey, not too risky!", 9, 12, 15)}
+  | d_list !! state_val == 6 = s1 {difficulty = ("Plenty of danger please.", 12, 16, 20)}
+  | d_list !! state_val == 7 = s1 {difficulty = ("Ultra danger.", 15, 20, 25)}
+  | otherwise = s1 {difficulty = ("Health and safety nightmare!", 18, 24, 30)}
+  where newHealth = upd (d_list !! abs) (health s1) (d_list !! v)
 
 copyPs0 :: GPLC_int -> (GPLC_int, GPLC_int, GPLC_int) -> Play_state0 -> Array (Int, Int, Int) Obj_grid -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> [Int]
            -> [((Int, Int, Int), (Int, [(Int, Int)]))]
@@ -474,18 +480,28 @@ projectUpdate0 (GPLC_int p_state) (GPLC_int p_state') (GPLC_int i0, GPLC_int i1,
        (location, (objType target, [(p_state' + 8, 2), (p_state' + 9, w_block_), (p_state' + 10, u_block'), (p_state' + 11, v_block')])) : obj_grid_upd,
        s1_ (w_block_, u_block, v_block'))
     else if collision == 3 && d_list !! i0 /= 0 then
-      if health s1 - detDamage (difficulty s1) s0 <= 0 then (w_grid_upd, obj_grid_upd, s1 {health = 0, state_chg = 1, message = 0 : msg27})
+      if health s1 - detDamage (difficulty s1) True s0 s1 <= 0 then (w_grid_upd, obj_grid_upd, s1 {health = 0, state_chg = 1, message = 0 : msg27})
       else ((index, def_w_grid) : w_grid_upd, (location, (objType target, [(p_state' + 8, 1)])) : obj_grid_upd,
-            s1 {health = health s1 - detDamage (difficulty s1) s0, state_chg = 1, message = 0 : msg25})
+            s1 {health = health s1 - detDamage (difficulty s1) True s0 s1, state_chg = 1, message = 0 : msg25})
     else ([(index', (w_grid ! index) {obj = Just (grid_i {u__ = u__ grid_i + itf vel_u, v__ = v__ grid_i + itf vel_v})}), (index, def_w_grid)] ++ w_grid_upd,
           (location, (objType target, [(p_state', u'), (p_state' + 1, v')])) : obj_grid_upd, s1)
 
+-- The player holding gems has the side effect of negating some of the damage caused by adverse events, with the damage scaling implemented in this function.
+scaleDamage :: Int -> Float
+scaleDamage gems =
+  let scaling_factor = 1.145521
+      damage_negation = 1 - (((2.718282 ** ((fromIntegral gems) / 50)) - 1) / scaling_factor) / 4.5
+  in damage_negation
+
 -- Called from project_update, npcMove and npc_damage.  Used to determine the damage taken by the player and non - player characters from adverse events.
-detDamage :: ([Char], Int, Int, Int) -> Play_state0 -> Int
-detDamage (d, low, med, high) s0 =
-  if (prob_seq s0) ! (mod (fst__ (gameClock s0)) 240) < 20 then low
-  else if (prob_seq s0) ! (mod (fst__ (gameClock s0)) 240) > 70 then high
-  else med
+detDamage :: ([Char], Int, Int, Int) -> Bool -> Play_state0 -> Play_state1 -> Int
+detDamage (d, low, med, high) player_damage s0 s1 =
+  let adjusted_damage = \base_damage -> if player_damage then truncate (fromIntegral base_damage * scaleDamage (gems s1))
+                                                         else base_damage
+  in
+  if (prob_seq s0) ! (mod (fst__ (gameClock s0)) 240) < 33 then adjusted_damage low
+  else if (prob_seq s0) ! (mod (fst__ (gameClock s0)) 240) > 66 then adjusted_damage high
+  else adjusted_damage med
 
 binaryDice :: GPLC_int -> GPLC_int -> (GPLC_int, GPLC_int, GPLC_int) -> GPLC_int -> Play_state0 -> Array (Int, Int, Int) Obj_grid
               -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> [Int] -> [((Int, Int, Int), (Int, [(Int, Int)]))]
@@ -870,7 +886,7 @@ npcMove (GPLC_int offset) d_list (w:u:v:w1:u1:v1:blocks) w_grid w_grid_upd f_gri
                   (j (Signal {sigNum = 129, originGameT = fst__ (gameClock s0), target = (conv_ramp_fill0 !! (0 :: Int), conv_ramp_fill0 !! (1 :: Int), conv_ramp_fill0 !! (2 :: Int))} : next_sig_q s1))
       s1_5 = s1'' s1 d_list n n (j ramp_climb_) (j 1) n (j (conv_ramp_fill1 ++ [0, 0, 0])) (j (npc_dir_remap (direction char_state)))
                   (j (Signal {sigNum = 129, originGameT = fst__ (gameClock s0), target = (conv_ramp_fill1 !! (0 :: Int), conv_ramp_fill1 !! (1 :: Int), conv_ramp_fill1 !! (2 :: Int))} : next_sig_q s1))
-      damage = detDamage (difficulty s1) s0
+      damage = detDamage (difficulty s1) True s0 s1
   in
   if ticks_left0 char_state == 0 then
     if (w, u', v') == (truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)) then
@@ -1067,7 +1083,7 @@ npcDamage :: GPLC_flag -> [Int] -> Array (Int, Int, Int) Wall_grid -> [((Int, In
              -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> Play_state0 -> Play_state1 -> [Int]
              -> ([((Int, Int, Int), Wall_grid)], [((Int, Int, Int), (Int, [(Int, Int)]))], Play_state1)
 npcDamage (GPLC_flag mode) (w:u:v:blocks) w_grid w_grid_upd obj_grid obj_grid_upd s0 s1 d_list =
-  let damage = detDamage ("d", 6, 10, 14) s0
+  let damage = detDamage ("d", 6, 10, 14) False s0 s1
       char_state = (npc_states s1) ! (d_list !! (8 :: Int))
       nlcs = node_locations char_state
       h_char_state = (npc_states s1) ! (head_index char_state)
@@ -1443,12 +1459,12 @@ linkGplc1 s0 s1 obj_grid mode =
     else return s1
   else
     if objType (obj_grid ! dest0) == 1 || objType (obj_grid ! dest0) == 3 then do
-      if health s1 <= detDamage (difficulty s1) s0 then return s1 {health = 0, state_chg = 1, message = 0 : msg26}
-      else return s1 {sig_q = sig_q s1 ++ [Signal {sigNum = 1, originGameT = fst__ (gameClock s0), target = dest1}], health = (health s1) - detDamage (difficulty s1) s0,
+      if health s1 <= detDamage (difficulty s1) True s0 s1 then return s1 {health = 0, state_chg = 1, message = 0 : msg26}
+      else return s1 {sig_q = sig_q s1 ++ [Signal {sigNum = 1, originGameT = fst__ (gameClock s0), target = dest1}], health = (health s1) - detDamage (difficulty s1) True s0 s1,
                       state_chg = 1, message = 0 : msg13}
     else do
-      if health s1 <= detDamage (difficulty s1) s0 then return s1 {health = 0, state_chg = 1, message = 0 : msg26}
-      else return s1 {health = health s1 - detDamage (difficulty s1) s0, state_chg = 1, message = 0 : msg13}
+      if health s1 <= detDamage (difficulty s1) True s0 s1 then return s1 {health = 0, state_chg = 1, message = 0 : msg26}
+      else return s1 {health = health s1 - detDamage (difficulty s1) True s0 s1, state_chg = 1, message = 0 : msg13}
 
 linkGplc2 :: Float -> (Int, Int, Int) -> (Int, Int, Int)
 linkGplc2 0 (w, u, v) = (w, u, v + 1)
