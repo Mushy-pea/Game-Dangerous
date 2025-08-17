@@ -42,7 +42,7 @@ initServer conf_reg args =
   putStr ("\n\nGame :: Dangerous map development server starting.  Version and platform: " ++ cfg' "version_and_platform_string")
   putStr "\nLoading map file..."
   comp_map_text <- bracket (openFile ((args !! 1) ++ (args !! 2)) ReadMode) hClose
-                   (\h -> do c <- hGetContents h; putStr ("\nmap file size: " ++ show (length c)); return c)
+                           (\h -> do c <- hGetContents h; putStr ("\nmap file size: " ++ show (length c)); return c)
   input_ref <- newEmptyMVar
   console_output <- newEmptyMVar
   network_output <- newEmptyMVar
@@ -51,12 +51,14 @@ initServer conf_reg args =
     (h_in, h_out, _, _) <- createProcess (shell "node .\\node_server\\server.js") {std_in = CreatePipe, std_out = CreatePipe}
     forkIO (consoleInterface input_ref console_output)
     forkIO (networkInterface input_ref network_output (fromJust h_in) (fromJust h_out))
+    forkIO (commandFileHandler input_ref console_output (args !! 3) (args !! 4) [])
     handleInput Nothing (tailFile comp_map_text) [(args !! 1), "GPLC_Programs\\"] [] (fromJust h_in) input_ref console_output network_output 0 conf_reg
   else if (splitOn " " (cfg' "version_and_platform_string")) !! 0 == "Linux" then do
     putStr "\nPlease use Ctrl + C when you want to shut down the server."
     (h_in, h_out, _, _) <- createProcess (shell "node ./node_server/server.js") {std_in = CreatePipe, std_out = CreatePipe}
     forkIO (consoleInterface input_ref console_output)
     forkIO (networkInterface input_ref network_output (fromJust h_in) (fromJust h_out))
+    forkIO (commandFileHandler input_ref console_output (args !! 3) (args !! 4) [])
     handleInput Nothing (tailFile comp_map_text) [(args !! 1), "GPLC_Programs/"] [] (fromJust h_in) input_ref console_output network_output 0 conf_reg
   else error ("Unsupported platform found in version_and_platform_string")
 
@@ -130,6 +132,20 @@ networkInterface input_ref output_ref h_in h_out = do
   hPutStrLn h_in (filter (/= '\n') response)
   hFlush h_in
   networkInterface input_ref output_ref h_in h_out
+
+commandFileHandler :: MVar (Int, [Char]) -> MVar [Char] -> [Char] -> [Char] -> [[Char]] -> IO ()
+commandFileHandler input_ref output_ref mode file_name commands
+  | mode == "n" = return ()
+  | mode == "y" = do
+    command_file <- bracket (openFile file_name ReadMode) hClose
+                            (\h -> do c <- hGetContents h; putStr ("\ncommand file size: " ++ show (length c)); return c)
+    commandFileHandler input_ref output_ref "running" file_name (splitOn "\n" command_file)
+  | mode == "running" && commands == [] = return ()
+  | mode == "running" = do
+    putMVar input_ref (0, head commands)
+    response <- takeMVar output_ref
+    putStr response
+    commandFileHandler input_ref output_ref "running" file_name (tail commands)
 
 unpackErrors :: [[Char]] -> [Char] -> [Char]
 unpackErrors [] acc = acc

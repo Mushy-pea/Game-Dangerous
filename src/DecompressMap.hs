@@ -147,7 +147,7 @@ procMap pre_map u_max v_max w_max =
       c_max = 4 * (u_max + 1) * (v_max + 1) - 1
       floor = makeFloor0 (splitOn " " (map filter0 (concat [pre_map !! w | w <- [(w_max + 2)..(w_max + 2 + w_max)]]))) 0 0 0 ((div (u_max + 1) 2) - 1)
                          ((div (v_max + 1) 2) - 1) w_max
-      w_grid = gridSetup0 (concat [gridSetup1 (pre_map !! (w + 1)) (gridSetup2 (next_c * w) (next_c * w) 0 0 0 u_max v_max) (loadObject (splitOn ", " (filter1 (pre_map !! 0)))) 0 0 w v_max ((u_max + 1) * (v_max + 1) * w * 4) | w <- [0..w_max]]) 0 0 0 u_max v_max w_max empty
+      w_grid = gridSetup0 (concat [gridSetup1 (pre_map !! (w + 1)) (gridSetup2 (next_c * w + 99 * w) (next_c * w + 99 * w) 0 0 0 u_max v_max) (loadObject (splitOn ", " (filter1 (pre_map !! 0)))) 0 0 w v_max ((u_max + 1) * (v_max + 1) * w * 4) | w <- [0..w_max]]) 0 0 0 u_max v_max w_max empty
   in (toList w_grid ++ floor, [])
 
 
