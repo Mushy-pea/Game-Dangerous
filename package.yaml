@@ -79,6 +79,15 @@ executables:
     dependencies:
     - Game-Dangerous
 
+  GPLC_TokenAnalyser:
+    main:                GPLC_TokenAnalyser.hs
+    other-modules:       []
+    source-dirs:         app
+    ghc-options:
+    - -O
+    dependencies:
+    - Game-Dangerous
+
 tests:
   Game-Dangerous-test:
     main:                Spec.hs

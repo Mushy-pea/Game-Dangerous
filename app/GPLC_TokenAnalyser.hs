@@ -5,6 +5,7 @@ import System.Environment
 import Control.Exception
 import Data.List.Split
 import Data.Array.IArray
+import qualified Data.Sequence as SEQ
 import BuildModel
 import CompileGPLC
 
@@ -20,6 +21,32 @@ countTokens tokenArr i j iMax cDataBlock c
   where bd = bounds tokenArr
         jMax = snd (snd bd)
         token = tokenArr ! (i, j)
+
+annotateTokens :: Array (Int, Int) Token -> Int -> Int -> Int -> Int -> Int -> Int -> SEQ.Seq [Char] -> SEQ.Seq [Char]
+annotateTokens tokenArr i j iMax c outputLine outputColumn annotation
+  | i > iMax = annotation
+  | j > jMax = annotateTokens tokenArr (i + 1) 0 iMax c (outputLine + 3) 0 annotation
+  | otherwise =
+    if token == defToken then annotateTokens tokenArr (i + 1) 0 iMax c (outputLine + 3) 0 annotation
+    else if content token == "pass_msg" then
+      annotateTokens tokenArr i (j + 1) iMax c outputLine (outputColumn + columnJump) (annotation SEQ.|> nextOutput)
+    else if content token == "--signal" then
+      annotateTokens tokenArr i (j + 1) iMax (c - 1) outputLine (outputColumn + columnJump) (annotation SEQ.|> nextOutput)
+    else if content token == "~" then annotateTokens tokenArr i (j + 1) iMax c outputLine outputColumn annotation
+    else annotateTokens tokenArr i (j + 1) iMax (c + 1) outputLine (outputColumn + columnJump) (annotation SEQ.|> nextOutput)
+  where bd = bounds tokenArr
+        jMax = snd (snd bd)
+        token = tokenArr ! (i, j)
+        whiteText = "\\033[37m"
+        blueText = "\\033[34m"
+        placeSourceCursor = "\\u001b[" ++ show outputLine ++ ";" ++ show outputColumn ++ "H"
+        placeNoteCursor = "\\u001b[" ++ show (outputLine + 1) ++ ";" ++ show outputColumn ++ "H"
+        note = "{ " ++ show c ++ " }"
+        tokenLength = length (content token)
+        noteLength = length note
+        columnJump = if tokenLength >= noteLength then tokenLength + 1
+                     else noteLength + 1
+        nextOutput = placeSourceCursor ++ whiteText ++ content token ++ placeNoteCursor ++ blueText ++ note
 
 main = do
   args <- getArgs
@@ -39,18 +66,32 @@ loadTokenArray source sigBlockSize =
   analyseTokens tokenArr sigBlockSize
 
 analyseTokens :: Array (Int, Int) Token -> Int -> IO ()
-analyseTokens tokenArr sigBlockSize = do
+analyseTokens tokenArr sigBlockSize =
+  let annotation = annotateTokens tokenArr 0 0 (fst (snd (bounds tokenArr))) sigBlockSize 0 0 SEQ.empty
+  in do
   putStr "\nEnter line number: "
   hFlush stdout
   lineNum <- getLine
   if lineNum == "exit" then return ()
+  else if lineNum == "annotate" then do
+    report1 annotation 0 ((SEQ.length annotation) - 1)
+    analyseTokens tokenArr sigBlockSize
   else do
-    report tokenArr (read lineNum) sigBlockSize
+    report0 tokenArr (read lineNum) sigBlockSize
     analyseTokens tokenArr sigBlockSize
 
-report :: Array (Int, Int) Token -> Int -> Int -> IO ()
-report tokenArr lineNum sigBlockSize =
+report0 :: Array (Int, Int) Token -> Int -> Int -> IO ()
+report0 tokenArr lineNum sigBlockSize =
   let result = countTokens tokenArr 0 0 (lineNum - 4) 0 0
   in do
   putStr ("Bytecode length to this point: " ++ show (fst result - snd result + sigBlockSize) ++ "\n")
+
+report1 :: SEQ.Seq [Char] -> Int -> Int -> IO ()
+report1 annotation i iMax
+  | i > iMax = return ()
+  | otherwise = do
+    putStr (SEQ.index annotation i)
+    report1 annotation (i + 1) iMax
+  
+
 
