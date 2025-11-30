@@ -13,6 +13,7 @@ import Data.Array.IArray
 import Data.Char
 import Data.Maybe
 import qualified Data.Sequence as SEQ
+import Data.List
 import BuildModel
 
 newtype BlockNumber = BlockNumber Int deriving Eq
@@ -114,7 +115,12 @@ tokenise [] token_arr block_arr col i j = token_arr
 tokenise (x:xs) token_arr block_arr col i j
   | x == "\n" = tokenise xs token_arr block_arr 1 (i + 1) 0
   | otherwise = tokenise xs (token_arr // [((i, j), token_added)]) block_arr (col + length x + 1) i (j + 1)
-  where token_added = Token {line = 0, column = col + col_correction, content = x, textColour = "Black", blockNumber = block_arr ! (i, j)}
+  where trim_test = \y -> if y == '.' then True
+                          else False
+        test_result = findIndex trim_test x
+        trimmed_content = if isNothing test_result then x
+                          else take (fromJust test_result) x
+        token_added = Token {line = 0, column = col + col_correction, content = trimmed_content, textColour = "Black", blockNumber = block_arr ! (i, j)}
         col_correction = if i == 0 then 0
                          else 1
 
