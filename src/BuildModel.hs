@@ -98,7 +98,7 @@ instance Binary Obj_place where
 data Ray_hit = U1 | U2 | V1 | V2 | Corner0 | Corner1 | Corner2 | Corner3 | U1_hit | U2_hit | V1_hit | V2_hit | Corner0_hit | Corner1_hit | Corner2_hit |
                Corner3_hit | Object_hit | Ramp_found deriving (Eq)
 
-data Terrain = Flat | Positive_u | Negative_u | Positive_v | Negative_v | Open deriving (Eq, Show, Read)
+data Terrain = Flat | FlatMasked | Open | OpenMasked | Positive_u | Negative_u | Positive_v | Negative_v deriving (Eq, Show, Read)
 
 instance Binary Terrain where
   put t = do
@@ -261,8 +261,9 @@ ps0_init = Play_state0 {pos_u = 0, pos_v = 0, pos_w = 0, vel = [0, 0, 0], angle 
                         currentMap = 0, previousMap = 0}
 
 ps1_init = Play_state1 {health = 100, ammo = 0, gems = 0, torches = 0, keys = [63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63],
-                        playerClass = [19, 27, 44, 27, 34, 63, 19, 34, 35, 31, 38, 30, 45], difficulty = ("Plenty of danger please", 6, 10, 14), sig_q = [], next_sig_q = [],
-                        message = [], state_chg = 0, verbose_mode = "", debugSet = array (0, 0) [(0, "")], debugGplc = False, npc_states = empty_npc_array}
+                        playerClass = [19, 27, 44, 27, 34, 63, 19, 34, 35, 31, 38, 30, 45], difficulty = ("Plenty of danger please", 6, 10, 14),
+                        sig_q = [Signal {sigNum = 1, originGameT = 1, target = (0, 24, 24)}],
+                        next_sig_q = [], message = [], state_chg = 0, verbose_mode = "", debugSet = array (0, 0) [(0, "")], debugGplc = False, npc_states = empty_npc_array}
 
 def_w_grid = Wall_grid {u1 = False, u2 = False, v1 = False, v2 = False, u1_bound = 0, u2_bound = 0, v1_bound = 0, v2_bound = 0, w_level = 0,  wall_flag = [],
 texture = [], obj = Nothing}

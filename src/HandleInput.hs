@@ -190,11 +190,23 @@ instance Serialise Token where
     ++ "    \"blockNumber\": " ++ show (blockNumber a)
     ++ "\n  }"
 
--- These three functions read the state of a set of voxels in the map, which is serialised and sent to the client.
+-- These four functions read the state of a set of voxels in the map, which is serialised and sent to the client.
+maskFloorGrid :: Floor_grid -> Int -> Int -> Floor_grid
+maskFloorGrid floor u v
+  | surface floor == Flat =
+    if odd u && even v then floor {surface = FlatMasked}
+    else if even u && odd v then floor {surface = FlatMasked}
+    else floor
+  | surface floor == Open =
+    if odd u && even v then floor {surface = OpenMasked}
+    else if even u && odd v then floor {surface = OpenMasked}
+    else floor
+  | otherwise = floor
+
 readVoxel :: Server_state -> [Char] -> Int -> Int -> Int -> [Char]
 readVoxel server_state voxel_type w u v
   | voxel_type == "Wall_grid" = toJSON (Just ((w_grid_ server_state) ! (w, u, v)))
-  | voxel_type == "Floor_grid" = toJSON (Just ((f_grid_ server_state) ! (w, u, v)))
+  | voxel_type == "Floor_grid" = toJSON (Just (maskFloorGrid ((f_grid_ server_state) ! (w, u, v)) u v))
   | voxel_type == "Obj_grid" = toJSON (Just ((obj_grid_ server_state) ! (w, u, v)))
 
 readVoxels :: Server_state -> Int -> Int -> Int -> Int -> Int -> Int -> [Char] -> [Char] -> [Char]
