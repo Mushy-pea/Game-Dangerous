@@ -137,7 +137,8 @@ encodeSubWallGrid w_grid w u v u_max v_max first_voxel acc
   | w < -3 = acc ++ "\n~\n"
   | u > u_max = encodeSubWallGrid w_grid (w - 1) 0 0 u_max v_max first_voxel acc
   | v > v_max = encodeSubWallGrid w_grid w (u + 1) 0 u_max v_max first_voxel acc
-  | otherwise = if not (isNothing (obj voxel)) then encodeSubWallGrid w_grid w u (v + 1) u_max v_max False (encoded_voxel ++ separator ++ acc)
+  | otherwise = if not (isNothing (obj voxel)) && ident_ obj_ >= 0 then
+      encodeSubWallGrid w_grid w u (v + 1) u_max v_max False (encoded_voxel ++ separator ++ acc)
                 else encodeSubWallGrid w_grid w u (v + 1) u_max v_max first_voxel acc
   where voxel = w_grid ! (w, u, v)
         obj_ = fromJust (obj voxel)
