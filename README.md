@@ -21,9 +21,9 @@ If you want to attempt building the project for Linux or Windows these are the b
 3. The most up to date game assets can be aquired through the release on itch.io.  If you're building for 
    Linux the text files need to be converted from CRLF to LF.
 
-Engine version: 1.3.3
+Engine version: 1.3.4
 
-Server version: 2.2.1
+Server version: 2.2.3
 
 ![Lore image 1: Ben and Sarah](https://github.com/Mushy-pea/The-Perils-of-Gem-Mining/blob/master/images/Ben_and_Sarah.png)
 

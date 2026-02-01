@@ -153,7 +153,9 @@ matchKeyword :: [Char] -> Maybe Instruction
 matchKeyword "if" = Just Instruction {opcode = 1, instructionLength = 6, arguments = [Const, RefRead, RefRead, Const, Const]}
 matchKeyword "if_" = Just Instruction {opcode = 1, instructionLength = 6, arguments = [Const, RefRead, RefRead, Const, Const]}
 matchKeyword "chg_state" = Just Instruction {opcode = 2, instructionLength = 10, arguments = [RefRead, RefRead, RefRead, RefRead,
-                                                                                         RefRead, RefRead, RefRead, RefRead, RefRead]}
+                                                                                              RefRead, RefRead, RefRead, RefRead, RefRead]}
+matchKeyword "chg_state_" = Just Instruction {opcode = 2, instructionLength = 11, arguments = [RefRead, RefRead, RefRead, RefRead,
+                                                                                               RefRead, RefRead, RefRead, RefRead, RefRead]}
 matchKeyword "chg_grid" = Just Instruction {opcode = 3, instructionLength = 8, arguments = [RefRead, RefRead, RefRead, RefRead, RefRead, RefRead, RefRead]}
 matchKeyword "send_signal" = Just Instruction {opcode = 4, instructionLength = 5, arguments = [RefRead, RefRead, RefRead, RefRead]}
 matchKeyword "chg_value" = Just Instruction {opcode = 5, instructionLength = 7, arguments = [RefWrite, RefRead, RefRead, RefRead, RefRead, RefRead]}
@@ -171,7 +173,7 @@ matchKeyword "chg_ps0" = Just Instruction {opcode = 14, instructionLength = 4, a
 matchKeyword "copy_ps0" = Just Instruction {opcode = 15, instructionLength = 5, arguments = [RefWrite, RefRead, RefRead, RefRead]}
 matchKeyword "binary_dice" = Just Instruction {opcode = 16, instructionLength = 7, arguments = [RefRead, RefRead, RefRead, RefRead, RefRead, RefWrite]}
 matchKeyword "project_init" = Just Instruction {opcode = 17, instructionLength = 14, arguments = [RefRead, RefRead, RefRead, RefRead, RefRead, RefRead,
-                                                                                             RefRead, RefRead, RefRead, RefRead, RefRead, Const, RefRead]}
+                                                                                                  RefRead, RefRead, RefRead, RefRead, RefRead, Const, RefRead]}
 matchKeyword "project_update" = Just Instruction {opcode = 18, instructionLength = 6, arguments = [RefRead, RefWrite, RefRead, RefRead, RefRead]}
 matchKeyword "init_npc" = Just Instruction {opcode = 19, instructionLength = 3, arguments = [RefRead, RefRead]}
 matchKeyword "npc_decision" = Just Instruction {opcode = 20, instructionLength = 2, arguments = [RefWrite]}
@@ -180,7 +182,7 @@ matchKeyword "npc_damage" = Just Instruction {opcode = 22, instructionLength = 2
 matchKeyword "cpede_move" = Just Instruction {opcode = 23, instructionLength = 3, arguments = [RefWrite, Const]}
 matchKeyword "set_event_context" = Just Instruction {opcode = 24, instructionLength = 2, arguments = [RefRead]}
 matchKeyword "set_player_class" = Just Instruction {opcode = 25, instructionLength = 2, arguments = [RefRead]}
-matchKeyword "do_nothing" = Just Instruction {opcode = 26, instructionLength = 0, arguments = [Const]}
+matchKeyword "do_nothing" = Just Instruction {opcode = 27, instructionLength = 0, arguments = [Const]}
 matchKeyword _ = Nothing
 
 -- These two functions generate the signal block part of the bytecode output.
@@ -273,7 +275,11 @@ genCodeBlock token_arr bound_symbols i i_max code_block error_list
                  ((code_block SEQ.|> 13) SEQ.>< fst interpreted_args_ SEQ.>< (fromJust read_msg SEQ.|> line_term))
                  (error_list ++ snd interpreted_args_)
   | otherwise =
-    if opcode matched_keyword == 26 then
+    if content keyword == "chg_state_" then
+      genCodeBlock token_arr bound_symbols (i + 1) i_max
+                   ((code_block SEQ.|> opcode matched_keyword) SEQ.>< (fst interpreted_args SEQ.|> line_term) SEQ.>< SEQ.singleton 26)
+                   (error_list ++ snd interpreted_args)
+    else if content keyword == "do_nothing" then
       genCodeBlock token_arr bound_symbols (i + 1) i_max code_block (error_list ++ snd interpreted_args)
     else
       genCodeBlock token_arr bound_symbols (i + 1) i_max ((code_block SEQ.|> opcode matched_keyword) SEQ.>< (fst interpreted_args SEQ.|> line_term))
@@ -304,9 +310,10 @@ addColour :: Array (Int, Int) Token -> Int -> Int -> [((Int, Int), Token)] -> [(
 addColour token_arr i i_max token_arr_upd
   | i > i_max = token_arr_upd
   | isNothing matched_keyword = addColour token_arr (i + 1) i_max token_arr_upd
-  | opcode (fromJust matched_keyword) == 24 = addColour token_arr (i + 1) i_max token_arr_upd
+  | content keyword == "chg_state_" || content keyword == "set_event_context" = addColour token_arr (i + 1) i_max token_arr_upd
   | otherwise = addColour token_arr (i + 1) i_max (update ++ token_arr_upd)
-  where matched_keyword = matchKeyword (content (token_arr ! (i, 0)))
+  where keyword = token_arr ! (i, 0)
+        matched_keyword = matchKeyword (content keyword)
         target = \j -> token_arr ! (i, j)
         colour_scheme = map mapColour (arguments (fromJust matched_keyword))
         update = ((i, 0), (target 0) {textColour = "Blue"})

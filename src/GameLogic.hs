@@ -2,7 +2,7 @@
 -- If you wish to redistribute it or use it as part of your own work, this is permitted as long as you acknowledge the work is by the abovementioned author.
 
 {-# LANGUAGE CPP #-}
-#define EXTRA_GPLC_DEBUG 1
+#define EXTRA_GPLC_DEBUG 0
 
 module GameLogic where
 
@@ -1272,6 +1272,8 @@ runGplc (x0:xs) d_list context w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0
 runGplc (x0:xs) d_list context w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 25 = do
   reportState (debugGplc s1) 2 [] [] (showGplcArgs "set_player_class" [(0, x0)] d_list (-1)) []
   runGplc (tail_ xs) d_list context w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 (setPlayerClass (GPLC_int x0) s1 d_list) lookUp (head_ xs)
+runGplc xs d_list context w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp 26 = do
+  runGplc (tail_ xs) d_list context w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp (head_ xs)
 runGplc code d_list context w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp c = do
   putStr ("\nInvalid opcode: " ++ show c)
   putStr ("\nremaining code block: " ++ show code)

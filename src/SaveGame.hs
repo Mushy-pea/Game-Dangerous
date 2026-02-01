@@ -24,12 +24,19 @@ saveGame :: SEQ.Seq ((Int, Int, Int), Wall_grid) -> SEQ.Seq ((Int, Int, Int), Wa
             -> SEQ.Seq ((Int, Int, Int), Obj_grid) -> SEQ.Seq ((Int, Int, Int), Obj_grid)
             -> Play_state0 -> Play_state1 -> Array Int [Char] -> IO Int
 saveGame w_grid_diffs0 w_grid_diffs1 f_grid_diffs0 f_grid_diffs1 obj_grid_diffs0 obj_grid_diffs1 s0 s1 conf_reg =
-  let w_grid_bstring = wrappedSaveArrayDiff1 (w_grid_diffs0 SEQ.>< w_grid_diffs1)
+  let cfg' = cfg conf_reg 0
+      w_grid_bstring = wrappedSaveArrayDiff1 (w_grid_diffs0 SEQ.>< w_grid_diffs1)
       f_grid_bstring = wrappedSaveArrayDiff1 (f_grid_diffs0 SEQ.>< f_grid_diffs1)
       obj_grid_bstring = wrappedSaveArrayDiff1 (obj_grid_diffs0 SEQ.>< obj_grid_diffs1)
   in
-  saveArrayDiff0 0 ([], []) w_grid_bstring f_grid_bstring obj_grid_bstring
-                 (labelPlayStateEncoding (encode s0)) (labelPlayStateEncoding (encode s1)) conf_reg s0
+  if cfg' "save_game_test" == "y" then do
+    putStr ("\nsaveGame : w_grid_diffs0 : " ++ show w_grid_diffs0)
+    putStr ("\nsaveGame : f_grid_diffs0 : " ++ show f_grid_diffs0)
+    putStr ("\nsaveGame : obj_grid_diffs0 : " ++ show obj_grid_diffs0)
+    return 0
+  else do
+    saveArrayDiff0 0 ([], []) w_grid_bstring f_grid_bstring obj_grid_bstring
+                   (labelPlayStateEncoding (encode s0)) (labelPlayStateEncoding (encode s1)) conf_reg s0
 
 -- This function determines the differential between an original map state array (Wall_grid, Floor_grid or Obj_grid) and a newer map state.
 genArrayDiff :: Eq a => Int -> Int -> Int -> Int -> Int -> (Int, Int) -> Array (Int, Int, Int) a -> Array (Int, Int, Int) a -> SEQ.Seq ((Int, Int, Int), a)

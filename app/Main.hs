@@ -50,16 +50,16 @@ main = do
   args <- getArgs
   if length args == 0 then do
     contents <- bracket (openFile "config.txt" ReadMode) (hClose) (\h -> do c <- hGetContents h; putStr ("\ncfg file size: " ++ show (length c)); return c)
-    openWindow (listArray (0, 93) (splitOneOf "=\n" (tailFile contents)))
+    openWindow (listArray (0, 95) (splitOneOf "=\n" (tailFile contents)))
   else if length args == 1 then do
     contents <- bracket (openFile (args !! 0) ReadMode) (hClose) (\h -> do c <- hGetContents h; putStr ("\ncfg file size: " ++ show (length c)); return c)
-    openWindow (listArray (0, 93) (splitOneOf "=\n" (tailFile contents)))
+    openWindow (listArray (0, 95) (splitOneOf "=\n" (tailFile contents)))
   else if length args > 2 && args !! 1 == "--debugSet" then do
     contents <- bracket (openFile (args !! 0) ReadMode) (hClose) (\h -> do c <- hGetContents h; putStr ("\ncfg file size: " ++ show (length c)); return c)
-    openWindow (listArray (0, 93 - 2 + length args) (splitOneOf "=\n" (tailFile contents) ++ drop 2 args))
+    openWindow (listArray (0, 95 - 2 + length args) (splitOneOf "=\n" (tailFile contents) ++ drop 2 args))
   else do
     contents <- bracket (openFile (args !! 0) ReadMode) (hClose) (\h -> do c <- hGetContents h; putStr ("\ncfg file size: " ++ show (length c)); return c)
-    openWindow (patchConfReg (drop 1 args) (listArray (0, 93) (splitOneOf "=\n" (tailFile contents))))
+    openWindow (patchConfReg (drop 1 args) (listArray (0, 95) (splitOneOf "=\n" (tailFile contents))))
 
 mapKeyBinding :: Array Int ([Char], [Char]) -> Int -> [Char] -> [Char]
 mapKeyBinding bindings i user_choice

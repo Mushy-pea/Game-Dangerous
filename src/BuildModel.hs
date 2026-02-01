@@ -262,8 +262,8 @@ ps0_init = Play_state0 {pos_u = 0, pos_v = 0, pos_w = 0, vel = [0, 0, 0], angle 
 
 ps1_init = Play_state1 {health = 100, ammo = 0, gems = 0, torches = 0, keys = [63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63],
                         playerClass = [19, 27, 44, 27, 34, 63, 19, 34, 35, 31, 38, 30, 45], difficulty = ("Plenty of danger please", 6, 10, 14),
-                        sig_q = [Signal {sigNum = 1, originGameT = 1, target = (0, 24, 24)}],
-                        next_sig_q = [], message = [], state_chg = 0, verbose_mode = "", debugSet = array (0, 0) [(0, "")], debugGplc = False, npc_states = empty_npc_array}
+                        sig_q = [], next_sig_q = [], message = [], state_chg = 0, verbose_mode = "",
+                        debugSet = array (0, 0) [(0, "")], debugGplc = False, npc_states = empty_npc_array}
 
 def_w_grid = Wall_grid {u1 = False, u2 = False, v1 = False, v2 = False, u1_bound = 0, u2_bound = 0, v1_bound = 0, v2_bound = 0, w_level = 0,  wall_flag = [],
 texture = [], obj = Nothing}
@@ -844,21 +844,21 @@ viewCircle a b r t lookUp = (a + r * lookUp ! (2, t), b + r * lookUp ! (1, t))
 -- Used to query the conf_reg array, which holds startup parameters passed at the command line or from the engine's configuration file.
 cfg :: Array Int [Char] -> Int -> [Char] -> [Char]
 cfg conf_reg i query =
-  if i > 92 then error ("Invalid conf_reg field in query operation: " ++ query)
+  if i > 94 then error ("Invalid conf_reg field in query operation: " ++ query)
   else if conf_reg ! i == query then conf_reg ! (i + 1)
   else cfg conf_reg (i + 2) query
 
 -- Used to update the conf_reg array.
 updateCfg :: Array Int [Char] -> [Char] -> [Char] -> Int -> Array Int [Char]
 updateCfg conf_reg field update i =
-  if i > 92 then error ("Invalid conf_reg field in update operation: " ++ field)
+  if i > 94 then error ("Invalid conf_reg field in update operation: " ++ field)
   else if conf_reg ! i == field then conf_reg // [((i + 1), update)]
   else updateCfg conf_reg field update (i + 2)
 
 -- Used to construct a string representation of the conf_reg array so that an updated version can be saved to disk.
 writeCfg :: Array Int [Char] -> Int -> [Char]
 writeCfg conf_reg i =
-  if i > 92 then []
+  if i > 94 then []
   else (conf_reg ! i) ++ "=" ++ (conf_reg ! (i + 1)) ++ "\n" ++ writeCfg conf_reg (i + 2)
 
 -- Used to initialise the p_bind array, which contains references to all the OpenGL vertex array objects and texture objects used in the current map.
