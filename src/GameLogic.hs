@@ -247,6 +247,7 @@ chgValue (GPLC_int val) abs (GPLC_int v) (i0, i1, i2) d_list obj_grid obj_grid_u
 
 chgPs0 :: GPLC_int -> GPLC_flag -> GPLC_int -> [Int] -> Play_state0 -> Play_state0
 chgPs0 state_val abs v d_list s0
+  | d_list !! state_val == 0 = s0
   | d_list !! state_val == 1 = s0 {pos_w = intToFloat (d_list !! v)}
   | d_list !! state_val == 2 = s0 {pos_u = intToFloat (d_list !! v)}
   | d_list !! state_val == 3 = s0 {pos_v = intToFloat (d_list !! v)}
@@ -254,6 +255,12 @@ chgPs0 state_val abs v d_list s0
   | d_list !! state_val == 5 = s0 {torch_t0 = d_list !! v}
   | d_list !! state_val == 6 = s0 {torch_t_limit = d_list !! v}
   | d_list !! state_val == 7 = s0 {currentMap = d_list !! v}
+  | d_list !! state_val == 8 = s0 {angle_ = fromIntegral (d_list !! v), angle = d_list !! v}
+  | d_list !! state_val == 9 = s0 {view_mode = d_list !! v}
+  | d_list !! state_val == 10 = s0 {view_angle = d_list !! v}
+  | d_list !! state_val == 11 = s0 {vel = intToFloat (d_list !! v) : drop 1 (vel s0)}
+  | d_list !! state_val == 12 = s0 {vel = head (vel s0) : intToFloat (d_list !! v) : drop 2 (vel s0)}
+  | d_list !! state_val == 13 = s0 {vel = take 2 (vel s0) ++ [intToFloat (d_list !! v)]}
   | otherwise = error ("\nchg_ps0: Invalid value passed for argument state_val: " ++ show (d_list !! state_val))
 
 chgPs1 :: GPLC_int -> GPLC_int -> GPLC_int -> [Int] -> Play_state1 -> Play_state1
@@ -1619,8 +1626,8 @@ playMusic t period sound_array = do
   else return ()
 
 -- This function is used by updatePlay to update the physics related fields of the Play_state0 structure.
-s0' :: [Float] -> Float -> Float -> [Float] -> [Float] -> (Bool -> Float) -> (Int, Float, Int) -> Float -> Float -> Float -> Float -> Float -> UArray (Int, Int) Float
-       -> SEQ.Seq Integer -> Integer -> Int -> Play_state0 -> Int -> Play_state0
+s0' :: [Float] -> Float -> Float -> [Float] -> [Float] -> (Bool -> Float) -> (Int, Float, Int) -> Float -> Float -> Float -> Float -> Float
+       -> UArray (Int, Int) Float -> SEQ.Seq Integer -> Integer -> Int -> Play_state0 -> Int -> Play_state0
 s0' pos_uv pos_w0 pos_w1 vel0 vel1 angle' game_clock' mag_r mag_j scaling f_rate f look_up t_seq t_current control s0 mode
   | mode == 0 = s0 {pos_u = pos_uv !! (0 :: Int), pos_v = pos_uv !! (1 :: Int), vel = vel0, gameClock = game_clock'}
   | mode == 1 = s0 {pos_u = pos_uv !! (0 :: Int), pos_v = pos_uv !! (1 :: Int), pos_w = pos_w0,
