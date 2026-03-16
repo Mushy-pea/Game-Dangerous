@@ -256,7 +256,7 @@ data EngineError = Invalid_wall_flag | Invalid_obj_flag | Invalid_GPLC_opcode | 
 
 instance Exception EngineError
 
-ps0_init = Play_state0 {pos_u = 0, pos_v = 0, pos_w = 0, vel = [0, 0, 0], angle = 0, angle_ = 0, message_ = [], rend_mode = 0, view_mode = 0, view_angle = 0,
+ps0_init = Play_state0 {pos_u = 0, pos_v = 0, pos_w = 0, vel = [0, 0, 0], angle = 0, angle_ = 0, message_ = [], rend_mode = 1, view_mode = 0, view_angle = 0,
                         gameClock = (1, 1, 1), torch_t0 = 1, torch_t_limit = 0, on_screen_metrics = 0, prob_seq = def_prob_seq, mobile_lights = ([], []),
                         currentMap = 0, previousMap = 0}
 

@@ -40,6 +40,7 @@ import BuildModel
 import GameLogic
 import GameSound
 import SaveGame
+import GenShadowMap
 
 patchConfReg :: [[Char]] -> Array Int [Char] -> Array Int [Char]
 patchConfReg [] conf_reg = conf_reg
@@ -338,6 +339,7 @@ startGame context physics control_ref uniform p_bind map_text conf_reg sound_arr
     state_ref <- newEmptyMVar
     t_log <- newEmptyMVar
     result_ <- newEmptyMVar
+    loadShadowMap u_limit v_limit w_grid f_grid
     if context == NewGame then do
       tid <- forkIO (updatePlayWrapper0 (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = Just control_ref}) state_ref
                                         game_state False (read (cfg' "min_frame_t")) physics
@@ -436,6 +438,59 @@ genLoadMenu ((y0:y1:y2:y3:y4:y5:y6:y7:y8:y9:y10:y11:y12:y13:y14:y15:y16:ys):xs) 
   in
   if y0 == '_' then genLoadMenu xs (acc ++ state_choice) (c + 1)
   else genLoadMenu xs acc c
+
+loadShadowMap :: Int -> Int -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> IO ()
+loadShadowMap u_limit v_limit w_grid f_grid =
+  let wall_shadow_map = genShadowMap 0 0 0 u_limit v_limit w_grid SEQ.empty
+      floor_shadow_map = genShadowMap 0 0 0 u_limit v_limit f_grid SEQ.empty
+      wall_shadow_map_size = length wall_shadow_map
+      floor_shadow_map_size = length floor_shadow_map
+      wall_shadow_map0 = take (div wall_shadow_map_size 3) wall_shadow_map
+      wall_shadow_map1 = take (div wall_shadow_map_size 3) (drop (div wall_shadow_map_size 3) wall_shadow_map)
+      wall_shadow_map2 = drop (2 * (div wall_shadow_map_size 3)) wall_shadow_map
+      floor_shadow_map0 = take (div floor_shadow_map_size 3) floor_shadow_map
+      floor_shadow_map1 = take (div floor_shadow_map_size 3) (drop (div floor_shadow_map_size 3) floor_shadow_map)
+      floor_shadow_map2 = drop (2 * (div floor_shadow_map_size 3)) floor_shadow_map
+  in do
+  p_buffers <- mallocBytes (gluint * 6)
+  p_wall_shadow_map0 <- mallocBytes (glint * div wall_shadow_map_size 3)
+  p_wall_shadow_map1 <- mallocBytes (glint * div wall_shadow_map_size 3)
+  p_wall_shadow_map2 <- mallocBytes (glint * div wall_shadow_map_size 3)
+  p_floor_shadow_map0 <- mallocBytes (glint * div floor_shadow_map_size 3)
+  p_floor_shadow_map1 <- mallocBytes (glint * div floor_shadow_map_size 3)
+  p_floor_shadow_map2 <- mallocBytes (glint * div floor_shadow_map_size 3)
+  glGenBuffers 6 p_buffers
+  wall_shadow_buf0 <- peekElemOff p_buffers 0
+  wall_shadow_buf1 <- peekElemOff p_buffers 1
+  wall_shadow_buf2 <- peekElemOff p_buffers 2
+  floor_shadow_buf0 <- peekElemOff p_buffers 3
+  floor_shadow_buf1 <- peekElemOff p_buffers 4
+  floor_shadow_buf2 <- peekElemOff p_buffers 5
+  loadArray wall_shadow_map0 p_wall_shadow_map0 0
+  loadArray wall_shadow_map1 p_wall_shadow_map1 0
+  loadArray wall_shadow_map2 p_wall_shadow_map2 0
+  loadArray floor_shadow_map0 p_floor_shadow_map0 0
+  loadArray floor_shadow_map1 p_floor_shadow_map1 0
+  loadArray floor_shadow_map2 p_floor_shadow_map2 0
+  glBindBufferBase GL_UNIFORM_BUFFER 3 wall_shadow_buf0
+  glBufferData GL_UNIFORM_BUFFER (unsafeCoerce (plusPtr zero_ptr (glint * div wall_shadow_map_size 3)) :: GLsizeiptr) p_wall_shadow_map0 GL_STATIC_DRAW
+  glBindBufferBase GL_UNIFORM_BUFFER 4 wall_shadow_buf1
+  glBufferData GL_UNIFORM_BUFFER (unsafeCoerce (plusPtr zero_ptr (glint * div wall_shadow_map_size 3)) :: GLsizeiptr) p_wall_shadow_map1 GL_STATIC_DRAW
+  glBindBufferBase GL_UNIFORM_BUFFER 5 wall_shadow_buf2
+  glBufferData GL_UNIFORM_BUFFER (unsafeCoerce (plusPtr zero_ptr (glint * div wall_shadow_map_size 3)) :: GLsizeiptr) p_wall_shadow_map2 GL_STATIC_DRAW
+  glBindBufferBase GL_UNIFORM_BUFFER 6 floor_shadow_buf0
+  glBufferData GL_UNIFORM_BUFFER (unsafeCoerce (plusPtr zero_ptr (glint * div floor_shadow_map_size 3)) :: GLsizeiptr) p_floor_shadow_map0 GL_STATIC_DRAW
+  glBindBufferBase GL_UNIFORM_BUFFER 7 floor_shadow_buf1
+  glBufferData GL_UNIFORM_BUFFER (unsafeCoerce (plusPtr zero_ptr (glint * div floor_shadow_map_size 3)) :: GLsizeiptr) p_floor_shadow_map1 GL_STATIC_DRAW
+  glBindBufferBase GL_UNIFORM_BUFFER 8 floor_shadow_buf2
+  glBufferData GL_UNIFORM_BUFFER (unsafeCoerce (plusPtr zero_ptr (glint * div floor_shadow_map_size 3)) :: GLsizeiptr) p_floor_shadow_map2 GL_STATIC_DRAW
+  free p_buffers
+  free p_wall_shadow_map0
+  free p_wall_shadow_map1
+  free p_wall_shadow_map2
+  free p_floor_shadow_map0
+  free p_floor_shadow_map1
+  free p_floor_shadow_map2
 
 -- Find the uniform locations of GLSL uniform variables.
 findGlUniform :: [[Char]] -> [Int] -> Ptr GLuint -> [Int32] -> IO [Int32]
@@ -790,5 +845,4 @@ showPlayer uniform p_bind p_mt_matrix u v w a lookUp mode s1 = do
   else
     glBindTexture GL_TEXTURE_2D (unsafeCoerce ((fst p_bind) ! 1026))
   glDrawElements GL_TRIANGLES 36 GL_UNSIGNED_SHORT zero_ptr
-
 

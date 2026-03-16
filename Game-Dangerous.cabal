@@ -33,6 +33,7 @@ library
       ExtraGPLC_Debug
       GameLogic
       GameSound
+      GenShadowMap
       HandleInput
       IndexWrapper1
       OpenMap
