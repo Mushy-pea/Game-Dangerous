@@ -302,25 +302,9 @@ uniform int numLights;
 void intersectSequence(const vec3 lightPos, const vec3 lightDifference, inout float intersection[75]) {
   const float distanceSqr = dot(lightDifference, lightDifference);
   const vec3 lightDir = lightDifference * inversesqrt(distanceSqr);
-  float lightDirX; float lightDirY; float lightDirZ;
-  if (lightDir.x == 0.0) {
-    lightDirX = 0.000001;
-  }
-  else {
-    lightDirX = lightDir.x;
-  }
-  if (lightDir.y == 0.0) {
-    lightDirY = 0.000001;
-  }
-  else {
-    lightDirY = lightDir.y;
-  }
-  if (lightDir.z == 0.0) {
-    lightDirZ = 0.000001;
-  }
-  else {
-    lightDirZ = lightDir.z;
-  }
+  const float lightDirX = (lightDir.x == 0.0) ? 0.000001 : lightDir.x;
+  const float lightDirY = (lightDir.y == 0.0) ? 0.000001 : lightDir.y;
+  const float lightDirZ = (lightDir.z == 0.0) ? 0.000001 : lightDir.z;
   const float lightDirSignX = sign(lightDirX);
   const float lightDirSignY = sign(lightDirY);
   const float lightDirSignZ = sign(lightDirZ);
@@ -343,7 +327,7 @@ vec4 worldPos = mod_to_world * position;
 modelInWorldPosition = worldPos.xyz;
 tex_coord = texCoord;
 vertNormal = normal;
-float shadowEffect[5] = float[5](1, 1, 1, 1, 1);
+shadowScaling[0] = 1; shadowScaling[1] = 1; shadowScaling[2] = 1; shadowScaling[3] = 1; shadowScaling[4] = 1;
 const int vertexU = int(clamp(modelInWorldPosition.x, 0.0, 49.9));
 const int vertexV = int(clamp(modelInWorldPosition.y, 0.0, 49.9));
 
@@ -354,6 +338,9 @@ for (int m = 0; m < numLights; m++) {
   int u = int(clamp(mobileLightPositions[m].x, 0.0, 49.9));
   int v = int(clamp(mobileLightPositions[m].y, 0.0, 49.9));
   int w = int(clamp(mobileLightPositions[m].z, 0.0, 2.9));
+  int i = 0;
+  int j = 1;
+  int k = 2;
   for (int n = 0; n < 75; n = n + 3) {
     bool u1Sample;
     bool u2Sample;
@@ -380,52 +367,104 @@ for (int m = 0; m < numLights; m++) {
       v1Sample = wallShadow2[u * 50 + v].z;
       v2Sample = wallShadow2[u * 50 + v].w;
     }
-
-    if (intersection[n] < 0) {
-      if (u1Sample) {
-        shadowEffect[m] = 0.0;
-        break;
+    
+    if (abs(intersection[i]) < abs(intersection[j])) {
+      if (intersection[i] < 0) {
+        if (u1Sample) {
+          shadowScaling[m] = 0.25;
+          break;
+        }
+        else {
+          u--;
+          i = i + 3;
+        }
       }
       else {
-        u--;
+        if (u2Sample) {
+          shadowScaling[m] = 0.25;
+          break;
+        }
+        else {
+          u++;
+          i = i + 3;
+        }
+      }
+    }
+    else if (abs(intersection[i]) > abs(intersection[j])) {
+      if (intersection[j] < 0) {
+        if (v1Sample) {
+          shadowScaling[m] = 0.25;
+          break;
+        }
+        else {
+          v--;
+          j = j + 3;
+        }
+      }
+      else {
+        if (v2Sample) {
+          shadowScaling[m] = 0.25;
+          break;
+        }
+        else {
+          v++;
+          j = j + 3;
+        }
       }
     }
     else {
-      if (u2Sample) {
-        shadowEffect[m] = 0.0;
-        break;
+      if (intersection[i] < 0 && intersection[j] < 0) {
+        if (u1Sample || v1Sample) {
+          shadowScaling[m] = 0.25;
+          break;
+        }
+        else {
+          u--;
+          v--;
+          i = i + 3;
+          j = j + 3;
+        }
+      }
+      else if (intersection[i] < 0 && intersection[j] > 0) {
+        if (u1Sample || v2Sample) {
+          shadowScaling[m] = 0.25;
+          break;
+        }
+        else {
+          u--;
+          v++;
+          i = i + 3;
+          j = j + 3;
+        }
+      }
+      else if (intersection[i] > 0 && intersection[j] < 0) {
+        if (u2Sample || v1Sample) {
+          shadowScaling[m] = 0.25;
+          break;
+        }
+        else {
+          u++;
+          v--;
+          i = i + 3;
+          j = j + 3;
+        }
       }
       else {
-        u++;
-      }
-    }
-
-    if (intersection[n + 1] < 0) {
-      if (v1Sample) {
-        shadowEffect[m] = 0.0;
-        break;
-      }
-      else {
-        v--;
-      }
-    }
-    else {
-      if (v2Sample) {
-        shadowEffect[m] = 0.0;
-        break;
-      }
-      else {
-        v++;
+        if (u2Sample || v2Sample) {
+          shadowScaling[m] = 0.25;
+          break;
+        }
+        else {
+          u++;
+          v++;
+          i = i + 3;
+          j = j + 3;
+        }
       }
     }
   }
 }
 
-shadowScaling[0] = shadowEffect[0];
-shadowScaling[1] = shadowEffect[1];
-shadowScaling[2] = shadowEffect[2];
-shadowScaling[3] = shadowEffect[3];
-shadowScaling[4] = shadowEffect[4];
 gl_Position = world_to_clip * worldPos;
 }
 
