@@ -367,7 +367,71 @@ for (int m = 0; m < numLights; m++) {
       v1Sample = wallShadow2[u * 50 + v].z;
       v2Sample = wallShadow2[u * 50 + v].w;
     }
+    const bool fSample0 = floorShadow0[u * 50 + v];
+    const bool fSample1 = floorShadow1[u * 50 + v];
+    const bool fSample2 = floorShadow2[u * 50 + v];
     
+    if (abs(intersection[k]) < abs(intersection[i]) && abs(intersection[k]) < abs(intersection[j])) {
+      if (intersection[k] < 0 && w == 0) {
+        if (fSample0) {
+          shadowScaling[m] = 0.25;
+          break;
+        }
+        else {
+          k = k + 3;
+          continue;
+        }
+      }
+      else if (intersection[k] < 0 && w == 1) {
+        if (fSample1) {
+          shadowScaling[m] = 0.25;
+          break;
+        }
+        else {
+          w--;
+          k = k + 3;
+          continue;
+        }
+      }
+      else if (intersection[k] < 0 && w == 2) {
+        if (fSample2) {
+          shadowScaling[m] = 0.25;
+          break;
+        }
+        else {
+          w--;
+          k = k + 3;
+          continue;
+        }
+      }
+      else if (intersection[k] > 0 && w == 0) {
+        if (fSample1) {
+          shadowScaling[m] = 0.25;
+          break;
+        }
+        else {
+          w++;
+          k = k + 3;
+          continue;
+        }
+      }
+      else if (intersection[k] > 0 && w == 1) {
+        if (fSample2) {
+          shadowScaling[m] = 0.25;
+          break;
+        }
+        else {
+          w++;
+          k = k + 3;
+          continue;
+        }
+      }
+      else {
+        k = k + 3;
+        continue;
+      }
+    }
+
     if (abs(intersection[i]) < abs(intersection[j])) {
       if (intersection[i] < 0) {
         if (u1Sample) {
