@@ -13,10 +13,10 @@ import BuildModel
 
 -- The header for the Wall_grid section in the map file does not depend on any degree of freedom that can be edited through the server,
 -- so it has been hard coded.
-wGridHeader = concat ["16, 0, 0, 0, 0, 1, 36\n",
-                      "16, 0, 0, 0, 0, 2, 36\n",
-                      "16, 0, 0, 0, 0, 3, 36\n",
-                      "16, 0, 0, 0, 0, 4, 36\n",
+wGridHeader = concat ["16, 0, 0, 0, 0, 1, 72\n",
+                      "16, 0, 0, 0, 0, 2, 72\n",
+                      "16, 0, 0, 0, 0, 3, 72\n",
+                      "16, 0, 0, 0, 0, 4, 72\n",
                       "32, 0, 0, 0, 0, 1, 6\n",
                       "48, 0, 0, 0, 0, 1, 6\n",
                       "64, 0, 0, 0, 0, 1, 6\n",

@@ -292,7 +292,7 @@ layout(binding = 8) uniform FloorShadowMap2
 out vec3 modelInWorldPosition;
 out vec2 tex_coord;
 flat out vec3 vertNormal;
-out float shadowScaling[5];
+out float shadowScaling[8];
 
 uniform mat4 mod_to_world;
 uniform mat4 world_to_clip;
@@ -327,9 +327,11 @@ vec4 worldPos = mod_to_world * position;
 modelInWorldPosition = worldPos.xyz;
 tex_coord = texCoord;
 vertNormal = normal;
-shadowScaling[0] = 1; shadowScaling[1] = 1; shadowScaling[2] = 1; shadowScaling[3] = 1; shadowScaling[4] = 1;
+shadowScaling[0] = 1; shadowScaling[1] = 1; shadowScaling[2] = 1; shadowScaling[3] = 1;
+shadowScaling[4] = 1; shadowScaling[5] = 1; shadowScaling[6] = 1; shadowScaling[7] = 1;
 const int vertexU = int(clamp(modelInWorldPosition.x, 0.0, 49.9));
 const int vertexV = int(clamp(modelInWorldPosition.y, 0.0, 49.9));
+const int vertexW = int(clamp(modelInWorldPosition.z + 0.5, 0.0, 2.9));
 
 for (int m = 0; m < numLights; m++) {
   const vec3 lightDifference = modelInWorldPosition - mobileLightPositions[m];
@@ -346,7 +348,7 @@ for (int m = 0; m < numLights; m++) {
     bool u2Sample;
     bool v1Sample;
     bool v2Sample;
-    if (u == vertexU && v == vertexV) {
+    if (u == vertexU && v == vertexV && w == vertexW) {
       break;
     }
     if (w == 0) {
@@ -374,7 +376,7 @@ for (int m = 0; m < numLights; m++) {
     if (abs(intersection[k]) < abs(intersection[i]) && abs(intersection[k]) < abs(intersection[j])) {
       if (intersection[k] < 0 && w == 0) {
         if (fSample0) {
-          shadowScaling[m] = 0.25;
+          shadowScaling[m] = 0.0;
           break;
         }
         else {
@@ -384,7 +386,7 @@ for (int m = 0; m < numLights; m++) {
       }
       else if (intersection[k] < 0 && w == 1) {
         if (fSample1) {
-          shadowScaling[m] = 0.25;
+          shadowScaling[m] = 0.0;
           break;
         }
         else {
@@ -395,7 +397,7 @@ for (int m = 0; m < numLights; m++) {
       }
       else if (intersection[k] < 0 && w == 2) {
         if (fSample2) {
-          shadowScaling[m] = 0.25;
+          shadowScaling[m] = 0.0;
           break;
         }
         else {
@@ -406,7 +408,7 @@ for (int m = 0; m < numLights; m++) {
       }
       else if (intersection[k] > 0 && w == 0) {
         if (fSample1) {
-          shadowScaling[m] = 0.25;
+          shadowScaling[m] = 0.0;
           break;
         }
         else {
@@ -417,7 +419,7 @@ for (int m = 0; m < numLights; m++) {
       }
       else if (intersection[k] > 0 && w == 1) {
         if (fSample2) {
-          shadowScaling[m] = 0.25;
+          shadowScaling[m] = 0.0;
           break;
         }
         else {
@@ -435,7 +437,7 @@ for (int m = 0; m < numLights; m++) {
     if (abs(intersection[i]) < abs(intersection[j])) {
       if (intersection[i] < 0) {
         if (u1Sample) {
-          shadowScaling[m] = 0.25;
+          shadowScaling[m] = 0.0;
           break;
         }
         else {
@@ -445,7 +447,7 @@ for (int m = 0; m < numLights; m++) {
       }
       else {
         if (u2Sample) {
-          shadowScaling[m] = 0.25;
+          shadowScaling[m] = 0.0;
           break;
         }
         else {
@@ -457,7 +459,7 @@ for (int m = 0; m < numLights; m++) {
     else if (abs(intersection[i]) > abs(intersection[j])) {
       if (intersection[j] < 0) {
         if (v1Sample) {
-          shadowScaling[m] = 0.25;
+          shadowScaling[m] = 0.0;
           break;
         }
         else {
@@ -467,7 +469,7 @@ for (int m = 0; m < numLights; m++) {
       }
       else {
         if (v2Sample) {
-          shadowScaling[m] = 0.25;
+          shadowScaling[m] = 0.0;
           break;
         }
         else {
@@ -479,7 +481,7 @@ for (int m = 0; m < numLights; m++) {
     else {
       if (intersection[i] < 0 && intersection[j] < 0) {
         if (u1Sample || v1Sample) {
-          shadowScaling[m] = 0.25;
+          shadowScaling[m] = 0.0;
           break;
         }
         else {
@@ -491,7 +493,7 @@ for (int m = 0; m < numLights; m++) {
       }
       else if (intersection[i] < 0 && intersection[j] > 0) {
         if (u1Sample || v2Sample) {
-          shadowScaling[m] = 0.25;
+          shadowScaling[m] = 0.0;
           break;
         }
         else {
@@ -503,7 +505,7 @@ for (int m = 0; m < numLights; m++) {
       }
       else if (intersection[i] > 0 && intersection[j] < 0) {
         if (u2Sample || v1Sample) {
-          shadowScaling[m] = 0.25;
+          shadowScaling[m] = 0.0;
           break;
         }
         else {
@@ -515,7 +517,7 @@ for (int m = 0; m < numLights; m++) {
       }
       else {
         if (u2Sample || v2Sample) {
-          shadowScaling[m] = 0.25;
+          shadowScaling[m] = 0.0;
           break;
         }
         else {
@@ -538,7 +540,7 @@ gl_Position = world_to_clip * worldPos;
 in vec3 modelInWorldPosition;
 in vec2 tex_coord;
 flat in vec3 vertNormal;
-in float shadowScaling[5];
+in float shadowScaling[8];
 
 out vec4 outputColour;
 
@@ -565,7 +567,7 @@ for (int n = 0; n < numLights; n++)
     distanceSqr = dot(lightDifference, lightDifference);
     lightDir = lightDifference * inversesqrt(distanceSqr);
     attenuation[n] = 1 / distanceSqr;
-    cosAngleIncidence[n] = clamp(dot(vertNormal, lightDir), 0.15, 1.0);
+    cosAngleIncidence[n] = dot(vertNormal, lightDir);
 }
 
 vec4 diffColour = texture(tex_unit0, tex_coord);
@@ -573,7 +575,7 @@ vec4 totalLight = adjust * attenuation[0] * shadowScaling[0] * cosAngleIncidence
 
 for (int n = 1; n < numLights; n++)
 {
-  totalLight = totalLight + (attenuation[n] * shadowScaling[n] * cosAngleIncidence[n] * mobileLightIntensities[n] * diffColour);
+  totalLight = totalLight + max(attenuation[n] * shadowScaling[n] * cosAngleIncidence[n], 0.0008) * mobileLightIntensities[n] * diffColour;
 }
 
 outputColour = pow(totalLight, gamma);

@@ -1117,7 +1117,7 @@ placeLight :: GPLC_float -> GPLC_float -> GPLC_float -> GPLC_float -> GPLC_float
 placeLight (GPLC_float colour_r) (GPLC_float colour_g) (GPLC_float colour_b) (GPLC_float u) (GPLC_float v) (GPLC_float w) s0 d_list =
   let new_colours = [intToFloat (d_list !! colour_r), intToFloat (d_list !! colour_g), intToFloat (d_list !! colour_b), 1]
       new_positions = [intToFloat (d_list !! u), intToFloat (d_list !! v), intToFloat (d_list !! w)]
-  in s0 {mobile_lights = (take 16 (new_colours ++ fst (mobile_lights s0)), take 12 (new_positions ++ snd (mobile_lights s0)))}
+  in s0 {mobile_lights = (take 28 (new_colours ++ fst (mobile_lights s0)), take 21 (new_positions ++ snd (mobile_lights s0)))}
 
 setEventContext :: GPLC_int -> [Int] -> EventContext
 setEventContext context d_list

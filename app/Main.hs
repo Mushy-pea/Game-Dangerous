@@ -339,7 +339,7 @@ startGame context physics control_ref uniform p_bind map_text conf_reg sound_arr
     state_ref <- newEmptyMVar
     t_log <- newEmptyMVar
     result_ <- newEmptyMVar
-    loadShadowMap u_limit v_limit w_grid f_grid
+    loadShadowMap u_limit v_limit w_grid f_grid obj_grid
     if context == NewGame then do
       tid <- forkIO (updatePlayWrapper0 (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = Just control_ref}) state_ref
                                         game_state False (read (cfg' "min_frame_t")) physics
@@ -439,10 +439,11 @@ genLoadMenu ((y0:y1:y2:y3:y4:y5:y6:y7:y8:y9:y10:y11:y12:y13:y14:y15:y16:ys):xs) 
   if y0 == '_' then genLoadMenu xs (acc ++ state_choice) (c + 1)
   else genLoadMenu xs acc c
 
-loadShadowMap :: Int -> Int -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> IO ()
-loadShadowMap u_limit v_limit w_grid f_grid =
-  let wall_shadow_map = genShadowMap 0 0 0 u_limit v_limit w_grid SEQ.empty
-      floor_shadow_map = genShadowMap 0 0 0 u_limit v_limit f_grid SEQ.empty
+-- This function loads the shadow map data generated within GenShadowMap into the OpenGL runtime.
+loadShadowMap :: Int -> Int -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) Obj_grid -> IO ()
+loadShadowMap u_limit v_limit w_grid f_grid obj_grid =
+  let wall_shadow_map = genShadowMap 0 0 0 u_limit v_limit w_grid obj_grid SEQ.empty
+      floor_shadow_map = genShadowMap 0 0 0 u_limit v_limit f_grid obj_grid SEQ.empty
       wall_shadow_map_size = length wall_shadow_map
       floor_shadow_map_size = length floor_shadow_map
       wall_shadow_map0 = take (div wall_shadow_map_size 3) wall_shadow_map
