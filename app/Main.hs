@@ -444,22 +444,20 @@ loadShadowMap :: Int -> Int -> Array (Int, Int, Int) Wall_grid -> Array (Int, In
 loadShadowMap u_limit v_limit w_grid f_grid obj_grid =
   let wall_shadow_map = genShadowMap 0 0 0 u_limit v_limit w_grid obj_grid SEQ.empty
       floor_shadow_map = genShadowMap 0 0 0 u_limit v_limit f_grid obj_grid SEQ.empty
-      wall_shadow_map_size = length wall_shadow_map
-      floor_shadow_map_size = length floor_shadow_map
-      wall_shadow_map0 = take (div wall_shadow_map_size 3) wall_shadow_map
-      wall_shadow_map1 = take (div wall_shadow_map_size 3) (drop (div wall_shadow_map_size 3) wall_shadow_map)
-      wall_shadow_map2 = drop (2 * (div wall_shadow_map_size 3)) wall_shadow_map
-      floor_shadow_map0 = take (div floor_shadow_map_size 3) floor_shadow_map
-      floor_shadow_map1 = take (div floor_shadow_map_size 3) (drop (div floor_shadow_map_size 3) floor_shadow_map)
-      floor_shadow_map2 = drop (2 * (div floor_shadow_map_size 3)) floor_shadow_map
+      wall_shadow_map0 = take 14400 wall_shadow_map
+      wall_shadow_map1 = take 14400 (drop 14400 wall_shadow_map)
+      wall_shadow_map2 = drop 28800 wall_shadow_map
+      floor_shadow_map0 = take 3600 floor_shadow_map
+      floor_shadow_map1 = take 3600 (drop 3600 floor_shadow_map)
+      floor_shadow_map2 = drop 7200 floor_shadow_map
   in do
   p_buffers <- mallocBytes (gluint * 6)
-  p_wall_shadow_map0 <- mallocBytes (glint * div wall_shadow_map_size 3)
-  p_wall_shadow_map1 <- mallocBytes (glint * div wall_shadow_map_size 3)
-  p_wall_shadow_map2 <- mallocBytes (glint * div wall_shadow_map_size 3)
-  p_floor_shadow_map0 <- mallocBytes (glint * div floor_shadow_map_size 3)
-  p_floor_shadow_map1 <- mallocBytes (glint * div floor_shadow_map_size 3)
-  p_floor_shadow_map2 <- mallocBytes (glint * div floor_shadow_map_size 3)
+  p_wall_shadow_map0 <- mallocBytes (glint * 14400)
+  p_wall_shadow_map1 <- mallocBytes (glint * 14400)
+  p_wall_shadow_map2 <- mallocBytes (glint * 14400)
+  p_floor_shadow_map0 <- mallocBytes (glint * 3600)
+  p_floor_shadow_map1 <- mallocBytes (glint * 3600)
+  p_floor_shadow_map2 <- mallocBytes (glint * 3600)
   glGenBuffers 6 p_buffers
   wall_shadow_buf0 <- peekElemOff p_buffers 0
   wall_shadow_buf1 <- peekElemOff p_buffers 1
@@ -474,17 +472,17 @@ loadShadowMap u_limit v_limit w_grid f_grid obj_grid =
   loadArray floor_shadow_map1 p_floor_shadow_map1 0
   loadArray floor_shadow_map2 p_floor_shadow_map2 0
   glBindBufferBase GL_UNIFORM_BUFFER 3 wall_shadow_buf0
-  glBufferData GL_UNIFORM_BUFFER (unsafeCoerce (plusPtr zero_ptr (glint * div wall_shadow_map_size 3)) :: GLsizeiptr) p_wall_shadow_map0 GL_STATIC_DRAW
+  glBufferData GL_UNIFORM_BUFFER (unsafeCoerce (plusPtr zero_ptr (glint * 14400)) :: GLsizeiptr) p_wall_shadow_map0 GL_STATIC_DRAW
   glBindBufferBase GL_UNIFORM_BUFFER 4 wall_shadow_buf1
-  glBufferData GL_UNIFORM_BUFFER (unsafeCoerce (plusPtr zero_ptr (glint * div wall_shadow_map_size 3)) :: GLsizeiptr) p_wall_shadow_map1 GL_STATIC_DRAW
+  glBufferData GL_UNIFORM_BUFFER (unsafeCoerce (plusPtr zero_ptr (glint * 14400)) :: GLsizeiptr) p_wall_shadow_map1 GL_STATIC_DRAW
   glBindBufferBase GL_UNIFORM_BUFFER 5 wall_shadow_buf2
-  glBufferData GL_UNIFORM_BUFFER (unsafeCoerce (plusPtr zero_ptr (glint * div wall_shadow_map_size 3)) :: GLsizeiptr) p_wall_shadow_map2 GL_STATIC_DRAW
+  glBufferData GL_UNIFORM_BUFFER (unsafeCoerce (plusPtr zero_ptr (glint * 14400)) :: GLsizeiptr) p_wall_shadow_map2 GL_STATIC_DRAW
   glBindBufferBase GL_UNIFORM_BUFFER 6 floor_shadow_buf0
-  glBufferData GL_UNIFORM_BUFFER (unsafeCoerce (plusPtr zero_ptr (glint * div floor_shadow_map_size 3)) :: GLsizeiptr) p_floor_shadow_map0 GL_STATIC_DRAW
+  glBufferData GL_UNIFORM_BUFFER (unsafeCoerce (plusPtr zero_ptr (glint * 3600)) :: GLsizeiptr) p_floor_shadow_map0 GL_STATIC_DRAW
   glBindBufferBase GL_UNIFORM_BUFFER 7 floor_shadow_buf1
-  glBufferData GL_UNIFORM_BUFFER (unsafeCoerce (plusPtr zero_ptr (glint * div floor_shadow_map_size 3)) :: GLsizeiptr) p_floor_shadow_map1 GL_STATIC_DRAW
+  glBufferData GL_UNIFORM_BUFFER (unsafeCoerce (plusPtr zero_ptr (glint * 3600)) :: GLsizeiptr) p_floor_shadow_map1 GL_STATIC_DRAW
   glBindBufferBase GL_UNIFORM_BUFFER 8 floor_shadow_buf2
-  glBufferData GL_UNIFORM_BUFFER (unsafeCoerce (plusPtr zero_ptr (glint * div floor_shadow_map_size 3)) :: GLsizeiptr) p_floor_shadow_map2 GL_STATIC_DRAW
+  glBufferData GL_UNIFORM_BUFFER (unsafeCoerce (plusPtr zero_ptr (glint * 3600)) :: GLsizeiptr) p_floor_shadow_map2 GL_STATIC_DRAW
   free p_buffers
   free p_wall_shadow_map0
   free p_wall_shadow_map1

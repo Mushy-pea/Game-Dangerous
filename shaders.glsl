@@ -266,27 +266,27 @@ layout(location = 1) in vec2 texCoord;
 layout(location = 2) in vec3 normal;
 layout(binding = 3) uniform WallShadowMap0
 {
-  bvec4 wallShadow0[2500];
+  bvec4 wallShadow0[3600];
 };
 layout(binding = 4) uniform WallShadowMap1
 {
-  bvec4 wallShadow1[2500];
+  bvec4 wallShadow1[3600];
 };
 layout(binding = 5) uniform WallShadowMap2
 {
-  bvec4 wallShadow2[2500];
+  bvec4 wallShadow2[3600];
 };
 layout(binding = 6) uniform FloorShadowMap0
 {
-  bool floorShadow0[2500];
+  bool floorShadow0[3600];
 };
 layout(binding = 7) uniform FloorShadowMap1
 {
-  bool floorShadow1[2500];
+  bool floorShadow1[3600];
 };
 layout(binding = 8) uniform FloorShadowMap2
 {
-  bool floorShadow2[2500];
+  bool floorShadow2[3600];
 };
 
 out vec3 modelInWorldPosition;
@@ -352,31 +352,32 @@ for (int m = 0; m < numLights; m++) {
       break;
     }
     if (w == 0) {
-      u1Sample = wallShadow0[u * 50 + v].x;
-      u2Sample = wallShadow0[u * 50 + v].y;
-      v1Sample = wallShadow0[u * 50 + v].z;
-      v2Sample = wallShadow0[u * 50 + v].w;
+      u1Sample = wallShadow0[u * 60 + v].x;
+      u2Sample = wallShadow0[u * 60 + v].y;
+      v1Sample = wallShadow0[u * 60 + v].z;
+      v2Sample = wallShadow0[u * 60 + v].w;
     }
     else if (w == 1) {
-      u1Sample = wallShadow1[u * 50 + v].x;
-      u2Sample = wallShadow1[u * 50 + v].y;
-      v1Sample = wallShadow1[u * 50 + v].z;
-      v2Sample = wallShadow1[u * 50 + v].w;
+      u1Sample = wallShadow1[u * 60 + v].x;
+      u2Sample = wallShadow1[u * 60 + v].y;
+      v1Sample = wallShadow1[u * 60 + v].z;
+      v2Sample = wallShadow1[u * 60 + v].w;
     }
     else {
-      u1Sample = wallShadow2[u * 50 + v].x;
-      u2Sample = wallShadow2[u * 50 + v].y;
-      v1Sample = wallShadow2[u * 50 + v].z;
-      v2Sample = wallShadow2[u * 50 + v].w;
+      u1Sample = wallShadow2[u * 60 + v].x;
+      u2Sample = wallShadow2[u * 60 + v].y;
+      v1Sample = wallShadow2[u * 60 + v].z;
+      v2Sample = wallShadow2[u * 60 + v].w;
     }
-    const bool fSample0 = floorShadow0[u * 50 + v];
-    const bool fSample1 = floorShadow1[u * 50 + v];
-    const bool fSample2 = floorShadow2[u * 50 + v];
+    const bool fSample0 = floorShadow0[u * 60 + v];
+    const bool fSample1 = floorShadow1[u * 60 + v];
+    const bool fSample2 = floorShadow2[u * 60 + v];
+    const float floorShadowScaling = 0.1;
     
     if (abs(intersection[k]) < abs(intersection[i]) && abs(intersection[k]) < abs(intersection[j])) {
       if (intersection[k] < 0 && w == 0) {
         if (fSample0) {
-          shadowScaling[m] = 0.0;
+          shadowScaling[m] = floorShadowScaling;
           break;
         }
         else {
@@ -386,7 +387,7 @@ for (int m = 0; m < numLights; m++) {
       }
       else if (intersection[k] < 0 && w == 1) {
         if (fSample1) {
-          shadowScaling[m] = 0.0;
+          shadowScaling[m] = floorShadowScaling;
           break;
         }
         else {
@@ -397,7 +398,7 @@ for (int m = 0; m < numLights; m++) {
       }
       else if (intersection[k] < 0 && w == 2) {
         if (fSample2) {
-          shadowScaling[m] = 0.0;
+          shadowScaling[m] = floorShadowScaling;
           break;
         }
         else {
@@ -408,7 +409,7 @@ for (int m = 0; m < numLights; m++) {
       }
       else if (intersection[k] > 0 && w == 0) {
         if (fSample1) {
-          shadowScaling[m] = 0.0;
+          shadowScaling[m] = floorShadowScaling;
           break;
         }
         else {
@@ -419,7 +420,7 @@ for (int m = 0; m < numLights; m++) {
       }
       else if (intersection[k] > 0 && w == 1) {
         if (fSample2) {
-          shadowScaling[m] = 0.0;
+          shadowScaling[m] = floorShadowScaling;
           break;
         }
         else {
@@ -575,7 +576,7 @@ vec4 totalLight = adjust * attenuation[0] * shadowScaling[0] * cosAngleIncidence
 
 for (int n = 1; n < numLights; n++)
 {
-  totalLight = totalLight + max(attenuation[n] * shadowScaling[n] * cosAngleIncidence[n], 0.0008) * mobileLightIntensities[n] * diffColour;
+  totalLight = totalLight + max(attenuation[n] * shadowScaling[n] * cosAngleIncidence[n], 0.0002) * mobileLightIntensities[n] * diffColour;
 }
 
 outputColour = pow(totalLight, gamma);
