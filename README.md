@@ -1,39 +1,28 @@
 # Game :: Dangerous (a tribute to ZZT)
 
-## A project update as of 07/08/2025 : Work under way on Gem Mining - a map set for Game :: Dangerous
+## A project update as of 19/04/2026 : Source to vertex ray cast shadows added
 
-With the engine feature frozen the only thing left to do is build a game to run on it, which turns 
-out to be a rather complex and multifaceted task in itself.  Initially I'd planned to go through this 
-process behind closed doors, to not risk spoiling the game for anyone who ends up playing it.  However, 
-I've since realised that spoiling games has become normalised in the modern era and that I'd rather have 
-a public repository for the map set.  Nothing will be overtly spoiled but people can choose to deep dive 
-into the maps as they develop per commit if they wish.
+The engine now renders shadows using a very simplified and low resolution analogue to ray tracing, 
+which I'm referring to as source to vertex ray cast shadows.  I've written a Reddit post about 
+it here: https://www.reddit.com/r/opengl/comments/1s85wv2/source_to_vertex_ray_cast_shadow_algorithm/
 
-Gem - Mining: https://github.com/Mushy-pea/Gem-Mining
+![Shadow demo D1](https://github.com/Mushy-pea/Game-Dangerous/blob/master/images/ShadowDemoD1.png)
 
-There is currently a demo build of the engine for Windows on itch.io packaged with 
-assets and maps: https://basicas-games.itch.io/game-dangerous
+Shadow demo D1
 
-If you want to attempt building the project for Linux or Windows these are the best resources I can suggest.
+![Shadow demo E1](https://github.com/Mushy-pea/Game-Dangerous/blob/master/images/ShadowDemoE1.png)
 
-1. Game-Dangerous/build.sh: may be helpful as a kind of instruction manual for either platform.
-2. Game-Dangerous/config.txt: This will need to be adapted for your build a little.
-3. The most up to date game assets can be aquired through the release on itch.io.  If you're building for 
-   Linux the text files need to be converted from CRLF to LF.
+Shadow demo E1
 
-Engine version: 1.3.4
+![Shadow demo B1 (comparative)](https://github.com/Mushy-pea/Game-Dangerous/blob/master/images/ShadowDemoB1.png)
 
-Server version: 2.2.3
+Shadow demo B1 (comparative)
 
-![Lore image 1: Ben and Sarah](https://github.com/Mushy-pea/The-Perils-of-Gem-Mining/blob/master/images/Ben_and_Sarah.png)
+![Shadow demo B2 (comparative)](https://github.com/Mushy-pea/Game-Dangerous/blob/master/images/ShadowDemoB2.png)
 
-Lore image 1: Ben and Sarah
+Shadow demo B2 (comparative)
 
-![Map development editor](https://github.com/Mushy-pea/The-Perils-of-Gem-Mining/blob/master/images/Editor.png)
-
-The map development editor
-
-[![Preview unavailable](https://github.com/Mushy-pea/The-Perils-of-Gem-Mining/blob/master/images/Video%20screenshot.png)](https://youtu.be/h-RChZvQUyU&t)
+[![Preview unavailable](https://img.youtube.com/vi/OhFSiKcMg3U/default.jpg)](https://youtu.be/OhFSiKcMg3U?si=XzFYsMxnieKF4QPq)
 
 [![Preview unavailable](https://img.youtube.com/vi/wOSQ1cYoZXM/default.jpg)](https://youtu.be/wOSQ1cYoZXM)
 
@@ -41,3 +30,6 @@ The map development editor
 
 [![Preview unavailable](https://img.youtube.com/vi/4Y2er6WZ5qs/default.jpg)](https://youtu.be/4Y2er6WZ5qs)
 
+Engine version: 1.4.1
+
+Server version: 2.2.3
