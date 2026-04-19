@@ -220,8 +220,8 @@ flat in vec3 vertNormal;
 
 out vec4 outputColour;
 
-uniform vec4 mobileLightIntensities[5];
-uniform vec3 mobileLightPositions[5];
+uniform vec4 mobileLightIntensities[8];
+uniform vec3 mobileLightPositions[8];
 uniform int timer;
 uniform int numLights;
 
@@ -296,7 +296,7 @@ out float shadowScaling[8];
 
 uniform mat4 mod_to_world;
 uniform mat4 world_to_clip;
-uniform vec3 mobileLightPositions[5];
+uniform vec3 mobileLightPositions[8];
 uniform int numLights;
 
 void intersectSequence(const vec3 lightPos, const vec3 lightDifference, inout float intersection[75]) {
@@ -546,15 +546,15 @@ in float shadowScaling[8];
 out vec4 outputColour;
 
 uniform sampler2D tex_unit0;
-uniform vec4 mobileLightIntensities[5];
-uniform vec3 mobileLightPositions[5];
+uniform vec4 mobileLightIntensities[8];
+uniform vec3 mobileLightPositions[8];
 uniform int timer;
 uniform int numLights;
 
 void main() {
 float adjust; float distanceSqr;
 vec3 lightDifference; vec3 lightDir;
-float cosAngleIncidence[5]; float attenuation[5] = float[5](0, 0, 0, 0, 0);
+float cosAngleIncidence[8]; float attenuation[8];
 if (timer > 0)
   adjust = 1;
 else
@@ -576,7 +576,7 @@ vec4 totalLight = adjust * attenuation[0] * shadowScaling[0] * cosAngleIncidence
 
 for (int n = 1; n < numLights; n++)
 {
-  totalLight = totalLight + max(attenuation[n] * shadowScaling[n] * cosAngleIncidence[n], 0.0002) * mobileLightIntensities[n] * diffColour;
+  totalLight = totalLight + max(attenuation[n] * shadowScaling[n] * cosAngleIncidence[n], 0.00005) * mobileLightIntensities[n] * diffColour;
 }
 
 outputColour = pow(totalLight, gamma);

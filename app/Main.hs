@@ -11,7 +11,7 @@ import Foreign.C.String
 import Foreign.C.Types
 import Foreign.Marshal.Utils
 import Graphics.GL.Core33
-import Graphics.UI.GLUT hiding (Object, Matrix, GLuint, GLchar, GLenum, GLsizei, GLushort, GLsizeiptr, GLfloat, None)
+import Graphics.UI.GLUT hiding (Object, Matrix, GLuint, GLchar, GLenum, GLsizei, GLushort, GLsizeiptr, GLfloat, None, maxLights)
 import Data.Bits
 import Data.Word
 import Data.List.Split
@@ -335,7 +335,7 @@ startGame context physics control_ref uniform p_bind map_text conf_reg sound_arr
     p_mt_matrix <- mallocBytes (glfloat * 128)
     p_f_table0 <- callocBytes (int_ * 120000)
     p_f_table1 <- callocBytes (int_ * 37500)
-    p_light_buffer <- mallocBytes (glfloat * 35)
+    p_light_buffer <- mallocBytes (glfloat * 56)
     state_ref <- newEmptyMVar
     t_log <- newEmptyMVar
     result_ <- newEmptyMVar
@@ -418,7 +418,7 @@ startGame context physics control_ref uniform p_bind map_text conf_reg sound_arr
         obj_grid = third_ map
         s0 = ps0_init {pos_u = u physics, pos_v = v physics, pos_w = w physics, on_screen_metrics = selectMetricMode (cfg' "on_screen_metrics"),
                        prob_seq = genProbSeq 0 239 (read (cfg' "prob_c")) r_gen, currentMap = setCurrentMap (cfg' "map_file"),
-                       previousMap = setCurrentMap (cfg' "map_file")}
+                       previousMap = setCurrentMap (cfg' "map_file"), maxLights = read (cfg' "max_lights")}
         s1 = if cfg' "verbose_mode" == "n" || cfg' "verbose_mode" == "y" then ps1_init {verbose_mode = cfg' "verbose_mode"}
              else ps1_init {verbose_mode = "filter", debugSet = array (0, snd (bounds conf_reg) - 94) [(i, conf_reg ! (i + 94)) | i <- [0..snd (bounds conf_reg) - 94]]}
         game_state = Game_state {event_context = None, w_grid_ = w_grid, f_grid_ = f_grid, obj_grid_ = obj_grid, s0_ = s0, s1_ = s1,
@@ -649,10 +649,8 @@ bindTexture (x:xs) p_bind w h offset = do
 
 -- This function determines the number of vectors in either component of the mobile_lights field of Play_state0, which is used in certain calls
 -- to OpenGL functions in showFrame.
-detBufferLen :: Integral a => Play_state0 -> Int -> a -> a
-detBufferLen s0 mode component_size =
-  if mode == 0 then div (fromIntegral (length (fst (mobile_lights s0)))) component_size
-  else div (fromIntegral (length (snd (mobile_lights s0)))) component_size
+detBufferLen :: Integral a => Play_state0 -> a
+detBufferLen s0 = fromIntegral (length (mobile_lights s0))
 
 -- This function manages the rendering of all environmental models and in game messages.
 -- It recurses once per frame rendered and is the central branching point of the rendering thread.
@@ -684,37 +682,41 @@ showFrame p_bind uniform (p_mt_matrix, p_light_buffer) filter_table u v w a a' s
     glUniformMatrix4fv (coerce (uniform ! 52)) 1 1 (castPtr p_mt_matrix)
     showPlayer uniform p_bind (plusPtr p_mt_matrix (glfloat * 80)) u v w a lookUp (rend_mode (s0_ game_state)) (s1_ game_state)
   if rend_mode (s0_ game_state) == 0 then do
-    loadArray (fst (mobile_lights (s0_ game_state)) ++ snd (mobile_lights (s0_ game_state))) p_light_buffer 0
+    loadArray (unpackLightIntensities (mobile_lights (s0_ game_state)) ++ unpackLightPositions (mobile_lights (s0_ game_state))) p_light_buffer 0
     glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 7)))
-    if mobile_lights (s0_ game_state) == ([], []) then glUniform1i (coerce (uniform ! 56)) (fromIntegral 2)
+    if mobile_lights (s0_ game_state) == [] then glUniform1i (coerce (uniform ! 56)) (fromIntegral 2)
     else do
-      glUniform1i (coerce (uniform ! 56)) ((detBufferLen (s0_ game_state) 0 4) + 2)
-      glUniform4fv (coerce (uniform ! 54)) (detBufferLen (s0_ game_state) 0 4) p_light_buffer
-      glUniform3fv (coerce (uniform ! 55)) (detBufferLen (s0_ game_state) 0 3) (plusPtr p_light_buffer (glfloat * length (fst (mobile_lights (s0_ game_state)))))
+      glUniform1i (coerce (uniform ! 56)) ((detBufferLen (s0_ game_state)) + 2)
+      glUniform4fv (coerce (uniform ! 54)) (detBufferLen (s0_ game_state)) p_light_buffer
+      glUniform3fv (coerce (uniform ! 55)) (detBufferLen (s0_ game_state))
+                   (plusPtr p_light_buffer (glfloat * length (unpackLightIntensities (mobile_lights (s0_ game_state)))))
     glUniform1i (coerce (uniform ! 9)) (fromIntegral (mod (fst__ (gameClock (s0_ game_state))) 240))
     glUniformMatrix4fv (coerce (uniform ! 1)) 1 1 (castPtr p_mt_matrix)
     glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 6)))
-    if mobile_lights (s0_ game_state) == ([], []) then glUniform1i (coerce (uniform ! 59)) (fromIntegral 2)
+    if mobile_lights (s0_ game_state) == [] then glUniform1i (coerce (uniform ! 59)) (fromIntegral 2)
     else do
-      glUniform1i (coerce (uniform ! 59)) ((detBufferLen (s0_ game_state) 0 4) + 2)
-      glUniform4fv (coerce (uniform ! 57)) (detBufferLen (s0_ game_state) 0 4) p_light_buffer
-      glUniform3fv (coerce (uniform ! 58)) (detBufferLen (s0_ game_state) 0 3) (plusPtr p_light_buffer (glfloat * length (fst (mobile_lights (s0_ game_state)))))
+      glUniform1i (coerce (uniform ! 59)) ((detBufferLen (s0_ game_state)) + 2)
+      glUniform4fv (coerce (uniform ! 57)) (detBufferLen (s0_ game_state)) p_light_buffer
+      glUniform3fv (coerce (uniform ! 58)) (detBufferLen (s0_ game_state))
+                   (plusPtr p_light_buffer (glfloat * length (unpackLightIntensities (mobile_lights (s0_ game_state)))))
     glUniform1i (coerce (uniform ! 20)) (fromIntegral (mod (fst__ (gameClock (s0_ game_state))) 240))
     glUniformMatrix4fv (coerce (uniform ! 12)) 1 1 (castPtr p_mt_matrix)
   else do
-    loadArray ([3, 3, 3, 1] ++ fst (mobile_lights (s0_ game_state)) ++ [coerce u, coerce v, coerce w] ++ snd (mobile_lights (s0_ game_state))) p_light_buffer 0
+    loadArray ([3, 3, 3, 1] ++ unpackLightIntensities (mobile_lights (s0_ game_state)) ++
+               [coerce u, coerce v, coerce w] ++ unpackLightPositions (mobile_lights (s0_ game_state)))
+              p_light_buffer 0
     glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 5)))
-    glUniform1i (coerce (uniform ! 62)) ((detBufferLen (s0_ game_state) 0 4) + 1)
-    glUniform4fv (coerce (uniform ! 60)) ((detBufferLen (s0_ game_state) 0 4) + 1) p_light_buffer
-    glUniform3fv (coerce (uniform ! 61)) ((detBufferLen (s0_ game_state) 0 3) + 1)
-                 (plusPtr p_light_buffer (glfloat * length (fst (mobile_lights (s0_ game_state))) + 16))
+    glUniform1i (coerce (uniform ! 62)) ((detBufferLen (s0_ game_state)) + 1)
+    glUniform4fv (coerce (uniform ! 60)) ((detBufferLen (s0_ game_state)) + 1) p_light_buffer
+    glUniform3fv (coerce (uniform ! 61)) ((detBufferLen (s0_ game_state)) + 1)
+                 (plusPtr p_light_buffer (glfloat * length (unpackLightIntensities (mobile_lights (s0_ game_state))) + 16))
     glUniformMatrix4fv (coerce (uniform ! 24)) 1 1 (castPtr p_mt_matrix)
     glUniform1i (coerce (uniform ! 27)) (fromIntegral (torch_t_limit (s0_ game_state) - (fst__ (gameClock (s0_ game_state)) - torch_t0 (s0_ game_state))))
     glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 4)))
-    glUniform1i (coerce (uniform ! 65)) ((detBufferLen (s0_ game_state) 0 4) + 1)
-    glUniform4fv (coerce (uniform ! 63)) ((detBufferLen (s0_ game_state) 0 4) + 1) p_light_buffer
-    glUniform3fv (coerce (uniform ! 64)) ((detBufferLen (s0_ game_state) 0 3) + 1)
-                 (plusPtr p_light_buffer (glfloat * length (fst (mobile_lights (s0_ game_state))) + 16))
+    glUniform1i (coerce (uniform ! 65)) ((detBufferLen (s0_ game_state)) + 1)
+    glUniform4fv (coerce (uniform ! 63)) ((detBufferLen (s0_ game_state)) + 1) p_light_buffer
+    glUniform3fv (coerce (uniform ! 64)) ((detBufferLen (s0_ game_state)) + 1)
+                 (plusPtr p_light_buffer (glfloat * length (unpackLightIntensities (mobile_lights (s0_ game_state))) + 16))
     glUniformMatrix4fv (coerce (uniform ! 30)) 1 1 (castPtr p_mt_matrix)
     glUniform1i (coerce (uniform ! 33)) (fromIntegral (torch_t_limit (s0_ game_state) - (fst__ (gameClock (s0_ game_state)) - torch_t0 (s0_ game_state))))
   glBindVertexArray (unsafeCoerce ((fst p_bind) ! 0))

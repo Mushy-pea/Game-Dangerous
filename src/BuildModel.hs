@@ -130,9 +130,20 @@ instance Binary Floor_grid where
            d <- get
            return (Floor_grid {w_ = a, surface = b, local_up_ramp = c, local_down_ramp = d})
 
+data LightSource = LightSource {redIntensity :: Float, greenIntensity :: Float, blueIntensity :: Float,
+positionU :: Float, positionV :: Float, positionW :: Float} deriving (Eq, Show)
+
+unpackLightIntensities :: [LightSource] -> [Float]
+unpackLightIntensities [] = []
+unpackLightIntensities (x:xs) = [redIntensity x, greenIntensity x, blueIntensity x, 1] ++ unpackLightIntensities xs
+
+unpackLightPositions :: [LightSource] -> [Float]
+unpackLightPositions [] = []
+unpackLightPositions (x:xs) = [positionU x, positionV x, positionW x] ++ unpackLightPositions xs
+
 data Play_state0 = Play_state0 {pos_u :: Float, pos_v :: Float, pos_w :: Float, vel :: [Float], angle :: Int, angle_ :: Float, message_ :: [(Int, [Int])],
 rend_mode :: Int, view_mode :: Int, view_angle :: Int, gameClock :: (Int, Float, Int), torch_t0 :: Int, torch_t_limit :: Int, on_screen_metrics :: Int,
-prob_seq :: UArray Int Int, mobile_lights :: ([Float], [Float]), currentMap :: Int, previousMap :: Int} deriving Show
+prob_seq :: UArray Int Int, mobile_lights :: [LightSource], maxLights :: Int, currentMap :: Int, previousMap :: Int} deriving Show
 
 instance Binary Play_state0 where
   put Play_state0 {pos_u = a, pos_v = b, pos_w = c, vel = d, angle = e, angle_ = f, rend_mode = g, view_mode = h, view_angle = i, gameClock = j, torch_t0 = k,
@@ -153,7 +164,7 @@ instance Binary Play_state0 where
            l <- get
            m <- get
            return (Play_state0 {pos_u = a, pos_v = b, pos_w = c, vel = d, angle = e, angle_ = f, message_ = [], rend_mode = g, view_mode = h, view_angle = i,
-                   gameClock = j, torch_t0 = k, torch_t_limit = l, on_screen_metrics = 0, prob_seq = def_prob_seq, mobile_lights = ([], []), currentMap = m,
+                   gameClock = j, torch_t0 = k, torch_t_limit = l, on_screen_metrics = 0, prob_seq = def_prob_seq, mobile_lights = [], currentMap = m,
                    previousMap = m})
 
 data Signal = Signal {sigNum :: Int, originGameT :: Int, target :: (Int, Int, Int)} deriving (Eq, Show)
@@ -257,8 +268,8 @@ data EngineError = Invalid_wall_flag | Invalid_obj_flag | Invalid_GPLC_opcode | 
 instance Exception EngineError
 
 ps0_init = Play_state0 {pos_u = 0, pos_v = 0, pos_w = 0, vel = [0, 0, 0], angle = 0, angle_ = 0, message_ = [], rend_mode = 1, view_mode = 0, view_angle = 0,
-                        gameClock = (1, 1, 1), torch_t0 = 1, torch_t_limit = 0, on_screen_metrics = 0, prob_seq = def_prob_seq, mobile_lights = ([], []),
-                        currentMap = 0, previousMap = 0}
+                        gameClock = (1, 1, 1), torch_t0 = 1, torch_t_limit = 0, on_screen_metrics = 0, prob_seq = def_prob_seq, mobile_lights = [],
+                        maxLights = 0, currentMap = 0, previousMap = 0}
 
 ps1_init = Play_state1 {health = 100, ammo = 0, gems = 0, torches = 3, keys = [63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63],
                         playerClass = [19, 27, 44, 27, 34, 63, 19, 34, 35, 31, 38, 30, 45], difficulty = ("Plenty of danger please", 6, 10, 14),

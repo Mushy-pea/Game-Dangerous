@@ -12,7 +12,7 @@ import System.IO
 import System.IO.Unsafe
 import System.Exit
 import Graphics.GL.Core33
-import Graphics.UI.GLUT hiding (Flat, texture, GLfloat, None)
+import Graphics.UI.GLUT hiding (Flat, texture, GLfloat, None, maxLights)
 import Foreign
 import Data.Array.IArray
 import Data.Array.Unboxed
@@ -1113,11 +1113,23 @@ npcDamage (GPLC_flag mode) (w:u:v:blocks) w_grid w_grid_upd obj_grid obj_grid_up
     if c_health char_state - damage <= 0 then (((-w - 1, u, v), def_w_grid) : w_grid_upd, ((w, u, v), (-1, [])) : obj_grid_upd, s1_3)
     else (w_grid_upd, obj_grid_upd, s1_4)
 
+orderLights :: [LightSource] -> LightSource -> [LightSource] -> [LightSource]
+orderLights [] next_light acc = acc ++ [next_light]
+orderLights (x:xs) next_light acc
+  | brightness_b >= brightness_a = acc ++ [next_light] ++ (x:xs)
+  | otherwise = orderLights xs next_light (acc ++ [x])
+  where brightness_a = redIntensity x + greenIntensity x + blueIntensity x
+        brightness_b = redIntensity next_light + greenIntensity next_light + blueIntensity next_light
+
 placeLight :: GPLC_float -> GPLC_float -> GPLC_float -> GPLC_float -> GPLC_float -> GPLC_float -> Play_state0 -> [Int] -> Play_state0
 placeLight (GPLC_float colour_r) (GPLC_float colour_g) (GPLC_float colour_b) (GPLC_float u) (GPLC_float v) (GPLC_float w) s0 d_list =
-  let new_colours = [intToFloat (d_list !! colour_r), intToFloat (d_list !! colour_g), intToFloat (d_list !! colour_b), 1]
-      new_positions = [intToFloat (d_list !! u), intToFloat (d_list !! v), intToFloat (d_list !! w)]
-  in s0 {mobile_lights = (take 28 (new_colours ++ fst (mobile_lights s0)), take 21 (new_positions ++ snd (mobile_lights s0)))}
+  let new_light = LightSource {redIntensity = intToFloat (d_list !! colour_r),
+                                greenIntensity = intToFloat (d_list !! colour_g),
+                                blueIntensity = intToFloat (d_list !! colour_b),
+                                positionU = intToFloat (d_list !! u),
+                                positionV = intToFloat (d_list !! v),
+                                positionW = intToFloat (d_list !! w)}
+  in s0 {mobile_lights = orderLights (mobile_lights s0) new_light []}
 
 setEventContext :: GPLC_int -> [Int] -> EventContext
 setEventContext context d_list
@@ -1393,8 +1405,11 @@ filterDebug s1 program_name i
 -- Dynamic lights placed in the world by GPLC op - code place_light should only persist for 1 GPLC interpreter tick unless
 -- they are replaced at the next tick.  This function ensures that is the case.
 clearMobileLights :: Bool -> Play_state0 -> Play_state0
-clearMobileLights True s0 = s0 {mobile_lights = ([], [])}
+clearMobileLights True s0 = s0 {mobile_lights = []}
 clearMobileLights False s0 = s0
+
+limitMobileLights :: Play_state0 -> Play_state0
+limitMobileLights s0 = s0 {mobile_lights = take (maxLights s0) (mobile_lights s0)}
 
 -- These three functions (together with send_signal) implement the signalling system that drives GPLC program runs.  This involves signalling programs in
 -- response to player object collisions and handling the signal queue, which allows programs to signal each other.  The phase_flag argument of linkGplc0
@@ -1447,7 +1462,7 @@ linkGplc0 phase_flag init_flag queue_start (x0:x1:xs) (z0:z1:z2:zs) game_state w
                                     obj_grid'' obj_grid_upd (clearMobileLights queue_start (s0_ game_state)) s1' lookUp 0)
                            (\e -> gplcError w_grid_upd (f_grid_ game_state) obj_grid_upd (s0_ game_state) (s1_ game_state) e)
         linkGplc0 True False False (x0:x1:xs) (z0:z1:z2:zs)
-                  (game_state {event_context = event_context_ run_gplc', f_grid_ = f_grid__ run_gplc', s0_ = s0__ run_gplc', s1_ = s1__ run_gplc'})
+                  (game_state {event_context = event_context_ run_gplc', f_grid_ = f_grid__ run_gplc', s0_ = limitMobileLights (s0__ run_gplc'), s1_ = s1__ run_gplc'})
                   (w_grid_upd_ run_gplc') (obj_grid_upd_ run_gplc') lookUp
       else do
         putStr ("\nSignal addressed to Obj_grid " ++ show target1 ++ " but this element is not set to run programs from.")
@@ -1689,6 +1704,8 @@ updatePlay io_box state_ref game_state in_flight min_frame_t physics lookUp soun
                  lookUp t_seq
       player_voxel = [truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)]
   in do
+  putStr ("\nNumber of lights: " ++ show (length (mobile_lights s0)))
+  putStr ("\nLight sources: " ++ show (mobile_lights s0))
   mainLoopEvent
   control <- readIORef (fromJust (control_ io_box))
   writeIORef (fromJust (control_ io_box)) 0
