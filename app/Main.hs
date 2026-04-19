@@ -10,7 +10,7 @@ import Foreign
 import Foreign.C.String
 import Foreign.C.Types
 import Foreign.Marshal.Utils
-import Graphics.GL.Core33
+import Graphics.GL.Core42
 import Graphics.UI.GLUT hiding (Object, Matrix, GLuint, GLchar, GLenum, GLsizei, GLushort, GLsizeiptr, GLfloat, None, maxLights)
 import Data.Bits
 import Data.Word
@@ -83,7 +83,7 @@ openWindow conf_reg =
   putStr ("\n\nGame :: Dangerous engine starting.  Version and platform: " ++ cfg' "version_and_platform_string")
   putStr "\nInitialising GLUT and OpenGL runtime environment..."
   initialize "game_dangerous.exe" []
-  initialContextVersion $= (3, 3)
+  initialContextVersion $= (4, 2)
   screenRes <- newIORef (Size 0 0)
   if cfg' "resolution_x" == "auto" then do
     screen_res <- get screenSize

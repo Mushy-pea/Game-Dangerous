@@ -1704,8 +1704,6 @@ updatePlay io_box state_ref game_state in_flight min_frame_t physics lookUp soun
                  lookUp t_seq
       player_voxel = [truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)]
   in do
-  putStr ("\nNumber of lights: " ++ show (length (mobile_lights s0)))
-  putStr ("\nLight sources: " ++ show (mobile_lights s0))
   mainLoopEvent
   control <- readIORef (fromJust (control_ io_box))
   writeIORef (fromJust (control_ io_box)) 0

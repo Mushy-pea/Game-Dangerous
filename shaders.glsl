@@ -2,7 +2,7 @@
 // If you wish to redistribute it or use it as part of your own work, this is permitted as long as you acknowledge the work is by the abovementioned author.
 
 // Vertex shader (program 0, two light map plus up to four programmable point lighted object, no texture)
-#version 330
+#version 420
 
 layout(location = 0) in vec4 position;
 layout(location = 1) in vec4 colour;
@@ -52,7 +52,7 @@ gl_Position = world_to_clip * worldPos;
 }
 
 // Fragment shader (program 0, two light map plus up to four programmable point lighted object, no texture)
-#version 330
+#version 420
 
 in vec3 modelInWorldPosition;
 in vec4 diffColour;
@@ -81,7 +81,7 @@ for (int n = 0; n < numLights; n++)
   distanceSqr = dot(lightDifference, lightDifference);
   lightDir = lightDifference * inversesqrt(distanceSqr);
   attenuation[n] = 1 / distanceSqr;
-  cosAngleIncidence[n] = clamp(0.15, 1, dot(vertNormal, lightDir));
+  cosAngleIncidence[n] = dot(vertNormal, lightDir);
 }
 
 vec4 totalLight = (attenuation[0] * lmap_t0[t] * cosAngleIncidence[0] * lightIntensities[0] * diffColour) + (attenuation[1] * lmap_t1[t] * cosAngleIncidence[1] * lightIntensities[1] * diffColour);
@@ -95,7 +95,7 @@ outputColour = pow(totalLight, gamma);
 }
 
 // Vertex shader (program 1, two light map plus up to four programmable point lighted object, with texture)
-#version 330
+#version 420
 
 layout(location = 0) in vec4 position;
 layout(location = 1) in vec2 texCoord;
@@ -144,7 +144,7 @@ gl_Position = world_to_clip * worldPos;
 }
 
 // Fragment shader (program 1, two light map plus up to four programmable point lighted object, with texture)
-#version 330
+#version 420
 
 in vec3 modelInWorldPosition;
 in vec2 tex_coord;
@@ -174,7 +174,7 @@ for (int n = 0; n < numLights; n++)
   distanceSqr = dot(lightDifference, lightDifference);
   lightDir = lightDifference * inversesqrt(distanceSqr);
   attenuation[n] = 1 / distanceSqr;
-  cosAngleIncidence[n] = clamp(0.15, 1, dot(vertNormal, lightDir));
+  cosAngleIncidence[n] = dot(vertNormal, lightDir);
 }
 
 vec4 diffColour = texture(tex_unit0, tex_coord);
@@ -189,7 +189,7 @@ outputColour = pow(totalLight, gamma);
 }
 
 // Vertex shader (program 2, player torch plus up to four programmable point lighted object, no texture)
-#version 330
+#version 420
 
 layout(location = 0) in vec4 position;
 layout(location = 1) in vec4 colour;
@@ -212,7 +212,7 @@ gl_Position = world_to_clip * worldPos;
 }
 
 // Fragment shader (program 2, player torch plus up to four programmable point lighted object, no texture)
-#version 330
+#version 420
 
 in vec3 modelInWorldPosition;
 in vec4 diffColour;
@@ -230,8 +230,8 @@ float adjust;
 float distanceSqr;
 vec3 lightDifference;
 vec3 lightDir;
-float cosAngleIncidence[5];
-float attenuation[5];
+float cosAngleIncidence[8];
+float attenuation[8];
 if (timer > 0)
   adjust = 1;
 else
@@ -245,7 +245,7 @@ for (int n = 0; n < numLights; n++)
   distanceSqr = dot(lightDifference, lightDifference);
   lightDir = lightDifference * inversesqrt(distanceSqr);
   attenuation[n] = 1 / distanceSqr;
-  cosAngleIncidence[n] = clamp(0.15, 1, dot(vertNormal, lightDir));
+  cosAngleIncidence[n] = dot(vertNormal, lightDir);
 }
 
 vec4 totalLight = attenuation[0] * adjust * cosAngleIncidence[0] * mobileLightIntensities[0] * diffColour;
@@ -583,7 +583,7 @@ outputColour = pow(totalLight, gamma);
 }
 
 // Vertex shader (program 4, message tile)
-#version 330
+#version 420
 
 layout(location = 0) in vec4 position;
 layout(location = 1) in vec2 texCoord;
@@ -598,7 +598,7 @@ gl_Position = tt_matrix * position;
 }
 
 // Fragment shader (program 4, message tile)
-#version 330
+#version 420
 
 in vec2 tex_coord;
 out vec4 outputColour;
@@ -616,7 +616,7 @@ else
 }
 
 // Vertex shader (program 5, two point light map lighted character model)
-#version 330
+#version 420
 layout(location = 0) in vec4 position;
 layout(location = 1) in vec2 texCoord;
 layout(location = 2) in vec3 normal;
@@ -655,7 +655,7 @@ gl_Position = world_to_clip * worldPos;
 }
 
 // Fragment shader (program 5, two point light map lighted character model)
-#version 330
+#version 420
 in vec3 modelPosition;
 in vec2 tex_coord;
 in vec3 vertNormal;
@@ -696,7 +696,7 @@ outputColour = pow(totalLight, gamma);
 }
 
 // Vertex shader (program 6, character model in dark area)
-#version 330
+#version 420
 layout(location = 0) in vec4 position;
 layout(location = 1) in vec2 texCoord;
 
@@ -712,7 +712,7 @@ gl_Position = world_to_clip * worldPos;
 }
 
 // Fragment shader (program 6, character model in dark area)
-#version 330
+#version 420
 in vec2 tex_coord;
 
 out vec4 outputColour;
