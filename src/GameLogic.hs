@@ -252,8 +252,6 @@ chgPs0 state_val abs v d_list s0
   | d_list !! state_val == 2 = s0 {pos_u = intToFloat (d_list !! v)}
   | d_list !! state_val == 3 = s0 {pos_v = intToFloat (d_list !! v)}
   | d_list !! state_val == 4 = s0 {rend_mode = d_list !! v}
-  | d_list !! state_val == 5 = s0 {torch_t0 = d_list !! v}
-  | d_list !! state_val == 6 = s0 {torch_t_limit = d_list !! v}
   | d_list !! state_val == 7 = s0 {currentMap = d_list !! v}
   | d_list !! state_val == 8 = s0 {angle_ = fromIntegral (d_list !! v), angle = d_list !! v}
   | d_list !! state_val == 9 = s0 {view_mode = d_list !! v}
@@ -286,7 +284,7 @@ copyPs0 :: GPLC_int -> (GPLC_int, GPLC_int, GPLC_int) -> Play_state0 -> Array (I
            -> [((Int, Int, Int), (Int, [(Int, Int)]))]
 copyPs0 (GPLC_int offset) (i0, i1, i2) s0 obj_grid obj_grid_upd d_list
   | not (isNothing boundsCheck_) = error (fromJust boundsCheck_)
-  | otherwise = ((d_list !! i0, d_list !! i1, d_list !! i2), (objType target, [v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10])) : obj_grid_upd
+  | otherwise = ((d_list !! i0, d_list !! i1, d_list !! i2), (objType target, [v0, v1, v2, v3, v4, v5, v6, v7, v8])) : obj_grid_upd
   where index = (d_list !! i0, d_list !! i1, d_list !! i2)
         target = obj_grid ! index
         boundsCheck_ = boundsCheck obj_grid (coerce index :: (GPLC_int, GPLC_int, GPLC_int)) "copy_ps0"
@@ -299,8 +297,6 @@ copyPs0 (GPLC_int offset) (i0, i1, i2) s0 obj_grid obj_grid_upd d_list
         v6 = (offset + 6, angle s0)
         v7 = (offset + 7, rend_mode s0)
         v8 = (offset + 8, fst__ (gameClock s0))
-        v9 = (offset + 9, torch_t0 s0)
-        v10 = (offset + 10, torch_t_limit s0)
 
 copyPs1 :: GPLC_int -> (GPLC_int, GPLC_int, GPLC_int) -> Play_state1 -> Array (Int, Int, Int) Obj_grid -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> [Int]
            -> [((Int, Int, Int), (Int, [(Int, Int)]))]

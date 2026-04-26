@@ -222,22 +222,17 @@ out vec4 outputColour;
 
 uniform vec4 mobileLightIntensities[8];
 uniform vec3 mobileLightPositions[8];
-uniform int timer;
 uniform int numLights;
 
 void main() {
-float adjust;
 float distanceSqr;
 vec3 lightDifference;
 vec3 lightDir;
 float cosAngleIncidence[8];
 float attenuation[8];
-if (timer > 0)
-  adjust = 1;
-else
-  adjust = 0;
 float g = 0.4545455;
 vec4 gamma = vec4(g, g, g, 1);
+vec4 totalLight = vec4(0.0, 0.0, 0.0, 0.0);
 
 for (int n = 0; n < numLights; n++)
 {
@@ -246,13 +241,7 @@ for (int n = 0; n < numLights; n++)
   lightDir = lightDifference * inversesqrt(distanceSqr);
   attenuation[n] = 1 / distanceSqr;
   cosAngleIncidence[n] = dot(vertNormal, lightDir);
-}
-
-vec4 totalLight = attenuation[0] * adjust * cosAngleIncidence[0] * mobileLightIntensities[0] * diffColour;
-
-for (int n = 1; n < numLights; n++)
-{
-  totalLight = totalLight + (attenuation[n] * cosAngleIncidence[n] * mobileLightIntensities[n] * diffColour);
+  totalLight = totalLight + attenuation[n] * cosAngleIncidence[n] * mobileLightIntensities[n] * diffColour;
 }
 
 outputColour = pow(totalLight, gamma);
@@ -548,34 +537,26 @@ out vec4 outputColour;
 uniform sampler2D tex_unit0;
 uniform vec4 mobileLightIntensities[8];
 uniform vec3 mobileLightPositions[8];
-uniform int timer;
 uniform int numLights;
 
 void main() {
-float adjust; float distanceSqr;
-vec3 lightDifference; vec3 lightDir;
-float cosAngleIncidence[8]; float attenuation[8];
-if (timer > 0)
-  adjust = 1;
-else
-  adjust = 0;
+float distanceSqr;
+vec3 lightDifference;
+vec3 lightDir;
+float cosAngleIncidence[8];
+float attenuation[8];
 float g = 0.4545455;
 vec4 gamma = vec4(g, g, g, 1);
+vec4 diffColour = texture(tex_unit0, tex_coord);
+vec4 totalLight = vec4(0.0, 0.0, 0.0, 0.0);
 
 for (int n = 0; n < numLights; n++)
 {
-    lightDifference = modelInWorldPosition - mobileLightPositions[n];
-    distanceSqr = dot(lightDifference, lightDifference);
-    lightDir = lightDifference * inversesqrt(distanceSqr);
-    attenuation[n] = 1 / distanceSqr;
-    cosAngleIncidence[n] = dot(vertNormal, lightDir);
-}
-
-vec4 diffColour = texture(tex_unit0, tex_coord);
-vec4 totalLight = adjust * attenuation[0] * shadowScaling[0] * cosAngleIncidence[0] * mobileLightIntensities[0] * diffColour;
-
-for (int n = 1; n < numLights; n++)
-{
+  lightDifference = modelInWorldPosition - mobileLightPositions[n];
+  distanceSqr = dot(lightDifference, lightDifference);
+  lightDir = lightDifference * inversesqrt(distanceSqr);
+  attenuation[n] = 1 / distanceSqr;
+  cosAngleIncidence[n] = dot(vertNormal, lightDir);
   totalLight = totalLight + max(attenuation[n] * shadowScaling[n] * cosAngleIncidence[n], 0.00005) * mobileLightIntensities[n] * diffColour;
 }
 

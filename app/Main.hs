@@ -335,7 +335,7 @@ startGame context physics control_ref uniform p_bind map_text conf_reg sound_arr
     p_mt_matrix <- mallocBytes (glfloat * 128)
     p_f_table0 <- callocBytes (int_ * 120000)
     p_f_table1 <- callocBytes (int_ * 37500)
-    p_light_buffer <- mallocBytes (glfloat * read (cfg' "max_lights") * 7)
+    p_light_buffer <- mallocBytes (glfloat * 7 * (read (cfg' "max_lights") + 2))
     state_ref <- newEmptyMVar
     t_log <- newEmptyMVar
     result_ <- newEmptyMVar
@@ -702,23 +702,20 @@ showFrame p_bind uniform (p_mt_matrix, p_light_buffer) filter_table u v w a a' s
     glUniform1i (coerce (uniform ! 20)) (fromIntegral (mod (fst__ (gameClock (s0_ game_state))) 240))
     glUniformMatrix4fv (coerce (uniform ! 12)) 1 1 (castPtr p_mt_matrix)
   else do
-    loadArray ([3, 3, 3, 1] ++ lightIntensities (mobile_lights (s0_ game_state)) ++
-               [coerce u, coerce v, coerce w] ++ lightPositions (mobile_lights (s0_ game_state)))
+    loadArray (lightIntensities (mobile_lights (s0_ game_state)) ++ lightPositions (mobile_lights (s0_ game_state)))
               p_light_buffer 0
     glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 5)))
-    glUniform1i (coerce (uniform ! 62)) ((detBufferLen (s0_ game_state)) + 1)
-    glUniform4fv (coerce (uniform ! 60)) ((detBufferLen (s0_ game_state)) + 1) p_light_buffer
-    glUniform3fv (coerce (uniform ! 61)) ((detBufferLen (s0_ game_state)) + 1)
-                 (plusPtr p_light_buffer (glfloat * length (lightIntensities (mobile_lights (s0_ game_state))) + 16))
+    glUniform1i (coerce (uniform ! 62)) (detBufferLen (s0_ game_state))
+    glUniform4fv (coerce (uniform ! 60)) (detBufferLen (s0_ game_state)) p_light_buffer
+    glUniform3fv (coerce (uniform ! 61)) (detBufferLen (s0_ game_state))
+                 (plusPtr p_light_buffer (glfloat * length (lightIntensities (mobile_lights (s0_ game_state)))))
     glUniformMatrix4fv (coerce (uniform ! 24)) 1 1 (castPtr p_mt_matrix)
-    glUniform1i (coerce (uniform ! 27)) (fromIntegral (torch_t_limit (s0_ game_state) - (fst__ (gameClock (s0_ game_state)) - torch_t0 (s0_ game_state))))
     glUseProgram (unsafeCoerce ((fst p_bind) ! ((snd p_bind) - 4)))
-    glUniform1i (coerce (uniform ! 65)) ((detBufferLen (s0_ game_state)) + 1)
-    glUniform4fv (coerce (uniform ! 63)) ((detBufferLen (s0_ game_state)) + 1) p_light_buffer
-    glUniform3fv (coerce (uniform ! 64)) ((detBufferLen (s0_ game_state)) + 1)
-                 (plusPtr p_light_buffer (glfloat * length (lightIntensities (mobile_lights (s0_ game_state))) + 16))
+    glUniform1i (coerce (uniform ! 65)) (detBufferLen (s0_ game_state))
+    glUniform4fv (coerce (uniform ! 63)) (detBufferLen (s0_ game_state)) p_light_buffer
+    glUniform3fv (coerce (uniform ! 64)) (detBufferLen (s0_ game_state))
+                 (plusPtr p_light_buffer (glfloat * length (lightIntensities (mobile_lights (s0_ game_state)))))
     glUniformMatrix4fv (coerce (uniform ! 30)) 1 1 (castPtr p_mt_matrix)
-    glUniform1i (coerce (uniform ! 33)) (fromIntegral (torch_t_limit (s0_ game_state) - (fst__ (gameClock (s0_ game_state)) - torch_t0 (s0_ game_state))))
   glBindVertexArray (unsafeCoerce ((fst p_bind) ! 0))
   if view_mode (s0_ game_state) == 0 then do
     filtered_surv0 <- filterSurv 0 (fst survey0) [] (fst filter_table) (third_ (gameClock (s0_ game_state)))
