@@ -133,13 +133,13 @@ instance Binary Floor_grid where
 data LightSource = LightSource {redIntensity :: Float, greenIntensity :: Float, blueIntensity :: Float,
 positionU :: Float, positionV :: Float, positionW :: Float} deriving (Eq, Show)
 
-unpackLightIntensities :: [LightSource] -> [Float]
-unpackLightIntensities [] = []
-unpackLightIntensities (x:xs) = [redIntensity x, greenIntensity x, blueIntensity x, 1] ++ unpackLightIntensities xs
+lightIntensities :: [LightSource] -> [Float]
+lightIntensities [] = []
+lightIntensities (x:xs) = [redIntensity x, greenIntensity x, blueIntensity x, 1] ++ lightIntensities xs
 
-unpackLightPositions :: [LightSource] -> [Float]
-unpackLightPositions [] = []
-unpackLightPositions (x:xs) = [positionU x, positionV x, positionW x] ++ unpackLightPositions xs
+lightPositions :: [LightSource] -> [Float]
+lightPositions [] = []
+lightPositions (x:xs) = [positionU x, positionV x, positionW x] ++ lightPositions xs
 
 data Play_state0 = Play_state0 {pos_u :: Float, pos_v :: Float, pos_w :: Float, vel :: [Float], angle :: Int, angle_ :: Float, message_ :: [(Int, [Int])],
 rend_mode :: Int, view_mode :: Int, view_angle :: Int, gameClock :: (Int, Float, Int), torch_t0 :: Int, torch_t_limit :: Int, on_screen_metrics :: Int,

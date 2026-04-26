@@ -1113,6 +1113,9 @@ npcDamage (GPLC_flag mode) (w:u:v:blocks) w_grid w_grid_upd obj_grid obj_grid_up
     if c_health char_state - damage <= 0 then (((-w - 1, u, v), def_w_grid) : w_grid_upd, ((w, u, v), (-1, [])) : obj_grid_upd, s1_3)
     else (w_grid_upd, obj_grid_upd, s1_4)
 
+-- This function is used to order the light sources within mobile_lights by brightness, which is part of the answer 
+-- to the question of which light sources are rendered in each frame.  Light source brightness can be organised hierarchically 
+-- as part of environmental design to complete the answer.
 orderLights :: [LightSource] -> LightSource -> [LightSource] -> [LightSource]
 orderLights [] next_light acc = acc ++ [next_light]
 orderLights (x:xs) next_light acc
@@ -1408,6 +1411,8 @@ clearMobileLights :: Bool -> Play_state0 -> Play_state0
 clearMobileLights True s0 = s0 {mobile_lights = []}
 clearMobileLights False s0 = s0
 
+-- This function works in conjunction with orderLights to implement light source prioritisation, while also ensuring the 
+-- buffer initialised in Main.startGame and pointed to by p_light_buffer is not overrun.
 limitMobileLights :: Play_state0 -> Play_state0
 limitMobileLights s0 = s0 {mobile_lights = take (maxLights s0) (mobile_lights s0)}
 
