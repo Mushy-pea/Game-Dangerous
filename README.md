@@ -32,4 +32,4 @@ Shadow demo B2 (comparative)
 
 Engine version: 1.4.1
 
-Server version: 2.2.3
+Server version: 2.3.0

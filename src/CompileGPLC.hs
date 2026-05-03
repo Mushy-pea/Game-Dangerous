@@ -226,13 +226,17 @@ sizeSignalCodeBlock signal_block i i_max total_size =
 addWriteRefKey :: Int -> Symbol_binding -> Symbol_binding
 addWriteRefKey offset binding = binding {writeRefKey = readRefKey binding + offset}
 
+head_ :: [Char] -> Int -> Int -> Char
+head_ [] i j = error ("\nreadMsg -> i: " ++ show i ++ " j: " ++ show j)
+head_ (x:xs) i j = x
+
 -- This function processes the ...message... argument of the pass_msg keyword.
 readMsg :: Array (Int, Int) Token -> Int -> Int -> Int -> Int -> Int -> SEQ.Seq Int -> Maybe (SEQ.Seq Int)
 readMsg token_arr i j j_max c msg_length result
   | c == msg_length = Just result
   | j > j_max = readMsg token_arr (i + 1) 0 j_max c msg_length result
-  | head msg_unit == '-' && not (all isDigit (tail msg_unit)) = Nothing
-  | head msg_unit /= '-' && not (all isDigit msg_unit) = Nothing
+  | head_ msg_unit i j == '-' && not (all isDigit (tail msg_unit)) = Nothing
+  | head_ msg_unit i j /= '-' && not (all isDigit msg_unit) = Nothing
   | otherwise = readMsg token_arr i (j + 1) j_max (c + 1) msg_length (result SEQ.|> read msg_unit)
   where msg_unit = content (token_arr ! (i, j))
 
@@ -269,7 +273,7 @@ genCodeBlock token_arr bound_symbols i i_max code_block error_list
   | i > i_max = (code_block SEQ.|> 536870911, error_list)
   | content keyword == "--signal" = genCodeBlock token_arr bound_symbols (i + 1) i_max code_block error_list
   | content keyword == "pass_msg" && isNothing read_msg =
-    genCodeBlock token_arr bound_symbols (i + rows_to_jump) i_max code_block (error_list ++ ["Message read error"])
+    genCodeBlock token_arr bound_symbols (i + rows_to_jump) i_max code_block (error_list ++ ["Message read error at i: " ++ show i, "content: " ++ content keyword])
   | content keyword == "pass_msg" =
     genCodeBlock token_arr bound_symbols (i + rows_to_jump) i_max
                  ((code_block SEQ.|> 13) SEQ.>< fst interpreted_args_ SEQ.>< (fromJust read_msg SEQ.|> line_term))

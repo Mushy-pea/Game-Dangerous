@@ -2,7 +2,7 @@
 -- If you wish to redistribute it or use it as part of your own work, this is permitted as long as you acknowledge the work is by the abovementioned author.
 
 {-# LANGUAGE CPP #-}
-#define EXTRA_GPLC_DEBUG 0
+#define EXTRA_GPLC_DEBUG 1
 
 module GameLogic where
 
