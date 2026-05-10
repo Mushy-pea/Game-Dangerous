@@ -18,6 +18,7 @@ countTokens tokenArr i j iMax cDataBlock c
     if token == defToken || content token == "pass_msg" then countTokens tokenArr i (j + 1) iMax cDataBlock c
     else if content token == "--signal" then countTokens tokenArr i (j + 1) iMax cDataBlock (c - 1)
     else if content token == "~" then countTokens tokenArr i (j + 1) iMax c c
+    else if content token == "do_nothing" then countTokens tokenArr i (j + 1) iMax cDataBlock (c - 1)
     else countTokens tokenArr i (j + 1) iMax cDataBlock (c + 1)
   where bd = bounds tokenArr
         jMax = snd (snd bd)
@@ -34,6 +35,8 @@ labelTokens tokenArr i j iMax c sigBlockSizePlus labeledTokens
     else if content token == "--signal" then
       labelTokens tokenArr i (j + 1) iMax (c - 1) sigBlockSizePlus (labeledTokens SEQ.|> nextElement)
     else if content token == "~" then labelTokens tokenArr i (j + 1) iMax sigBlockSizePlus sigBlockSizePlus labeledTokens
+    else if content token == "do_nothing" then
+      labelTokens tokenArr i (j + 1) iMax (c - 1) sigBlockSizePlus (labeledTokens SEQ.|> nextElement)
     else labelTokens tokenArr i (j + 1) iMax (c + 1) sigBlockSizePlus (labeledTokens SEQ.|> nextElement)
   where bd = bounds tokenArr
         jMax = snd (snd bd)
