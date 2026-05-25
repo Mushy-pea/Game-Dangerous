@@ -135,7 +135,7 @@ loadGameStateFile3 bs w_grid f_grid obj_grid map_file (u_offset, v_offset) =
 -- If an error occurs while attempting to open a save game file the user is informed through the menu system.
 loaderError :: SomeException -> Io_box -> IO LBS.ByteString
 loaderError x box = do
-  runMenu 0 error_opening_file_text [] box (-0.75) (-0.75) 1 0 0 ps0_init 1
+  runMenu 0 error_opening_file_text [] box (-0.75) (-0.75) (-0.75) 1 0 0 ps0_init 1
   putStr ("\nload_saved_game: " ++ show x)
   return LBS.empty
 

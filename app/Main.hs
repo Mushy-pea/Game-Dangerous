@@ -351,7 +351,7 @@ startGame context physics control_ref uniform p_bind map_text conf_reg sound_arr
     else do
       contents <- bracket (openFile "save_log.log" ReadMode) (hClose) (\h -> do c <- hGetContents h; putStr ("\nsave_log size: " ++ show (length c)); return c)
       state_choice <- runMenu (read (cfg' "current_save")) (genLoadMenu (tail (splitOn "\n" (tailFile contents))) [] 1) []
-                              (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = Just control_ref}) (-0.75) (-0.75) 1 0 0 ps0_init 1
+                              (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = Just control_ref}) (-0.75) (-0.75) (-0.75) 1 0 0 ps0_init 1
       loaded_state <- loadSavedGame 0 (tail (splitOn "\n" (tailFile contents))) [] 1 state_choice
                                       (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = Just control_ref})
                                       w_grid f_grid obj_grid conf_reg load_transform (cfg' "map_file")
@@ -392,7 +392,7 @@ startGame context physics control_ref uniform p_bind map_text conf_reg sound_arr
     else startGame (event_context result) physics control_ref uniform p_bind map_text conf_reg sound_array camera_to_clip r_gen
   | context == ReturnMainMenu = do
     putStr ("\nEngine event: " ++ show context)
-    choice <- runMenu (-1) mainMenuText [] (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = Just control_ref}) (-0.75) (-0.75) 1 0 0 ps0_init 1
+    choice <- runMenu (-1) mainMenuText [] (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = Just control_ref}) (-0.75) (-0.75) (-0.75) 1 0 0 ps0_init 1
     if choice == 1 then startGame NewGame physics control_ref uniform p_bind map_text conf_reg sound_array camera_to_clip r_gen
     else if choice == 2 then
       startGame LoadGame physics control_ref uniform p_bind map_text (updateCfg conf_reg "current_save" "-1" 0) sound_array camera_to_clip r_gen

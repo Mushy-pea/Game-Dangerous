@@ -394,6 +394,9 @@ transform (v0:v1:v2:v3:vs) mat = toList (multStd mat (fromList 4 1 [v0, v1, v2, 
 translation :: Floating a => a -> a -> a -> Matrix a
 translation u v w = fromList 4 4 [1, 0, 0, u, 0, 1, 0, v, 0, 0, 1, w, 0, 0, 0, 1]
 
+screenSpaceTranslation :: Floating a => a -> a -> Matrix a
+screenSpaceTranslation x y = fromList 4 4 [1, 0, 0, x, 0, 1, 0, y, 0, 0, 1, 0, 0, 0, 0, 1]
+
 rotationU :: Int -> UArray (Int, Int) Float -> Matrix Float
 rotationU a lookUp = fromList 4 4 [1, 0, 0, 0, 0, lookUp ! (2, a), - lookUp ! (1, a), 0, 0, lookUp ! (1, a), lookUp ! (2, a), 0, 0, 0, 0, 1]
 

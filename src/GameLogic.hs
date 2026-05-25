@@ -1871,20 +1871,20 @@ procMsg0 (x0:x1:xs) s0 s1 io_box sound_array =
              (s0 {pos_u = intToFloat (xs !! (0 :: Int)), pos_v = intToFloat (xs !! (1 :: Int)), pos_w = intToFloat (xs !! (2 :: Int))})
              s1 io_box sound_array
   else do
-    choice <- runMenu (-1) (procMsg1 (tail (splitOn [-1] (take x1 xs)))) [] io_box (-0.96) (-0.2) 1 0 0 s0 (x0 - 3)
+    choice <- runMenu (-1) (procMsg1 (tail (splitOn [-1] (take x1 xs)))) [] io_box (-0.96) 0.8 0.8 1 0 0 s0 (x0 - 3)
     procMsg0 (drop x1 xs) s0
              (s1 {sig_q = Signal {sigNum = choice + 1, originGameT = fst__ (gameClock s0),
                                   target = (signal_ !! (0 :: Int), signal_ !! (1 :: Int), signal_ !! (2 :: Int))} : sig_q s1})
              io_box sound_array
 
 -- Used by the game logic thread for in game menus and by the main thread for the main menu.
-runMenu :: Int -> [(Int, [Int])] -> [(Int, [Int])] -> Io_box -> Float -> Float -> Int -> Int -> Int -> Play_state0 -> Int -> IO Int
-runMenu shortcut [] acc io_box x y c c_max 0 s0 background = runMenu shortcut acc [] io_box x y c c_max 2 s0 background
-runMenu shortcut (n:ns) acc io_box x y c c_max 0 s0 background = do
+runMenu :: Int -> [(Int, [Int])] -> [(Int, [Int])] -> Io_box -> Float -> Float -> Float -> Int -> Int -> Int -> Play_state0 -> Int -> IO Int
+runMenu shortcut [] acc io_box x y init_y c c_max 0 s0 background = runMenu shortcut acc [] io_box x y init_y c c_max 2 s0 background
+runMenu shortcut (n:ns) acc io_box x y init_y c c_max 0 s0 background = do
   if shortcut /= -1 then return shortcut
-  else if fst n == 0 then runMenu shortcut ns (acc ++ [n]) io_box x y c c_max 0 s0 background
-  else runMenu shortcut ns (acc ++ [n]) io_box x y c (c_max + 1) 0 s0 background
-runMenu shortcut [] acc io_box x y c c_max d s0 background = do
+  else if fst n == 0 then runMenu shortcut ns (acc ++ [n]) io_box x y init_y c c_max 0 s0 background
+  else runMenu shortcut ns (acc ++ [n]) io_box x y init_y c (c_max + 1) 0 s0 background
+runMenu shortcut [] acc io_box x y init_y c c_max d s0 background = do
   swapBuffers
   threadDelay 16667
   mainLoopEvent
@@ -1892,15 +1892,15 @@ runMenu shortcut [] acc io_box x y c c_max d s0 background = do
   writeIORef (fromJust (control_ io_box)) 0
   if control == 14 && c > 1 then do
     glClear (GL_COLOR_BUFFER_BIT .|. GL_DEPTH_BUFFER_BIT)
-    runMenu shortcut acc [] io_box x 0.1 (c - 1) c_max 2 s0 background
+    runMenu shortcut acc [] io_box x init_y init_y (c - 1) c_max 2 s0 background
   else if control == 15 && c < c_max then do
     glClear (GL_COLOR_BUFFER_BIT .|. GL_DEPTH_BUFFER_BIT)
-    runMenu shortcut acc [] io_box x 0.1 (c + 1) c_max 2 s0 background
+    runMenu shortcut acc [] io_box x init_y init_y (c + 1) c_max 2 s0 background
   else if control == 2 then return c
   else do
     glClear (GL_COLOR_BUFFER_BIT .|. GL_DEPTH_BUFFER_BIT)
-    runMenu shortcut acc [] io_box x 0.1 c c_max 2 s0 background
-runMenu shortcut (n:ns) acc io_box x y c c_max d s0 background = do
+    runMenu shortcut acc [] io_box x init_y init_y c c_max 2 s0 background
+runMenu shortcut (n:ns) acc io_box x y init_y c c_max d s0 background = do
   if d == 2 then do
     glBindVertexArray (unsafeCoerce ((fst (p_bind_ io_box)) ! 1027))
     glBindTexture GL_TEXTURE_2D (unsafeCoerce ((fst (p_bind_ io_box)) ! (1027 + background)))
@@ -1917,7 +1917,7 @@ runMenu shortcut (n:ns) acc io_box x y c c_max d s0 background = do
   if fst n == c then showText (snd n) 1 933 (uniform_ io_box) (p_bind_ io_box) x y zero_ptr
   else showText (snd n) 0 933 (uniform_ io_box) (p_bind_ io_box) x y zero_ptr
   free p_tt_matrix
-  runMenu shortcut ns (acc ++ [n]) io_box x (y - 0.04) c c_max 1 s0 background
+  runMenu shortcut ns (acc ++ [n]) io_box x (y - 0.04) init_y c c_max 1 s0 background
 
 -- This function handles the drawing of message tiles (letters and numbers etc) that are used for in game messages and in menus.
 showText :: [Int] -> Int -> Int -> UArray Int Int32 -> (UArray Int Word32, Int) -> Float -> Float -> Ptr GLfloat -> IO ()
@@ -1932,7 +1932,7 @@ showText (m:ms) mode base uniform p_bind x y p_tt_matrix = do
     glDisable GL_DEPTH_TEST
     showText (m:ms) mode base uniform p_bind x y p_tt_matrix_
   else do
-    loadArray (MAT.toList (translation x y 0)) (castPtr p_tt_matrix) 0
+    loadArray (MAT.toList (screenSpaceTranslation x y)) (castPtr p_tt_matrix) 0
     if mode == 0 && m < 83 then do
       glUniformMatrix4fv (unsafeCoerce (uniform ! 36)) 1 1 p_tt_matrix
       glUniform1i (unsafeCoerce (uniform ! 38)) 0
