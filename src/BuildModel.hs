@@ -164,7 +164,7 @@ instance Binary Play_state0 where
                    gameClock = j, on_screen_metrics = 0, prob_seq = def_prob_seq, mobile_lights = [], currentMap = m,
                    previousMap = m})
 
-data Signal = Signal {sigNum :: Int, originGameT :: Int, target :: (Int, Int, Int)} deriving (Eq, Show)
+data Signal = Signal {sigNum :: Int, originGameT :: Int, originVoxel :: (Int, Int, Int), target :: (Int, Int, Int)} deriving (Eq, Show)
 
 instance Binary Signal where
   put Signal {sigNum = a, originGameT = b, target = (c, d, e)} =
