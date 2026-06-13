@@ -5,15 +5,16 @@ module OpenMap where
 import Data.Array.IArray
 import Data.List.Split
 import BuildModel
+import qualified Config as CFG
 
-loadFunction :: [Char] -> Array Int [Char] -> (Int -> [[Char]] -> [((Int, Int, Int), Obj_grid)])
-loadFunction version conf_reg
+loadFunction :: [Char] -> (Int -> [[Char]] -> [((Int, Int, Int), Obj_grid)])
+loadFunction version
   | version == "09" = loadObjGrid09
   | version == "10" = loadObjGrid10
-  | otherwise = error ("\nopenMap: Unsupported map file format set in config.txt: " ++ cfg' "map_file_version")
-  where cfg' = cfg conf_reg 0
+  | otherwise = error ("\nopenMap: Unsupported map file format set in config.txt: " ++ version)
 
-openMap :: Int -> [Char] -> Int -> Int -> Int -> Array Int [Char] -> (Array (Int, Int, Int) Wall_grid, Array (Int, Int, Int) Floor_grid, Array (Int, Int, Int) Obj_grid)
+openMap :: Int -> [Char] -> Int -> Int -> Int -> CFG.EngineConfig
+           -> (Array (Int, Int, Int) Wall_grid, Array (Int, Int, Int) Floor_grid, Array (Int, Int, Int) Obj_grid)
 openMap mode map_text u_limit v_limit w_limit conf_reg =
   let fd = \limit -> (div (limit + 1) 2) - 1
       buildTable1_ = buildTable1 (splitOn ", " ((splitOn "~" map_text) !! 7)) (emptyWGrid u_limit v_limit w_limit) 7500
@@ -23,8 +24,7 @@ openMap mode map_text u_limit v_limit w_limit conf_reg =
                w_grid_flag
       f_grid = checkMapLayer 0 0 0 (fd u_limit) (fd v_limit)
                              (makeArray1 (loadFloor0 (splitOn "&" ((splitOn "~" map_text) !! 5))) (fd u_limit) (fd v_limit) w_limit) f_grid_flag
-      obj_grid = checkMapLayer 0 0 0 u_limit v_limit (emptyObjGrid u_limit v_limit w_limit // ((loadFunction (cfg' "map_file_version") conf_reg) mode (splitOn ", " ((splitOn "~" map_text) !! 6))))
+      obj_grid = checkMapLayer 0 0 0 u_limit v_limit (emptyObjGrid u_limit v_limit w_limit // ((loadFunction (CFG.mapFileVersion (CFG.map conf_reg))) mode (splitOn ", " ((splitOn "~" map_text) !! 6))))
                                obj_grid_flag
-      cfg' = cfg conf_reg 0
   in (w_grid, f_grid, obj_grid)
 

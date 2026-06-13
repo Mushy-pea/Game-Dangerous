@@ -13,6 +13,7 @@ import Data.List.Split
 import BuildModel
 import GameLogic
 import PauseMenu
+import qualified Config as CFG
 
 -- Constants used to fix the types decoded from save game files.
 def_obj_place_ = ((0, 0, 0), Nothing) :: ((Int, Int, Int), Maybe Obj_place)
@@ -22,14 +23,13 @@ def_obj_grid_ = ((0, 0, 0), def_obj_grid) :: ((Int, Int, Int), Obj_grid)
 saveGame :: SEQ.Seq ((Int, Int, Int), Wall_grid) -> SEQ.Seq ((Int, Int, Int), Wall_grid)
             -> SEQ.Seq ((Int, Int, Int), Floor_grid) -> SEQ.Seq ((Int, Int, Int), Floor_grid)
             -> SEQ.Seq ((Int, Int, Int), Obj_grid) -> SEQ.Seq ((Int, Int, Int), Obj_grid)
-            -> Play_state0 -> Play_state1 -> Array Int [Char] -> IO Int
+            -> Play_state0 -> Play_state1 -> CFG.EngineConfig -> IO Int
 saveGame w_grid_diffs0 w_grid_diffs1 f_grid_diffs0 f_grid_diffs1 obj_grid_diffs0 obj_grid_diffs1 s0 s1 conf_reg =
-  let cfg' = cfg conf_reg 0
-      w_grid_bstring = wrappedSaveArrayDiff1 (w_grid_diffs0 SEQ.>< w_grid_diffs1)
+  let w_grid_bstring = wrappedSaveArrayDiff1 (w_grid_diffs0 SEQ.>< w_grid_diffs1)
       f_grid_bstring = wrappedSaveArrayDiff1 (f_grid_diffs0 SEQ.>< f_grid_diffs1)
       obj_grid_bstring = wrappedSaveArrayDiff1 (obj_grid_diffs0 SEQ.>< obj_grid_diffs1)
   in
-  if cfg' "save_game_test" == "y" then do
+  if CFG.saveGameTest (CFG.debug conf_reg) == "y" then do
     putStr ("\nsaveGame : w_grid_diffs0 : " ++ show w_grid_diffs0)
     putStr ("\nsaveGame : f_grid_diffs0 : " ++ show f_grid_diffs0)
     putStr ("\nsaveGame : obj_grid_diffs0 : " ++ show obj_grid_diffs0)
@@ -141,7 +141,7 @@ loaderError x box = do
 
 -- This function is the entry point to the game state saving logic and handles user input from the load game menu.
 loadSavedGame :: Int -> [[Char]] -> [Char] -> Int -> Int -> Io_box -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid
-                 -> Array (Int, Int, Int) Obj_grid -> Array Int [Char] -> (Int, Int) -> [Char] -> IO (Maybe Game_state)
+                 -> Array (Int, Int, Int) Obj_grid -> CFG.EngineConfig -> (Int, Int) -> [Char] -> IO (Maybe Game_state)
 loadSavedGame 0 [] chosen_file c choice box w_grid f_grid obj_grid conf_reg load_offset map_file = error "\nload_saved_game: encountered an unexpected log file structure."
 loadSavedGame 0 ((y0:y1:y2:y3:y4:y5:y6:y7:y8:y9:y10:y11:y12:y13:y14:y15:y16:ys):xs) chosen_file c choice box w_grid f_grid obj_grid conf_reg load_offset
               map_file = do
@@ -149,7 +149,7 @@ loadSavedGame 0 ((y0:y1:y2:y3:y4:y5:y6:y7:y8:y9:y10:y11:y12:y13:y14:y15:y16:ys):
   else if c == choice then loadSavedGame 1 [] [y1, y2, y3, y4, y5, y6, y7, y8, y9] c choice box w_grid f_grid obj_grid conf_reg load_offset map_file
   else loadSavedGame 0 xs chosen_file (c + 1) choice box w_grid f_grid obj_grid conf_reg load_offset map_file
 loadSavedGame 1 [] chosen_file c choice box w_grid f_grid obj_grid conf_reg load_offset map_file = do
-  contents <- catch (do contents <- LBS.readFile ((cfg conf_reg 0 "game_save_path") ++ chosen_file); return contents) (\e -> loaderError e box)
+  contents <- catch (do contents <- LBS.readFile ((CFG.gameSavePath (CFG.saveGames conf_reg)) ++ chosen_file); return contents) (\e -> loaderError e box)
   if LBS.length contents == 0 then return Nothing
   else return (Just (loadGameStateFile3 contents w_grid f_grid obj_grid map_file load_offset))
 
@@ -185,7 +185,7 @@ instance Serialise_diff Floor_grid where
 instance Serialise_diff Obj_grid where
   save_diff ((w, u, v), x) = LBS.append (encode (w, u, v)) (encode x)
 
-saveArrayDiff0 :: Int -> ([Char], [Char]) -> LBS.ByteString -> LBS.ByteString -> LBS.ByteString -> LBS.ByteString -> LBS.ByteString -> Array Int [Char]
+saveArrayDiff0 :: Int -> ([Char], [Char]) -> LBS.ByteString -> LBS.ByteString -> LBS.ByteString -> LBS.ByteString -> LBS.ByteString -> CFG.EngineConfig
                   -> Play_state0 -> IO Int
 saveArrayDiff0 mode (save_file, save_log) w_grid_bstring f_grid_bstring obj_grid_bstring s0_bstring s1_bstring conf_reg s0 =
   let block0 = LBS.append (LBS.drop 8 w_grid_bstring)
@@ -201,8 +201,8 @@ saveArrayDiff0 mode (save_file, save_log) w_grid_bstring f_grid_bstring obj_grid
     h0 <- openFile "save_log.log" WriteMode
     hPutStr h0 save_log
     hClose h0
-    LBS.writeFile (cfg conf_reg 0 "game_save_path" ++ save_file) (block0 $ block1 $ block2 $ block3 $ s1_bstring)
-    putStr ("\n\nGame saved as: " ++ (cfg conf_reg 0 "game_save_path") ++ save_file)
+    LBS.writeFile (CFG.gameSavePath (CFG.saveGames conf_reg) ++ save_file) (block0 $ block1 $ block2 $ block3 $ s1_bstring)
+    putStr ("\n\nGame saved as: " ++ CFG.gameSavePath (CFG.saveGames conf_reg) ++ save_file)
     return ((read (take 1 (drop 4 save_file))) + 1)
 
 wrappedSaveArrayDiff1 :: Serialise_diff a => SEQ.Seq ((Int, Int, Int), a) -> LBS.ByteString

@@ -1,6 +1,6 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.36.0.
+-- This file has been generated from package.yaml by hpack version 0.38.1.
 --
 -- see: https://github.com/sol/hpack
 
@@ -29,6 +29,7 @@ library
       BuildModel
       CompileGPLC
       CompressMap
+      Config
       DecompressMap
       ExtraGPLC_Debug
       GameLogic
@@ -52,6 +53,7 @@ library
     , OpenGL >=3.0 && <4
     , OpenGLRaw >=3.3 && <4
     , StateVar >=1.2 && <2
+    , aeson >=2.1.2.1
     , array >=0.5 && <1
     , base >=4.7 && <5
     , binary >=0.8 && <1
@@ -63,6 +65,7 @@ library
     , process >=1.6 && <2
     , random >=1.2 && <2
     , split >=0.2 && <1
+    , utf8-string >=1.0.0
   default-language: Haskell2010
 
 executable GPLC_TokenAnalyser
@@ -79,6 +82,7 @@ executable GPLC_TokenAnalyser
     , OpenGL >=3.0 && <4
     , OpenGLRaw >=3.3 && <4
     , StateVar >=1.2 && <2
+    , aeson >=2.1.2.1
     , array >=0.5 && <1
     , base >=4.7 && <5
     , binary >=0.8 && <1
@@ -90,6 +94,7 @@ executable GPLC_TokenAnalyser
     , process >=1.6 && <2
     , random >=1.2 && <2
     , split >=0.2 && <1
+    , utf8-string >=1.0.0
   default-language: Haskell2010
 
 executable Game-Dangerous-exe
@@ -106,6 +111,7 @@ executable Game-Dangerous-exe
     , OpenGL >=3.0 && <4
     , OpenGLRaw >=3.3 && <4
     , StateVar >=1.2 && <2
+    , aeson >=2.1.2.1
     , array >=0.5 && <1
     , base >=4.7 && <5
     , binary >=0.8 && <1
@@ -117,6 +123,7 @@ executable Game-Dangerous-exe
     , process >=1.6 && <2
     , random >=1.2 && <2
     , split >=0.2 && <1
+    , utf8-string >=1.0.0
   default-language: Haskell2010
 
 executable ImportModel
@@ -133,6 +140,7 @@ executable ImportModel
     , OpenGL >=3.0 && <4
     , OpenGLRaw >=3.3 && <4
     , StateVar >=1.2 && <2
+    , aeson >=2.1.2.1
     , array >=0.5 && <1
     , base >=4.7 && <5
     , binary >=0.8 && <1
@@ -144,6 +152,7 @@ executable ImportModel
     , process >=1.6 && <2
     , random >=1.2 && <2
     , split >=0.2 && <1
+    , utf8-string >=1.0.0
   default-language: Haskell2010
 
 executable Launcher
@@ -160,6 +169,7 @@ executable Launcher
     , OpenGL >=3.0 && <4
     , OpenGLRaw >=3.3 && <4
     , StateVar >=1.2 && <2
+    , aeson >=2.1.2.1
     , array >=0.5 && <1
     , base >=4.7 && <5
     , binary >=0.8 && <1
@@ -171,6 +181,7 @@ executable Launcher
     , process >=1.6 && <2
     , random >=1.2 && <2
     , split >=0.2 && <1
+    , utf8-string >=1.0.0
   default-language: Haskell2010
 
 executable Server
@@ -187,6 +198,7 @@ executable Server
     , OpenGL >=3.0 && <4
     , OpenGLRaw >=3.3 && <4
     , StateVar >=1.2 && <2
+    , aeson >=2.1.2.1
     , array >=0.5 && <1
     , base >=4.7 && <5
     , binary >=0.8 && <1
@@ -198,6 +210,7 @@ executable Server
     , process >=1.6 && <2
     , random >=1.2 && <2
     , split >=0.2 && <1
+    , utf8-string >=1.0.0
   default-language: Haskell2010
 
 test-suite Game-Dangerous-test
@@ -217,6 +230,7 @@ test-suite Game-Dangerous-test
     , OpenGL >=3.0 && <4
     , OpenGLRaw >=3.3 && <4
     , StateVar >=1.2 && <2
+    , aeson >=2.1.2.1
     , array >=0.5 && <1
     , base >=4.7 && <5
     , binary >=0.8 && <1
@@ -228,4 +242,5 @@ test-suite Game-Dangerous-test
     , process >=1.6 && <2
     , random >=1.2 && <2
     , split >=0.2 && <1
+    , utf8-string >=1.0.0
   default-language: Haskell2010

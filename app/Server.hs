@@ -12,6 +12,9 @@ import Control.Exception
 import Data.List.Split
 import Data.Maybe
 import Data.Array.IArray
+import qualified Data.ByteString.Lazy as LBS
+import qualified Data.ByteString.Lazy.UTF8 as BLU
+import qualified Data.Aeson as AES
 import Control.Concurrent
 import BuildModel hiding (Game_state, w_grid_, f_grid_, obj_grid_)
 import DecompressMap
@@ -19,8 +22,9 @@ import CompressMap
 import OpenMap
 import HandleInput
 import PreprocessMap
+import qualified Config as CFG
 
-loadMap :: [Char] -> Int -> Int -> Int -> Array Int [Char] -> (Array (Int, Int, Int) Wall_grid, Array (Int, Int, Int) Floor_grid, Array (Int, Int, Int) Obj_grid)
+loadMap :: [Char] -> Int -> Int -> Int -> CFG.EngineConfig -> (Array (Int, Int, Int) Wall_grid, Array (Int, Int, Int) Floor_grid, Array (Int, Int, Int) Obj_grid)
 loadMap comp_map_text u_max v_max w_max conf_reg =
   let proc_map' = procMap (splitOn "\n~\n" comp_map_text) u_max v_max w_max
       pm'' = fst proc_map'
@@ -31,29 +35,27 @@ loadMap comp_map_text u_max v_max w_max conf_reg =
 
 main = do
   args <- getArgs
-  cfg_file <- bracket (openFile (args !! 0) ReadMode) (hClose)
-                      (\h -> do c <- hGetContents h; putStr ("\ncfg file size: " ++ show (length c)); return c)
-  initServer (listArray (0, 93) (splitOneOf "=\n" (tailFile cfg_file))) args
+  config_file <- bracket (openFile (args !! 0) ReadMode) (hClose)
+                         (\h -> do c <- hGetContents h; putStr ("\ncfg file size: " ++ show (length c)); return c)
+  initServer (CFG.validateConfig (AES.eitherDecode (BLU.fromString config_file))) args
 
-initServer :: Array Int [Char] -> [[Char]] -> IO ()
-initServer conf_reg args =
-  let cfg' = cfg conf_reg 0
-  in do
-  putStr ("\n\nGame :: Dangerous map development server starting.  Version and platform: " ++ cfg' "version_and_platform_string")
+initServer :: CFG.EngineConfig -> [[Char]] -> IO ()
+initServer conf_reg args = do
+  putStr ("\n\nGame :: Dangerous map development server starting.  Version and platform: " ++ CFG.versionString (CFG.misc conf_reg))
   putStr "\nLoading map file..."
   comp_map_text <- bracket (openFile ((args !! 1) ++ (args !! 2)) ReadMode) hClose
                            (\h -> do c <- hGetContents h; putStr ("\nmap file size: " ++ show (length c)); return c)
   input_ref <- newEmptyMVar
   console_output <- newEmptyMVar
   network_output <- newEmptyMVar
-  if (splitOn " " (cfg' "version_and_platform_string")) !! 0 == "Windows" then do
+  if (splitOn " " (CFG.versionString (CFG.misc conf_reg))) !! 0 == "Windows" then do
     putStr "\nPlease use the \"exit\" command when you want to shut down the server."
     (h_in, h_out, _, _) <- createProcess (shell "node .\\node_server\\server.js") {std_in = CreatePipe, std_out = CreatePipe}
     forkIO (consoleInterface input_ref console_output)
     forkIO (networkInterface input_ref network_output (fromJust h_in) (fromJust h_out))
     forkIO (commandFileHandler input_ref console_output (args !! 3) (args !! 4) [])
     handleInput Nothing (tailFile comp_map_text) [(args !! 1), "GPLC_Programs\\"] [] (fromJust h_in) input_ref console_output network_output 0 conf_reg
-  else if (splitOn " " (cfg' "version_and_platform_string")) !! 0 == "Linux" then do
+  else if (splitOn " " (CFG.versionString (CFG.misc conf_reg))) !! 0 == "Linux" then do
     putStr "\nPlease use Ctrl + C when you want to shut down the server."
     (h_in, h_out, _, _) <- createProcess (shell "node ./node_server/server.js") {std_in = CreatePipe, std_out = CreatePipe}
     forkIO (consoleInterface input_ref console_output)
@@ -63,7 +65,7 @@ initServer conf_reg args =
   else error ("Unsupported platform found in version_and_platform_string")
 
 handleInput :: Maybe Server_state -> [Char] -> [[Char]] -> [[Char]] -> Handle -> MVar (Int, [Char]) -> MVar [Char] -> MVar [Char]
-               -> Int -> Array Int [Char] -> IO ()
+               -> Int -> CFG.EngineConfig -> IO ()
 handleInput server_state comp_map_text asset_path command h_in input_ref console_output network_output output_mode conf_reg
   | isNothing server_state = do
     prog_set <- bracket (openFile ((asset_path !! 0) ++ (asset_path !! 1) ++ "GPLC_Programs.txt") ReadMode) hClose
