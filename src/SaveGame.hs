@@ -139,6 +139,13 @@ loaderError x box = do
   putStr ("\nload_saved_game: " ++ show x)
   return LBS.empty
 
+replaceConfigValues :: Game_state -> CFG.EngineConfig -> Game_state
+replaceConfigValues game_state conf_reg =
+  let s0__ = (s0_ (game_state)) {on_screen_metrics = selectMetricMode (CFG.onScreenMetrics (CFG.misc conf_reg)),
+                                 maxLights = CFG.maxLights (CFG.graphics conf_reg)}
+      s1__ = (s1_ (game_state)) {verbose_mode = CFG.verboseMode (CFG.debug conf_reg)}
+  in game_state {s0_ = s0__, s1_ = s1__}
+
 -- This function is the entry point to the game state saving logic and handles user input from the load game menu.
 loadSavedGame :: Int -> [[Char]] -> [Char] -> Int -> Int -> Io_box -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid
                  -> Array (Int, Int, Int) Obj_grid -> CFG.EngineConfig -> (Int, Int) -> [Char] -> IO (Maybe Game_state)
@@ -151,7 +158,7 @@ loadSavedGame 0 ((y0:y1:y2:y3:y4:y5:y6:y7:y8:y9:y10:y11:y12:y13:y14:y15:y16:ys):
 loadSavedGame 1 [] chosen_file c choice box w_grid f_grid obj_grid conf_reg load_offset map_file = do
   contents <- catch (do contents <- LBS.readFile ((CFG.gameSavePath (CFG.saveGames conf_reg)) ++ chosen_file); return contents) (\e -> loaderError e box)
   if LBS.length contents == 0 then return Nothing
-  else return (Just (loadGameStateFile3 contents w_grid f_grid obj_grid map_file load_offset))
+  else return (Just (replaceConfigValues (loadGameStateFile3 contents w_grid f_grid obj_grid map_file load_offset) conf_reg))
 
 -- Sequential saves of the same game produce a sequence of save game files up to a preset maximum.
 -- The automation of this feature is done in the two functions below.

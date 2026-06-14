@@ -141,6 +141,11 @@ lightPositions :: [LightSource] -> [Float]
 lightPositions [] = []
 lightPositions (x:xs) = [positionU x, positionV x, positionW x] ++ lightPositions xs
 
+selectMetricMode "none" = 0
+selectMetricMode "low" = 1
+selectMetricMode "medium" = 2
+selectMetricMode "high" = 3
+
 data Play_state0 = Play_state0 {pos_u :: Float, pos_v :: Float, pos_w :: Float, vel :: [Float], angle :: Int, angle_ :: Float, message_ :: [(Int, [Int])],
 rend_mode :: Int, view_mode :: Int, view_angle :: Int, gameClock :: (Int, Float, Int), on_screen_metrics :: Int,
 prob_seq :: UArray Int Int, mobile_lights :: [LightSource], maxLights :: Int, currentMap :: Int, previousMap :: Int} deriving Show
@@ -161,21 +166,24 @@ instance Binary Play_state0 where
            j <- get
            m <- get
            return (Play_state0 {pos_u = a, pos_v = b, pos_w = c, vel = d, angle = e, angle_ = f, message_ = [], rend_mode = g, view_mode = h, view_angle = i,
-                   gameClock = j, on_screen_metrics = 0, prob_seq = def_prob_seq, mobile_lights = [], currentMap = m,
+                   gameClock = j, on_screen_metrics = 0, prob_seq = def_prob_seq, mobile_lights = [], maxLights = 0, currentMap = m,
                    previousMap = m})
 
 data Signal = Signal {sigNum :: Int, originGameT :: Int, originVoxel :: (Int, Int, Int), target :: (Int, Int, Int)} deriving (Eq, Show)
 
 instance Binary Signal where
-  put Signal {sigNum = a, originGameT = b, target = (c, d, e)} =
-    put a >> put b >> put c >> put d >> put e
+  put Signal {sigNum = a, originGameT = b, originVoxel = (c, d, e), target = (f, g, h)} =
+    put a >> put b >> put c >> put d >> put e >> put f >> put g >> put h
 
   get = do a <- get
            b <- get
            c <- get
            d <- get
            e <- get
-           return Signal {sigNum = a, originGameT = b, target = (c, d, e)}
+           f <- get
+           g <- get
+           h <- get
+           return Signal {sigNum = a, originGameT = b, originVoxel = (c, d, e), target = (f, g, h)}
 
 data Play_state1 = Play_state1 {health :: Int, ammo :: Int, gems :: Int, torches :: Int, keys :: [Int], playerClass :: [Int], difficulty :: ([Char], Int, Int, Int),
 sig_q :: [Signal], next_sig_q :: [Signal], message :: [Int], state_chg :: Int, verbose_mode :: [Char], debugSet :: Array Int [Char], debugGplc :: Bool,
@@ -197,7 +205,7 @@ instance Binary Play_state1 where
            j <- get
            k <- get
            return Play_state1 {health = a, ammo = b, gems = c, torches = d, keys = e, playerClass = f, difficulty = g, sig_q = h, next_sig_q = [], message = i,
-                  state_chg = j, verbose_mode = "n", npc_states = k}
+                  state_chg = j, verbose_mode = "n", debugSet = listArray (0, 0) ["null"], debugGplc = False, npc_states = k}
 
 data NPC_state = NPC_state {npc_type :: Int, c_health :: Int, ticks_left0 :: Int, ticks_left1 :: Int, node_locations :: [Int],
 fg_position :: (Float, Float, Float), dir_vector :: (Float, Float), direction :: Int, lastDir :: Int, dir_list :: [Int], node_num :: Int, end_node :: Int,

@@ -293,16 +293,6 @@ loadModFile (x:xs) path p_bind =
   hClose h
   loadModFile xs path p_bind
 
--- These two functions convert parameters passed through the engine's configuration file to the corresponding values in the Play_state0 and Play_state1
--- structures, respectively.
-selectMetricMode "none" = 0
-selectMetricMode "low" = 1
-selectMetricMode "medium" = 2
-selectMetricMode "high" = 3
-
-selectVerboseMode "y" = True
-selectVerboseMode "n" = False
-
 -- This function generates the pseudorandom number sequence that is exposed to certain GPLC op - codes.
 genProbSeq :: RandomGen g => Int -> Int -> Int -> g -> UArray Int Int
 genProbSeq i0 i1 i2 g = listArray (i0, i1) (drop i2 (randomRs (0, 99) g))
