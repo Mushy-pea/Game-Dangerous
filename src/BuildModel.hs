@@ -186,8 +186,8 @@ instance Binary Signal where
            return Signal {sigNum = a, originGameT = b, originVoxel = (c, d, e), target = (f, g, h)}
 
 data Play_state1 = Play_state1 {health :: Int, ammo :: Int, gems :: Int, torches :: Int, keys :: [Int], playerClass :: [Int], difficulty :: ([Char], Int, Int, Int),
-sig_q :: [Signal], next_sig_q :: [Signal], message :: [Int], state_chg :: Int, verbose_mode :: [Char], debugSet :: Array Int [Char], debugGplc :: Bool,
-npc_states :: Array Int NPC_state} deriving Show
+sig_q :: [Signal], next_sig_q :: [Signal], message :: [Int], state_chg :: Int, verbose_mode :: [Char], debugSet :: Array Int [Char],
+debugSymbols :: Array Int [[Char]], debugGplc :: (Bool, Int), npc_states :: Array Int NPC_state} deriving Show
 
 instance Binary Play_state1 where
   put Play_state1 {health = a, ammo = b, gems = c, torches = d, keys = e, playerClass = f, difficulty = g, sig_q = h, message = i, state_chg = j, npc_states = k} =
@@ -205,7 +205,8 @@ instance Binary Play_state1 where
            j <- get
            k <- get
            return Play_state1 {health = a, ammo = b, gems = c, torches = d, keys = e, playerClass = f, difficulty = g, sig_q = h, next_sig_q = [], message = i,
-                  state_chg = j, verbose_mode = "n", debugSet = listArray (0, 0) ["null"], debugGplc = False, npc_states = k}
+                  state_chg = j, verbose_mode = "n", debugSet = listArray (0, 0) ["null"], debugSymbols = listArray (0, 0) [["null"]], debugGplc = (False, 0),
+                  npc_states = k}
 
 data NPC_state = NPC_state {npc_type :: Int, c_health :: Int, ticks_left0 :: Int, ticks_left1 :: Int, node_locations :: [Int],
 fg_position :: (Float, Float, Float), dir_vector :: (Float, Float), direction :: Int, lastDir :: Int, dir_list :: [Int], node_num :: Int, end_node :: Int,
@@ -279,7 +280,7 @@ ps0_init = Play_state0 {pos_u = 0, pos_v = 0, pos_w = 0, vel = [0, 0, 0], angle 
 ps1_init = Play_state1 {health = 100, ammo = 0, gems = 0, torches = 3, keys = [63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63],
                         playerClass = [19, 27, 44, 27, 34, 63, 19, 34, 35, 31, 38, 30, 45], difficulty = ("Plenty of danger please", 6, 10, 14),
                         sig_q = [], next_sig_q = [], message = [], state_chg = 0, verbose_mode = "",
-                        debugSet = array (0, 0) [(0, "")], debugGplc = False, npc_states = empty_npc_array}
+                        debugSet = array (0, 0) [(0, "")], debugSymbols = listArray (0, 0) [["null"]], debugGplc = (False, 0), npc_states = empty_npc_array}
 
 def_w_grid = Wall_grid {u1 = False, u2 = False, v1 = False, v2 = False, u1_bound = 0, u2_bound = 0, v1_bound = 0, v2_bound = 0, w_level = 0,  wall_flag = [],
 texture = [], obj = Nothing}

@@ -143,7 +143,9 @@ replaceConfigValues :: Game_state -> CFG.EngineConfig -> Game_state
 replaceConfigValues game_state conf_reg =
   let s0__ = (s0_ (game_state)) {on_screen_metrics = selectMetricMode (CFG.onScreenMetrics (CFG.misc conf_reg)),
                                  maxLights = CFG.maxLights (CFG.graphics conf_reg)}
-      s1__ = (s1_ (game_state)) {verbose_mode = CFG.verboseMode (CFG.debug conf_reg)}
+      s1__ = (s1_ (game_state)) {verbose_mode = CFG.verboseMode (CFG.debug conf_reg),
+                                 debugSet = listArray (0, length (CFG.debugSet (CFG.debug conf_reg)) - 1) (CFG.debugSet (CFG.debug conf_reg)),
+                                 debugSymbols = listArray (0, length (CFG.debugSet (CFG.debug conf_reg)) - 1) (CFG.debugSymbols (CFG.debug conf_reg))}
   in game_state {s0_ = s0__, s1_ = s1__}
 
 -- This function is the entry point to the game state saving logic and handles user input from the load game menu.

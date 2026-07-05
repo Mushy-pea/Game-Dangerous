@@ -55,9 +55,11 @@ main = do
   if length args == 0 then do
     config_file <- bracket (openFile "config.json" ReadMode) (hClose) (\h -> do c <- hGetContents h; putStr ("\ncfg file size: " ++ show (length c)); return c)
     openWindow (CFG.validateConfig (AES.eitherDecode (BLU.fromString config_file)))
-  else do
+  else if length args == 1 then do
     config_file <- bracket (openFile (args !! 0) ReadMode) (hClose) (\h -> do c <- hGetContents h; putStr ("\ncfg file size: " ++ show (length c)); return c)
     openWindow (CFG.validateConfig (AES.eitherDecode (BLU.fromString config_file)))
+  else do
+    error ("\nUnexpected parameters received.  The only (optional) parameter the engine can accept is the path to its configuration file.")
 
 mapKeyBinding :: Array Int ([Char], [Char]) -> Int -> [Char] -> [Char]
 mapKeyBinding bindings i user_choice
@@ -399,7 +401,10 @@ startGame context physics control_ref uniform p_bind map_text conf_reg sound_arr
                        previousMap = setCurrentMap (CFG.mapFile (CFG.map conf_reg)), maxLights = CFG.maxLights (CFG.graphics conf_reg)}
         s1 = if CFG.verboseMode (CFG.debug conf_reg) == "n" || CFG.verboseMode (CFG.debug conf_reg) == "y" then
           ps1_init {verbose_mode = CFG.verboseMode (CFG.debug conf_reg)}
-             else ps1_init
+             else if CFG.verboseMode (CFG.debug conf_reg) == "filter" then
+          ps1_init {verbose_mode = "filter", debugSet = listArray (0, length (CFG.debugSet (CFG.debug conf_reg)) - 1) (CFG.debugSet (CFG.debug conf_reg)),
+                    debugSymbols = listArray (0, length (CFG.debugSet (CFG.debug conf_reg)) - 1) (CFG.debugSymbols (CFG.debug conf_reg))}
+             else error ("\nInvalid value for conf_reg field verboseMode: " ++ CFG.verboseMode (CFG.debug conf_reg) ++ ".  It must be y, n, or filter.")
         game_state = Game_state {event_context = None, w_grid_ = w_grid, f_grid_ = f_grid, obj_grid_ = obj_grid, s0_ = s0, s1_ = s1,
                                  w_grid_save = emptyWGridDiffContainer, f_grid_save = emptyFGridDiffContainer,
                                  obj_grid_save = emptyObjGridDiffContainer}

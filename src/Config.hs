@@ -28,7 +28,7 @@ data Sound = Sound {music :: [Char], musicPeriod :: Int} deriving (Generic, Show
 data Physics = Physics {initU :: Float, initV :: Float, initW :: Float, gravity :: Float, friction :: Float, runPower :: Float, jumpPower :: Float,
                         speedScaling :: Float} deriving (Generic, Show)
 
-data Debug = Debug {verboseMode :: [Char], saveGameTest :: [Char]} deriving (Generic, Show)
+data Debug = Debug {verboseMode :: [Char], saveGameTest :: [Char], debugSet :: [[Char]], debugSymbols :: [[[Char]]]} deriving (Generic, Show)
 
 data Misc = Misc {splashImage :: [Char], probC :: Int, onScreenMetrics :: [Char], versionString :: [Char], surveyStart :: Int, surveySize :: Int}
                  deriving (Generic, Show)
@@ -65,7 +65,7 @@ defSound = Sound {music = "off", musicPeriod = 15040}
 
 defPhysics = Physics {initU = 24.5, initV = 24.5, initW = 0.2, gravity = -1.125, friction = -0.3, runPower = 180, jumpPower = 1.5, speedScaling = 1.25}
 
-defDebug = Debug {verboseMode = "n", saveGameTest = "n"}
+defDebug = Debug {verboseMode = "n", saveGameTest = "n", debugSet = [], debugSymbols = []}
 
 defMisc = Misc {splashImage = "off", probC = 0, onScreenMetrics = "low", versionString = "...", surveyStart = -95, surveySize = 190}
 
