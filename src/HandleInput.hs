@@ -226,7 +226,7 @@ readVoxelsCommand server_state args =
       voxel_type = args !! 5
   in (Nothing, "[\n" ++ readVoxels server_state w u_min v_min u_max v_max v_min voxel_type [] ++ "\n]")
 
--- This function serialises annotated GPLC source code to JSON for sending to the client.
+-- These two functions serialise annotated GPLC source code and bytecode to JSON for sending to the client.
 serialiseSourceCode :: Array (Int, Int) Token -> Int -> Int -> Int -> Int -> [Char] -> [Char]
 serialiseSourceCode token_arr i j i_max j_max output
   | i > i_max = take ((length output) - 2) output
@@ -235,10 +235,11 @@ serialiseSourceCode token_arr i j i_max j_max output
   | otherwise = serialiseSourceCode token_arr i (j + 1) i_max j_max (toJSON (Just (token {line = i + 1})) ++ ",\n" ++ output)
   where token = token_arr ! (i, j)
 
-serialiseBytecode :: Int -> SEQ.Seq Int -> [Char] -> [Char]
-serialiseBytecode mode SEQ.Empty output = reverse output
-serialiseBytecode mode (x SEQ.:<| xs) output =
-  serialiseBytecode mode xs (delimiter ++ reverse (show x) ++ output)
+serialiseBytecode :: Int -> SEQ.Seq Int -> [Char] -> Int -> ([Char], Int)
+serialiseBytecode mode SEQ.Empty output c = (reverse output, c)
+serialiseBytecode mode (x SEQ.:<| xs) output c
+  | x == 536870912 = serialiseBytecode mode xs (delimiter ++ reverse (show x) ++ output) c
+  | otherwise = serialiseBytecode mode xs (delimiter ++ reverse (show x) ++ output) (c + 1)
   where delimiter = if mode == 0 then " " else " ,"
 
 -- A hash is generated from the source code of a GPLC program at compile time, which the client will append to the
@@ -259,6 +260,15 @@ formatHash binaryHash hexTable i hexHash
   | i > 31 = reverse hexHash
   | otherwise = formatHash binaryHash hexTable (i + 1) ((hexTable ! (fromIntegral (BS.index binaryHash i))) ++ hexHash)
 
+-- This function generates metadata output by the server at GPLC program compile time, which can then 
+-- be fed into the engine (through the debugSymbols property of the config file) to allow for GPLC symbol level debugging 
+-- of selected programs.
+genSymbolDebug :: [Symbol_binding] -> [[Char]] -> Int -> Int -> [Char]
+genSymbolDebug [] acc d_list_start c = concat (reverse acc)
+genSymbolDebug (x:xs) acc d_list_start c
+  | c < d_list_start = genSymbolDebug (x:xs) ("\"null\", " : acc) d_list_start (c + 1)
+  | otherwise = genSymbolDebug xs (("\"" ++ symbol x ++ "\"" ++ ", ") : acc) d_list_start (c + 1)
+
 -- This is the entry point function for the logic in CompileGPLC and handles the compilation of GPLC
 -- programs to bytecode.
 compileProgram :: [Char] -> [Char] -> IO GPLC_program
@@ -275,10 +285,15 @@ compileProgram name source =
       add_write_ref_key = addWriteRefKey (signal_code_block_size + 4)
       code_block = genCodeBlock token_arr (map add_write_ref_key (fst__ bound_symbols)) (snd__ bound_symbols) (fst__ array_dim) SEQ.empty []
       data_block = genDataBlock (fst__ bound_symbols) SEQ.empty
-      show_data_block = serialiseBytecode 1 data_block []
+      serialised_signal_block = serialiseBytecode 1 (fst signal_block) [] 0
+      serialised_code_block = serialiseBytecode 1 (fst code_block) [] 0
+      serialised_data_block = serialiseBytecode 1 data_block [] 0
+      program_length = snd serialised_signal_block + snd serialised_code_block + snd serialised_data_block
       colour_update = addColour token_arr 0 (fst__ array_dim) []
       serialised_source = serialiseSourceCode (token_arr // colour_update) 0 0 (fst (snd (bounds token_arr))) (snd (snd (bounds token_arr))) []
       serialised_source_ = serialiseSourceCode token_arr 0 0 (fst (snd (bounds token_arr))) (snd (snd (bounds token_arr))) []
+      hash = formatHash (SHA256.hash (BSC.pack source)) (genHexTable 0 0 0 []) 0 []
+
   in
   if third_ array_dim /= [] then return GPLC_program {name = name, hash = [],
                                                       source = "[\n" ++ serialised_source_ ++ "\n]", bytecode = [], errors = third_ array_dim}
@@ -288,13 +303,16 @@ compileProgram name source =
                                                            source = "[\n" ++ serialised_source_ ++ "\n]", bytecode = [], errors = snd signal_block}
   else if snd code_block /= [] then return GPLC_program {name = name, hash = [],
                                                          source = "[\n" ++ serialised_source_ ++ "\n]", bytecode = [], errors = snd code_block}
-  else return GPLC_program {name = name,
-                            hash = formatHash (SHA256.hash (BSC.pack source)) (genHexTable 0 0 0 []) 0 [],
-                            source = "[\n" ++ serialised_source ++ "\n]",
-                            bytecode = "[" ++ serialiseBytecode 1 (fst signal_block) []
-                                ++ serialiseBytecode 1 (fst code_block) []
-                                ++ take ((length show_data_block) - 2) show_data_block ++ "]",
-                            errors = []}
+  else do
+    putStr ("\ncompileProgram : [" ++ name ++ ":" ++ hash ++ "] symbol debugging output : ["
+           ++ genSymbolDebug (fst__ bound_symbols) [] (program_length - length (fst__ bound_symbols)) 0 ++ "]")
+    return GPLC_program {name = name,
+                        hash = hash,
+                        source = "[\n" ++ serialised_source ++ "\n]",
+                        bytecode = "[" ++ fst serialised_signal_block
+                          ++ fst serialised_code_block
+                          ++ take ((length (fst serialised_data_block)) - 2) (fst serialised_data_block) ++ "]",
+                        errors = []}
 
 -- This function allows the client to query the properties of the GPLC programs the server compiled at its last start time.
 queryProgram :: Server_state -> [[Char]] -> (Maybe Server_state, [Char])

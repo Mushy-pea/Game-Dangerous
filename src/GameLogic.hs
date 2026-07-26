@@ -1176,7 +1176,7 @@ runGplc code d_list context w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1
       location_ = (location_block !! (0 :: Int), location_block !! (1 :: Int), location_block !! (2 :: Int))
   in do
   reportState (fst (debugGplc s1)) False 2 (debugSymbols s1) [] "\non_signal run.  Initial state is..." (snd (debugGplc s1))
-  reportState (fst (debugGplc s1)) (verbose_mode s1 == "filter") 0 (debugSymbols s1) ((splitOn [536870911] code) !! (2 :: Int)) [] (snd (debugGplc s1))
+  reportState (fst (debugGplc s1)) (verbose_mode s1 == "filter") 0 (debugSymbols s1) code [] (snd (debugGplc s1))
   runGplc (onSignal (drop 2 ((splitOn [536870911] code) !! (0 :: Int))) ((splitOn [536870911] code) !! (1 :: Int)) (code !! (1 :: Int)))
           ((splitOn [536870911] code) !! (2 :: Int)) context w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp location_ 1
 runGplc code d_list context w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1 lookUp location 1 =
@@ -1335,21 +1335,23 @@ runGplc code d_list context w_grid w_grid_upd f_grid obj_grid obj_grid_upd s0 s1
 
 -- These functions deal with GPLC debugging output and error reporting.
 recoverGplcSymbols :: [[Char]] -> [Int] -> [[Char]] -> [Char]
-recoverGplcSymbols [] d_list acc = concat (reverse acc)
-recoverGplcSymbols (x:xs) (y:ys) acc = recoverGplcSymbols xs ys ((x ++ ": " ++ show y ++ " ") : acc)
+recoverGplcSymbols [] [] acc = concat (reverse acc)
+recoverGplcSymbols (x:xs) (y:ys) acc  
+  | x == "null" = recoverGplcSymbols xs ys acc
+  | otherwise = recoverGplcSymbols xs ys ((x ++ ": " ++ show y ++ " ") : acc)
 
 reportWithoutGplcSymbols :: [Int] -> [[Char]] -> Int -> [Char]
 reportWithoutGplcSymbols [] acc i = concat (reverse acc)
 reportWithoutGplcSymbols (x:xs) acc i = reportWithoutGplcSymbols xs ((show i ++ ": " ++ show x ++ " ") : acc) (i + 1)
 
 reportState :: Bool -> Bool -> Int -> Array Int [[Char]] -> [Int] -> [Char] -> Int -> IO ()
-reportState False filter_on mode debug_symbols d_list message i = return ()
-reportState True filter_on 0 debug_symbols d_list message i = do
+reportState False filter_on mode debug_symbols program message i = return ()
+reportState True filter_on 0 debug_symbols program message i = do
   if filter_on then
-    putStr ("\nData state: " ++ recoverGplcSymbols (debug_symbols ! i) d_list [])
+    putStr ("\nData state: " ++ recoverGplcSymbols (debug_symbols ! i) program [])
   else
-    putStr ("\nData state: " ++ reportWithoutGplcSymbols d_list [] 0)
-reportState True filter_on 2 debug_symbols d_list message i = putStr message
+    putStr ("\nData state: " ++ reportWithoutGplcSymbols program [] 0)
+reportState True filter_on 2 debug_symbols program message i = putStr message
 
 reportNpcState :: Bool -> Play_state1 -> Int -> IO ()
 reportNpcState False s1 i = return ()
@@ -1437,7 +1439,7 @@ filterDebug s1 program_name i
 blockParallelRuns :: [Signal] -> (Int, Int, Int) -> [Signal] -> Bool -> [Signal]
 blockParallelRuns [] last_target acc throw_on_block = acc
 blockParallelRuns (x:xs) last_target acc throw_on_block
-  | target x == last_target =
+  | target x == last_target && sigNum x /= 3 =
     if throw_on_block then
       error ("\nblockParallelRuns: Parallel GPLC program run blocked and throw_on_block is True.  target: " ++ show (target x))
     else
@@ -1749,8 +1751,6 @@ updatePlay io_box state_ref game_state in_flight min_frame_t physics lookUp soun
                  lookUp t_seq
       player_voxel = [truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0)]
   in do
-  --putStr ("\nNumber of lights: " ++ show (length (mobile_lights s0)))
-  --putStr ("\nLight sources: " ++ show (mobile_lights s0))
   mainLoopEvent
   control <- readIORef (fromJust (control_ io_box))
   writeIORef (fromJust (control_ io_box)) 0
@@ -1919,8 +1919,8 @@ procMsg0 (x0:x1:xs) s0 s1 io_box sound_array =
   else do
     choice <- runMenu (-1) (procMsg1 (tail (splitOn [-1] (take x1 xs)))) [] io_box (-0.96) 0.8 0.8 1 0 0 s0 (x0 - 3)
     procMsg0 (drop x1 xs) s0
-             (s1 {sig_q = Signal {sigNum = choice + 1, originGameT = fst__ (gameClock s0), originVoxel = (0, 0, 0),
-                                  target = (signal_ !! (0 :: Int), signal_ !! (1 :: Int), signal_ !! (2 :: Int))} : sig_q s1})
+             (s1 {next_sig_q = Signal {sigNum = choice + 1, originGameT = fst__ (gameClock s0), originVoxel = (0, 0, 0),
+                                       target = (signal_ !! (0 :: Int), signal_ !! (1 :: Int), signal_ !! (2 :: Int))} : sig_q s1})
              io_box sound_array
 
 -- Used by the game logic thread for in game menus and by the main thread for the main menu.
