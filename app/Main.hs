@@ -326,7 +326,7 @@ startGame context physics control_ref uniform p_bind map_text conf_reg sound_arr
     if context == NewGame then do
       tid <- forkIO (updatePlayWrapper0 (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = Just control_ref}) state_ref
                                         game_state False (CFG.minFrameT (CFG.graphics conf_reg)) physics
-                                        look_up_ (sound_array, setup_music) 0 t_log (SEQ.empty) 60)
+                                        look_up_ 0 t_log (SEQ.empty) 60)
       result <- showFrame p_bind uniform (p_mt_matrix, p_light_buffer) (p_f_table0, p_f_table1) 0 0 0 0 0 state_ref w_grid f_grid obj_grid look_up_
                           camera_to_clip (array (0, 5) [(i, (0, [])) | i <- [0..5]]) conf_reg
       killThread tid
@@ -347,7 +347,7 @@ startGame context physics control_ref uniform p_bind map_text conf_reg sound_arr
       else if isNothing loaded_state == False && currentMap (s0_ (fromJust loaded_state)) == setCurrentMap (CFG.mapFile (CFG.map conf_reg)) then do
         tid <- forkIO (updatePlayWrapper0 (Io_box {uniform_ = uniform, p_bind_ = p_bind, control_ = Just control_ref}) state_ref
                                           (fromJust loaded_state) False (CFG.minFrameT (CFG.graphics conf_reg)) physics
-                                          look_up_ (sound_array, setup_music) 0 t_log (SEQ.empty) 60)
+                                          look_up_ 0 t_log (SEQ.empty) 60)
         result <- showFrame p_bind uniform (p_mt_matrix, p_light_buffer) (p_f_table0, p_f_table1) 0 0 0 0 0 state_ref w_grid f_grid obj_grid look_up_
                             camera_to_clip (array (0, 5) [(i, (0, [])) | i <- [0..5]]) conf_reg
         killThread tid
@@ -407,7 +407,7 @@ startGame context physics control_ref uniform p_bind map_text conf_reg sound_arr
              else error ("\nInvalid value for conf_reg field verboseMode: " ++ CFG.verboseMode (CFG.debug conf_reg) ++ ".  It must be y, n, or filter.")
         game_state = Game_state {event_context = None, w_grid_ = w_grid, f_grid_ = f_grid, obj_grid_ = obj_grid, s0_ = s0, s1_ = s1,
                                  w_grid_save = emptyWGridDiffContainer, f_grid_save = emptyFGridDiffContainer,
-                                 obj_grid_save = emptyObjGridDiffContainer}
+                                 obj_grid_save = emptyObjGridDiffContainer, soundArray = (sound_array, setup_music)}
         save_transform = detMapTransform (CFG.mapFile (CFG.map conf_reg)) "save" u_limit v_limit
         load_transform = detMapTransform (CFG.mapFile (CFG.map conf_reg)) "load" u_limit v_limit
 

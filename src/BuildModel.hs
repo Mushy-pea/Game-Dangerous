@@ -29,6 +29,7 @@ import Unsafe.Coerce
 import System.IO.Unsafe
 import Control.Exception
 import Graphics.GL.Core33
+import GameSound
 
 fst_ (a, b, c, d, e) = a
 snd_ (a, b, c, d, e) = b
@@ -262,7 +263,8 @@ data GamePhysics = GamePhysics {u :: Float, v :: Float, w :: Float, gravity :: F
 
 data Game_state = Game_state {event_context :: EventContext, w_grid_ :: Array (Int, Int, Int) Wall_grid, f_grid_ :: Array (Int, Int, Int) Floor_grid,
                               obj_grid_ :: Array (Int, Int, Int) Obj_grid, s0_ :: Play_state0, s1_ :: Play_state1,
-                              w_grid_save :: WGridDiffContainer, f_grid_save :: FGridDiffContainer, obj_grid_save :: ObjGridDiffContainer}
+                              w_grid_save :: WGridDiffContainer, f_grid_save :: FGridDiffContainer, obj_grid_save :: ObjGridDiffContainer,
+                              soundArray :: (Array Int Source, Int)}
 
 data Io_box = Io_box {uniform_ :: UArray Int Int32, p_bind_ :: (UArray Int Word32, Int), control_ :: Maybe (IORef Int)}
 

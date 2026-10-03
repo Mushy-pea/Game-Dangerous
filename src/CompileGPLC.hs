@@ -182,7 +182,8 @@ matchKeyword "npc_damage" = Just Instruction {opcode = 22, instructionLength = 2
 matchKeyword "cpede_move" = Just Instruction {opcode = 23, instructionLength = 3, arguments = [RefWrite, Const]}
 matchKeyword "set_event_context" = Just Instruction {opcode = 24, instructionLength = 2, arguments = [RefRead]}
 matchKeyword "set_player_class" = Just Instruction {opcode = 25, instructionLength = 2, arguments = [RefRead]}
-matchKeyword "do_nothing" = Just Instruction {opcode = 27, instructionLength = 0, arguments = [Const]}
+matchKeyword "play_sound" = Just Instruction {opcode = 27, instructionLength = 2, arguments = [RefRead]}
+matchKeyword "do_nothing" = Just Instruction {opcode = 64, instructionLength = 0, arguments = [Const]}
 matchKeyword _ = Nothing
 
 -- These two functions generate the signal block part of the bytecode output.

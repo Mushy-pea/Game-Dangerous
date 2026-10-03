@@ -45,6 +45,6 @@ Shadow demo B2 (comparative)
 
 [![Preview unavailable](https://img.youtube.com/vi/4Y2er6WZ5qs/default.jpg)](https://youtu.be/4Y2er6WZ5qs)
 
-Engine version: 1.4.1
+Engine version: 1.5.0
 
 Server version: 2.3.0
