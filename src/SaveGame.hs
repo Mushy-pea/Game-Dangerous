@@ -94,7 +94,8 @@ loadGameStateFile2 map_file w_grid f_grid obj_grid w_grid_upd f_grid_upd obj_gri
                                          s0_ = s0, s1_ = s1,
                                          w_grid_save = w_grid_upd {map1WDiff = []},
                                          f_grid_save = f_grid_upd {map1FDiff = []},
-                                         obj_grid_save = obj_grid_upd {map1ODiff = []}}
+                                         obj_grid_save = obj_grid_upd {map1ODiff = []},
+                                         soundArray = def_sound_array}
   | map_file == "map2.dan" = Game_state {event_context = None,
                                          w_grid_ = w_grid // applyLoadTransform (procWGridUpd (map2WDiff w_grid_upd) w_grid u_offset v_offset) (u_offset, v_offset),
                                          f_grid_ = f_grid // applyLoadTransform (map2FDiff f_grid_upd) (u_offset, v_offset),
@@ -102,7 +103,8 @@ loadGameStateFile2 map_file w_grid f_grid obj_grid w_grid_upd f_grid_upd obj_gri
                                          s0_ = s0, s1_ = s1,
                                          w_grid_save = w_grid_upd {map2WDiff = []},
                                          f_grid_save = f_grid_upd {map2FDiff = []},
-                                         obj_grid_save = obj_grid_upd {map2ODiff = []}}
+                                         obj_grid_save = obj_grid_upd {map2ODiff = []},
+                                         soundArray = def_sound_array}
   | map_file == "map3.dan" = Game_state {event_context = None,
                                          w_grid_ = w_grid // applyLoadTransform (procWGridUpd (map3WDiff w_grid_upd) w_grid u_offset v_offset) (u_offset, v_offset),
                                          f_grid_ = f_grid // applyLoadTransform (map3FDiff f_grid_upd) (u_offset, v_offset),
@@ -110,7 +112,8 @@ loadGameStateFile2 map_file w_grid f_grid obj_grid w_grid_upd f_grid_upd obj_gri
                                          s0_ = s0, s1_ = s1,
                                          w_grid_save = w_grid_upd {map3WDiff = []},
                                          f_grid_save = f_grid_upd {map3FDiff = []},
-                                         obj_grid_save = obj_grid_upd {map3ODiff = []}}
+                                         obj_grid_save = obj_grid_upd {map3ODiff = []},
+                                         soundArray = def_sound_array}
   | map_file == "map4.dan" = Game_state {event_context = None,
                                          w_grid_ = w_grid // applyLoadTransform (procWGridUpd (map4WDiff w_grid_upd) w_grid u_offset v_offset) (u_offset, v_offset),
                                          f_grid_ = f_grid // applyLoadTransform (map4FDiff f_grid_upd) (u_offset, v_offset),
@@ -118,7 +121,8 @@ loadGameStateFile2 map_file w_grid f_grid obj_grid w_grid_upd f_grid_upd obj_gri
                                          s0_ = s0, s1_ = s1,
                                          w_grid_save = w_grid_upd {map4WDiff = []},
                                          f_grid_save = f_grid_upd {map4FDiff = []},
-                                         obj_grid_save = obj_grid_upd {map4ODiff = []}}
+                                         obj_grid_save = obj_grid_upd {map4ODiff = []},
+                                         soundArray = def_sound_array}
 
 loadGameStateFile3 :: LBS.ByteString -> Array (Int, Int, Int) Wall_grid -> Array (Int, Int, Int) Floor_grid -> Array (Int, Int, Int) Obj_grid
                       -> [Char] -> (Int, Int) -> Game_state

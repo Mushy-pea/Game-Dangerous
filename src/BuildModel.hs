@@ -300,6 +300,8 @@ defObjGridArr = array ((0, 0, 0), (1, 1, 1)) [((w, u, v), def_obj_grid) | w <- [
 
 def_obj_place = Obj_place {ident_ = 0, u__ = 0, v__ = 0, w__ = 0, rotation = [], rotate_ = False, phase = 0, texture__ = 0, num_elem = 0, obj_flag = 0}
 
+def_sound_array = (listArray (0, 0) [Source 0], 0)
+
 w_grid_flag = Wall_grid {u1 = True, u2 = True, v1 = True, v2 = True, u1_bound = 0, u2_bound = 0, v1_bound = 0, v2_bound = 0, w_level = 0,  wall_flag = [],
 texture = [], obj = Just def_obj_place}
 
@@ -309,7 +311,7 @@ obj_grid_flag = Obj_grid {objType = 5, program = [], programName = []} :: Obj_gr
 
 def_game_state = Game_state {event_context = None, w_grid_ = defWGridArr, f_grid_ = def_f_grid_arr, obj_grid_ = defObjGridArr, s0_ = ps0_init,
                              s1_ = ps1_init, w_grid_save = emptyWGridDiffContainer, f_grid_save = emptyFGridDiffContainer,
-                             obj_grid_save = emptyObjGridDiffContainer}
+                             obj_grid_save = emptyObjGridDiffContainer, soundArray = def_sound_array}
 
 def_wall_place = Wall_place {rotate = 0, translate_u = 0, translate_v = 0, translate_w = 0, wall_flag_ = 0, texture_ = 0, isNull = True}
 def_prob_seq = array (0, 239) [(i, 0) | i <- [0..239]]
