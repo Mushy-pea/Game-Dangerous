@@ -1762,6 +1762,8 @@ s0' pos_uv pos_w0 pos_w1 vel0 vel1 angle' game_clock' mag_r mag_j scaling f_rate
   | mode == 8 = s0 {pos_u = pos_uv !! (0 :: Int), pos_v = pos_uv !! (1 :: Int), pos_w = pos_w1, vel = vel1, angle = truncate (angle' True),
                     angle_ = (angle' True), gameClock = game_clock'}
   | mode == 9 = s0 {pos_u = pos_uv !! (0 :: Int), pos_v = pos_uv !! (1 :: Int), pos_w = pos_w1, vel = vel1, gameClock = game_clock'}
+  | mode == 10 = s0 {pos_u = pos_uv !! (0 :: Int), pos_v = pos_uv !! (1 :: Int), pos_w = pos_w0, vel = [0, 0, 0], gameClock = game_clock'}
+  | mode == 11 = s0 {pos_u = pos_uv !! (0 :: Int), pos_v = pos_uv !! (1 :: Int), pos_w = pos_w0, vel = [0, 0, 0], gameClock = game_clock'}
   | mode == 12 = s0 {message_ = collectMetrics (snd__ (determineFps t_seq scaling t_current)) (showMapPos s0) (showGameTime (fst__ (gameClock s0)) [] False) s0,
                      gameClock = game_clock'}
   | otherwise = s0 {pos_u = pos_uv !! (0 :: Int), pos_v = pos_uv !! (1 :: Int), pos_w = pos_w0, vel = vel0, gameClock = game_clock'}
@@ -1833,19 +1835,19 @@ updatePlay io_box state_ref game_state in_flight min_frame_t physics lookUp t_la
       updatePlay io_box state_ref (game_state {s0_ = s0 {gameClock = snd game_clock'}}) in_flight min_frame_t physics lookUp
                  t_last t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
   else if control == 2 then do
-    link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ game_state) {message_ = []}) 6}) [] [] lookUp
+    link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = (s0_ game_state) {message_ = []}}) [] [] lookUp
     updatePlay io_box state_ref 
                (link0 {obj_grid_ = pauseMenu link0, s0_ = (s0_ link0) {message_ = []},
                        s1_ = (s1_ link0) {sig_q = Signal {sigNum = 16, originGameT = fst__ (gameClock s0), originVoxel = (0, 0, 0), target = (2, 0, 0)} : sig_q (s1_ link0)}})
                in_flight min_frame_t physics lookUp t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
   else if control == 10 then do
-    link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ game_state) {message_ = []}) 6}) [] [] lookUp
+    link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = (s0_ game_state) {message_ = []}}) [] [] lookUp
     updatePlay io_box state_ref
                (link0 {s0_ = (s0_ link0) {message_ = []},
                        s1_ = (s1_ link0) {sig_q = Signal {sigNum = 2, originGameT = fst__ (gameClock s0), originVoxel = (0, 0, 0), target = (0, 0, 0)} : sig_q (s1_ link0)}})
                in_flight min_frame_t physics lookUp t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
   else if control == 11 then do
-    link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ game_state) {message_ = []}) 6}) [] [] lookUp
+    link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = (s0_ game_state) {message_ = []}}) [] [] lookUp
     if view_mode s0 == 0 then
       updatePlay io_box state_ref (link0 {s0_ = (s0_ link0) {message_ = [], view_mode = 1}}) in_flight min_frame_t physics
                  lookUp t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
@@ -1853,11 +1855,11 @@ updatePlay io_box state_ref game_state in_flight min_frame_t physics lookUp t_la
       updatePlay io_box state_ref (link0 {s0_ = (s0_ link0) {message_ = [], view_mode = 0}}) in_flight min_frame_t physics
                  lookUp t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
   else if control == 12 then do
-    link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ game_state) {message_ = []}) 6}) [] [] lookUp
+    link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = (s0_ game_state) {message_ = []}}) [] [] lookUp
     updatePlay io_box state_ref (link0 {s0_ = (s0_ link0) {message_ = [], view_angle = modAngle (view_angle (s0_ link0)) 5}}) in_flight min_frame_t
                physics lookUp t'' t_log (third_ (det_fps t'')) (fst__ (det_fps t''))
   else if control == 13 then do
-    link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = s0'_ 0 control ((s0_ game_state) {message_ = []}) 6}) [] [] lookUp
+    link0 <- linkGplc0 (fst game_clock') True True (drop 4 det) player_voxel (game_state {s0_ = (s0_ game_state) {message_ = []}}) [] [] lookUp
     updatePlay io_box state_ref
                (link0 {s0_ = (s0_ link0) {message_ = []},
                        s1_ = (s1_ link0) {sig_q = Signal {sigNum = 2, originGameT = fst__ (gameClock s0), originVoxel = (0, 0, 0), target = (0, 0, 1)} : sig_q (s1_ link0)}})
