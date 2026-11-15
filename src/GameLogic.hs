@@ -278,7 +278,7 @@ copyPs0 :: GPLC_int -> (GPLC_int, GPLC_int, GPLC_int) -> Play_state0 -> Array (I
            -> [((Int, Int, Int), (Int, [(Int, Int)]))]
 copyPs0 (GPLC_int offset) (i0, i1, i2) s0 obj_grid obj_grid_upd d_list
   | not (isNothing boundsCheck_) = error (fromJust boundsCheck_)
-  | otherwise = ((d_list !! i0, d_list !! i1, d_list !! i2), (objType target, [v0, v1, v2, v3, v4, v5, v6, v7, v8])) : obj_grid_upd
+  | otherwise = ((d_list !! i0, d_list !! i1, d_list !! i2), (objType target, [v0, v1, v2, v3, v4, v5, v6, v7, v8, v9])) : obj_grid_upd
   where index = (d_list !! i0, d_list !! i1, d_list !! i2)
         target = obj_grid ! index
         boundsCheck_ = boundsCheck obj_grid (coerce index :: (GPLC_int, GPLC_int, GPLC_int)) "copy_ps0"
@@ -291,6 +291,7 @@ copyPs0 (GPLC_int offset) (i0, i1, i2) s0 obj_grid obj_grid_upd d_list
         v6 = (offset + 6, angle s0)
         v7 = (offset + 7, rend_mode s0)
         v8 = (offset + 8, fst__ (gameClock s0))
+        v9 = (offset + 9, bool_to_int (heightParity s0))
 
 copyPs1 :: GPLC_int -> (GPLC_int, GPLC_int, GPLC_int) -> Play_state1 -> Array (Int, Int, Int) Obj_grid -> [((Int, Int, Int), (Int, [(Int, Int)]))] -> [Int]
            -> [((Int, Int, Int), (Int, [(Int, Int)]))]
@@ -1575,19 +1576,37 @@ linkGplc0 phase_flag init_flag queue_start (x0:x1:xs) (z0:z1:z2:zs) game_state w
     update <- forceUpdate0 w_grid_upd [] 0
     return game_state {w_grid_ = w_grid_ game_state // update, obj_grid_ = obj_grid_ game_state // (atomiseObjGridUpd 0 obj_grid_upd [] (obj_grid_ game_state))}
 
+class SafeIndex a where
+  safeIndex :: Array (Int, Int, Int) a -> (Int, Int, Int) -> a
+
+instance SafeIndex Wall_grid where
+  safeIndex x (w, u, v)
+    | w < 0 = x ! (0, u, v)
+    | w > 2 = x ! (2, u, v)
+    | otherwise = x ! (w, u, v)
+
+instance SafeIndex Floor_grid where
+  safeIndex x (w, u, v)
+    | w < 0 || w > 2 = Floor_grid {w_ = -65536, surface = Open, local_up_ramp = (0, 0), local_down_ramp = (0, 0)}
+    | otherwise = x ! (w, u, v)
+
+instance SafeIndex Obj_grid where
+  safeIndex x (w, u, v)
+    | w < 0 || w > 2 = Obj_grid {objType = 0, program = [], programName = "null"}
+    | otherwise = x ! (w, u, v)
+
 linkGplc1 :: Play_state0 -> Play_state1 -> Array (Int, Int, Int) Obj_grid -> Int -> IO Play_state1
 linkGplc1 s0 s1 obj_grid mode =
   let dest0 = (truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0))
-      dest1 = (truncate (pos_w s0), truncate (pos_u s0), truncate (pos_v s0))
   in do
   if mode == 0 then 
-    if objType (obj_grid ! dest0) == 1 || objType (obj_grid ! dest0) == 3 then
-      return s1 {sig_q = sig_q s1 ++ [Signal {sigNum = 1, originGameT = fst__ (gameClock s0), originVoxel = (0, 0, 0), target = dest1}]}
+    if objType (obj_grid `safeIndex` dest0) == 1 || objType (obj_grid `safeIndex` dest0) == 3 then
+      return s1 {sig_q = sig_q s1 ++ [Signal {sigNum = 1, originGameT = fst__ (gameClock s0), originVoxel = (0, 0, 0), target = dest0}]}
     else return s1
   else
-    if objType (obj_grid ! dest0) == 1 || objType (obj_grid ! dest0) == 3 then do
+    if objType (obj_grid `safeIndex` dest0) == 1 || objType (obj_grid `safeIndex` dest0) == 3 then do
       if health s1 <= detDamage (difficulty s1) True s0 s1 then return s1 {health = 0, state_chg = 1, message = 0 : msg26}
-      else return s1 {sig_q = sig_q s1 ++ [Signal {sigNum = 1, originGameT = fst__ (gameClock s0), originVoxel = (0, 0, 0), target = dest1}], health = (health s1) - detDamage (difficulty s1) True s0 s1,
+      else return s1 {sig_q = sig_q s1 ++ [Signal {sigNum = 1, originGameT = fst__ (gameClock s0), originVoxel = (0, 0, 0), target = dest0}], health = (health s1) - detDamage (difficulty s1) True s0 s1,
                       state_chg = 1, message = 0 : msg13}
     else do
       if health s1 <= detDamage (difficulty s1) True s0 s1 then return s1 {health = 0, state_chg = 1, message = 0 : msg26}
@@ -1605,11 +1624,11 @@ detectColl :: Int -> (Float, Float) -> (Float, Float) -> Array (Int, Int, Int) O
 detectColl w_block (u, v) (step_u, step_v) obj_grid w_grid =
   let u' = u + step_u
       v' = v + step_v
-      grid_i = w_grid ! (w_block, truncate u, truncate v)
-      grid_o0 = objType (obj_grid ! (w_block, truncate u, (truncate v) + 1))
-      grid_o1 = objType (obj_grid ! (w_block, (truncate u) + 1, truncate v))
-      grid_o2 = objType (obj_grid ! (w_block, truncate u, (truncate v) - 1))
-      grid_o3 = objType (obj_grid ! (w_block, (truncate u) - 1, truncate v))
+      grid_i = w_grid `safeIndex` (w_block, truncate u, truncate v)
+      grid_o0 = objType (obj_grid `safeIndex` (w_block, truncate u, (truncate v) + 1))
+      grid_o1 = objType (obj_grid `safeIndex` (w_block, (truncate u) + 1, truncate v))
+      grid_o2 = objType (obj_grid `safeIndex` (w_block, truncate u, (truncate v) - 1))
+      grid_o3 = objType (obj_grid `safeIndex` (w_block, (truncate u) - 1, truncate v))
   in
   if v' > v2_bound grid_i && v2 grid_i == True then
     if (u' < u1_bound grid_i || u' > u2_bound grid_i) && (u1 grid_i == True || u2 grid_i == True) then [u, v, 1, 1, 0, 0]
@@ -1650,8 +1669,8 @@ thrust dir a force lookUp =
 
 floorSurf1 :: Float -> Float -> Float -> Array (Int, Int, Int) Floor_grid -> Float
 floorSurf1 u v w f_grid =
-  let f_tile0 = f_grid ! (truncate w, truncate (u / 2), truncate (v / 2))
-      f_tile1 = f_grid ! ((truncate w) - 1, truncate (u / 2), truncate (v / 2))
+  let f_tile0 = f_grid `safeIndex` (truncate w, truncate (u / 2), truncate (v / 2))
+      f_tile1 = f_grid `safeIndex` ((truncate w) - 1, truncate (u / 2), truncate (v / 2))
   in
   if surface f_tile0 == Open then
     if surface f_tile1 == Positive_u then (w_ f_tile1) + (mod' u 2) / 2 + 0.1
@@ -1659,7 +1678,7 @@ floorSurf1 u v w f_grid =
     else if surface f_tile1 == Positive_v then (w_ f_tile1) + (mod' v 2) / 2 + 0.1
     else if surface f_tile1 == Negative_v then 1.1 + (w_ f_tile1) - (mod' v 2) / 2
     else if surface f_tile1 == Flat then w_ f_tile1 + 0.1
-    else 0
+    else -65536
   else
     if surface f_tile0 == Positive_u then (w_ f_tile0) + (mod' u 2) / 2 + 0.1
     else if surface f_tile0 == Negative_u then 1.1 + (w_ f_tile0) - (mod' u 2) / 2
@@ -1747,6 +1766,8 @@ playMusic t period sound_array = do
 s0' :: [Float] -> Float -> Float -> [Float] -> [Float] -> (Bool -> Float) -> (Int, Float, Int) -> Float -> Float -> Float -> Float -> Float
        -> UArray (Int, Int) Float -> SEQ.Seq Integer -> Integer -> Int -> Play_state0 -> Int -> Play_state0
 s0' pos_uv pos_w0 pos_w1 vel0 vel1 angle' game_clock' mag_r mag_j scaling f_rate f look_up t_seq t_current control s0 mode
+  | heightParity s0 == True && pos_w s0 < 0 = s0 {vel = [0, 0, (vel s0) !! (2 :: Int)], heightParity = False}
+  | heightParity s0 == False && pos_w s0 >= 0 = s0 {heightParity = True}
   | mode == 0 = s0 {pos_u = pos_uv !! (0 :: Int), pos_v = pos_uv !! (1 :: Int), vel = vel0, gameClock = game_clock'}
   | mode == 1 = s0 {pos_u = pos_uv !! (0 :: Int), pos_v = pos_uv !! (1 :: Int), pos_w = pos_w0,
                     vel = updateVel (vel s0) (take 3 (thrust (fromIntegral control) (angle s0) mag_r look_up)) ((drop 2 pos_uv) ++ [0]) f_rate f,

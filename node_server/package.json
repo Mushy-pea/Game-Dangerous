@@ -21,10 +21,10 @@
   },
   "homepage": "https://github.com/Mushy-pea/Game-Dangerous#readme",
   "dependencies": {
-    "express": "^4.21.1"
+    "express": "^4.22.2"
   },
   "devDependencies": {
-    "@types/node": "^20.16.1",
-    "typescript": "^5.5.4"
+    "@types/node": "^20.19.41",
+    "typescript": "^5.9.3"
   }
 }
