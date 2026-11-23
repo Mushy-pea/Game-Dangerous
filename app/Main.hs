@@ -603,21 +603,13 @@ setupObject (x:xs) (y:ys) vertex element bs_tex p_bind = do
   glBufferData GL_ELEMENT_ARRAY_BUFFER (unsafeCoerce (plusPtr zero_ptr (glushort * y !! 3)) :: GLsizeiptr) p3 GL_STREAM_DRAW
   free p0; free p1; free p2; free p3
   glVertexAttribPointer 0 4 GL_FLOAT 0 0 zero_ptr
-  if num_tex x > 0 then do
-    glVertexAttribPointer 1 2 GL_FLOAT 0 0 (plusPtr zero_ptr ((att_offset x) * 4 * glfloat))
-    bindTexture (take (num_tex x) bs_tex) (plusPtr p_bind ((ident x) * gluint + gluint)) (tex_w x) (tex_h x) 0
-    glVertexAttribPointer 2 3 GL_FLOAT 0 0 (plusPtr zero_ptr ((att_offset x) * 6 * glfloat))
-    glEnableVertexAttribArray 0
-    glEnableVertexAttribArray 1
-    glEnableVertexAttribArray 2
-    setupObject xs ys vertex element (drop (num_tex x) bs_tex) p_bind
-  else do
-    glVertexAttribPointer 1 4 GL_FLOAT 0 0 (plusPtr zero_ptr ((att_offset x) * 4 * glfloat))
-    glVertexAttribPointer 2 3 GL_FLOAT 0 0 (plusPtr zero_ptr ((att_offset x) * 8 * glfloat))
-    glEnableVertexAttribArray 0
-    glEnableVertexAttribArray 1
-    glEnableVertexAttribArray 2
-    setupObject xs ys vertex element bs_tex p_bind
+  glVertexAttribPointer 1 2 GL_FLOAT 0 0 (plusPtr zero_ptr ((att_offset x) * 4 * glfloat))
+  bindTexture (take (num_tex x) bs_tex) (plusPtr p_bind ((ident x) * gluint + gluint)) (tex_w x) (tex_h x) 0
+  glVertexAttribPointer 2 3 GL_FLOAT 0 0 (plusPtr zero_ptr ((att_offset x) * 6 * glfloat))
+  glEnableVertexAttribArray 0
+  glEnableVertexAttribArray 1
+  glEnableVertexAttribArray 2
+  setupObject xs ys vertex element (drop (num_tex x) bs_tex) p_bind
 
 bindTexture :: [BS.ByteString] -> Ptr GLuint -> GLsizei -> GLsizei -> Int -> IO ()
 bindTexture [] p_bind w h offset = return ()

@@ -192,7 +192,7 @@ outputColour = pow(totalLight, gamma);
 #version 420
 
 layout(location = 0) in vec4 position;
-layout(location = 1) in vec4 colour;
+layout(location = 1) in vec2 triColour;
 layout(location = 2) in vec3 normal;
 
 out vec3 modelInWorldPosition;
@@ -203,10 +203,23 @@ uniform mat4 mod_to_world;
 uniform mat4 world_to_mod;
 uniform mat4 world_to_clip;
 
+vec4 transformColour(const vec2 triColour) {
+  const vec2 pointR = vec2(0, 0.57735);
+  const vec2 pointG = vec2(0.5, -0.288675);
+  const vec2 pointB = vec2(-0.5, -0.288675);
+  const vec2 pointC = vec2(0, 0);
+  const float distR = sqrt(pow(triColour.x - pointR.x, 2) + pow(triColour.y - pointR.y, 2));
+  const float distG = sqrt(pow(triColour.x - pointG.x, 2) + pow(triColour.y - pointG.y, 2));
+  const float distB = sqrt(pow(triColour.x - pointB.x, 2) + pow(triColour.y - pointB.y, 2));
+  const float distC = sqrt(pow(triColour.x - pointC.x, 2) + pow(triColour.y - pointC.y, 2));
+  const float centreScale = 2.366024 - 1.366024 * (distC / 0.57735);
+  return vec4(clamp((1 - distR) * centreScale, 0.0, 1.0), clamp((1 - distG) * centreScale, 0.0, 1.0), clamp((1 - distB) * centreScale, 0.0, 1.0), 1);
+}
+
 void main() {
 vec4 worldPos = mod_to_world * position;
 modelInWorldPosition = worldPos.xyz;
-diffColour = colour;
+diffColour = transformColour(triColour);
 vertNormal = normal;
 gl_Position = world_to_clip * worldPos;
 }

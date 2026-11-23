@@ -133,7 +133,7 @@ genIndices (x:xs) positions mode n num_i acc =
   if test == "usemtl" then genIndices xs positions mode n num_i acc
   else if test == "v" then genIndices xs positions mode n num_i acc
   else if test == "vn" then genIndices xs positions mode n num_i acc
-  else if test == "vt" then genIndices xs positions mode n num_i acc
+  else if test == "vt" || test == "vc" then genIndices xs positions mode n num_i acc
   else if mode == 0 then genIndices xs positions mode (n + (div order 2)) (num_i + length f_ind) (acc ++ showInts (map (+ (n - 2)) f_ind))
   else genIndices xs positions mode (n + (div order 3)) (num_i + length f_ind) (acc ++ showInts (map (+ (n - 2)) f_ind))
 
@@ -142,7 +142,7 @@ getVert :: [[Char]] -> Int -> Int -> Model -> Model
 getVert [] phase mode model = model
 getVert (x:xs) 0 mode model =
   if x == "v" then getVert (drop 3 xs) 0 mode (model {vertex = (vertex model) ++ take 3 xs})
-  else if x == "vt" then getVert (drop 2 xs) 0 mode (model {tex_coord = (tex_coord model) ++ take 2 xs})
+  else if x == "vt" || x == "vc" then getVert (drop 2 xs) 0 mode (model {tex_coord = (tex_coord model) ++ take 2 xs})
   else if x == "vn" then getVert (drop 3 xs) 0 mode (model {normal = (normal model) ++ take 3 xs})
   else if x == "usemtl" then getVert (drop 1 xs) 0 mode model
   else getVert xs 1 mode model
@@ -181,7 +181,7 @@ addColour0 [] mat col = []
 addColour0 (x:xs) mat col =
   if x == "usemtl" then addColour0 (drop 1 xs) mat (addColour1 mat ((subI 5 xs 0)))
   else if x == "v" then addColour0 (drop 3 xs) mat col
-  else if x == "vt" then addColour0 (drop 2 xs) mat col
+  else if x == "vt" || x == "vc" then addColour0 (drop 2 xs) mat col
   else if x == "vn" then addColour0 (drop 3 xs) mat col
   else if x == "f" then addColour0 xs mat col
   else col ++ ", " ++ addColour0 xs mat col
